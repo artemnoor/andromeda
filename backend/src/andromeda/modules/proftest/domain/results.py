@@ -7,11 +7,12 @@ from enum import StrEnum
 
 from pydantic import Field
 
+from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.ids import NonEmptyText, ProgramCode, ProgramId, ShortText
 
 from .adaptive import AdaptiveSelection
-from .entities import ActivityCode, DisciplineAreaCode, ProgramFingerprint, Question, UserProfile
+from .entities import ActivityCode, ProgramFingerprint, Question, UserProfile
 
 
 class MetricStatus(StrEnum):

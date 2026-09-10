@@ -7,9 +7,20 @@ import logging
 
 from andromeda.shared.contracts.errors import ValidationError
 
-from ..contracts.public import Answer, AnswerSet, ProftestPreview, ProftestResults, PreviewCandidate, Question, Recommendation, ReasonKind
+from ..contracts.public import (
+    AnswerSet,
+    MatchScore,
+    ProgramFingerprint,
+    ProftestPreview,
+    ProftestResults,
+    PreviewCandidate,
+    Question,
+    Questionnaire,
+    Recommendation,
+    ReasonKind,
+    UserProfile,
+)
 from ..domain.adaptive import AdaptiveSelection
-from ..repository.ports import ProftestCatalogReader
 from .adaptive import AdaptiveCandidate, AdaptiveQuestionFactory, AdaptiveQuestionSelector
 from .catalog import ProftestCatalogService
 from .explanations import ExplanationBuilder
@@ -19,6 +30,8 @@ from .ranking import RankingService
 
 
 logger = logging.getLogger("andromeda.proftest.application")
+
+RankedFingerprints = tuple[tuple[ProgramFingerprint, MatchScore], ...]
 
 
 class ProftestService:
@@ -30,7 +43,7 @@ class ProftestService:
         self._adaptive_selector = AdaptiveQuestionSelector()
         self._adaptive_factory = AdaptiveQuestionFactory()
 
-    def questionnaire(self):
+    def questionnaire(self) -> Questionnaire:
         return build_questionnaire()
 
     def preview(self, answer_set: AnswerSet) -> ProftestPreview:
@@ -72,16 +85,21 @@ class ProftestService:
         logger.info("results_complete fingerprint_count=%d recommendation_count=%d adaptive_answers=%d", len(fingerprints), len(recommendations), len(answer_set.adaptive_answers))
         return ProftestResults(profile=profile, recommendations=tuple(recommendations))
 
-    def _build_profile(self, answer_set: AnswerSet, questions: tuple[Question, ...], adaptive_questions: tuple[Question, ...] = ()):
+    def _build_profile(
+        self,
+        answer_set: AnswerSet,
+        questions: tuple[Question, ...],
+        adaptive_questions: tuple[Question, ...] = (),
+    ) -> UserProfile:
         try:
             return self._profile_builder.build(answer_set, questions, adaptive_questions)
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
 
-    def _rank_all(self, profile, fingerprints):
+    def _rank_all(self, profile: UserProfile, fingerprints: tuple[ProgramFingerprint, ...]) -> RankedFingerprints:
         return self._ranking.rank(profile, fingerprints, limit=max(1, len(fingerprints)))
 
-    def _select_adaptive(self, ranked) -> AdaptiveSelection:
+    def _select_adaptive(self, ranked: RankedFingerprints) -> AdaptiveSelection:
         return self._adaptive_selector.select(tuple(AdaptiveCandidate(fingerprint=fingerprint, score=Decimal(score.content_fit)) for fingerprint, score in ranked))
 
     @staticmethod
