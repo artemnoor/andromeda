@@ -142,7 +142,8 @@ def wait_for_http(url: str, timeout: float, label: str, *, json_response: bool =
 def _start_process(command: list[str], env: dict[str, str], label: str, *, cwd: Path = SPIKE_ROOT) -> Popen[bytes]:
     logger.info("stage_start name=%s", label)
     if os.name == "nt":
-        return subprocess.Popen(command, cwd=cwd, env=env, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+        creationflags = cast(int, getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+        return subprocess.Popen(command, cwd=cwd, env=env, creationflags=creationflags)
     return subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True)
 
 

@@ -115,8 +115,13 @@ $env:VITE_API_BASE_URL = "http://127.0.0.1:8100"
 ```powershell
 python -m pytest proftest-spike/tests -q
 python -m mypy --strict proftest-spike/backend/src/proftest_spike
-python -m mypy --strict proftest-spike/scripts/run_spike_demo.py
+python -m mypy --strict --platform linux proftest-spike/backend/src/proftest_spike proftest-spike/scripts/run_spike_demo.py
 ```
+
+Последняя команда намеренно фиксирует Linux-профиль `mypy`, используемый в
+Ubuntu CI, поэтому тот же gate воспроизводим локально на Windows. Runner
+сохраняет Windows process group через безопасный runtime lookup
+`CREATE_NEW_PROCESS_GROUP`, а на POSIX использует `start_new_session=True`.
 
 Из `proftest-spike/frontend` при запущенном Spike API:
 

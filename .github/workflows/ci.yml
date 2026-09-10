@@ -115,7 +115,7 @@ jobs:
         run: python -m pytest -q
         working-directory: proftest-spike/backend
       - name: Run strict typing checks
-        run: python -m mypy --strict proftest-spike/backend/src/proftest_spike proftest-spike/scripts/run_spike_demo.py
+        run: python -m mypy --strict --platform linux proftest-spike/backend/src/proftest_spike proftest-spike/scripts/run_spike_demo.py
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
