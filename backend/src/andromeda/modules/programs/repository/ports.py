@@ -1,0 +1,26 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+from ....shared.contracts.ids import ProgramId
+
+from ..contracts.public import Program
+
+
+class ProgramReader(Protocol):
+    """Read-only program port consumed by application modules."""
+
+    def get(self, program_id: ProgramId) -> Program | None: ...
+
+    def list(self) -> tuple[Program, ...]: ...
+
+
+class ProgramWriter(Protocol):
+    def save(self, program: Program) -> None: ...
+
+
+class ProgramRepository(ProgramReader, ProgramWriter, Protocol):
+    """Combined storage port used only by infrastructure composition."""
+
+
+__all__ = ["ProgramReader", "ProgramRepository", "ProgramWriter"]

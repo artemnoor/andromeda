@@ -88,6 +88,7 @@ def normalize_bundle(raw: RawTracerBundle) -> NormalizedTracerSnapshot:
         item = CurriculumItem(
             id=item_id,
             discipline_id=discipline.id,
+            source_name=_text(row.discipline),
             semester=row.semester,
             hours=row.hours,
             credits=_credits(row.credits, row.locator.field or "credits"),

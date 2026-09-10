@@ -1,141 +1,34 @@
+"""Legacy import facade for canonical Andromeda domain contracts.
+
+New code must import subject contracts from ``andromeda.modules``. Keeping
+these aliases avoids a second schema copy while old tracer entrypoints are
+migrated.
+"""
+
 from __future__ import annotations
 
-from datetime import datetime
-from decimal import Decimal
-from hashlib import sha256
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
+from pydantic import Field, model_validator
 
-from .constraints import (
-    Credits,
-    CurriculumId,
-    CurriculumItemId,
-    DirectionCode,
-    DirectionId,
-    DisciplineId,
-    EducationYear,
-    HourCount,
-    NonEmptyText,
-    ProgramCode,
-    ProgramId,
-    Sha256,
-    Semester,
-    SourcePosition,
-    ShortText,
-    UniversityId,
-)
-from .enums import AssessmentType, CompareStatus, EducationLevel, SourceKind
+from andromeda.modules.comparison.domain.entities import Workload as CompareWorkload
+from andromeda.modules.curricula.contracts.public import Curriculum, CurriculumItem
+from andromeda.modules.disciplines.contracts.public import Discipline
+from andromeda.modules.programs.contracts.public import Program
+from andromeda.modules.universities.contracts.public import Direction, University
+from andromeda.shared.contracts.base import ContractModel
+from andromeda.shared.contracts.provenance import SourceAttribution
 
 
-class DomainBase(BaseModel):
-    model_config = ConfigDict(strict=True, extra="forbid", populate_by_name=True)
+EducationalProgram = Program
 
 
-class University(DomainBase):
-    id: UniversityId
-    name: NonEmptyText
-    city: ShortText
-    official_site: HttpUrl
-    address: NonEmptyText
+class NormalizedTracerSnapshot(ContractModel):
+    """Temporary legacy aggregate composed from canonical module contracts."""
 
-
-class Direction(DomainBase):
-    id: DirectionId
-    university_id: UniversityId
-    code: DirectionCode
-    name: NonEmptyText
-    education_level: EducationLevel
-
-    @model_validator(mode="after")
-    def validate_identity(self) -> Self:
-        if self.id != f"direction:{self.code}":
-            raise ValueError("direction id must equal direction:<code>")
-        return self
-
-
-class EducationalProgram(DomainBase):
-    id: ProgramId
-    direction_id: DirectionId
-    code: ProgramCode
-    name: NonEmptyText
-    education_year: EducationYear
-    study_plan_url: HttpUrl
-    source_url: HttpUrl
-
-    @model_validator(mode="after")
-    def validate_identity(self) -> Self:
-        if self.id != f"program:{self.code}":
-            raise ValueError("program id must equal program:<code>")
-        if not self.code.startswith(self.direction_id.removeprefix("direction:") + "-"):
-            raise ValueError("program code must belong to its direction")
-        return self
-
-
-class Discipline(DomainBase):
-    id: DisciplineId
-    name: NonEmptyText = Field(max_length=256)
-    normalized_name: ShortText = Field(max_length=256)
-
-    @model_validator(mode="after")
-    def validate_identity(self) -> Self:
-        expected = sha256(self.normalized_name.encode("utf-8")).hexdigest()[:16]
-        if self.id != f"discipline:{expected}":
-            raise ValueError("discipline id must derive from normalized_name")
-        return self
-
-
-class SourceAttribution(DomainBase):
-    kind: SourceKind
-    url: HttpUrl
-    captured_at: datetime
-    content_sha256: Sha256
-
-
-class CurriculumItem(DomainBase):
-    id: CurriculumItemId
-    discipline_id: DisciplineId
-    semester: Semester | None = None
-    hours: HourCount
-    credits: Credits | None = None
-    assessment_types: tuple[AssessmentType, ...] | None = None
-    subject_group: ShortText | None = None
-    source_position: SourcePosition | None = None
-
-    @model_validator(mode="after")
-    def validate_assessments(self) -> Self:
-        expected_suffix = f":{self.discipline_id}:{self.semester if self.semester is not None else 'unassigned'}"
-        if not self.id.startswith("curriculum-item:program:") or not self.id.endswith(expected_suffix):
-            raise ValueError("curriculum item id must derive from its discipline and semester")
-        if self.assessment_types is not None and not self.assessment_types:
-            raise ValueError("assessment_types must be non-empty when present")
-        if self.assessment_types is not None and len(set(self.assessment_types)) != len(self.assessment_types):
-            raise ValueError("assessment_types must not contain duplicates")
-        return self
-
-
-class Curriculum(DomainBase):
-    id: CurriculumId
-    program_id: ProgramId
-    education_year: EducationYear
-    source_url: HttpUrl
-    captured_at: datetime
-    items: tuple[CurriculumItem, ...] = Field(min_length=1)
-
-    @model_validator(mode="after")
-    def validate_identity(self) -> Self:
-        if self.id != f"curriculum:{self.program_id.removeprefix('program:')}-{self.education_year}":
-            raise ValueError("curriculum id must derive from program and education year")
-        identities = [(item.discipline_id, item.semester) for item in self.items]
-        if len(identities) != len(set(identities)):
-            raise ValueError("curriculum cannot contain duplicate discipline/semester items")
-        return self
-
-
-class NormalizedTracerSnapshot(DomainBase):
     university: University
     direction: Direction
-    programs: tuple[EducationalProgram, ...] = Field(min_length=1)
+    programs: tuple[Program, ...] = Field(min_length=1)
     disciplines: tuple[Discipline, ...] = Field(min_length=1)
     curricula: tuple[Curriculum, ...] = Field(min_length=1)
     sources: tuple[SourceAttribution, ...] = Field(min_length=1)
@@ -163,13 +56,14 @@ class NormalizedTracerSnapshot(DomainBase):
         return self
 
 
-class CompareWorkload(DomainBase):
-    semester: Semester | None = None
-    hours: HourCount
-    credits: Decimal | None = None
-    assessment_types: tuple[AssessmentType, ...] | None = None
-    subject_group: ShortText | None = None
-
-
-CompareStatusValue = CompareStatus
-EducationLevelValue = EducationLevel
+__all__ = [
+    "CompareWorkload",
+    "Curriculum",
+    "CurriculumItem",
+    "Direction",
+    "Discipline",
+    "EducationalProgram",
+    "NormalizedTracerSnapshot",
+    "SourceAttribution",
+    "University",
+]

@@ -1,0 +1,1 @@
+"""Discipline domain internals."""

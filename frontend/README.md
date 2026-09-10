@@ -1,6 +1,6 @@
 # BMSTU contract-first frontend
 
-This frontend is a small TypeScript/Vite client for the same OpenAPI contract exposed by the backend.
+This frontend is a TypeScript/Vite client for the Andromeda OpenAPI contract. The comparison page loads the real program list, lets the user choose A/B, switches between the full plan and a semester, groups rows by subject block, and displays workload deltas.
 
 The repository-root command below is the supported full-stack fixture smoke: it ingests the captured source into SQLite, starts FastAPI and Vite, verifies `/openapi.json`, loads the frontend, and calls the compare scenario:
 
@@ -16,13 +16,15 @@ npm install
 npm run generate-api                 # uses OPENAPI_FILE or http://127.0.0.1:8000/openapi.json
 npm run build
 npm run check-api-drift              # set OPENAPI_FILE=openapi.json for an offline check
+npm run test:e2e                     # requires the fixture demo to be running
 npm run dev
 ```
 
 With the backend running on port 8000, open:
 
-- `http://localhost:5173/` — two-program comparison;
-- `http://localhost:5173/?program=program%3A09.03.01-02` — one program card;
-- `http://localhost:5173/?program=program%3A09.03.01-02&view=curriculum` — one curriculum.
+- `http://localhost:5173/` — selectable two-program comparison;
+- `http://localhost:8000/docs` — the backend contract used by the client.
+
+`src/api/generated.ts` is regenerated from `openapi.json`/`/openapi.json`; it is not a hand-maintained DTO copy. The browser does not read parser output or local files.
 
 `src/api/generated.ts` is generated from `openapi.json`/`/openapi.json`; it is not a hand-maintained DTO copy.

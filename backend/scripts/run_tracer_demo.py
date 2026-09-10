@@ -184,7 +184,7 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
     frontend_process: Popen[bytes] | None = None
     try:
         api_process = _start_process(
-            [sys.executable, "-m", "uvicorn", "bmstu_parser.api.main:app", "--host", args.host, "--port", str(args.api_port)],
+            [sys.executable, "-m", "uvicorn", "andromeda.api.main:app", "--host", args.host, "--port", str(args.api_port)],
             REPO_ROOT,
             child_env,
             "api",

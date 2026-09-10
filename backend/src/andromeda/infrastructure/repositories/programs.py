@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from andromeda.modules.programs.contracts.public import Program
+from andromeda.modules.programs.repository.ports import ProgramReader, ProgramWriter
+from andromeda.shared.contracts.ids import ProgramId
+
+from ..database.models import ProgramModel
+
+
+class SqlAlchemyProgramRepository(ProgramReader, ProgramWriter):
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get(self, program_id: ProgramId) -> Program | None:
+        model = self._session.get(ProgramModel, program_id)
+        return _to_contract(model) if model is not None else None
+
+    def list(self) -> tuple[Program, ...]:
+        models = self._session.execute(select(ProgramModel).order_by(ProgramModel.code)).scalars().all()
+        return tuple(_to_contract(model) for model in models)
+
+    def save(self, program: Program) -> None:
+        existing = self._session.get(ProgramModel, program.id)
+        values = {
+            "id": program.id,
+            "direction_id": program.direction_id,
+            "code": program.code,
+            "name": program.name,
+            "education_year": program.education_year,
+            "study_plan_url": str(program.study_plan_url),
+            "source_url": str(program.source_url),
+        }
+        if existing is None:
+            self._session.add(ProgramModel(**values))
+        elif any(getattr(existing, key) != value for key, value in values.items() if key != "id"):
+            raise ValueError(f"program identity conflict: {program.id}")
+
+
+def _to_contract(model: ProgramModel) -> Program:
+    return Program.model_validate(
+        {
+            "id": model.id,
+            "direction_id": model.direction_id,
+            "code": model.code,
+            "name": model.name,
+            "education_year": model.education_year,
+            "study_plan_url": model.study_plan_url,
+            "source_url": model.source_url,
+        }
+    )

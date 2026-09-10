@@ -207,9 +207,11 @@ def _insert_domain(session: Session, normalized: NormalizedTracerSnapshot) -> No
                 "id": item.id,
                 "curriculum_id": curriculum.id,
                 "discipline_id": item.discipline_id,
+                "source_name": item.source_name,
                 "semester": item.semester,
+                "semester_identity": _semester_identity(item.semester),
                 "hours": item.hours,
-                "credits": float(item.credits) if item.credits is not None else None,
+                "credits": item.credits,
                 "subject_group": item.subject_group,
                 "source_position": item.source_position,
             })
@@ -242,3 +244,7 @@ def _same_value(actual: object, expected: object) -> bool:
         expected_utc = expected.replace(tzinfo=timezone.utc) if expected.tzinfo is None else expected.astimezone(timezone.utc)
         return actual_utc == expected_utc
     return actual == expected or str(actual) == str(expected)
+
+
+def _semester_identity(semester: int | None) -> str:
+    return "unassigned" if semester is None else f"semester:{semester}"

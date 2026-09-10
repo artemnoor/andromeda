@@ -76,3 +76,25 @@ jobs:
         working-directory: frontend
       - name: Run fixture through DB, API, and frontend
         run: python backend/scripts/run_tracer_demo.py --mode fixture --check --log-level INFO
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Start fixture demo for browser tests
+        shell: bash
+        run: |
+          python backend/scripts/run_tracer_demo.py --mode fixture --log-level INFO > "$RUNNER_TEMP/andromeda-demo.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/andromeda-demo.pid"
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:5173/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/andromeda-demo.log"
+          exit 1
+      - name: Run browser comparison test
+        run: npm run test:e2e
+        working-directory: frontend
+      - name: Stop fixture demo
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/andromeda-demo.pid" ]; then kill "$(cat "$RUNNER_TEMP/andromeda-demo.pid")" || true; fi

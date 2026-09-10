@@ -8,11 +8,13 @@
     "check-api-drift": "node scripts/check-api-drift.mjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "test:e2e": "playwright test",
     "preview": "vite preview"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "openapi-typescript": "^7.9.1",
+    "@playwright/test": "^1.52.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.7"
   }

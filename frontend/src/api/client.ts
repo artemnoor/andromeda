@@ -2,6 +2,7 @@ import type { components, paths } from "./generated";
 import { ApiError, isErrorResponse } from "./errors";
 
 type ProgramResponse = paths["/programs/{id}"]["get"]["responses"][200]["content"]["application/json"];
+type ProgramListResponse = paths["/programs"]["get"]["responses"][200]["content"]["application/json"];
 type CurriculumResponse = paths["/programs/{id}/curriculum"]["get"]["responses"][200]["content"]["application/json"];
 type CompareResponse = paths["/compare"]["get"]["responses"][200]["content"]["application/json"];
 type ErrorContract = components["schemas"]["ErrorResponse"];
@@ -30,13 +31,21 @@ export function getProgram(id: string): Promise<ProgramResponse> {
   return requestJson<ProgramResponse>(`/programs/${encodeURIComponent(id)}`);
 }
 
+export function getPrograms(): Promise<ProgramListResponse> {
+  return requestJson<ProgramListResponse>("/programs");
+}
+
 export function getCurriculum(id: string): Promise<CurriculumResponse> {
   return requestJson<CurriculumResponse>(`/programs/${encodeURIComponent(id)}/curriculum`);
 }
 
-export function comparePrograms(programIds: readonly [string, string]): Promise<CompareResponse> {
-  const query = encodeURIComponent(programIds.join(","));
-  return requestJson<CompareResponse>(`/compare?programIds=${query}`);
+export function comparePrograms(
+  programIds: readonly [string, string],
+  options: { scope?: components["schemas"]["ComparisonScope"]; semester?: number | undefined } = {},
+): Promise<CompareResponse> {
+  const params = new URLSearchParams({ programIds: programIds.join(","), scope: options.scope ?? "all" });
+  if (options.semester !== undefined) params.set("semester", String(options.semester));
+  return requestJson<CompareResponse>(`/compare?${params.toString()}`);
 }
 
-export type { CompareResponse, CurriculumResponse, ErrorContract, ProgramResponse };
+export type { CompareResponse, CurriculumResponse, ErrorContract, ProgramListResponse, ProgramResponse };

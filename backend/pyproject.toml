@@ -42,4 +42,4 @@ testpaths = ["tests"]
 
 [tool.mypy]
 strict = true
-files = ["src/bmstu_parser/contracts", "src/bmstu_parser/tracer", "src/bmstu_parser/db", "src/bmstu_parser/api"]
+files = ["src/andromeda", "src/bmstu_parser/contracts", "src/bmstu_parser/tracer", "src/bmstu_parser/db", "src/bmstu_parser/api"]

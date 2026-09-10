@@ -1,18 +1,79 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "BMSTU Contract-First Tracer Bullet API",
-    "description": "Source-backed program and curriculum contracts for the BMSTU tracer bullet.",
-    "version": "0.1.0"
+    "title": "Andromeda Educational Program Comparison API",
+    "description": "Strict source-backed contracts for comparing BMSTU educational programmes.",
+    "version": "1.0.0"
   },
   "paths": {
+    "/programs": {
+      "get": {
+        "tags": [
+          "programs"
+        ],
+        "summary": "List Programs",
+        "operationId": "list_programs_programs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/programs/{id}": {
       "get": {
         "tags": [
           "programs"
         ],
-        "summary": "Get Program Endpoint",
-        "operationId": "get_program_endpoint_programs__id__get",
+        "summary": "Get Program",
+        "operationId": "get_program_programs__id__get",
         "parameters": [
           {
             "name": "id",
@@ -36,7 +97,7 @@
               }
             }
           },
-          "422": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -44,7 +105,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -55,6 +116,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
           },
           "500": {
             "content": {
@@ -74,8 +145,8 @@
         "tags": [
           "programs"
         ],
-        "summary": "Get Curriculum Endpoint",
-        "operationId": "get_curriculum_endpoint_programs__id__curriculum_get",
+        "summary": "Get Curriculum",
+        "operationId": "get_curriculum_programs__id__curriculum_get",
         "parameters": [
           {
             "name": "id",
@@ -99,7 +170,7 @@
               }
             }
           },
-          "422": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -107,7 +178,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -118,6 +189,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
           },
           "500": {
             "content": {
@@ -135,10 +216,10 @@
     "/compare": {
       "get": {
         "tags": [
-          "compare"
+          "comparison"
         ],
-        "summary": "Compare Endpoint",
-        "operationId": "compare_endpoint_compare_get",
+        "summary": "Compare",
+        "operationId": "compare_compare_get",
         "parameters": [
           {
             "name": "programIds",
@@ -146,9 +227,34 @@
             "required": true,
             "schema": {
               "type": "string",
-              "minLength": 1,
-              "maxLength": 512,
               "title": "Programids"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ComparisonScope",
+              "default": "all"
+            }
+          },
+          {
+            "name": "semester",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 12,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Semester"
             }
           }
         ],
@@ -158,12 +264,12 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompareResponse"
+                  "$ref": "#/components/schemas/ComparisonResponse"
                 }
               }
             }
           },
-          "422": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -171,7 +277,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Bad Request"
           },
           "404": {
             "content": {
@@ -182,6 +288,16 @@
               }
             },
             "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
           },
           "500": {
             "content": {
@@ -211,7 +327,49 @@
         ],
         "title": "AssessmentType"
       },
-      "CompareResponse": {
+      "CompareStatus": {
+        "type": "string",
+        "enum": [
+          "both",
+          "only_a",
+          "only_b",
+          "different"
+        ],
+        "title": "CompareStatus"
+      },
+      "ComparisonBlockResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "totalsA": {
+            "$ref": "#/components/schemas/ComparisonTotalsResponse"
+          },
+          "totalsB": {
+            "$ref": "#/components/schemas/ComparisonTotalsResponse"
+          },
+          "hoursDelta": {
+            "type": "integer",
+            "title": "Hoursdelta"
+          },
+          "creditsDelta": {
+            "type": "string",
+            "title": "Creditsdelta"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "totalsA",
+          "totalsB",
+          "hoursDelta",
+          "creditsDelta"
+        ],
+        "title": "ComparisonBlockResponse"
+      },
+      "ComparisonResponse": {
         "properties": {
           "programA": {
             "$ref": "#/components/schemas/ProgramSummaryResponse"
@@ -219,20 +377,39 @@
           "programB": {
             "$ref": "#/components/schemas/ProgramSummaryResponse"
           },
+          "scope": {
+            "$ref": "#/components/schemas/ComparisonScope"
+          },
+          "semester": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semester"
+          },
           "rows": {
             "items": {
-              "$ref": "#/components/schemas/CompareRowResponse"
+              "$ref": "#/components/schemas/ComparisonRowResponse"
             },
             "type": "array",
             "title": "Rows"
           },
-          "sources": {
+          "totalsA": {
+            "$ref": "#/components/schemas/ComparisonTotalsResponse"
+          },
+          "totalsB": {
+            "$ref": "#/components/schemas/ComparisonTotalsResponse"
+          },
+          "blocks": {
             "items": {
-              "$ref": "#/components/schemas/SourceAttributionResponse"
+              "$ref": "#/components/schemas/ComparisonBlockResponse"
             },
             "type": "array",
-            "minItems": 1,
-            "title": "Sources"
+            "title": "Blocks"
           }
         },
         "additionalProperties": false,
@@ -240,12 +417,15 @@
         "required": [
           "programA",
           "programB",
+          "scope",
           "rows",
-          "sources"
+          "totalsA",
+          "totalsB",
+          "blocks"
         ],
-        "title": "CompareResponse"
+        "title": "ComparisonResponse"
       },
-      "CompareRowResponse": {
+      "ComparisonRowResponse": {
         "properties": {
           "discipline": {
             "$ref": "#/components/schemas/DisciplineResponse"
@@ -260,6 +440,17 @@
               }
             ],
             "title": "Semester"
+          },
+          "subjectGroup": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectgroup"
           },
           "a": {
             "anyOf": [
@@ -283,6 +474,28 @@
           },
           "status": {
             "$ref": "#/components/schemas/CompareStatus"
+          },
+          "hoursDelta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hoursdelta"
+          },
+          "creditsDelta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creditsdelta"
           }
         },
         "additionalProperties": false,
@@ -291,34 +504,52 @@
           "discipline",
           "status"
         ],
-        "title": "CompareRowResponse"
+        "title": "ComparisonRowResponse"
       },
-      "CompareStatus": {
+      "ComparisonScope": {
         "type": "string",
         "enum": [
-          "both",
-          "only_a",
-          "only_b",
-          "different"
+          "all",
+          "semester"
         ],
-        "title": "CompareStatus"
+        "title": "ComparisonScope"
+      },
+      "ComparisonTotalsResponse": {
+        "properties": {
+          "hours": {
+            "type": "integer",
+            "title": "Hours"
+          },
+          "credits": {
+            "type": "string",
+            "title": "Credits"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "hours",
+          "credits"
+        ],
+        "title": "ComparisonTotalsResponse"
       },
       "CurriculumItemResponse": {
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^curriculum-item:program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}:discipline:[a-f0-9]{16}:(?:unassigned|[1-9]|1[0-2])$",
             "title": "Id"
           },
           "discipline": {
             "$ref": "#/components/schemas/DisciplineResponse"
           },
+          "sourceName": {
+            "type": "string",
+            "title": "Sourcename"
+          },
           "semester": {
             "anyOf": [
               {
-                "type": "integer",
-                "maximum": 12.0,
-                "minimum": 1.0
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -328,8 +559,6 @@
           },
           "hours": {
             "type": "integer",
-            "maximum": 2000.0,
-            "minimum": 0.0,
             "title": "Hours"
           },
           "credits": {
@@ -360,9 +589,7 @@
           "subjectGroup": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 256,
-                "minLength": 1
+                "type": "string"
               },
               {
                 "type": "null"
@@ -373,9 +600,7 @@
           "sourcePosition": {
             "anyOf": [
               {
-                "type": "integer",
-                "maximum": 10000.0,
-                "minimum": 1.0
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -389,26 +614,22 @@
         "required": [
           "id",
           "discipline",
+          "sourceName",
           "hours"
         ],
         "title": "CurriculumItemResponse"
       },
-      "CurriculumMetadataResponse": {
+      "CurriculumResponse": {
         "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^curriculum:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}-20[0-9]{2}$",
-            "title": "Id"
+          "program": {
+            "$ref": "#/components/schemas/ProgramSummaryResponse"
           },
-          "programId": {
+          "curriculumId": {
             "type": "string",
-            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
-            "title": "Programid"
+            "title": "Curriculumid"
           },
           "educationYear": {
             "type": "integer",
-            "maximum": 2100.0,
-            "minimum": 2000.0,
             "title": "Educationyear"
           },
           "sourceUrl": {
@@ -422,104 +643,39 @@
             "type": "string",
             "format": "date-time",
             "title": "Capturedat"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "id",
-          "programId",
-          "educationYear",
-          "sourceUrl",
-          "capturedAt"
-        ],
-        "title": "CurriculumMetadataResponse"
-      },
-      "CurriculumResponse": {
-        "properties": {
-          "program": {
-            "$ref": "#/components/schemas/ProgramSummaryResponse"
-          },
-          "curriculum": {
-            "$ref": "#/components/schemas/CurriculumMetadataResponse"
           },
           "items": {
             "items": {
               "$ref": "#/components/schemas/CurriculumItemResponse"
             },
             "type": "array",
-            "minItems": 1,
             "title": "Items"
-          },
-          "source": {
-            "$ref": "#/components/schemas/SourceAttributionResponse"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "program",
-          "curriculum",
-          "items",
-          "source"
+          "curriculumId",
+          "educationYear",
+          "sourceUrl",
+          "capturedAt",
+          "items"
         ],
         "title": "CurriculumResponse"
-      },
-      "DirectionResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^direction:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}$",
-            "title": "Id"
-          },
-          "universityId": {
-            "type": "string",
-            "pattern": "^university:[a-z0-9][a-z0-9-]{0,62}$",
-            "title": "Universityid"
-          },
-          "code": {
-            "type": "string",
-            "pattern": "^[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}$",
-            "title": "Code"
-          },
-          "name": {
-            "type": "string",
-            "maxLength": 512,
-            "minLength": 1,
-            "title": "Name"
-          },
-          "educationLevel": {
-            "$ref": "#/components/schemas/EducationLevel"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "id",
-          "universityId",
-          "code",
-          "name",
-          "educationLevel"
-        ],
-        "title": "DirectionResponse"
       },
       "DisciplineResponse": {
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^discipline:[a-f0-9]{16}$",
             "title": "Id"
           },
           "name": {
             "type": "string",
-            "maxLength": 512,
-            "minLength": 1,
             "title": "Name"
           },
           "normalizedName": {
             "type": "string",
-            "maxLength": 256,
-            "minLength": 1,
             "title": "Normalizedname"
           }
         },
@@ -531,16 +687,6 @@
           "normalizedName"
         ],
         "title": "DisciplineResponse"
-      },
-      "EducationLevel": {
-        "type": "string",
-        "enum": [
-          "bachelor",
-          "specialist",
-          "master",
-          "postgraduate"
-        ],
-        "title": "EducationLevel"
       },
       "ErrorCode": {
         "type": "string",
@@ -599,7 +745,8 @@
               "$ref": "#/components/schemas/ErrorDetail"
             },
             "type": "array",
-            "title": "Details"
+            "title": "Details",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -610,28 +757,33 @@
         ],
         "title": "ErrorResponse"
       },
-      "ProgramResponse": {
+      "ProgramListResponse": {
         "properties": {
-          "university": {
-            "$ref": "#/components/schemas/UniversityResponse"
-          },
-          "direction": {
-            "$ref": "#/components/schemas/DirectionResponse"
-          },
-          "program": {
-            "$ref": "#/components/schemas/ProgramSummaryResponse"
-          },
-          "source": {
-            "$ref": "#/components/schemas/SourceAttributionResponse"
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramSummaryResponse"
+            },
+            "type": "array",
+            "title": "Items"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "university",
-          "direction",
-          "program",
-          "source"
+          "items"
+        ],
+        "title": "ProgramListResponse"
+      },
+      "ProgramResponse": {
+        "properties": {
+          "program": {
+            "$ref": "#/components/schemas/ProgramSummaryResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program"
         ],
         "title": "ProgramResponse"
       },
@@ -639,29 +791,22 @@
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
             "title": "Id"
           },
           "directionId": {
             "type": "string",
-            "pattern": "^direction:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}$",
             "title": "Directionid"
           },
           "code": {
             "type": "string",
-            "pattern": "^[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
             "title": "Code"
           },
           "name": {
             "type": "string",
-            "maxLength": 512,
-            "minLength": 1,
             "title": "Name"
           },
           "educationYear": {
             "type": "integer",
-            "maximum": 2100.0,
-            "minimum": 2000.0,
             "title": "Educationyear"
           },
           "studyPlanUrl": {
@@ -692,101 +837,12 @@
         ],
         "title": "ProgramSummaryResponse"
       },
-      "SourceAttributionResponse": {
-        "properties": {
-          "kind": {
-            "$ref": "#/components/schemas/SourceKind"
-          },
-          "url": {
-            "type": "string",
-            "maxLength": 2083,
-            "minLength": 1,
-            "format": "uri",
-            "title": "Url"
-          },
-          "capturedAt": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Capturedat"
-          },
-          "contentSha256": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$",
-            "title": "Contentsha256"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "kind",
-          "url",
-          "capturedAt",
-          "contentSha256"
-        ],
-        "title": "SourceAttributionResponse"
-      },
-      "SourceKind": {
-        "type": "string",
-        "enum": [
-          "bmstu_common",
-          "bmstu_major_catalog",
-          "bmstu_major_detail",
-          "bmstu_curriculum_document"
-        ],
-        "title": "SourceKind"
-      },
-      "UniversityResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^university:[a-z0-9][a-z0-9-]{0,62}$",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "maxLength": 512,
-            "minLength": 1,
-            "title": "Name"
-          },
-          "city": {
-            "type": "string",
-            "maxLength": 256,
-            "minLength": 1,
-            "title": "City"
-          },
-          "officialSite": {
-            "type": "string",
-            "maxLength": 2083,
-            "minLength": 1,
-            "format": "uri",
-            "title": "Officialsite"
-          },
-          "address": {
-            "type": "string",
-            "maxLength": 512,
-            "minLength": 1,
-            "title": "Address"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "city",
-          "officialSite",
-          "address"
-        ],
-        "title": "UniversityResponse"
-      },
       "WorkloadResponse": {
         "properties": {
           "semester": {
             "anyOf": [
               {
-                "type": "integer",
-                "maximum": 12.0,
-                "minimum": 1.0
+                "type": "integer"
               },
               {
                 "type": "null"
@@ -796,8 +852,6 @@
           },
           "hours": {
             "type": "integer",
-            "maximum": 2000.0,
-            "minimum": 0.0,
             "title": "Hours"
           },
           "credits": {
@@ -828,9 +882,7 @@
           "subjectGroup": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 256,
-                "minLength": 1
+                "type": "string"
               },
               {
                 "type": "null"

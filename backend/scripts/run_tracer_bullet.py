@@ -17,9 +17,9 @@ from alembic.config import Config
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 
-from bmstu_parser.db.base import create_engine_for_url
-from bmstu_parser.tracer import DEFAULT_FIXTURE_DIR, TracerSource, parse_sources
-from bmstu_parser.tracer.ingest import TracerIngestService
+from andromeda.ingestion.universities.bmstu import DEFAULT_FIXTURE_DIR, BmstuUniversityAdapter
+from andromeda.infrastructure.database import create_engine_for_url
+from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 
 DEFAULT_PROGRAM_CODES = ("09.03.01-02", "09.03.01-12")
 logger = logging.getLogger("tracer.runner")
@@ -81,10 +81,9 @@ def run_ingest(
         command.upgrade(migration_config, "head")
         _restore_tracer_loggers()
 
-        source = TracerSource()
+        source = BmstuUniversityAdapter()
         try:
-            raw, normalized = parse_sources(
-                source,
+            raw, normalized = source.parse_sources(
                 mode=mode,
                 fixture_dir=fixture_dir,
                 program_codes=program_codes,
@@ -92,7 +91,7 @@ def run_ingest(
         finally:
             source.close()
 
-        run_id = TracerIngestService(engine).ingest(raw, normalized)
+        run_id = SqlAlchemyIngestionRepository(engine).ingest(raw, normalized)
         result = TracerRunResult(
             run_id=run_id,
             program_ids=tuple(program.id for program in normalized.programs),
