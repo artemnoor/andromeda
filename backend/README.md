@@ -1,0 +1,94 @@
+# Andromeda BMSTU parser
+
+Конфигурационно управляемый парсер для Excel-карты источников МГТУ им. Н.Э. Баумана. Он не переносит 177 полей в код вручную: схема, URL, резервные источники, приоритеты и ограничения читаются из листов `Источники`, `Карта данных`, `Пайплайн` и `Пробелы и риски`.
+
+## Что сохраняется
+
+- `snapshots.jsonl` — HTTP/browser-статус, финальный URL, время, content hash и путь к сырому снимку;
+- `records.jsonl` — нормализованные записи университета, структуры, программ, документов, стоимости, приёма и рейтингов;
+- `tables.jsonl` — все найденные HTML-таблицы без потери исходных строк;
+- `network.jsonl` — JSON-ответы, перехваченные в Playwright-режиме для JS-источников;
+- `raw/` — локальные снимки HTML/JSON/PDF с хэшем в имени файла;
+- `followup_count`/`followup_pdf_count` в `run.json` — сколько найденных документов было дополнительно скачано и разобрано;
+- `facts.jsonl` — одно состояние для каждого поля из карты данных, включая `not_found`, `source_unavailable`, `reserve` и `conflict`;
+- `conflicts.jsonl` — расхождения между основным и резервным источником;
+- `source_map.json`, `extractions.jsonl`, `run.json` — схема и технический журнал запуска;
+
+Парсер не объявляет источник пустым только потому, что обычный HTTP-клиент получил 403 или SPA вернул HTML без данных. В режиме `auto` он попробует Playwright, если он установлен; иначе сохранит техническое ограничение в `run.json` и `facts.jsonl`.
+
+## Запуск
+
+```powershell
+cd backend
+python -m pip install -e ".[dev]"
+
+# Только проверка схемы
+python -m bmstu_parser inspect-map --map "C:\path\1-Andromeda_BMSTU_source_map_2026.xlsx"
+
+# Быстрый запуск по доступной странице стоимости
+python -m bmstu_parser run `
+  --map "C:\path\1-Andromeda_BMSTU_source_map_2026.xlsx" `
+  --out "..\output\bmstu-run-s10" `
+  --source S10 `
+  --browser never
+```
+
+Для JS/403-источников:
+
+```powershell
+python -m pip install -e ".[browser]"
+playwright install chromium
+python -m bmstu_parser run `
+  --map "C:\path\1-Andromeda_BMSTU_source_map_2026.xlsx" `
+  --out "..\output\bmstu-run-core" `
+  --source S01 --source S02 --source S03 --source S05 --source S07 --source S08 `
+  --browser auto `
+  --download-documents --max-followups 50 --followup-depth 2
+```
+
+Если источники собирались несколькими короткими запусками, их можно свести в одну выгрузку:
+
+```powershell
+python -m bmstu_parser merge `
+  --run "..\output\bmstu-run-batch-01-2026-09-07" `
+  --run "..\output\bmstu-run-batch-02-2026-09-07" `
+  --run "..\output\bmstu-run-batch-03-2026-09-07" `
+  --run "..\output\bmstu-run-batch-04-2026-09-07" `
+  --run "..\output\bmstu-run-s07-final-2026-09-07" `
+  --run "..\output\bmstu-run-s08-final-2026-09-07" `
+  --out "..\output\bmstu-final-2026-09-07"
+```
+
+По умолчанию без `--source` запускаются все 19 источников. Для регулярного запуска лучше указывать отдельную директорию на каждый снимок, чтобы не перезаписывать историю.
+
+## Contract-first tracer bullet
+
+The demonstrable vertical slice uses official BMSTU S01/S06 pages and the two linked study-plan PDFs. It keeps raw bytes, validates typed raw DTOs, normalizes domain entities, writes SQLite constraints, and serves the database through FastAPI/OpenAPI.
+
+```powershell
+cd backend
+python -m pip install -e ".[dev]"
+python scripts/run_tracer_bullet.py --mode fixture --database-url sqlite:///./data/tracer.db
+python -m uvicorn bmstu_parser.api.main:app --reload --port 8000
+```
+
+The runner applies `alembic upgrade head` before ingest; it can also be run manually with `python -m alembic -c alembic.ini upgrade head`.
+
+Open `http://localhost:8000/docs` for Swagger UI and `http://localhost:5173/` for the frontend. To refresh the captured official source, install the browser extra and run `python scripts/capture_tracer_fixture.py`; live mode fails closed when the source shape no longer satisfies its contract.
+
+## Важное ограничение
+
+Адаптеры сохраняют сырые таблицы и provenance даже для источников, DOM которых изменился. Для admission SPA сетевые JSON-ответы сохраняются только в browser-режиме. Скачивание связанных документов включается флагом `--download-documents` и ограничивается `--max-followups`; конкурсные/зачислительные PDF разбираются в строки, остальные документы сохраняются как артефакты. Новый PDF-шаблон, который не распознался, не считается подтверждённым фактом.
+
+## Приоритетный PDF плана приёма
+
+Для официального PDF с распределением мест используйте `--priority-pdf`. Его строки имеют приоритет над данными сайта для мест и квот:
+
+```powershell
+python -m bmstu_parser run `
+  --map "C:\path\1-Andromeda_BMSTU_source_map_2026.xlsx" `
+  --out "..\output\bmstu-priority" `
+  --priority-pdf "C:\path\БС.pdf"
+```
+
+При объединении уже собранных запусков параметр работает так же. Профильные дисциплины из карточек программ намеренно не сохраняются; дисциплины учебных планов остаются.

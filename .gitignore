@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.playwright-cli/
+backend/data/*.db
+backend/pipeline_runs/
+output/
+frontend/node_modules/
+frontend/dist/
+frontend/openapi.ci.json
+frontend/.tmp-openapi.json

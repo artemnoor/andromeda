@@ -1,0 +1,19 @@
+{
+  "name": "bmstu-tracer-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "generate-api": "node scripts/generate-api.mjs",
+    "check-api-drift": "node scripts/check-api-drift.mjs",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "openapi-typescript": "^7.9.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}
