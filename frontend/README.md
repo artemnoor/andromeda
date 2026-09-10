@@ -2,6 +2,14 @@
 
 This frontend is a small TypeScript/Vite client for the same OpenAPI contract exposed by the backend.
 
+The repository-root command below is the supported full-stack fixture smoke: it ingests the captured source into SQLite, starts FastAPI and Vite, verifies `/openapi.json`, loads the frontend, and calls the compare scenario:
+
+```powershell
+python backend/scripts/run_tracer_demo.py --mode fixture --check
+```
+
+Prerequisites are Python 3.11+, Node.js 22+, npm, and Poppler's `pdftotext` on `PATH`. Use the command without `--check` for a manual local demo, then open `http://127.0.0.1:5173/`.
+
 ```powershell
 cd frontend
 npm install

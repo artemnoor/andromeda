@@ -65,6 +65,18 @@ python -m bmstu_parser merge `
 
 The demonstrable vertical slice uses official BMSTU S01/S06 pages and the two linked study-plan PDFs. It keeps raw bytes, validates typed raw DTOs, normalizes domain entities, writes SQLite constraints, and serves the database through FastAPI/OpenAPI.
 
+Study-plan PDFs use the fixed-width text layout produced by Poppler. Install `pdftotext` before running the tracer bullet: on Ubuntu/Debian use `sudo apt-get install poppler-utils`; on Windows install a Poppler distribution and put its `bin` directory on `PATH`. The CI workflow installs and verifies this prerequisite explicitly.
+
+From the repository root, one command runs the complete fixture tracer bullet, starts FastAPI and Vite, waits for both servers, and verifies the compare response:
+
+```powershell
+python backend/scripts/run_tracer_demo.py --mode fixture --check
+```
+
+Use the same command without `--check` to keep the API and frontend running for a manual demo. The command prints the run id, both program ids, curriculum item count, and source hashes. `--mode live` uses the official BMSTU source and fails closed on source or contract errors.
+
+For a backend-only run:
+
 ```powershell
 cd backend
 python -m pip install -e ".[dev]"
