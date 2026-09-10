@@ -42,7 +42,7 @@ Created: 2026-09-10
 
 ### Phase 2: One-command fixture demonstration
 
-- [ ] **Task 2: Add one cross-platform command that starts and checks fixture → DB → API → frontend** (depends on Task 1)
+- [x] **Task 2: Add one cross-platform command that starts and checks fixture → DB → API → frontend** (depends on Task 1)
 
   **Deliverable:** Add `backend/scripts/run_tracer_demo.py` as the single demo entry point. It must reuse the existing fixture capture, contract validation, Alembic migration, and `TracerIngestService` path rather than implementing a second ingest. After ingesting the two configured programs into the selected SQLite database, start FastAPI with `sys.executable -m uvicorn` and Vite with the platform-appropriate npm executable, wait for `GET /openapi.json` and `GET /` readiness, call `GET /compare?programIds=program:09.03.01-02,program:09.03.01-12`, and manage child-process shutdown on normal exit, Ctrl-C, or child failure. Provide a bounded `--check` mode that performs the same startup and checks, then exits non-zero on any failure; the default mode keeps both services alive for the user. Use the existing `run_tracer_bullet.py` logic through a callable helper or a small shared runner refactor. Update `backend/README.md`, `frontend/README.md`, and `.github/workflows/ci.yml` with the one command and its setup prerequisites. The documented command from repository root is `python backend/scripts/run_tracer_demo.py --mode fixture`.
 
@@ -54,7 +54,7 @@ Created: 2026-09-10
 
 ### Phase 3: One real live-run and stop
 
-- [ ] **Task 3: Execute one live BMSTU smoke and close the Tracer Bullet scope** (depends on Task 2)
+- [x] **Task 3: Execute one live BMSTU smoke and close the Tracer Bullet scope** (depends on Task 2)
 
   **Deliverable:** Run the same demo entry point once in live mode against the official URLs already defined by `TracerSource`, using a disposable ignored database, for example `python backend/scripts/run_tracer_demo.py --mode live --database-url sqlite:///./data/tracer-live-2026-09-10.db --check --log-level INFO`. Do not fall back to the fixture if live capture fails. Confirm that the live source chain selects S01/S06, resolves both official study-plan documents, validates raw → normalized → domain data, commits both programs and non-empty curricula, serves the API, and renders the frontend-compatible comparison path. Keep the live database and any temporary raw output local and ignored; do not commit source bodies or signed download URLs.
 
