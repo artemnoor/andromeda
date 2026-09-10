@@ -22,3 +22,6 @@ def test_bmstu_fixture_is_emitted_as_raw_and_canonical_contracts() -> None:
     assert {program.code for program in canonical.programs} == {"09.03.01-02", "09.03.01-12"}
     assert all(item.source_name for curriculum in canonical.curricula for item in curriculum.items)
     assert all(source.content_sha256 for source in canonical.sources)
+    assert len(canonical.disciplines) == 101
+    assert all(discipline.area_weights for discipline in canonical.disciplines)
+    assert all(sum(weight.weight for weight in discipline.area_weights) == 1 for discipline in canonical.disciplines)

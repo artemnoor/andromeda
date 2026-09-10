@@ -6,11 +6,12 @@ from fastapi import Query
 from fastapi.exceptions import RequestValidationError
 from pydantic import Field, StringConstraints, TypeAdapter, ValidationError, model_validator
 
-from andromeda.modules.comparison.contracts.public import ComparisonRequest
+from andromeda.modules.comparison.contracts.public import ComparisonRequest, ComparisonResult
 from andromeda.shared.contracts.enums import ComparisonScope
 from andromeda.shared.contracts.ids import ProgramId, Semester
 
-from .common import ApiModel
+from .common import ApiModel, ComparisonResponse
+from .disciplines import area_summary_response, discipline_response
 
 
 ProgramIdsQuery = Annotated[str, StringConstraints(min_length=1, max_length=512)]
@@ -45,3 +46,26 @@ def parse_compare_query(
     except ValidationError as exc:
         errors = [{**error, "loc": ("query", *error.get("loc", ()))} for error in exc.errors()]
         raise RequestValidationError(errors) from exc
+
+
+def comparison_response(result: ComparisonResult) -> ComparisonResponse:
+    return ComparisonResponse.model_validate(
+        {
+            "program_a": result.program_a.model_dump(),
+            "program_b": result.program_b.model_dump(),
+            "scope": result.scope,
+            "semester": result.semester,
+            "rows": tuple(
+                {
+                    **row.model_dump(),
+                    "discipline": discipline_response(row.discipline),
+                }
+                for row in result.rows
+            ),
+            "totals_a": result.totals_a.model_dump(),
+            "totals_b": result.totals_b.model_dump(),
+            "blocks": tuple(block.model_dump() for block in result.blocks),
+            "area_breakdown_a": tuple(area_summary_response(item.area, item.share) for item in result.area_breakdown_a),
+            "area_breakdown_b": tuple(area_summary_response(item.area, item.share) for item in result.area_breakdown_b),
+        }
+    )

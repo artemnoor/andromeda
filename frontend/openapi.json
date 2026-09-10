@@ -213,6 +213,67 @@
         }
       }
     },
+    "/discipline-areas": {
+      "get": {
+        "tags": [
+          "disciplines"
+        ],
+        "summary": "List Discipline Areas",
+        "operationId": "list_discipline_areas_discipline_areas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisciplineAreaCatalogResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/compare": {
       "get": {
         "tags": [
@@ -410,6 +471,22 @@
             },
             "type": "array",
             "title": "Blocks"
+          },
+          "areaBreakdownA": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineAreaSummaryResponse"
+            },
+            "type": "array",
+            "title": "Areabreakdowna",
+            "default": []
+          },
+          "areaBreakdownB": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineAreaSummaryResponse"
+            },
+            "type": "array",
+            "title": "Areabreakdownb",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -664,6 +741,142 @@
         ],
         "title": "CurriculumResponse"
       },
+      "DisciplineAreaCatalogResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineAreaDefinition"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "DisciplineAreaCatalogResponse"
+      },
+      "DisciplineAreaCode": {
+        "type": "string",
+        "enum": [
+          "mathematics_statistics",
+          "computer_science_data",
+          "physics_astronomy",
+          "chemistry_materials",
+          "biology_biotechnology",
+          "earth_environment",
+          "engineering_technology",
+          "architecture_construction",
+          "agriculture_veterinary",
+          "medicine_health",
+          "psychology_cognitive",
+          "society_social_sciences",
+          "economics_finance",
+          "business_management",
+          "law_policy_public_administration",
+          "languages_linguistics_literature",
+          "history_philosophy_humanities",
+          "art_design_media",
+          "education_pedagogy",
+          "sport_tourism_hospitality",
+          "safety_defense_transport",
+          "universal_interdisciplinary"
+        ],
+        "title": "DisciplineAreaCode"
+      },
+      "DisciplineAreaDefinition": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/DisciplineAreaCode"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "position": {
+            "type": "integer",
+            "maximum": 22.0,
+            "minimum": 1.0,
+            "title": "Position"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "description",
+          "position"
+        ],
+        "title": "DisciplineAreaDefinition"
+      },
+      "DisciplineAreaResponse": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/DisciplineAreaCode"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Description"
+          },
+          "weight": {
+            "type": "string",
+            "title": "Weight"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "description",
+          "weight"
+        ],
+        "title": "DisciplineAreaResponse"
+      },
+      "DisciplineAreaSummaryResponse": {
+        "properties": {
+          "area": {
+            "$ref": "#/components/schemas/DisciplineAreaCode"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "share": {
+            "type": "string",
+            "title": "Share"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "area",
+          "name",
+          "share"
+        ],
+        "title": "DisciplineAreaSummaryResponse"
+      },
       "DisciplineResponse": {
         "properties": {
           "id": {
@@ -677,6 +890,16 @@
           "normalizedName": {
             "type": "string",
             "title": "Normalizedname"
+          },
+          "areaWeights": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineAreaResponse"
+            },
+            "type": "array",
+            "title": "Areaweights"
+          },
+          "primaryArea": {
+            "$ref": "#/components/schemas/DisciplineAreaCode"
           }
         },
         "additionalProperties": false,
@@ -684,7 +907,9 @@
         "required": [
           "id",
           "name",
-          "normalizedName"
+          "normalizedName",
+          "areaWeights",
+          "primaryArea"
         ],
         "title": "DisciplineResponse"
       },

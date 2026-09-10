@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
+from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode, DisciplineAreaDefinition
 from andromeda.shared.contracts.enums import AssessmentType, CompareStatus, ComparisonScope, EducationLevel
 
 
@@ -35,10 +36,29 @@ class ProgramResponse(ApiModel):
     program: ProgramSummaryResponse
 
 
+class DisciplineAreaResponse(ApiModel):
+    code: DisciplineAreaCode
+    name: str = Field(min_length=1, max_length=256)
+    description: str = Field(min_length=1, max_length=512)
+    weight: Decimal = Field(strict=True, gt=Decimal("0"), le=Decimal("1"), max_digits=5, decimal_places=4)
+
+
+class DisciplineAreaCatalogResponse(ApiModel):
+    items: tuple[DisciplineAreaDefinition, ...]
+
+
 class DisciplineResponse(ApiModel):
     id: str
     name: str
     normalized_name: str
+    area_weights: tuple[DisciplineAreaResponse, ...]
+    primary_area: DisciplineAreaCode
+
+
+class DisciplineAreaSummaryResponse(ApiModel):
+    area: DisciplineAreaCode
+    name: str = Field(min_length=1, max_length=256)
+    share: Decimal = Field(strict=True, ge=Decimal("0"), le=Decimal("1"), max_digits=5, decimal_places=4)
 
 
 class CurriculumItemResponse(ApiModel):
@@ -103,3 +123,5 @@ class ComparisonResponse(ApiModel):
     totals_a: ComparisonTotalsResponse
     totals_b: ComparisonTotalsResponse
     blocks: tuple[ComparisonBlockResponse, ...]
+    area_breakdown_a: tuple[DisciplineAreaSummaryResponse, ...] = ()
+    area_breakdown_b: tuple[DisciplineAreaSummaryResponse, ...] = ()

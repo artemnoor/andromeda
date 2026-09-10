@@ -18,6 +18,15 @@ h2 { font-size: clamp(28px, 4vw, 52px); }
 .compare-controls button { background: #16745a; border-color: #16745a; color: #fff; cursor: pointer; font-weight: 700; padding: 0 18px; }
 .summary-grid, .block-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); margin: 0 0 28px; }
 .block-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.area-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); margin: 0 0 34px; }
+.area-card { background: #fff; border: 1px solid #dfe5de; border-radius: 16px; padding: 18px 20px; }
+.area-card ul { list-style: none; margin: 16px 0 0; padding: 0; }
+.area-card li { margin: 0 0 13px; }
+.area-card li > div { align-items: baseline; display: flex; gap: 12px; justify-content: space-between; }
+.area-card li > div span { color: #536159; font-size: 13px; }
+.area-card li > div strong { font-size: 14px; }
+.area-bar { background: #e8eee8; border-radius: 99px; display: block; height: 6px; margin-top: 6px; overflow: hidden; }
+.area-bar i { background: #16745a; border-radius: inherit; display: block; height: 100%; }
 .block-card { background: #eef2eb; border: 1px solid #dfe5de; border-radius: 14px; display: flex; flex-direction: column; gap: 7px; padding: 16px; }
 .block-card strong { font-size: 20px; }
 .block-card span:last-child, small { color: #738078; font-size: 13px; line-height: 1.45; }
@@ -33,6 +42,7 @@ th, td { border-bottom: 1px solid #edf0eb; padding: 15px 16px; text-align: left;
 thead th { background: #f0f3ed; color: #65716a; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 tbody th { font-weight: 600; min-width: 260px; }
 tbody th small { display: block; font-weight: 400; margin-top: 5px; }
+.area-hint { color: #16745a !important; font-size: 11px !important; }
 tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
 tr.different { background: #fffaf0; }
 tr.missing { color: #8b958f; }
@@ -46,4 +56,4 @@ a { color: #16745a; }
 code { background: #e9eee8; border-radius: 5px; padding: 2px 5px; }
 .error { border-left: 3px solid #bc6c4b; margin-top: 80px; max-width: 720px; padding: 0 0 0 20px; }
 @media (max-width: 900px) { .compare-controls { grid-template-columns: 1fr 1fr; } .compare-controls button { min-height: 42px; } }
-@media (max-width: 720px) { #app { padding-top: 28px; } .identity-grid, .compare-head, .summary-grid { grid-template-columns: 1fr; } .compare-controls { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { #app { padding-top: 28px; } .identity-grid, .compare-head, .summary-grid, .area-grid { grid-template-columns: 1fr; } .compare-controls { grid-template-columns: 1fr; } }

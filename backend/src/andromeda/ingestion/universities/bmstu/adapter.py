@@ -13,7 +13,10 @@ from bmstu_parser.tracer.source import TracerSource as LegacyTracerSource
 from ...contracts.normalized import CanonicalSnapshot
 from ...contracts.raw import RawTracerBundle
 from ...contracts.source import CapturedSources, RawSourceSnapshot
+from ....modules.disciplines.contracts.public import Discipline
+from ....modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
 from .selectors import DEFAULT_FIXTURE_DIR, TARGET_PROGRAM_CODES, select_program_codes
+from .mappings.discipline_areas import BMSTU_DISCIPLINE_AREA_OVERRIDES
 
 
 fetch_logger = logging.getLogger("andromeda.ingestion.bmstu.fetch")
@@ -32,6 +35,7 @@ class BmstuUniversityAdapter:
 
     def __init__(self, fetcher: object | None = None) -> None:
         self._source = LegacyTracerSource(fetcher=fetcher)  # type: ignore[arg-type]
+        self._classifier = RuleBasedDisciplineClassifier(BMSTU_DISCIPLINE_AREA_OVERRIDES)
 
     def close(self) -> None:
         self._source.close()
@@ -58,12 +62,26 @@ class BmstuUniversityAdapter:
         raw = RawTracerBundle.model_validate(legacy_raw.model_dump())
         legacy_canonical = normalize_legacy_bundle(legacy_raw)
         canonical = CanonicalSnapshot.model_validate(legacy_canonical.model_dump())
+        classified_disciplines = tuple(
+            Discipline.model_validate(
+                {
+                    **discipline.model_dump(),
+                    "area_weights": self._classifier.classify(discipline.name),
+                }
+            )
+            for discipline in canonical.disciplines
+        )
+        canonical = CanonicalSnapshot.model_validate(
+            {**canonical.model_dump(), "disciplines": classified_disciplines}
+        )
+        area_count = len({weight.area for discipline in canonical.disciplines for weight in discipline.area_weights})
         normalize_logger.info(
-            "stage=canonical_complete programs=%d disciplines=%d curricula=%d items=%d",
+            "stage=canonical_complete programs=%d disciplines=%d curricula=%d items=%d areas=%d",
             len(canonical.programs),
             len(canonical.disciplines),
             len(canonical.curricula),
             sum(len(curriculum.items) for curriculum in canonical.curricula),
+            area_count,
         )
         return raw, canonical
 

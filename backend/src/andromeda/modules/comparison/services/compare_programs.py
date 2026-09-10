@@ -17,7 +17,7 @@ from ..contracts.public import ComparisonRequest, ComparisonResult
 from ..contracts.results import ComparisonRow
 from ..domain.alignment import ComparisonKey, align_workloads
 from ..domain.entities import Workload
-from .aggregation import blocks, totals
+from .aggregation import area_distribution, blocks, totals
 
 
 logger = logging.getLogger("andromeda.comparison.service")
@@ -47,6 +47,8 @@ class CompareProgramsService:
         totals_a = totals(left.values())
         totals_b = totals(right.values())
         comparison_blocks = blocks(aligned)
+        area_breakdown_a = area_distribution((left[key], left_disciplines[key]) for key in left)
+        area_breakdown_b = area_distribution((right[key], right_disciplines[key]) for key in right)
         logger.info(
             "comparison_complete program_a=%s program_b=%s scope=%s rows=%d blocks=%d",
             program_a.id,
@@ -64,6 +66,8 @@ class CompareProgramsService:
             totals_a=totals_a,
             totals_b=totals_b,
             blocks=comparison_blocks,
+            area_breakdown_a=area_breakdown_a,
+            area_breakdown_b=area_breakdown_b,
         )
 
     def _require_program(self, program_id: ProgramId) -> Program:

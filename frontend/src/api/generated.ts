@@ -52,6 +52,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/discipline-areas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Discipline Areas */
+        get: operations["list_discipline_areas_discipline_areas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/compare": {
         parameters: {
             query?: never;
@@ -107,6 +124,16 @@ export interface components {
             totalsB: components["schemas"]["ComparisonTotalsResponse"];
             /** Blocks */
             blocks: components["schemas"]["ComparisonBlockResponse"][];
+            /**
+             * Areabreakdowna
+             * @default []
+             */
+            areaBreakdownA: components["schemas"]["DisciplineAreaSummaryResponse"][];
+            /**
+             * Areabreakdownb
+             * @default []
+             */
+            areaBreakdownB: components["schemas"]["DisciplineAreaSummaryResponse"][];
         };
         /** ComparisonRowResponse */
         ComparisonRowResponse: {
@@ -175,6 +202,44 @@ export interface components {
             /** Items */
             items: components["schemas"]["CurriculumItemResponse"][];
         };
+        /** DisciplineAreaCatalogResponse */
+        DisciplineAreaCatalogResponse: {
+            /** Items */
+            items: components["schemas"]["DisciplineAreaDefinition"][];
+        };
+        /**
+         * DisciplineAreaCode
+         * @enum {string}
+         */
+        DisciplineAreaCode: "mathematics_statistics" | "computer_science_data" | "physics_astronomy" | "chemistry_materials" | "biology_biotechnology" | "earth_environment" | "engineering_technology" | "architecture_construction" | "agriculture_veterinary" | "medicine_health" | "psychology_cognitive" | "society_social_sciences" | "economics_finance" | "business_management" | "law_policy_public_administration" | "languages_linguistics_literature" | "history_philosophy_humanities" | "art_design_media" | "education_pedagogy" | "sport_tourism_hospitality" | "safety_defense_transport" | "universal_interdisciplinary";
+        /** DisciplineAreaDefinition */
+        DisciplineAreaDefinition: {
+            code: components["schemas"]["DisciplineAreaCode"];
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Position */
+            position: number;
+        };
+        /** DisciplineAreaResponse */
+        DisciplineAreaResponse: {
+            code: components["schemas"]["DisciplineAreaCode"];
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Weight */
+            weight: string;
+        };
+        /** DisciplineAreaSummaryResponse */
+        DisciplineAreaSummaryResponse: {
+            area: components["schemas"]["DisciplineAreaCode"];
+            /** Name */
+            name: string;
+            /** Share */
+            share: string;
+        };
         /** DisciplineResponse */
         DisciplineResponse: {
             /** Id */
@@ -183,6 +248,9 @@ export interface components {
             name: string;
             /** Normalizedname */
             normalizedName: string;
+            /** Areaweights */
+            areaWeights: components["schemas"]["DisciplineAreaResponse"][];
+            primaryArea: components["schemas"]["DisciplineAreaCode"];
         };
         /**
          * ErrorCode
@@ -395,6 +463,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurriculumResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_discipline_areas_discipline_areas_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisciplineAreaCatalogResponse"];
                 };
             };
             /** @description Bad Request */

@@ -65,6 +65,8 @@ python -m bmstu_parser merge `
 
 Текущий vertical slice использует modular monolith: `andromeda/ingestion` принимает BMSTU sources, предметные модули публикуют typed contracts, `infrastructure` содержит SQLAlchemy/Alembic, а `andromeda/api` отдаёт FastAPI/OpenAPI. Сравнение поддерживает весь учебный план и выбранный семестр, блоки, часы, ЗЕТ, контроль и статусы `both`/`different`/`only_a`/`only_b`.
 
+Все 101 уникальные дисциплины текущего BMSTU fixture классифицируются в 22 области Andromeda. Классификация многомерная: у предмета хранится вектор весов, исходное имя не заменяется и неоднозначные предметы не объединяются. BMSTU-specific векторы находятся в `andromeda/ingestion/universities/bmstu/mappings/discipline_areas.py`; агрегированный профиль программы считается по учебной нагрузке и доступен в `areaBreakdownA`/`areaBreakdownB`.
+
 Повторяемый fixture-запуск из корня репозитория:
 
 ```powershell

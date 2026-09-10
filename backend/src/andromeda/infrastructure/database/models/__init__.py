@@ -1,5 +1,5 @@
 from .curricula import AssessmentTypeModel, CurriculumItemAssessmentModel, CurriculumItemModel, CurriculumModel
-from .disciplines import DisciplineModel
+from .disciplines import DisciplineAreaModel, DisciplineAreaWeightModel, DisciplineModel
 from .ingestion import IngestRunModel, RawSourceRecordModel, SourceSnapshotModel
 from .programs import EducationalProgramModel, ProgramModel
 from .universities import DirectionModel, EducationLevelModel, UniversityModel
@@ -10,6 +10,8 @@ __all__ = [
     "CurriculumItemModel",
     "CurriculumModel",
     "DirectionModel",
+    "DisciplineAreaModel",
+    "DisciplineAreaWeightModel",
     "DisciplineModel",
     "EducationalProgramModel",
     "EducationLevelModel",

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawSourceSnapshot, RawTracerBundle
+from andromeda.modules.disciplines.contracts.public import DisciplineAreaWeight, area_catalog
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
 
@@ -19,6 +20,8 @@ from ..database.models import (
     CurriculumItemAssessmentModel,
     CurriculumItemModel,
     CurriculumModel,
+    DisciplineAreaModel,
+    DisciplineAreaWeightModel,
     DirectionModel,
     DisciplineModel,
     EducationLevelModel,
@@ -79,6 +82,23 @@ class SqlAlchemyIngestionRepository:
         for assessment_value in AssessmentType:
             if session.get(AssessmentTypeModel, assessment_value.value) is None:
                 session.add(AssessmentTypeModel(id=assessment_value.value))
+        for definition in area_catalog():
+            existing = session.get(DisciplineAreaModel, definition.code.value)
+            if existing is None:
+                session.add(
+                    DisciplineAreaModel(
+                        id=definition.code.value,
+                        name=definition.name,
+                        description=definition.description,
+                        position=definition.position,
+                    )
+                )
+            elif (
+                existing.name != definition.name
+                or existing.description != definition.description
+                or existing.position != definition.position
+            ):
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for discipline area {definition.code.value}")
 
     @staticmethod
     def _insert_snapshot(session: Session, run_id: str, snapshot: RawSourceSnapshot) -> None:
@@ -171,6 +191,9 @@ class SqlAlchemyIngestionRepository:
                 {"id": discipline.id, "name": discipline.name, "normalized_name": discipline.normalized_name},
             )
         session.flush()
+        for discipline in canonical.disciplines:
+            cls._insert_discipline_area_weights(session, discipline.id, discipline.area_weights)
+        session.flush()
         for curriculum in canonical.curricula:
             cls._insert_or_validate(
                 session,
@@ -229,6 +252,26 @@ class SqlAlchemyIngestionRepository:
             actual = getattr(existing, field)
             if not _values_equal(actual, expected):
                 raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for {identity}: {field}")
+
+    @staticmethod
+    def _insert_discipline_area_weights(
+        session: Session,
+        discipline_id: str,
+        area_weights: tuple[DisciplineAreaWeight, ...],
+    ) -> None:
+        expected = {weight.area.value: weight.weight for weight in area_weights}
+        existing_rows = session.execute(
+            select(DisciplineAreaWeightModel).where(DisciplineAreaWeightModel.discipline_id == discipline_id)
+        ).scalars().all()
+        existing = {row.area_id: row.weight for row in existing_rows}
+        if set(existing) - set(expected):
+            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for discipline {discipline_id}: area_weights")
+        for area_id, weight in expected.items():
+            stored = existing.get(area_id)
+            if stored is None:
+                session.add(DisciplineAreaWeightModel(discipline_id=discipline_id, area_id=area_id, weight=weight))
+            elif not _values_equal(stored, weight):
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for discipline {discipline_id}: area_weights")
 
 
 def _semester_identity(semester: int | None) -> str:

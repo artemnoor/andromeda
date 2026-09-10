@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -38,6 +39,22 @@ def test_program_selector_and_comparison_are_openapi_backed(tmp_path: Path) -> N
     assert payload["scope"] == "semester"
     assert all(row["semester"] == 1 for row in payload["rows"])
     assert "hoursDelta" in payload["rows"][0]
+    assert payload["areaBreakdownA"]
+    assert sum((Decimal(row["share"]) for row in payload["areaBreakdownA"]), Decimal("0")) == 1
+
+
+def test_discipline_area_catalog_and_curriculum_vectors_are_exposed(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    areas = client.get("/discipline-areas")
+    assert areas.status_code == 200
+    assert len(areas.json()["items"]) == 22
+
+    curriculum = client.get("/programs/program:09.03.01-02/curriculum")
+    assert curriculum.status_code == 200
+    discipline = curriculum.json()["items"][0]["discipline"]
+    assert discipline["areaWeights"]
+    assert discipline["primaryArea"]
+    assert sum((Decimal(item["weight"]) for item in discipline["areaWeights"]), Decimal("0")) == 1
 
 
 def test_invalid_comparison_query_returns_strict_error_contract(tmp_path: Path) -> None:
