@@ -372,10 +372,355 @@
           }
         }
       }
+    },
+    "/proftest/questions": {
+      "get": {
+        "tags": [
+          "proftest"
+        ],
+        "summary": "Get Questions",
+        "operationId": "get_questions_proftest_questions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionnaireResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/proftest/preview": {
+      "post": {
+        "tags": [
+          "proftest"
+        ],
+        "summary": "Preview",
+        "operationId": "preview_proftest_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProftestSubmissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProftestPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/proftest/results": {
+      "post": {
+        "tags": [
+          "proftest"
+        ],
+        "summary": "Results",
+        "operationId": "results_proftest_results_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProftestSubmissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProftestResultsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ActivityCode": {
+        "type": "string",
+        "enum": [
+          "analytical",
+          "software_creation",
+          "system_design",
+          "research",
+          "physical_engineering",
+          "communication",
+          "creative",
+          "business",
+          "data"
+        ],
+        "title": "ActivityCode",
+        "description": "Activity dimensions used by deterministic profile matching."
+      },
+      "AdaptiveAnswerResponse": {
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "title": "Questionid"
+          },
+          "optionId": {
+            "type": "string",
+            "title": "Optionid"
+          },
+          "dimension": {
+            "type": "string",
+            "title": "Dimension"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "questionId",
+          "optionId",
+          "dimension"
+        ],
+        "title": "AdaptiveAnswerResponse"
+      },
+      "AdaptiveDimensionResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "spread": {
+            "type": "string",
+            "title": "Spread"
+          },
+          "significance": {
+            "type": "string",
+            "title": "Significance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "label",
+          "kind",
+          "spread",
+          "significance"
+        ],
+        "title": "AdaptiveDimensionResponse"
+      },
+      "AdaptiveSelectionResponse": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/AdaptiveStatus"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "candidateCount": {
+            "type": "integer",
+            "title": "Candidatecount"
+          },
+          "topCandidateCount": {
+            "type": "integer",
+            "title": "Topcandidatecount"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/AdaptiveDimensionResponse"
+            },
+            "type": "array",
+            "title": "Dimensions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "candidateCount",
+          "topCandidateCount",
+          "dimensions"
+        ],
+        "title": "AdaptiveSelectionResponse"
+      },
+      "AdaptiveStatus": {
+        "type": "string",
+        "enum": [
+          "ready",
+          "skipped"
+        ],
+        "title": "AdaptiveStatus"
+      },
+      "AntiInterestResponse": {
+        "properties": {
+          "area": {
+            "$ref": "#/components/schemas/DisciplineAreaCode"
+          },
+          "intensity": {
+            "type": "string",
+            "title": "Intensity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "area",
+          "intensity"
+        ],
+        "title": "AntiInterestResponse"
+      },
       "AssessmentType": {
         "type": "string",
         "enum": [
@@ -609,6 +954,30 @@
           "credits"
         ],
         "title": "ComparisonTotalsResponse"
+      },
+      "ConfidenceResponse": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "answeredBase": {
+            "type": "integer",
+            "title": "Answeredbase"
+          },
+          "answeredAdaptive": {
+            "type": "integer",
+            "title": "Answeredadaptive"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value",
+          "answeredBase",
+          "answeredAdaptive"
+        ],
+        "title": "ConfidenceResponse"
       },
       "CurriculumItemResponse": {
         "properties": {
@@ -982,6 +1351,238 @@
         ],
         "title": "ErrorResponse"
       },
+      "MatchScoreResponse": {
+        "properties": {
+          "programId": {
+            "type": "string",
+            "title": "Programid"
+          },
+          "programCode": {
+            "type": "string",
+            "title": "Programcode"
+          },
+          "contentFit": {
+            "type": "integer",
+            "title": "Contentfit"
+          },
+          "breakdown": {
+            "$ref": "#/components/schemas/ScoreBreakdownResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId",
+          "programCode",
+          "contentFit",
+          "breakdown"
+        ],
+        "title": "MatchScoreResponse"
+      },
+      "OptionalMetricResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "OptionalMetricResponse"
+      },
+      "PreviewCandidateResponse": {
+        "properties": {
+          "programId": {
+            "type": "string",
+            "title": "Programid"
+          },
+          "programCode": {
+            "type": "string",
+            "title": "Programcode"
+          },
+          "contentFit": {
+            "type": "integer",
+            "title": "Contentfit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId",
+          "programCode",
+          "contentFit"
+        ],
+        "title": "PreviewCandidateResponse"
+      },
+      "ProftestAdaptiveAnswerRequest": {
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Questionid"
+          },
+          "optionId": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Optionid"
+          },
+          "dimension": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 3,
+            "title": "Dimension"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "questionId",
+          "optionId",
+          "dimension"
+        ],
+        "title": "ProftestAdaptiveAnswerRequest"
+      },
+      "ProftestAnswerRequest": {
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Questionid"
+          },
+          "optionIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Optionids"
+          },
+          "intensity": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "decimal_places": 4,
+                "ge": 0,
+                "le": 1,
+                "max_digits": 5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intensity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "questionId",
+          "optionIds"
+        ],
+        "title": "ProftestAnswerRequest"
+      },
+      "ProftestPreviewResponse": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/UserProfileResponse"
+          },
+          "adaptive": {
+            "$ref": "#/components/schemas/AdaptiveSelectionResponse"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuestionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewCandidateResponse"
+            },
+            "type": "array",
+            "title": "Candidates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile",
+          "adaptive",
+          "candidates"
+        ],
+        "title": "ProftestPreviewResponse"
+      },
+      "ProftestResultsResponse": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/UserProfileResponse"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationResponse"
+            },
+            "type": "array",
+            "title": "Recommendations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile",
+          "recommendations"
+        ],
+        "title": "ProftestResultsResponse"
+      },
+      "ProftestSubmissionRequest": {
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/ProftestAnswerRequest"
+            },
+            "type": "array",
+            "title": "Answers"
+          },
+          "adaptiveAnswers": {
+            "items": {
+              "$ref": "#/components/schemas/ProftestAdaptiveAnswerRequest"
+            },
+            "type": "array",
+            "title": "Adaptiveanswers"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ProftestSubmissionRequest"
+      },
       "ProgramListResponse": {
         "properties": {
           "items": {
@@ -1061,6 +1662,387 @@
           "sourceUrl"
         ],
         "title": "ProgramSummaryResponse"
+      },
+      "QuestionBlock": {
+        "type": "string",
+        "enum": [
+          "interests",
+          "activities",
+          "anti_interests",
+          "adaptive"
+        ],
+        "title": "QuestionBlock"
+      },
+      "QuestionOptionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "QuestionOptionResponse"
+      },
+      "QuestionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "block": {
+            "$ref": "#/components/schemas/QuestionBlock"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionOptionResponse"
+            },
+            "type": "array",
+            "title": "Options"
+          },
+          "required": {
+            "type": "boolean",
+            "title": "Required"
+          },
+          "adaptive": {
+            "type": "boolean",
+            "title": "Adaptive"
+          },
+          "multiSelect": {
+            "type": "boolean",
+            "title": "Multiselect"
+          },
+          "maxSelected": {
+            "type": "integer",
+            "title": "Maxselected"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "block",
+          "prompt",
+          "options",
+          "required",
+          "adaptive",
+          "multiSelect",
+          "maxSelected"
+        ],
+        "title": "QuestionResponse"
+      },
+      "QuestionnaireResponse": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionResponse"
+            },
+            "type": "array",
+            "title": "Questions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "questions"
+        ],
+        "title": "QuestionnaireResponse"
+      },
+      "ReasonKind": {
+        "type": "string",
+        "enum": [
+          "fit",
+          "anti_fit"
+        ],
+        "title": "ReasonKind"
+      },
+      "ReasonResponse": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ReasonKind"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DisciplineAreaCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActivityCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "workload": {
+            "type": "string",
+            "title": "Workload"
+          },
+          "share": {
+            "type": "string",
+            "title": "Share"
+          },
+          "sourceNames": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcenames"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "text",
+          "workload",
+          "share",
+          "sourceNames"
+        ],
+        "title": "ReasonResponse"
+      },
+      "RecommendationResponse": {
+        "properties": {
+          "programId": {
+            "type": "string",
+            "title": "Programid"
+          },
+          "programCode": {
+            "type": "string",
+            "title": "Programcode"
+          },
+          "programName": {
+            "type": "string",
+            "title": "Programname"
+          },
+          "contentFit": {
+            "type": "integer",
+            "title": "Contentfit"
+          },
+          "score": {
+            "$ref": "#/components/schemas/MatchScoreResponse"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonResponse"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "antiFitReasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonResponse"
+            },
+            "type": "array",
+            "title": "Antifitreasons"
+          },
+          "areaShare": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/DisciplineAreaCode"
+            },
+            "type": "object",
+            "title": "Areashare"
+          },
+          "subjectGroupShare": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Subjectgroupshare"
+          },
+          "semesterDistribution": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Semesterdistribution"
+          },
+          "distinctiveSubjects": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Distinctivesubjects"
+          },
+          "workloadReadiness": {
+            "$ref": "#/components/schemas/OptionalMetricResponse"
+          },
+          "careerFit": {
+            "$ref": "#/components/schemas/OptionalMetricResponse"
+          },
+          "admissionFit": {
+            "$ref": "#/components/schemas/OptionalMetricResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId",
+          "programCode",
+          "programName",
+          "contentFit",
+          "score",
+          "reasons",
+          "antiFitReasons",
+          "areaShare",
+          "subjectGroupShare",
+          "semesterDistribution",
+          "distinctiveSubjects",
+          "workloadReadiness",
+          "careerFit",
+          "admissionFit"
+        ],
+        "title": "RecommendationResponse"
+      },
+      "ScoreBreakdownResponse": {
+        "properties": {
+          "subjectFit": {
+            "type": "string",
+            "title": "Subjectfit"
+          },
+          "activityFit": {
+            "type": "string",
+            "title": "Activityfit"
+          },
+          "distinctiveFit": {
+            "type": "string",
+            "title": "Distinctivefit"
+          },
+          "antiPenalty": {
+            "type": "string",
+            "title": "Antipenalty"
+          },
+          "rawContentFit": {
+            "type": "string",
+            "title": "Rawcontentfit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subjectFit",
+          "activityFit",
+          "distinctiveFit",
+          "antiPenalty",
+          "rawContentFit"
+        ],
+        "title": "ScoreBreakdownResponse"
+      },
+      "UserProfileResponse": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version"
+          },
+          "interests": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineAreaCode"
+            },
+            "type": "array",
+            "title": "Interests"
+          },
+          "activityPreferences": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityCode"
+            },
+            "type": "array",
+            "title": "Activitypreferences"
+          },
+          "antiInterests": {
+            "items": {
+              "$ref": "#/components/schemas/AntiInterestResponse"
+            },
+            "type": "array",
+            "title": "Antiinterests"
+          },
+          "preferredSubjectWeights": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/DisciplineAreaCode"
+            },
+            "type": "object",
+            "title": "Preferredsubjectweights"
+          },
+          "preferredActivityWeights": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/ActivityCode"
+            },
+            "type": "object",
+            "title": "Preferredactivityweights"
+          },
+          "negativeWeights": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/DisciplineAreaCode"
+            },
+            "type": "object",
+            "title": "Negativeweights"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/ConfidenceResponse"
+          },
+          "adaptiveAnswers": {
+            "items": {
+              "$ref": "#/components/schemas/AdaptiveAnswerResponse"
+            },
+            "type": "array",
+            "title": "Adaptiveanswers"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "interests",
+          "activityPreferences",
+          "antiInterests",
+          "preferredSubjectWeights",
+          "preferredActivityWeights",
+          "negativeWeights",
+          "confidence",
+          "adaptiveAnswers"
+        ],
+        "title": "UserProfileResponse"
       },
       "WorkloadResponse": {
         "properties": {

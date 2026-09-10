@@ -14,6 +14,7 @@ from starlette.responses import JSONResponse, Response
 from andromeda.api.routes.compare import router as compare_router
 from andromeda.api.routes.disciplines import router as disciplines_router
 from andromeda.api.routes.programs import router as programs_router
+from andromeda.api.routes.proftest import router as proftest_router
 from andromeda.shared.contracts.errors import AndromedaError, ErrorCode, ErrorResponse, details_from_validation
 from andromeda.infrastructure.config.settings import Settings
 from andromeda.infrastructure.database.base import create_engine_for_url
@@ -32,7 +33,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     )
     app.state.engine = create_engine_for_url(database_url or settings.database_url)
     origins = tuple(filter(None, settings.frontend_origin.split(",")))
-    app.add_middleware(CORSMiddleware, allow_origins=list(origins), allow_methods=["GET"], allow_headers=["*"])
+    app.add_middleware(CORSMiddleware, allow_origins=list(origins), allow_methods=["GET", "POST"], allow_headers=["*"])
 
     @app.middleware("http")
     async def correlation_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -77,6 +78,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(programs_router)
     app.include_router(disciplines_router)
     app.include_router(compare_router)
+    app.include_router(proftest_router)
     return app
 
 

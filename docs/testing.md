@@ -21,10 +21,11 @@ cd frontend
 npm run build
 $env:OPENAPI_FILE="openapi.json"
 npm run check-api-drift
+npm run test:unit
 npm run test:e2e
 ```
 
-E2E-тест использует стабильные `data-testid`, выбирает scope семестра и проверяет видимую таблицу сравнения. Перед ним должен работать fixture demo:
+E2E-тест использует стабильные `data-testid`, сохраняет existing comparison coverage и проходит профтест до explainable recommendation на desktop/mobile. Перед ним должен работать fixture demo:
 
 ```powershell
 python backend/scripts/run_tracer_demo.py --mode fixture

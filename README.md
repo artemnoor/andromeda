@@ -20,6 +20,19 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 - SQLAlchemy/Alembic с FK, unique/check constraints и Decimal без float-конверсии.
 - FastAPI/OpenAPI и сгенерированные TypeScript-типы.
 - Выбор программ A/B, scope «всё обучение / семестр», блоки и состояния loading/empty/error.
+- Профиль содержания: сценарные вопросы, anti-interest, adaptive refinement и TOP реальных программ с объяснениями по учебному плану.
+
+### Профиль содержания
+
+В UI выберите «Профиль содержания». Flow получает вопросы и результаты только через `GET /proftest/questions`, `POST /proftest/preview` и `POST /proftest/results`. После изменения API обновите frontend-контракт:
+
+```powershell
+python backend/scripts/export_openapi.py --out frontend/openapi.json
+cd frontend
+npm run generate-api
+```
+
+`Content Fit` рассчитывается детерминированно по реальным часам/ЗЕТ и долям предметных областей. `Workload readiness`, `Career Fit` и `Admission Fit` пока имеют статус `not_available` и не влияют на результат.
 
 ## Пример
 

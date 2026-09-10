@@ -86,10 +86,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/proftest/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Questions */
+        get: operations["get_questions_proftest_questions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/proftest/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview */
+        post: operations["preview_proftest_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/proftest/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Results */
+        post: operations["results_proftest_results_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ActivityCode
+         * @description Activity dimensions used by deterministic profile matching.
+         * @enum {string}
+         */
+        ActivityCode: "analytical" | "software_creation" | "system_design" | "research" | "physical_engineering" | "communication" | "creative" | "business" | "data";
+        /** AdaptiveAnswerResponse */
+        AdaptiveAnswerResponse: {
+            /** Questionid */
+            questionId: string;
+            /** Optionid */
+            optionId: string;
+            /** Dimension */
+            dimension: string;
+        };
+        /** AdaptiveDimensionResponse */
+        AdaptiveDimensionResponse: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /** Kind */
+            kind: string;
+            /** Spread */
+            spread: string;
+            /** Significance */
+            significance: string;
+        };
+        /** AdaptiveSelectionResponse */
+        AdaptiveSelectionResponse: {
+            status: components["schemas"]["AdaptiveStatus"];
+            /** Reason */
+            reason?: string | null;
+            /** Candidatecount */
+            candidateCount: number;
+            /** Topcandidatecount */
+            topCandidateCount: number;
+            /** Dimensions */
+            dimensions: components["schemas"]["AdaptiveDimensionResponse"][];
+        };
+        /**
+         * AdaptiveStatus
+         * @enum {string}
+         */
+        AdaptiveStatus: "ready" | "skipped";
+        /** AntiInterestResponse */
+        AntiInterestResponse: {
+            area: components["schemas"]["DisciplineAreaCode"];
+            /** Intensity */
+            intensity: string;
+        };
         /**
          * AssessmentType
          * @enum {string}
@@ -161,6 +263,15 @@ export interface components {
             hours: number;
             /** Credits */
             credits: string;
+        };
+        /** ConfidenceResponse */
+        ConfidenceResponse: {
+            /** Value */
+            value: string;
+            /** Answeredbase */
+            answeredBase: number;
+            /** Answeredadaptive */
+            answeredAdaptive: number;
         };
         /** CurriculumItemResponse */
         CurriculumItemResponse: {
@@ -277,6 +388,71 @@ export interface components {
              */
             details: components["schemas"]["ErrorDetail"][];
         };
+        /** MatchScoreResponse */
+        MatchScoreResponse: {
+            /** Programid */
+            programId: string;
+            /** Programcode */
+            programCode: string;
+            /** Contentfit */
+            contentFit: number;
+            breakdown: components["schemas"]["ScoreBreakdownResponse"];
+        };
+        /** OptionalMetricResponse */
+        OptionalMetricResponse: {
+            /** Status */
+            status: string;
+            /** Value */
+            value?: number | null;
+        };
+        /** PreviewCandidateResponse */
+        PreviewCandidateResponse: {
+            /** Programid */
+            programId: string;
+            /** Programcode */
+            programCode: string;
+            /** Contentfit */
+            contentFit: number;
+        };
+        /** ProftestAdaptiveAnswerRequest */
+        ProftestAdaptiveAnswerRequest: {
+            /** Questionid */
+            questionId: string;
+            /** Optionid */
+            optionId: string;
+            /** Dimension */
+            dimension: string;
+        };
+        /** ProftestAnswerRequest */
+        ProftestAnswerRequest: {
+            /** Questionid */
+            questionId: string;
+            /** Optionids */
+            optionIds: string[];
+            /** Intensity */
+            intensity?: (number | string) | null;
+        };
+        /** ProftestPreviewResponse */
+        ProftestPreviewResponse: {
+            profile: components["schemas"]["UserProfileResponse"];
+            adaptive: components["schemas"]["AdaptiveSelectionResponse"];
+            question?: components["schemas"]["QuestionResponse"] | null;
+            /** Candidates */
+            candidates: components["schemas"]["PreviewCandidateResponse"][];
+        };
+        /** ProftestResultsResponse */
+        ProftestResultsResponse: {
+            profile: components["schemas"]["UserProfileResponse"];
+            /** Recommendations */
+            recommendations: components["schemas"]["RecommendationResponse"][];
+        };
+        /** ProftestSubmissionRequest */
+        ProftestSubmissionRequest: {
+            /** Answers */
+            answers?: components["schemas"]["ProftestAnswerRequest"][];
+            /** Adaptiveanswers */
+            adaptiveAnswers?: components["schemas"]["ProftestAdaptiveAnswerRequest"][];
+        };
         /** ProgramListResponse */
         ProgramListResponse: {
             /** Items */
@@ -308,6 +484,140 @@ export interface components {
              * Format: uri
              */
             sourceUrl: string;
+        };
+        /**
+         * QuestionBlock
+         * @enum {string}
+         */
+        QuestionBlock: "interests" | "activities" | "anti_interests" | "adaptive";
+        /** QuestionOptionResponse */
+        QuestionOptionResponse: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+        };
+        /** QuestionResponse */
+        QuestionResponse: {
+            /** Id */
+            id: string;
+            block: components["schemas"]["QuestionBlock"];
+            /** Prompt */
+            prompt: string;
+            /** Options */
+            options: components["schemas"]["QuestionOptionResponse"][];
+            /** Required */
+            required: boolean;
+            /** Adaptive */
+            adaptive: boolean;
+            /** Multiselect */
+            multiSelect: boolean;
+            /** Maxselected */
+            maxSelected: number;
+        };
+        /** QuestionnaireResponse */
+        QuestionnaireResponse: {
+            /**
+             * Version
+             * @constant
+             */
+            version: 1;
+            /** Questions */
+            questions: components["schemas"]["QuestionResponse"][];
+        };
+        /**
+         * ReasonKind
+         * @enum {string}
+         */
+        ReasonKind: "fit" | "anti_fit";
+        /** ReasonResponse */
+        ReasonResponse: {
+            kind: components["schemas"]["ReasonKind"];
+            area?: components["schemas"]["DisciplineAreaCode"] | null;
+            activity?: components["schemas"]["ActivityCode"] | null;
+            /** Text */
+            text: string;
+            /** Workload */
+            workload: string;
+            /** Share */
+            share: string;
+            /** Sourcenames */
+            sourceNames: string[];
+        };
+        /** RecommendationResponse */
+        RecommendationResponse: {
+            /** Programid */
+            programId: string;
+            /** Programcode */
+            programCode: string;
+            /** Programname */
+            programName: string;
+            /** Contentfit */
+            contentFit: number;
+            score: components["schemas"]["MatchScoreResponse"];
+            /** Reasons */
+            reasons: components["schemas"]["ReasonResponse"][];
+            /** Antifitreasons */
+            antiFitReasons: components["schemas"]["ReasonResponse"][];
+            /** Areashare */
+            areaShare: {
+                [key: string]: string;
+            };
+            /** Subjectgroupshare */
+            subjectGroupShare: {
+                [key: string]: string;
+            };
+            /** Semesterdistribution */
+            semesterDistribution: {
+                [key: string]: string;
+            };
+            /** Distinctivesubjects */
+            distinctiveSubjects: string[];
+            workloadReadiness: components["schemas"]["OptionalMetricResponse"];
+            careerFit: components["schemas"]["OptionalMetricResponse"];
+            admissionFit: components["schemas"]["OptionalMetricResponse"];
+        };
+        /** ScoreBreakdownResponse */
+        ScoreBreakdownResponse: {
+            /** Subjectfit */
+            subjectFit: string;
+            /** Activityfit */
+            activityFit: string;
+            /** Distinctivefit */
+            distinctiveFit: string;
+            /** Antipenalty */
+            antiPenalty: string;
+            /** Rawcontentfit */
+            rawContentFit: string;
+        };
+        /** UserProfileResponse */
+        UserProfileResponse: {
+            /**
+             * Version
+             * @constant
+             */
+            version: 1;
+            /** Interests */
+            interests: components["schemas"]["DisciplineAreaCode"][];
+            /** Activitypreferences */
+            activityPreferences: components["schemas"]["ActivityCode"][];
+            /** Antiinterests */
+            antiInterests: components["schemas"]["AntiInterestResponse"][];
+            /** Preferredsubjectweights */
+            preferredSubjectWeights: {
+                [key: string]: string;
+            };
+            /** Preferredactivityweights */
+            preferredActivityWeights: {
+                [key: string]: string;
+            };
+            /** Negativeweights */
+            negativeWeights: {
+                [key: string]: string;
+            };
+            confidence: components["schemas"]["ConfidenceResponse"];
+            /** Adaptiveanswers */
+            adaptiveAnswers: components["schemas"]["AdaptiveAnswerResponse"][];
         };
         /** WorkloadResponse */
         WorkloadResponse: {
@@ -579,6 +889,182 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComparisonResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_questions_proftest_questions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionnaireResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    preview_proftest_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProftestSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProftestPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    results_proftest_results_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProftestSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProftestResultsResponse"];
                 };
             };
             /** @description Bad Request */

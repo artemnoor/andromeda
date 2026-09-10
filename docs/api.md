@@ -35,6 +35,25 @@ GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&s
 
 Ответ ошибки имеет strict-поля `code`, `message`, `details`. Основные коды: `VALIDATION_ERROR`, `NOT_FOUND`, `CONTRACT_ERROR`, `SOURCE_CONTRACT_ERROR`, `INTERNAL_ERROR`.
 
+## Профиль содержания
+
+| Метод | Endpoint | Назначение |
+|---|---|---|
+| GET | `/proftest/questions` | Versioned bank scenario-based вопросов без внутренних весов |
+| POST | `/proftest/preview` | Строит `UserProfile`, первичный ranking и adaptive selection |
+| POST | `/proftest/results` | Строит финальный профиль и TOP рекомендаций с fit/anti-fit evidence |
+
+Оба POST endpoint принимают strict `answers` и optional `adaptiveAnswers`. `UserProfile` строится до matching, а response содержит integer `contentFit`, breakdown компонентов, реальные workload/share и исходные названия отличительных дисциплин. Optional metrics (`workloadReadiness`, `careerFit`, `admissionFit`) сейчас возвращаются с `status: "not_available"` и не влияют на scoring.
+
+После изменения API frontend-контракт регенерируется из OpenAPI:
+
+```powershell
+python backend/scripts/export_openapi.py --out frontend/openapi.json
+cd frontend
+npm run generate-api
+npm run check-api-drift
+```
+
 ## See Also
 
 - [Архитектура](architecture.md) — почему API не импортирует ORM.

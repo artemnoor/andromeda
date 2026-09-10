@@ -9,6 +9,7 @@ from andromeda.infrastructure.repositories.curricula import SqlAlchemyCurriculum
 from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDisciplineRepository
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepository
+from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
 from andromeda.infrastructure.repositories.universities import SqlAlchemyUniversityRepository
 
 
@@ -29,6 +30,9 @@ class AndromedaContainer:
 
     def university_reader(self, session: Session) -> SqlAlchemyUniversityRepository:
         return SqlAlchemyUniversityRepository(session)
+
+    def proftest_catalog_reader(self, session: Session) -> SqlAlchemyProftestCatalogRepository:
+        return SqlAlchemyProftestCatalogRepository(self.program_reader(session), self.curriculum_reader(session), self.discipline_reader(session))
 
     @property
     def ingestion(self) -> SqlAlchemyIngestionRepository:

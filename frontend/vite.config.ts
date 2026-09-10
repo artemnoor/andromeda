@@ -6,6 +6,7 @@ export default defineConfig({
     proxy: {
       "/programs": "http://127.0.0.1:8000",
       "/compare": "http://127.0.0.1:8000",
+      "/proftest": "http://127.0.0.1:8000",
       "/openapi.json": "http://127.0.0.1:8000",
       "/docs": "http://127.0.0.1:8000"
     }

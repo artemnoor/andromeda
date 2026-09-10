@@ -34,13 +34,17 @@ def test_andromeda_package_has_subject_module_boundaries() -> None:
         "modules/comparison/contracts",
         "modules/comparison/services",
         "modules/comparison/repository",
+        "modules/proftest/domain",
+        "modules/proftest/contracts",
+        "modules/proftest/services",
+        "modules/proftest/repository",
     }
     actual = {path.relative_to(ANDROMEDA_ROOT).as_posix() for path in ANDROMEDA_ROOT.glob("modules/*/*") if path.is_dir()}
     assert expected <= actual
 
 
 def test_core_modules_do_not_import_infrastructure_api_or_legacy_package() -> None:
-    forbidden_fragments = ("andromeda.infrastructure", "andromeda.api", "sqlalchemy", "bmstu_parser")
+    forbidden_fragments = ("andromeda.infrastructure", "andromeda.api", "sqlalchemy", "bmstu_parser", "proftest_spike")
     violations: list[str] = []
     for path in ANDROMEDA_ROOT.glob("modules/**/*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
