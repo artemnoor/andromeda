@@ -98,3 +98,80 @@ jobs:
         shell: bash
         run: |
           if [ -f "$RUNNER_TEMP/andromeda-demo.pid" ]; then kill "$(cat "$RUNNER_TEMP/andromeda-demo.pid")" || true; fi
+
+  proftest-spike:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install study-plan and Spike dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          python -m pip install -e "backend[dev]" -e "proftest-spike/backend[dev]"
+      - name: Run Spike backend tests
+        run: python -m pytest -q
+        working-directory: proftest-spike/backend
+      - name: Run strict typing checks
+        run: python -m mypy --strict proftest-spike/backend/src/proftest_spike proftest-spike/scripts/run_spike_demo.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: proftest-spike/frontend/package-lock.json
+      - run: npm ci
+        working-directory: proftest-spike/frontend
+      - run: npm run test:unit
+        working-directory: proftest-spike/frontend
+      - run: npm run build
+        working-directory: proftest-spike/frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: proftest-spike/frontend
+      - name: Prepare Andromeda fixture API
+        run: python backend/scripts/run_tracer_bullet.py --mode fixture --database-url sqlite:///backend/data/proftest-spike-ci.db --log-level ERROR
+      - name: Start Andromeda read API
+        shell: bash
+        run: |
+          export BMSTU_DATABASE_URL="sqlite:///backend/data/proftest-spike-ci.db"
+          export PYTHONPATH="$GITHUB_WORKSPACE/backend/src"
+          python -m uvicorn andromeda.api.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/andromeda-proftest.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/andromeda-proftest.pid"
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8000/openapi.json > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/andromeda-proftest.log"
+          exit 1
+      - name: Start Spike services and run API personas
+        shell: bash
+        run: |
+          python proftest-spike/scripts/run_spike_demo.py --andromeda-base-url http://127.0.0.1:8000 --spike-port 8110 --frontend-port 5175 --keep-alive > "$RUNNER_TEMP/proftest-spike.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/proftest-spike.pid"
+          for attempt in {1..90}; do
+            if curl --fail --silent http://127.0.0.1:8110/api/health > /dev/null && curl --fail --silent http://127.0.0.1:5175/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/proftest-spike.log"
+          exit 1
+      - name: Check Spike OpenAPI drift
+        run: npm run check-api-drift
+        working-directory: proftest-spike/frontend
+        env:
+          OPENAPI_URL: http://127.0.0.1:8110/openapi.json
+      - name: Run Spike browser scenarios
+        run: npm run test:e2e
+        working-directory: proftest-spike/frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5175
+      - name: Stop Spike services
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/proftest-spike.pid" ]; then kill "$(cat "$RUNNER_TEMP/proftest-spike.pid")" || true; fi
+      - name: Stop Andromeda API
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/andromeda-proftest.pid" ]; then kill "$(cat "$RUNNER_TEMP/andromeda-proftest.pid")" || true; fi
