@@ -53,3 +53,17 @@ def test_environment_url_is_used_for_alembic_even_when_ini_differs(tmp_path: Pat
     finally:
         target_engine.dispose()
         ignored_engine.dispose()
+
+
+def test_alembic_uses_config_url_when_environment_url_is_unset(tmp_path: Path, monkeypatch) -> None:
+    configured_url = f"sqlite:///{(tmp_path / 'configured-target.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.delenv("BMSTU_DATABASE_URL", raising=False)
+
+    command.upgrade(_alembic_config(configured_url), "head")
+
+    engine = create_engine(configured_url)
+    try:
+        assert "alembic_version" in inspect(engine).get_table_names()
+    finally:
+        engine.dispose()
