@@ -1,4 +1,4 @@
-[← API](api.md) · [Back to README](../README.md) · [Конфигурация →](configuration.md)
+[← API](api.md) · [Back to README](../README.md) · [Admission Fit →](admission-fit.md)
 
 # Admissions
 

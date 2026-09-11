@@ -3,6 +3,8 @@ from __future__ import annotations
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
+from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
+from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
 from andromeda.modules.comparison.services.compare_programs import CompareProgramsService
 from andromeda.modules.admissions.repository.ports import AdmissionReader
 from andromeda.modules.admissions.services.admissions import AdmissionService
@@ -17,6 +19,7 @@ from andromeda.modules.recommendations.services.recommendations import Recommend
 from andromeda.infrastructure.repositories.curricula import SqlAlchemyCurriculumRepository
 from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDisciplineRepository
 from andromeda.infrastructure.repositories.admissions import SqlAlchemyAdmissionRepository
+from andromeda.infrastructure.repositories.admission_fit import SqlAlchemyAdmissionFitReader
 from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepository
 from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
@@ -44,6 +47,19 @@ def get_admission_service(
     admissions: AdmissionReader = Depends(get_admission_reader),
 ) -> AdmissionService:
     return AdmissionService(programs, admissions)
+
+
+def get_admission_fit_reader(
+    programs: ProgramReader = Depends(get_program_reader),
+    admissions: AdmissionReader = Depends(get_admission_reader),
+) -> AdmissionFitDataReader:
+    return SqlAlchemyAdmissionFitReader(programs, admissions)
+
+
+def get_admission_fit_service(
+    reader: AdmissionFitDataReader = Depends(get_admission_fit_reader),
+) -> AdmissionFitService:
+    return AdmissionFitService(reader)
 
 
 def get_compare_service(

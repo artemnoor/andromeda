@@ -286,6 +286,89 @@
         }
       }
     },
+    "/programs/{id}/admission-fit": {
+      "post": {
+        "tags": [
+          "admission-fit"
+        ],
+        "summary": "Calculate Program Admission Fit",
+        "operationId": "calculate_program_admission_fit_programs__id__admission_fit_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdmissionFitRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionFitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/discipline-areas": {
       "get": {
         "tags": [
@@ -847,6 +930,299 @@
         ],
         "title": "AdaptiveStatus"
       },
+      "AdmissionFitBreakdownResponse": {
+        "properties": {
+          "minimumReadiness": {
+            "$ref": "#/components/schemas/AdmissionFitMetricResponse"
+          },
+          "passingReadiness": {
+            "$ref": "#/components/schemas/AdmissionFitMetricResponse"
+          },
+          "dataCompleteness": {
+            "$ref": "#/components/schemas/AdmissionFitMetricResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "minimumReadiness",
+          "passingReadiness",
+          "dataCompleteness"
+        ],
+        "title": "AdmissionFitBreakdownResponse"
+      },
+      "AdmissionFitDataQuality": {
+        "type": "string",
+        "enum": [
+          "complete",
+          "partial",
+          "unavailable"
+        ],
+        "title": "AdmissionFitDataQuality"
+      },
+      "AdmissionFitMetricResponse": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AdmissionFitMetricStatus"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "AdmissionFitMetricResponse"
+      },
+      "AdmissionFitMetricStatus": {
+        "type": "string",
+        "enum": [
+          "available",
+          "partial",
+          "not_available"
+        ],
+        "title": "AdmissionFitMetricStatus"
+      },
+      "AdmissionFitReasonKind": {
+        "type": "string",
+        "enum": [
+          "fit",
+          "anti_fit",
+          "data_gap"
+        ],
+        "title": "AdmissionFitReasonKind"
+      },
+      "AdmissionFitReasonResponse": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/AdmissionFitReasonKind"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Message"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          },
+          "applicantScore": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicantscore"
+          },
+          "applicantTotalScore": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicanttotalscore"
+          },
+          "referenceScore": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referencescore"
+          },
+          "sourceName": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcename"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionProvenanceResponse"
+            },
+            "type": "array",
+            "title": "Provenance",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "message"
+        ],
+        "title": "AdmissionFitReasonResponse"
+      },
+      "AdmissionFitRequestBody": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "offeringId": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Offeringid"
+          },
+          "applicant": {
+            "$ref": "#/components/schemas/ApplicantAdmissionProfileRequest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "offeringId",
+          "applicant"
+        ],
+        "title": "AdmissionFitRequestBody"
+      },
+      "AdmissionFitResponse": {
+        "properties": {
+          "programId": {
+            "type": "string",
+            "title": "Programid"
+          },
+          "offeringId": {
+            "type": "string",
+            "title": "Offeringid"
+          },
+          "admissionYear": {
+            "type": "integer",
+            "title": "Admissionyear"
+          },
+          "studyForm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyForm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fundingType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundingType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/AdmissionFitStatus"
+          },
+          "score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score"
+          },
+          "applicantTotalScore": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicanttotalscore"
+          },
+          "dataQuality": {
+            "$ref": "#/components/schemas/AdmissionFitDataQuality"
+          },
+          "breakdown": {
+            "$ref": "#/components/schemas/AdmissionFitBreakdownResponse"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionFitReasonResponse"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "antiReasons": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionFitReasonResponse"
+            },
+            "type": "array",
+            "title": "Antireasons"
+          },
+          "dataGaps": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionFitReasonResponse"
+            },
+            "type": "array",
+            "title": "Datagaps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId",
+          "offeringId",
+          "admissionYear",
+          "status",
+          "score",
+          "dataQuality",
+          "breakdown",
+          "reasons",
+          "antiReasons",
+          "dataGaps"
+        ],
+        "title": "AdmissionFitResponse"
+      },
+      "AdmissionFitStatus": {
+        "type": "string",
+        "enum": [
+          "realistic",
+          "borderline",
+          "unlikely",
+          "insufficient_data"
+        ],
+        "title": "AdmissionFitStatus"
+      },
       "AdmissionOfferingResponse": {
         "properties": {
           "id": {
@@ -1055,6 +1431,58 @@
           "intensity"
         ],
         "title": "AntiInterestResponse"
+      },
+      "ApplicantAdmissionProfileRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "scores": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantSubjectScoreRequest"
+            },
+            "type": "array",
+            "title": "Scores"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ApplicantAdmissionProfileRequest"
+      },
+      "ApplicantSubjectScoreRequest": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Score",
+            "decimal_places": 2,
+            "ge": "0",
+            "le": "100",
+            "max_digits": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject",
+          "score"
+        ],
+        "title": "ApplicantSubjectScoreRequest"
       },
       "AssessmentType": {
         "type": "string",

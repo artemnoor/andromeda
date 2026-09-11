@@ -18,7 +18,7 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 ## Что уже работает
 
 - BMSTU fixture/live ingestion с provenance и fail-closed source selection.
-- Изолированные модули universities, programs, curricula, disciplines, comparison, proftest и recommendations.
+- Изолированные модули universities, programs, curricula, disciplines, comparison, proftest, recommendations, admissions и admission_fit.
 - SQLAlchemy/Alembic с FK, unique/check constraints и Decimal без float-конверсии.
 - FastAPI/OpenAPI и сгенерированные TypeScript-типы.
 - Выбор программ A/B, scope «всё обучение / семестр», блоки и состояния loading/empty/error.
@@ -36,7 +36,7 @@ cd frontend
 npm run generate-api
 ```
 
-`Content Fit` рассчитывается детерминированно по реальным часам/ЗЕТ и долям предметных областей. `Workload readiness`, `Career Fit` и `Admission Fit` пока имеют статус `not_available` и не влияют на результат.
+`Content Fit` рассчитывается детерминированно по реальным часам/ЗЕТ и долям предметных областей. В recommendation response `Workload readiness` и `Career Fit` пока имеют статус `not_available`; отдельный `Admission Fit` запускается на странице программы и не влияет на Content Fit или ranking рекомендаций.
 
 ### Данные поступления
 
@@ -58,6 +58,7 @@ GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&s
 | [Архитектура](docs/architecture.md) | Модули и поток данных |
 | [API](docs/api.md) | OpenAPI endpoints и контракты |
 | [Admissions](docs/admissions.md) | Данные поступления и source gaps |
+| [Admission Fit](docs/admission-fit.md) | Отдельная оценка реалистичности поступления |
 | [Конфигурация](docs/configuration.md) | Переменные окружения |
 | [PostgreSQL](docs/postgresql.md) | Dev/staging, migrations и ingestion |
 | [Тестирование](docs/testing.md) | Локальные и CI-проверки |

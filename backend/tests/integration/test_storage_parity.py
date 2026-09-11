@@ -64,8 +64,24 @@ def test_alembic_sqlite_path_preserves_public_readers_and_api_flow(tmp_path: Pat
         "/compare",
         params={"programIds": "program:09.03.01-02,program:09.03.01-12", "scope": "semester", "semester": 1},
     )
+    admissions = client.get("/programs/program:09.03.01-02/admissions")
+    offering = next(item for item in admissions.json()["offerings"] if item["exams"])
+    admission_fit = client.post(
+        "/programs/program:09.03.01-02/admission-fit",
+        json={
+            "offeringId": offering["id"],
+            "applicant": {
+                "scores": [
+                    {"subject": exam["subject"], "score": 90}
+                    for exam in offering["exams"]
+                ]
+            },
+        },
+    )
     assert programs_response.status_code == 200
     assert comparison.status_code == 200
+    assert admission_fit.status_code == 200
+    assert admission_fit.json()["dataQuality"] == "complete"
     assert comparison.json()["rows"]
 
 

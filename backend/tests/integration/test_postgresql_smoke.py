@@ -32,6 +32,7 @@ def test_postgresql_supports_the_existing_api_vertical_slice() -> None:
     client = TestClient(create_app(database_url))
     programs = client.get("/programs")
     curriculum = client.get("/programs/program:09.03.01-02/curriculum")
+    admissions = client.get("/programs/program:09.03.01-02/admissions")
     comparison = client.get(
         "/compare",
         params={"programIds": "program:09.03.01-02,program:09.03.01-12", "scope": "semester", "semester": 1},
@@ -47,14 +48,31 @@ def test_postgresql_supports_the_existing_api_vertical_slice() -> None:
         ]
     }
     proftest = client.post("/proftest/results", json=answers)
+    admission_payload = admissions.json()
+    admission_offering = next(item for item in admission_payload["offerings"] if item["exams"])
+    admission_fit = client.post(
+        "/programs/program:09.03.01-02/admission-fit",
+        json={
+            "offeringId": admission_offering["id"],
+            "applicant": {
+                "scores": [
+                    {"subject": exam["subject"], "score": 90}
+                    for exam in admission_offering["exams"]
+                ]
+            },
+        },
+    )
 
     assert programs.status_code == 200
     assert len(programs.json()["items"]) == 2
     assert curriculum.status_code == 200
+    assert admissions.status_code == 200
     assert curriculum.json()["items"]
     assert comparison.status_code == 200
     assert comparison.json()["rows"]
     assert proftest.status_code == 200
+    assert admission_fit.status_code == 200
+    assert admission_fit.json()["programId"] == "program:09.03.01-02"
     profile = proftest.json()["profile"]
     recommendations = client.post("/recommendations", json={"profile": profile, "limit": 2})
     assert recommendations.status_code == 200

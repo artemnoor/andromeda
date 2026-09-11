@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
+from andromeda.infrastructure.repositories.admission_fit import SqlAlchemyAdmissionFitReader
 from andromeda.infrastructure.repositories.curricula import SqlAlchemyCurriculumRepository
 from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDisciplineRepository
 from andromeda.infrastructure.repositories.admissions import SqlAlchemyAdmissionRepository
@@ -15,6 +16,7 @@ from andromeda.infrastructure.repositories.recommendations import CatalogRecomme
 from andromeda.infrastructure.repositories.universities import SqlAlchemyUniversityRepository
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
 from andromeda.modules.admissions.repository.ports import AdmissionReader
+from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +36,9 @@ class AndromedaContainer:
 
     def admission_reader(self, session: Session) -> AdmissionReader:
         return SqlAlchemyAdmissionRepository(session)
+
+    def admission_fit_reader(self, session: Session) -> AdmissionFitDataReader:
+        return SqlAlchemyAdmissionFitReader(self.program_reader(session), self.admission_reader(session))
 
     def university_reader(self, session: Session) -> SqlAlchemyUniversityRepository:
         return SqlAlchemyUniversityRepository(session)

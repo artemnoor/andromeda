@@ -5,6 +5,8 @@ type ProgramResponse = paths["/programs/{id}"]["get"]["responses"][200]["content
 type ProgramListResponse = paths["/programs"]["get"]["responses"][200]["content"]["application/json"];
 type CurriculumResponse = paths["/programs/{id}/curriculum"]["get"]["responses"][200]["content"]["application/json"];
 type ProgramAdmissionsResponse = paths["/programs/{id}/admissions"]["get"]["responses"][200]["content"]["application/json"];
+type AdmissionFitRequest = NonNullable<paths["/programs/{id}/admission-fit"]["post"]["requestBody"]>["content"]["application/json"];
+type AdmissionFitResponse = paths["/programs/{id}/admission-fit"]["post"]["responses"][200]["content"]["application/json"];
 type CompareResponse = paths["/compare"]["get"]["responses"][200]["content"]["application/json"];
 type QuestionnaireResponse = paths["/proftest/questions"]["get"]["responses"][200]["content"]["application/json"];
 type ProftestRequest = NonNullable<paths["/proftest/preview"]["post"]["requestBody"]>["content"]["application/json"];
@@ -50,6 +52,13 @@ export function getProgramAdmissions(id: string): Promise<ProgramAdmissionsRespo
   return requestJson<ProgramAdmissionsResponse>(`/programs/${encodeURIComponent(id)}/admissions`);
 }
 
+export function calculateAdmissionFit(id: string, request: AdmissionFitRequest): Promise<AdmissionFitResponse> {
+  return requestJson<AdmissionFitResponse>("/programs/" + encodeURIComponent(id) + "/admission-fit", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
 export function comparePrograms(
   programIds: readonly [string, string],
   options: { scope?: components["schemas"]["ComparisonScope"]; semester?: number | undefined } = {},
@@ -75,4 +84,4 @@ export function getRecommendations(request: RecommendationRequest): Promise<Reco
   return requestJson<RecommendationsResponse>("/recommendations", { method: "POST", body: JSON.stringify(request) });
 }
 
-export type { CompareResponse, CurriculumResponse, ErrorContract, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse };
+export type { AdmissionFitRequest, AdmissionFitResponse, CompareResponse, CurriculumResponse, ErrorContract, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse };

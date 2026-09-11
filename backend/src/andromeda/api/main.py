@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.responses import JSONResponse, Response
 
 from andromeda.api.routes.compare import router as compare_router
+from andromeda.api.routes.admission_fit import router as admission_fit_router
 from andromeda.api.routes.admissions import router as admissions_router
 from andromeda.api.routes.disciplines import router as disciplines_router
 from andromeda.api.routes.programs import router as programs_router
@@ -79,6 +80,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
 
     app.include_router(programs_router)
     app.include_router(admissions_router)
+    app.include_router(admission_fit_router)
     app.include_router(disciplines_router)
     app.include_router(compare_router)
     app.include_router(proftest_router)

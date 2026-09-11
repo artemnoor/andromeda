@@ -1,6 +1,7 @@
 import { getProgramAdmissions, type ProgramAdmissionsResponse } from "../../api/client";
 import { ApiError } from "../../api/errors";
 import { renderAdmissions, renderAdmissionsError, renderAdmissionsLoading } from "../admissions/AdmissionsBlock";
+import { renderAdmissionFit, renderAdmissionFitError, renderAdmissionFitLoading } from "../admission-fit/AdmissionFitBlock";
 import type { ProgramResponse } from "../../api/client";
 
 export function renderProgramScreen(root: HTMLElement, response: ProgramResponse): void {
@@ -17,15 +18,22 @@ export function renderProgramScreen(root: HTMLElement, response: ProgramResponse
     </section>
     <p class="provenance">Официальная программа МГТУ · <a href="${escapeAttribute(response.program.sourceUrl)}" target="_blank" rel="noreferrer">учебный план</a></p>
     <div id="program-admissions"></div>
+    <div id="program-admission-fit"></div>
   `;
   const admissionsRoot = root.querySelector<HTMLElement>("#program-admissions");
-  if (!admissionsRoot) return;
+  const admissionFitRoot = root.querySelector<HTMLElement>("#program-admission-fit");
+  if (!admissionsRoot || !admissionFitRoot) return;
   renderAdmissionsLoading(admissionsRoot);
+  renderAdmissionFitLoading(admissionFitRoot);
   void getProgramAdmissions(response.program.id)
-    .then((admissions: ProgramAdmissionsResponse) => renderAdmissions(admissionsRoot, admissions))
+    .then((admissions: ProgramAdmissionsResponse) => {
+      renderAdmissions(admissionsRoot, admissions);
+      renderAdmissionFit(admissionFitRoot, response.program.id, admissions);
+    })
     .catch((error: unknown) => {
       const message = error instanceof ApiError ? `${error.payload.code}: ${error.payload.message}` : "Не удалось получить данные поступления";
       renderAdmissionsError(admissionsRoot, message);
+      renderAdmissionFitError(admissionFitRoot, message);
     });
 }
 

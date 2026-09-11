@@ -35,6 +35,7 @@ backend/src/andromeda/
 ├── modules/proftest/{domain,contracts,services,repository}/
 ├── modules/recommendations/{domain,contracts,services,repository}/
 ├── modules/admissions/{domain,contracts,services,repository}/
+├── modules/admission_fit/{domain,contracts,services,repository}/
 ├── ingestion/universities/bmstu/
 ├── infrastructure/{database,repositories,config,logging}/
 ├── api/{routes,schemas,dependencies}/
@@ -46,6 +47,19 @@ backend/src/andromeda/
 `proftest` использует те же публичные reader-контракты через собственный typed catalog port; его domain/services не знают об ORM, HTTP schemas или BMSTU parser. `ProgramFingerprint` и `UserProfile` остаются application contracts, а API routes только связывают их с HTTP.
 
 `recommendations` получает только публичные `UserProfile` и `ProgramFingerprint`, а для каталога использует `RecommendationCatalogReader`. Его scoring policy фиксирует Content Fit как сумму subject, activity и distinctive fit с отдельным anti-interest penalty. `Career Fit`, `Admission Fit` и `Workload readiness` typed как `not_available` и не меняют score. Старые proftest matching/ranking/explanation paths остаются compatibility facades.
+
+`admission_fit` — отдельный application/domain-модуль для оценки одного явно выбранного admission offering. Он публикует `ApplicantAdmissionProfile`, `AdmissionFitRequest` и `AdmissionFitResult`, а свой `AdmissionFitDataReader` получает snapshot через публичные `ProgramReader` и `AdmissionReader`. Внутри модуля нет SQLAlchemy, FastAPI, parser или recommendation imports:
+
+```text
+ProgramReader + AdmissionReader public contracts
+  → AdmissionFitDataReader infrastructure adapter
+  → AdmissionFitService
+  → deterministic AdmissionFitScoringService
+  → reasons / antiReasons / dataGaps + score/status
+  → POST /programs/{id}/admission-fit
+```
+
+`Admission Fit` оценивает только реалистичность поступления по опубликованным admissions facts. Он не принимает `UserProfile`, `ProgramFingerprint` или Content Fit score и не вызывается из `RecommendationService`; поэтому его результат не меняет ranking рекомендаций.
 
 `admissions` публикует `ProgramAdmissions`, offering и child contracts через `AdmissionReader`. Его service получает программу через `ProgramReader`, а не через ORM. Admission Fit в этот модуль не входит: slice только показывает source-backed факты поступления и сохраняет их provenance. Новые университеты подключают собственный ingestion adapter, не меняя этот application path.
 

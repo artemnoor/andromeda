@@ -46,7 +46,7 @@ GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&s
 | POST | `/proftest/preview` | Строит `UserProfile`, первичный ranking и adaptive selection |
 | POST | `/proftest/results` | Строит финальный профиль и TOP рекомендаций с fit/anti-fit evidence |
 
-Оба POST endpoint принимают strict `answers` и optional `adaptiveAnswers`. `UserProfile` строится до matching, а response содержит integer `contentFit`, breakdown компонентов, реальные workload/share и исходные названия отличительных дисциплин. Optional metrics (`workloadReadiness`, `careerFit`, `admissionFit`) сейчас возвращаются с `status: "not_available"` и не влияют на scoring.
+Оба POST endpoint принимают strict `answers` и optional `adaptiveAnswers`. `UserProfile` строится до matching, а response содержит integer `contentFit`, breakdown компонентов, реальные workload/share и исходные названия отличительных дисциплин. В этих Content Fit responses optional metrics (`workloadReadiness`, `careerFit`, `admissionFit`) возвращаются с `status: "not_available"` и не влияют на scoring. Отдельный endpoint Admission Fit описан ниже и также не меняет этот ranking.
 
 После изменения API frontend-контракт регенерируется из OpenAPI:
 
@@ -85,6 +85,44 @@ Request содержит `profile` и `limit` (`1..20`). Профиль — то
 ```
 
 `/recommendations` и `/proftest/results` используют один RecommendationService. Он не импортирует ORM или parser, а получает fingerprints через infrastructure adapter, который делегирует существующий `Program/Curriculum/Discipline` catalog path.
+
+## Admission Fit
+
+| Метод | Endpoint | Назначение |
+|---|---|---|
+| POST | `/programs/{id}/admission-fit` | Считает отдельную оценку реалистичности поступления для выбранного offering |
+
+Endpoint принимает баллы абитуриента и явный `offeringId` из `GET /programs/{id}/admissions`. Это не подбор программы и не прогноз зачисления: сервер сравнивает введённые значения только с source-backed минимумами и проходным баллом выбранного набора.
+
+Минимальный strict-запрос:
+
+```json
+{
+  "version": 1,
+  "offeringId": "admission-offering:program:09.03.01-02:2026:unknown:budget:direction",
+  "applicant": {
+    "version": 1,
+    "scores": [
+      {"subject": "Математика", "score": 90},
+      {"subject": "Русский язык", "score": 88},
+      {"subject": "Информатика", "score": 92}
+    ]
+  }
+}
+```
+
+Поле `offeringId` нужно брать из фактического ответа admissions: год, форма, финансирование и scope могут отличаться между программами и источниками. `score` каждого предмета находится в диапазоне `0..100`; неизвестное поле или дублирующийся после нормализации предмет возвращают `VALIDATION_ERROR`.
+
+Ответ содержит `status`, целочисленный `score` `0..100`, `dataQuality`, три независимые метрики `breakdown`, а также `reasons`, `antiReasons` и `dataGaps`. Decimal-значения баллов и метрик сериализуются строками. У reason сохраняются предмет, введённый факт, reference score и provenance, когда они есть.
+
+Статусы:
+
+- `realistic` — обязательные предметы сопоставлены, известные минимумы не нарушены, а введённая сумма не ниже выбранного проходного ориентира; итоговый score не ниже 80;
+- `borderline` — данные полные, но сумма ниже опубликованного проходного ориентира либо итоговый score находится в диапазоне 55–79;
+- `unlikely` — нарушен известный минимум, сумма ниже 85% проходного ориентира или итоговый score ниже 55;
+- `insufficient_data` — отсутствует обязательный балл или невозможно посчитать доступную метрику.
+
+Ошибки `NOT_FOUND` означают неизвестную программу или offering. Отсутствие admission facts не маскируется нулевыми значениями: API возвращает успешный результат с `dataQuality`/`dataGaps`, а UI показывает, каких фактов не хватает.
 
 ## Admissions
 

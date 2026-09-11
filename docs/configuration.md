@@ -1,4 +1,4 @@
-[← Admissions](admissions.md) · [Back to README](../README.md) · [PostgreSQL →](postgresql.md)
+[← Admission Fit](admission-fit.md) · [Back to README](../README.md) · [PostgreSQL →](postgresql.md)
 
 # Конфигурация
 

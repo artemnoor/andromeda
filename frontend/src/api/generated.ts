@@ -69,6 +69,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/programs/{id}/admission-fit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate Program Admission Fit */
+        post: operations["calculate_program_admission_fit_programs__id__admission_fit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/discipline-areas": {
         parameters: {
             query?: never;
@@ -220,6 +237,95 @@ export interface components {
          * @enum {string}
          */
         AdaptiveStatus: "ready" | "skipped";
+        /** AdmissionFitBreakdownResponse */
+        AdmissionFitBreakdownResponse: {
+            minimumReadiness: components["schemas"]["AdmissionFitMetricResponse"];
+            passingReadiness: components["schemas"]["AdmissionFitMetricResponse"];
+            dataCompleteness: components["schemas"]["AdmissionFitMetricResponse"];
+        };
+        /**
+         * AdmissionFitDataQuality
+         * @enum {string}
+         */
+        AdmissionFitDataQuality: "complete" | "partial" | "unavailable";
+        /** AdmissionFitMetricResponse */
+        AdmissionFitMetricResponse: {
+            /** Value */
+            value?: string | null;
+            status: components["schemas"]["AdmissionFitMetricStatus"];
+        };
+        /**
+         * AdmissionFitMetricStatus
+         * @enum {string}
+         */
+        AdmissionFitMetricStatus: "available" | "partial" | "not_available";
+        /**
+         * AdmissionFitReasonKind
+         * @enum {string}
+         */
+        AdmissionFitReasonKind: "fit" | "anti_fit" | "data_gap";
+        /** AdmissionFitReasonResponse */
+        AdmissionFitReasonResponse: {
+            kind: components["schemas"]["AdmissionFitReasonKind"];
+            /** Message */
+            message: string;
+            /** Subject */
+            subject?: string | null;
+            /** Applicantscore */
+            applicantScore?: string | null;
+            /** Applicanttotalscore */
+            applicantTotalScore?: string | null;
+            /** Referencescore */
+            referenceScore?: string | null;
+            /** Sourcename */
+            sourceName?: string | null;
+            /**
+             * Provenance
+             * @default []
+             */
+            provenance: components["schemas"]["AdmissionProvenanceResponse"][];
+        };
+        /** AdmissionFitRequestBody */
+        AdmissionFitRequestBody: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Offeringid */
+            offeringId: string;
+            applicant: components["schemas"]["ApplicantAdmissionProfileRequest"];
+        };
+        /** AdmissionFitResponse */
+        AdmissionFitResponse: {
+            /** Programid */
+            programId: string;
+            /** Offeringid */
+            offeringId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            studyForm?: components["schemas"]["StudyForm"] | null;
+            fundingType?: components["schemas"]["FundingType"] | null;
+            status: components["schemas"]["AdmissionFitStatus"];
+            /** Score */
+            score: number;
+            /** Applicanttotalscore */
+            applicantTotalScore?: string | null;
+            dataQuality: components["schemas"]["AdmissionFitDataQuality"];
+            breakdown: components["schemas"]["AdmissionFitBreakdownResponse"];
+            /** Reasons */
+            reasons: components["schemas"]["AdmissionFitReasonResponse"][];
+            /** Antireasons */
+            antiReasons: components["schemas"]["AdmissionFitReasonResponse"][];
+            /** Datagaps */
+            dataGaps: components["schemas"]["AdmissionFitReasonResponse"][];
+        };
+        /**
+         * AdmissionFitStatus
+         * @enum {string}
+         */
+        AdmissionFitStatus: "realistic" | "borderline" | "unlikely" | "insufficient_data";
         /** AdmissionOfferingResponse */
         AdmissionOfferingResponse: {
             /** Id */
@@ -279,6 +385,24 @@ export interface components {
             area: components["schemas"]["DisciplineAreaCode"];
             /** Intensity */
             intensity: string;
+        };
+        /** ApplicantAdmissionProfileRequest */
+        ApplicantAdmissionProfileRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Scores */
+            scores?: components["schemas"]["ApplicantSubjectScoreRequest"][];
+        };
+        /** ApplicantSubjectScoreRequest */
+        ApplicantSubjectScoreRequest: {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: number | string;
         };
         /**
          * AssessmentType
@@ -1045,6 +1169,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgramAdmissionsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    calculate_program_admission_fit_programs__id__admission_fit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdmissionFitRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdmissionFitResponse"];
                 };
             };
             /** @description Bad Request */
