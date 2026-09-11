@@ -12,9 +12,10 @@ h2 { font-size: clamp(28px, 4vw, 52px); }
 .identity-grid, .compare-head { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .compare-head { grid-template-columns: repeat(2, 1fr); margin: 0 0 28px; }
 .compare-controls { align-items: end; background: #e9eee8; border: 1px solid #d5ddd3; border-radius: 16px; display: grid; gap: 14px; grid-template-columns: 1fr 1fr .8fr .6fr auto; margin: 0 0 34px; padding: 16px; }
-.compare-controls label { display: flex; flex-direction: column; gap: 7px; }
+.compare-controls label { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
 .compare-controls label span { color: #65716a; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .compare-controls select, .compare-controls button { border: 1px solid #cbd5c9; border-radius: 9px; font: inherit; min-height: 42px; padding: 0 10px; }
+.compare-controls select { min-width: 0; width: 100%; }
 .compare-controls button { background: #16745a; border-color: #16745a; color: #fff; cursor: pointer; font-weight: 700; padding: 0 18px; }
 .summary-grid, .block-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); margin: 0 0 28px; }
 .block-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
