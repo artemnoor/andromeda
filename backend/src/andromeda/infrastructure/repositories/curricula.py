@@ -25,7 +25,13 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
         items = self._session.execute(
             select(CurriculumItemModel)
             .where(CurriculumItemModel.curriculum_id == model.id)
-            .order_by(CurriculumItemModel.semester.is_(None), CurriculumItemModel.semester, CurriculumItemModel.source_position, CurriculumItemModel.source_name)
+            .order_by(
+                CurriculumItemModel.semester.is_(None),
+                CurriculumItemModel.semester,
+                CurriculumItemModel.source_position.is_(None),
+                CurriculumItemModel.source_position,
+                CurriculumItemModel.source_name,
+            )
         ).scalars().all()
         return Curriculum.model_validate(
             {

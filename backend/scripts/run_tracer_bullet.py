@@ -18,6 +18,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 
 from andromeda.ingestion.universities.bmstu import DEFAULT_FIXTURE_DIR, BmstuUniversityAdapter
+from andromeda.infrastructure.config import Settings, redact_database_url
 from andromeda.infrastructure.database import create_engine_for_url
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 
@@ -72,7 +73,7 @@ def run_ingest(
         database_path = Path(database_url.removeprefix("sqlite:///"))
         database_path.parent.mkdir(parents=True, exist_ok=True)
 
-    logger.info("ingest_start mode=%s programs=%s database=%s", mode, ",".join(program_codes), database_url)
+    logger.info("ingest_start mode=%s programs=%s database_target=%s", mode, ",".join(program_codes), redact_database_url(database_url))
     engine = create_engine_for_url(database_url)
     try:
         migration_config = Config(str(BACKEND_ROOT / "alembic.ini"))
@@ -118,7 +119,7 @@ def result_payload(result: TracerRunResult, database_url: str) -> dict[str, obje
         "curriculumItemCount": result.curriculum_item_count,
         "sourceCount": result.source_count,
         "sourceHashes": list(result.source_hashes),
-        "databaseUrl": database_url,
+        "databaseTarget": redact_database_url(database_url),
         "api": {
             "docs": "/docs",
             "openapi": "/openapi.json",
@@ -134,7 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Ingest official BMSTU data through the tracer bullet contracts")
     parser.add_argument("--mode", choices=("fixture", "live"), default="fixture")
     parser.add_argument("--fixture-dir", type=Path, default=DEFAULT_FIXTURE_DIR)
-    parser.add_argument("--database-url", default="sqlite:///./data/tracer.db")
+    parser.add_argument("--database-url", default=None)
     parser.add_argument("--program-code", action="append", dest="program_codes")
     parser.add_argument("--program-id", action="append", dest="program_ids")
     parser.add_argument("--log-level", choices=("DEBUG", "INFO", "WARNING", "ERROR"), default="INFO")
@@ -147,14 +148,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         program_codes = selected_program_codes(args.program_codes, args.program_ids)
     except ValueError as exc:
-        parser.error(str(exc))
+        raise SystemExit(f"argument error: {exc}") from exc
+    database_url = Settings.from_environment(args.database_url).database_url
     result = run_ingest(
         mode=args.mode,
         fixture_dir=args.fixture_dir,
-        database_url=args.database_url,
+        database_url=database_url,
         program_codes=program_codes,
     )
-    print(json.dumps(result_payload(result, args.database_url), ensure_ascii=False, indent=2))
+    print(json.dumps(result_payload(result, database_url), ensure_ascii=False, indent=2))
     return 0
 
 

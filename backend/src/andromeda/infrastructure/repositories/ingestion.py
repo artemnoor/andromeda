@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
@@ -14,7 +15,6 @@ from andromeda.modules.disciplines.contracts.public import DisciplineAreaWeight,
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
 
-from ..database.base import Base
 from ..database.models import (
     AssessmentTypeModel,
     CurriculumItemAssessmentModel,
@@ -37,6 +37,22 @@ from ..database.session import session_factory
 logger = logging.getLogger("andromeda.infrastructure.repositories.ingestion")
 
 
+@dataclass(slots=True)
+class _SyncStats:
+    inserted: int = 0
+    updated: int = 0
+    unchanged: int = 0
+    removed: int = 0
+
+    def record(self, outcome: str) -> None:
+        if outcome == "inserted":
+            self.inserted += 1
+        elif outcome == "updated":
+            self.updated += 1
+        else:
+            self.unchanged += 1
+
+
 class SqlAlchemyIngestionRepository:
     """Atomic write adapter from canonical DTOs to infrastructure models."""
 
@@ -57,7 +73,7 @@ class SqlAlchemyIngestionRepository:
                         self._insert_snapshot(session, run_id, snapshot)
                     session.flush()
                     self._insert_raw_records(session, raw)
-                    self._insert_domain(session, canonical)
+                    stats = self._insert_domain(session, canonical)
                     run = session.get(IngestRunModel, run_id)
                     if run is None:
                         raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest run disappeared before commit")
@@ -67,10 +83,14 @@ class SqlAlchemyIngestionRepository:
                 logger.exception("ingest_transaction_rollback run_id=%s", run_id)
                 raise
         logger.info(
-            "ingest_transaction_commit run_id=%s programs=%d curriculum_items=%d",
+            "ingest_transaction_commit run_id=%s programs=%d curriculum_items=%d inserted=%d updated=%d unchanged=%d removed=%d",
             run_id,
             len(canonical.programs),
             sum(len(curriculum.items) for curriculum in canonical.curricula),
+            stats.inserted,
+            stats.updated,
+            stats.unchanged,
+            stats.removed,
         )
         return run_id
 
@@ -139,139 +159,224 @@ class SqlAlchemyIngestionRepository:
                 session.add(RawSourceRecordModel(id=record_id, snapshot_sha256=snapshot_hash, record_type=record_type, payload_json=payload))
 
     @classmethod
-    def _insert_domain(cls, session: Session, canonical: CanonicalSnapshot) -> None:
-        cls._insert_or_validate(
-            session,
-            UniversityModel,
-            canonical.university.id,
-            {
-                "id": canonical.university.id,
-                "name": canonical.university.name,
-                "city": canonical.university.city,
-                "official_site": str(canonical.university.official_site),
-                "address": canonical.university.address,
-            },
+    def _insert_domain(cls, session: Session, canonical: CanonicalSnapshot) -> _SyncStats:
+        stats = _SyncStats()
+        stats.record(
+            cls._upsert(
+                session,
+                UniversityModel,
+                canonical.university.id,
+                {
+                    "id": canonical.university.id,
+                    "name": canonical.university.name,
+                    "city": canonical.university.city,
+                    "official_site": str(canonical.university.official_site),
+                    "address": canonical.university.address,
+                },
+                immutable_fields=(),
+            )
         )
         session.flush()
-        cls._insert_or_validate(
-            session,
-            DirectionModel,
-            canonical.direction.id,
-            {
-                "id": canonical.direction.id,
-                "university_id": canonical.direction.university_id,
-                "code": canonical.direction.code,
-                "name": canonical.direction.name,
-                "education_level": canonical.direction.education_level.value,
-            },
+        stats.record(
+            cls._upsert(
+                session,
+                DirectionModel,
+                canonical.direction.id,
+                {
+                    "id": canonical.direction.id,
+                    "university_id": canonical.direction.university_id,
+                    "code": canonical.direction.code,
+                    "name": canonical.direction.name,
+                    "education_level": canonical.direction.education_level.value,
+                },
+                immutable_fields=("university_id", "code"),
+            )
         )
         session.flush()
         for program in canonical.programs:
-            cls._insert_or_validate(
-                session,
-                ProgramModel,
-                program.id,
-                {
-                    "id": program.id,
-                    "direction_id": program.direction_id,
-                    "code": program.code,
-                    "name": program.name,
-                    "education_year": program.education_year,
-                    "study_plan_url": str(program.study_plan_url),
-                    "source_url": str(program.source_url),
-                },
+            stats.record(
+                cls._upsert(
+                    session,
+                    ProgramModel,
+                    program.id,
+                    {
+                        "id": program.id,
+                        "direction_id": program.direction_id,
+                        "code": program.code,
+                        "name": program.name,
+                        "education_year": program.education_year,
+                        "study_plan_url": str(program.study_plan_url),
+                        "source_url": str(program.source_url),
+                    },
+                    immutable_fields=("direction_id", "code"),
+                )
             )
         session.flush()
         disciplines_by_id = {discipline.id: discipline for discipline in canonical.disciplines}
         for discipline in canonical.disciplines:
-            cls._insert_or_validate(
-                session,
-                DisciplineModel,
-                discipline.id,
-                {"id": discipline.id, "name": discipline.name, "normalized_name": discipline.normalized_name},
+            stats.record(
+                cls._upsert(
+                    session,
+                    DisciplineModel,
+                    discipline.id,
+                    {"id": discipline.id, "name": discipline.name, "normalized_name": discipline.normalized_name},
+                    immutable_fields=("normalized_name",),
+                )
             )
         session.flush()
         for discipline in canonical.disciplines:
-            cls._insert_discipline_area_weights(session, discipline.id, discipline.area_weights)
+            cls._sync_discipline_area_weights(session, discipline.id, discipline.area_weights, stats)
         session.flush()
+        expected_item_ids: dict[str, set[str]] = {}
+        pending_assessments: dict[str, set[str]] = {}
         for curriculum in canonical.curricula:
-            cls._insert_or_validate(
-                session,
-                CurriculumModel,
-                curriculum.id,
-                {
-                    "id": curriculum.id,
-                    "program_id": curriculum.program_id,
-                    "education_year": curriculum.education_year,
-                    "source_url": str(curriculum.source_url),
-                    "captured_at": curriculum.captured_at,
-                },
+            stats.record(
+                cls._upsert(
+                    session,
+                    CurriculumModel,
+                    curriculum.id,
+                    {
+                        "id": curriculum.id,
+                        "program_id": curriculum.program_id,
+                        "education_year": curriculum.education_year,
+                        "source_url": str(curriculum.source_url),
+                        "captured_at": curriculum.captured_at,
+                    },
+                    immutable_fields=("program_id", "education_year"),
+                )
             )
+            expected_item_ids[curriculum.id] = set()
+        # Models intentionally have no ORM relationships. Flush all parent
+        # curricula before inserting child items so SQLite and PostgreSQL see
+        # the same FK ordering.
         session.flush()
-        pending_assessments: list[dict[str, str]] = []
         for curriculum in canonical.curricula:
             for item in curriculum.items:
                 if item.discipline_id not in disciplines_by_id:
                     raise ContractError(ErrorCode.CONTRACT_ERROR, "Curriculum item discipline is missing")
-                cls._insert_or_validate(
-                    session,
-                    CurriculumItemModel,
-                    item.id,
-                    {
-                        "id": item.id,
-                        "curriculum_id": curriculum.id,
-                        "discipline_id": item.discipline_id,
-                        "source_name": item.source_name,
-                        "semester": item.semester,
-                        "semester_identity": _semester_identity(item.semester),
-                        "hours": item.hours,
-                        "credits": item.credits,
-                        "subject_group": item.subject_group,
-                        "source_position": item.source_position,
-                    },
+                expected_item_ids[curriculum.id].add(item.id)
+                stats.record(
+                    cls._upsert(
+                        session,
+                        CurriculumItemModel,
+                        item.id,
+                        {
+                            "id": item.id,
+                            "curriculum_id": curriculum.id,
+                            "discipline_id": item.discipline_id,
+                            "source_name": item.source_name,
+                            "semester": item.semester,
+                            "semester_identity": _semester_identity(item.semester),
+                            "hours": item.hours,
+                            "credits": item.credits,
+                            "subject_group": item.subject_group,
+                            "source_position": item.source_position,
+                        },
+                        immutable_fields=("curriculum_id", "discipline_id", "semester", "semester_identity"),
+                    )
                 )
-                pending_assessments.extend(
-                    {"curriculum_item_id": item.id, "assessment_type_id": assessment.value}
-                    for assessment in item.assessment_types or ()
-                )
+                pending_assessments[item.id] = {assessment.value for assessment in item.assessment_types or ()}
         session.flush()
-        for association_id in pending_assessments:
-            exists = session.execute(select(CurriculumItemAssessmentModel).filter_by(**association_id)).scalar_one_or_none()
-            if exists is None:
-                session.add(CurriculumItemAssessmentModel(**association_id))
+        cls._remove_stale_items(session, expected_item_ids, stats)
+        session.flush()
+        cls._sync_assessments(session, pending_assessments, stats)
+        return stats
 
     @staticmethod
-    def _insert_or_validate(session: Session, model: type[Any], identity: str, values: dict[str, object]) -> None:
+    def _upsert(
+        session: Session,
+        model: type[Any],
+        identity: str,
+        values: dict[str, object],
+        *,
+        immutable_fields: tuple[str, ...],
+    ) -> str:
         existing = session.get(model, identity)
         if existing is None:
             session.add(model(**values))
-            return
+            logger.debug("ingest_projection_insert model=%s identity=%s", model.__name__, identity)
+            return "inserted"
+        immutable = set(immutable_fields)
+        changed: list[str] = []
         for field, expected in values.items():
             if field == "id":
                 continue
             actual = getattr(existing, field)
             if not _values_equal(actual, expected):
-                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for {identity}: {field}")
+                if field in immutable:
+                    logger.error("ingest_identity_conflict model=%s identity=%s field=%s", model.__name__, identity, field)
+                    raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for {identity}: {field}")
+                setattr(existing, field, expected)
+                changed.append(field)
+        if changed:
+            logger.debug("ingest_projection_update model=%s identity=%s fields=%s", model.__name__, identity, ",".join(changed))
+            return "updated"
+        return "unchanged"
 
     @staticmethod
-    def _insert_discipline_area_weights(
+    def _remove_stale_items(session: Session, expected_item_ids: dict[str, set[str]], stats: _SyncStats) -> None:
+        for curriculum_id, expected_ids in expected_item_ids.items():
+            existing_ids = set(
+                session.scalars(
+                    select(CurriculumItemModel.id).where(CurriculumItemModel.curriculum_id == curriculum_id)
+                ).all()
+            )
+            stale_ids = existing_ids - expected_ids
+            if stale_ids:
+                session.execute(delete(CurriculumItemAssessmentModel).where(CurriculumItemAssessmentModel.curriculum_item_id.in_(stale_ids)))
+                session.execute(delete(CurriculumItemModel).where(CurriculumItemModel.id.in_(stale_ids)))
+                stats.removed += len(stale_ids)
+                logger.warning("ingest_projection_remove_stale curriculum_id=%s count=%d", curriculum_id, len(stale_ids))
+
+    @staticmethod
+    def _sync_assessments(session: Session, expected: dict[str, set[str]], stats: _SyncStats) -> None:
+        for item_id, expected_types in expected.items():
+            current_rows = session.execute(
+                select(CurriculumItemAssessmentModel).where(CurriculumItemAssessmentModel.curriculum_item_id == item_id)
+            ).scalars().all()
+            current_types = {row.assessment_type_id for row in current_rows}
+            stale_types = current_types - expected_types
+            if stale_types:
+                session.execute(
+                    delete(CurriculumItemAssessmentModel).where(
+                        CurriculumItemAssessmentModel.curriculum_item_id == item_id,
+                        CurriculumItemAssessmentModel.assessment_type_id.in_(stale_types),
+                    )
+                )
+                stats.removed += len(stale_types)
+            for assessment_type_id in expected_types - current_types:
+                session.add(CurriculumItemAssessmentModel(curriculum_item_id=item_id, assessment_type_id=assessment_type_id))
+                stats.inserted += 1
+
+    @staticmethod
+    def _sync_discipline_area_weights(
         session: Session,
         discipline_id: str,
         area_weights: tuple[DisciplineAreaWeight, ...],
+        stats: _SyncStats,
     ) -> None:
         expected = {weight.area.value: weight.weight for weight in area_weights}
         existing_rows = session.execute(
             select(DisciplineAreaWeightModel).where(DisciplineAreaWeightModel.discipline_id == discipline_id)
         ).scalars().all()
-        existing = {row.area_id: row.weight for row in existing_rows}
-        if set(existing) - set(expected):
-            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for discipline {discipline_id}: area_weights")
+        existing = {row.area_id: row for row in existing_rows}
+        for area_id in set(existing) - set(expected):
+            session.delete(existing[area_id])
+            stats.removed += 1
         for area_id, weight in expected.items():
-            stored = existing.get(area_id)
-            if stored is None:
+            row = existing.get(area_id)
+            if row is None:
                 session.add(DisciplineAreaWeightModel(discipline_id=discipline_id, area_id=area_id, weight=weight))
-            elif not _values_equal(stored, weight):
-                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for discipline {discipline_id}: area_weights")
+                stats.inserted += 1
+            elif not _values_equal(row.weight, weight):
+                row.weight = weight
+                stats.updated += 1
+        logger.debug("ingest_taxonomy_sync discipline_id=%s expected_areas=%d", discipline_id, len(expected))
+
+    @staticmethod
+    def _insert_or_validate(session: Session, model: type[Any], identity: str, values: dict[str, object]) -> None:
+        """Compatibility shim for older callers; new writes use _upsert."""
+        SqlAlchemyIngestionRepository._upsert(session, model, identity, values, immutable_fields=tuple(values))
 
 
 def _semester_identity(semester: int | None) -> str:

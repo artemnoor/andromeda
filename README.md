@@ -13,6 +13,8 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 
 После запуска API доступен на `http://127.0.0.1:8000/docs`, UI — на `http://127.0.0.1:5173/`. Для ручной работы уберите `--check`.
 
+Для обычной dev-работы используйте PostgreSQL: инструкции находятся в [руководстве PostgreSQL](docs/postgresql.md). SQLite остаётся быстрым test fallback.
+
 ## Что уже работает
 
 - BMSTU fixture/live ingestion с provenance и fail-closed source selection.
@@ -51,6 +53,7 @@ GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&s
 | [Архитектура](docs/architecture.md) | Модули и поток данных |
 | [API](docs/api.md) | OpenAPI endpoints и контракты |
 | [Конфигурация](docs/configuration.md) | Переменные окружения |
+| [PostgreSQL](docs/postgresql.md) | Dev/staging, migrations и ingestion |
 | [Тестирование](docs/testing.md) | Локальные и CI-проверки |
 
 ## Лицензия

@@ -11,7 +11,7 @@ BMSTU source
   → ingestion/universities/bmstu
   → raw DTO → normalization → canonical contracts
   → universities / programs / curricula / disciplines
-  → infrastructure repositories → SQLite
+  → infrastructure repositories → PostgreSQL (development/staging) or SQLite (tests)
   → FastAPI/OpenAPI → TypeScript frontend
 ```
 
@@ -48,6 +48,12 @@ backend/src/andromeda/
 
 BMSTU URL, selectors, PDF parser, mappings и browser fallback находятся в BMSTU adapter. Добавление нового вуза должно создавать новый adapter без зависимости comparison от структуры сайта.
 
+## Storage boundary
+
+`BMSTU_DATABASE_URL` — единый target для FastAPI, Alembic и ingestion runner. `SqlAlchemy*Repository` и `SqlAlchemyIngestionRepository` — infrastructure adapters; модули видят только public contracts и repository ports. Поэтому PostgreSQL не меняет comparison/proftest/recommendations и не требует переписывать их scoring или fingerprint logic.
+
+`ANDROMEDA_ENV=development` и `ANDROMEDA_ENV=staging` fail fast с non-PostgreSQL URL. `ANDROMEDA_ENV=test` сохраняет SQLite для быстрых тестов. Raw source snapshots остаются immutable provenance, а canonical domain projection обновляется атомарной ingestion sync-транзакцией.
+
 ## Identity дисциплин
 
 Исходное `source_name` сохраняется на каждой позиции. Canonical normalization ограничивается Unicode, casefold и пробелами. Fuzzy-сопоставление и автоматическое объединение неоднозначных названий не используются.
@@ -64,4 +70,5 @@ BMSTU URL, selectors, PDF parser, mappings и browser fallback находятс�
 
 - [API](api.md) — HTTP-контракты для frontend.
 - [Конфигурация](configuration.md) — database и logging settings.
+- [PostgreSQL](postgresql.md) — запуск storage targets и migrations.
 - [Тестирование](testing.md) — архитектурные и интеграционные gates.

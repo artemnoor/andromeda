@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Awaitable, Callable
 from uuid import uuid4
 
@@ -13,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.responses import Response
 
 from ..contracts.errors import ContractError, ErrorResponse
+from andromeda.infrastructure.config import Settings
 from ..db.base import create_engine_for_url
 from .error_handlers import contract_error_handler, database_error_handler, pydantic_validation_handler, request_validation_handler, response_validation_handler
 from .routes.programs import router as programs_router
@@ -22,7 +22,8 @@ logger = logging.getLogger("api.request")
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
-    url = database_url or os.environ.get("BMSTU_DATABASE_URL", "sqlite:///./data/tracer.db")
+    settings = Settings.from_environment(database_url)
+    url = settings.database_url
     app = FastAPI(
         title="BMSTU Contract-First Tracer Bullet API",
         version="0.1.0",
@@ -30,7 +31,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         responses={422: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
     )
     app.state.engine = create_engine_for_url(url)
-    origins = tuple(filter(None, os.environ.get("VITE_FRONTEND_ORIGIN", "http://localhost:5173").split(",")))
+    origins = tuple(filter(None, settings.frontend_origin.split(",")))
     app.add_middleware(CORSMiddleware, allow_origins=list(origins), allow_methods=["GET"], allow_headers=["*"])
 
     @app.middleware("http")

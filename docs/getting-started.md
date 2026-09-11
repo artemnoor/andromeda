@@ -41,6 +41,21 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 python backend/scripts/run_tracer_demo.py --mode live
 ```
 
+## PostgreSQL dev
+
+Для обычного запуска поднимите отдельный development target:
+
+```powershell
+Copy-Item .env.development.example .env.development
+docker compose --env-file .env.development -f ops/postgres/docker-compose.yml --profile development up -d postgres-dev
+$env:ANDROMEDA_ENV = "development"
+$env:BMSTU_DATABASE_URL = "postgresql+psycopg://andromeda:change-me@127.0.0.1:5432/andromeda_dev"
+python -m alembic upgrade head
+python backend/scripts/run_tracer_bullet.py --mode fixture --database-url $env:BMSTU_DATABASE_URL
+```
+
+После ingestion запустите API и frontend отдельными процессами либо через demo runner с тем же `--database-url`. Для staging используйте `.env.staging.example`, профиль `staging`, порт `5433` и базу `andromeda_staging`. Подробности, refresh и troubleshooting — в [руководстве PostgreSQL](postgresql.md).
+
 ## See Also
 
 - [Архитектура](architecture.md) — границы модулей и ingestion.

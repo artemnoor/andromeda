@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 from subprocess import Popen
-from typing import Sequence
+from typing import Sequence, cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -24,6 +24,7 @@ sys.path.insert(0, str(BACKEND_ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from bmstu_parser.tracer import DEFAULT_FIXTURE_DIR  # noqa: E402
+from andromeda.infrastructure.config import Settings  # noqa: E402
 from run_tracer_bullet import (  # noqa: E402
     TracerRunResult,
     configure_logging,
@@ -39,6 +40,11 @@ class DemoError(RuntimeError):
 
 
 def default_database_url() -> str:
+    environment_url = os.environ.get("BMSTU_DATABASE_URL")
+    if environment_url is not None:
+        return environment_url
+    if os.environ.get("ANDROMEDA_ENV", "test").strip().lower() in {"development", "staging"}:
+        return Settings.from_environment().database_url
     return "sqlite:///backend/data/tracer-demo.db"
 
 
@@ -75,7 +81,7 @@ def _http_get(url: str) -> bytes:
     with urlopen(request, timeout=5.0) as response:
         if response.status != 200:
             raise DemoError(f"{url} returned HTTP {response.status}")
-        return response.read()
+        return cast(bytes, response.read())
 
 
 def wait_for_http(url: str, process: Popen[bytes], timeout: float, label: str) -> None:
@@ -124,12 +130,9 @@ def verify_compare(api_base_url: str, program_codes: Sequence[str]) -> None:
 
 def _start_process(command: list[str], cwd: Path, env: dict[str, str], label: str) -> Popen[bytes]:
     logger.info("stage_start name=%s command=%s", label, " ".join(command))
-    process_options: dict[str, object] = {}
     if os.name == "nt":
-        process_options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
-    else:
-        process_options["start_new_session"] = True
-    return subprocess.Popen(command, cwd=cwd, env=env, **process_options)
+        return subprocess.Popen(command, cwd=cwd, env=env, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    return subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True)
 
 
 def _stop_process(process: Popen[bytes], label: str) -> None:
@@ -144,7 +147,7 @@ def _stop_process(process: Popen[bytes], label: str) -> None:
             stderr=subprocess.DEVNULL,
         )
     else:
-        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)  # type: ignore[attr-defined]
     try:
         process.wait(timeout=10)
     except subprocess.TimeoutExpired:
@@ -157,7 +160,7 @@ def _stop_process(process: Popen[bytes], label: str) -> None:
                 stderr=subprocess.DEVNULL,
             )
         else:
-            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)  # type: ignore[attr-defined]
         process.wait(timeout=10)
 
 

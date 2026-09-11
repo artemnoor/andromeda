@@ -25,14 +25,14 @@ logger = logging.getLogger("andromeda.api.request")
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
-    settings = Settings.from_environment()
+    settings = Settings.from_environment(database_url)
     app = FastAPI(
         title="Andromeda Educational Program Comparison API",
         version="1.0.0",
         description="Strict source-backed contracts for comparing BMSTU educational programmes.",
         responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
     )
-    app.state.engine = create_engine_for_url(database_url or settings.database_url)
+    app.state.engine = create_engine_for_url(settings.database_url, **settings.engine_options)
     origins = tuple(filter(None, settings.frontend_origin.split(",")))
     app.add_middleware(CORSMiddleware, allow_origins=list(origins), allow_methods=["GET", "POST"], allow_headers=["*"])
 
