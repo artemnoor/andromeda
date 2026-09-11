@@ -15,6 +15,7 @@ from andromeda.api.routes.compare import router as compare_router
 from andromeda.api.routes.disciplines import router as disciplines_router
 from andromeda.api.routes.programs import router as programs_router
 from andromeda.api.routes.proftest import router as proftest_router
+from andromeda.api.routes.recommendations import router as recommendations_router
 from andromeda.shared.contracts.errors import AndromedaError, ErrorCode, ErrorResponse, details_from_validation
 from andromeda.infrastructure.config.settings import Settings
 from andromeda.infrastructure.database.base import create_engine_for_url
@@ -79,6 +80,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(disciplines_router)
     app.include_router(compare_router)
     app.include_router(proftest_router)
+    app.include_router(recommendations_router)
     return app
 
 

@@ -54,6 +54,35 @@ npm run generate-api
 npm run check-api-drift
 ```
 
+## Recommendations
+
+| Метод | Endpoint | Назначение |
+|---|---|---|
+| POST | `/recommendations` | Ранжирует реальные программы для готового `UserProfile` |
+
+Request содержит `profile` и `limit` (`1..20`). Профиль — тот же strict public contract, который возвращает proftest. Ответ `RecommendationsResponse` содержит профиль и TOP программ с integer `contentFit`, breakdown (`subjectFit`, `activityFit`, `distinctiveFit`, `antiPenalty`), долями областей и блоков, распределением по семестрам, отличительными дисциплинами и evidence-backed `reasons`/`antiFitReasons`.
+
+Пример минимального запроса:
+
+```json
+{
+  "profile": {
+    "version": 1,
+    "interests": ["computer_science_data"],
+    "activityPreferences": ["software_creation"],
+    "antiInterests": [],
+    "preferredSubjectWeights": {"computer_science_data": "1"},
+    "preferredActivityWeights": {"software_creation": "1"},
+    "negativeWeights": {},
+    "confidence": {"value": "1", "answeredBase": 6, "answeredAdaptive": 0},
+    "adaptiveAnswers": []
+  },
+  "limit": 10
+}
+```
+
+`/recommendations` и `/proftest/results` используют один RecommendationService. Он не импортирует ORM или parser, а получает fingerprints через infrastructure adapter, который делегирует существующий `Program/Curriculum/Discipline` catalog path.
+
 ## See Also
 
 - [Архитектура](architecture.md) — почему API не импортирует ORM.

@@ -9,6 +9,8 @@ type QuestionnaireResponse = paths["/proftest/questions"]["get"]["responses"][20
 type ProftestRequest = NonNullable<paths["/proftest/preview"]["post"]["requestBody"]>["content"]["application/json"];
 type ProftestPreviewResponse = paths["/proftest/preview"]["post"]["responses"][200]["content"]["application/json"];
 type ProftestResultsResponse = paths["/proftest/results"]["post"]["responses"][200]["content"]["application/json"];
+type RecommendationRequest = NonNullable<paths["/recommendations"]["post"]["requestBody"]>["content"]["application/json"];
+type RecommendationsResponse = paths["/recommendations"]["post"]["responses"][200]["content"]["application/json"];
 type ErrorContract = components["schemas"]["ErrorResponse"];
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
@@ -64,4 +66,8 @@ export function getProftestResults(request: ProftestRequest): Promise<ProftestRe
   return requestJson<ProftestResultsResponse>("/proftest/results", { method: "POST", body: JSON.stringify(request) });
 }
 
-export type { CompareResponse, CurriculumResponse, ErrorContract, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse };
+export function getRecommendations(request: RecommendationRequest): Promise<RecommendationsResponse> {
+  return requestJson<RecommendationsResponse>("/recommendations", { method: "POST", body: JSON.stringify(request) });
+}
+
+export type { CompareResponse, CurriculumResponse, ErrorContract, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse };

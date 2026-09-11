@@ -38,6 +38,10 @@ def test_andromeda_package_has_subject_module_boundaries() -> None:
         "modules/proftest/contracts",
         "modules/proftest/services",
         "modules/proftest/repository",
+        "modules/recommendations/domain",
+        "modules/recommendations/contracts",
+        "modules/recommendations/services",
+        "modules/recommendations/repository",
     }
     actual = {path.relative_to(ANDROMEDA_ROOT).as_posix() for path in ANDROMEDA_ROOT.glob("modules/*/*") if path.is_dir()}
     assert expected <= actual

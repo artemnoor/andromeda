@@ -137,6 +137,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recommend */
+        post: operations["recommend_recommendations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -187,7 +204,13 @@ export interface components {
          */
         AdaptiveStatus: "ready" | "skipped";
         /** AntiInterestResponse */
-        AntiInterestResponse: {
+        "AntiInterestResponse-Input": {
+            area: components["schemas"]["DisciplineAreaCode"];
+            /** Intensity */
+            intensity: number | string;
+        };
+        /** AntiInterestResponse */
+        "AntiInterestResponse-Output": {
             area: components["schemas"]["DisciplineAreaCode"];
             /** Intensity */
             intensity: string;
@@ -265,7 +288,16 @@ export interface components {
             credits: string;
         };
         /** ConfidenceResponse */
-        ConfidenceResponse: {
+        "ConfidenceResponse-Input": {
+            /** Value */
+            value: number | string;
+            /** Answeredbase */
+            answeredBase: number;
+            /** Answeredadaptive */
+            answeredAdaptive: number;
+        };
+        /** ConfidenceResponse */
+        "ConfidenceResponse-Output": {
             /** Value */
             value: string;
             /** Answeredbase */
@@ -434,7 +466,7 @@ export interface components {
         };
         /** ProftestPreviewResponse */
         ProftestPreviewResponse: {
-            profile: components["schemas"]["UserProfileResponse"];
+            profile: components["schemas"]["UserProfileResponse-Output"];
             adaptive: components["schemas"]["AdaptiveSelectionResponse"];
             question?: components["schemas"]["QuestionResponse"] | null;
             /** Candidates */
@@ -442,7 +474,7 @@ export interface components {
         };
         /** ProftestResultsResponse */
         ProftestResultsResponse: {
-            profile: components["schemas"]["UserProfileResponse"];
+            profile: components["schemas"]["UserProfileResponse-Output"];
             /** Recommendations */
             recommendations: components["schemas"]["RecommendationResponse"][];
         };
@@ -544,6 +576,15 @@ export interface components {
             /** Sourcenames */
             sourceNames: string[];
         };
+        /** RecommendationRequest */
+        RecommendationRequest: {
+            profile: components["schemas"]["UserProfileResponse-Input"];
+            /**
+             * Limit
+             * @default 10
+             */
+            limit: number;
+        };
         /** RecommendationResponse */
         RecommendationResponse: {
             /** Programid */
@@ -577,6 +618,12 @@ export interface components {
             careerFit: components["schemas"]["OptionalMetricResponse"];
             admissionFit: components["schemas"]["OptionalMetricResponse"];
         };
+        /** RecommendationsResponse */
+        RecommendationsResponse: {
+            profile: components["schemas"]["UserProfileResponse-Output"];
+            /** Recommendations */
+            recommendations: components["schemas"]["RecommendationResponse"][];
+        };
         /** ScoreBreakdownResponse */
         ScoreBreakdownResponse: {
             /** Subjectfit */
@@ -591,7 +638,7 @@ export interface components {
             rawContentFit: string;
         };
         /** UserProfileResponse */
-        UserProfileResponse: {
+        "UserProfileResponse-Input": {
             /**
              * Version
              * @constant
@@ -602,7 +649,36 @@ export interface components {
             /** Activitypreferences */
             activityPreferences: components["schemas"]["ActivityCode"][];
             /** Antiinterests */
-            antiInterests: components["schemas"]["AntiInterestResponse"][];
+            antiInterests: components["schemas"]["AntiInterestResponse-Input"][];
+            /** Preferredsubjectweights */
+            preferredSubjectWeights: {
+                [key: string]: number | string;
+            };
+            /** Preferredactivityweights */
+            preferredActivityWeights: {
+                [key: string]: number | string;
+            };
+            /** Negativeweights */
+            negativeWeights: {
+                [key: string]: number | string;
+            };
+            confidence: components["schemas"]["ConfidenceResponse-Input"];
+            /** Adaptiveanswers */
+            adaptiveAnswers: components["schemas"]["AdaptiveAnswerResponse"][];
+        };
+        /** UserProfileResponse */
+        "UserProfileResponse-Output": {
+            /**
+             * Version
+             * @constant
+             */
+            version: 1;
+            /** Interests */
+            interests: components["schemas"]["DisciplineAreaCode"][];
+            /** Activitypreferences */
+            activityPreferences: components["schemas"]["ActivityCode"][];
+            /** Antiinterests */
+            antiInterests: components["schemas"]["AntiInterestResponse-Output"][];
             /** Preferredsubjectweights */
             preferredSubjectWeights: {
                 [key: string]: string;
@@ -615,7 +691,7 @@ export interface components {
             negativeWeights: {
                 [key: string]: string;
             };
-            confidence: components["schemas"]["ConfidenceResponse"];
+            confidence: components["schemas"]["ConfidenceResponse-Output"];
             /** Adaptiveanswers */
             adaptiveAnswers: components["schemas"]["AdaptiveAnswerResponse"][];
         };
@@ -1065,6 +1141,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProftestResultsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recommend_recommendations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecommendationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationsResponse"];
                 };
             };
             /** @description Bad Request */

@@ -10,7 +10,9 @@ from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDiscipli
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepository
 from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
+from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
 from andromeda.infrastructure.repositories.universities import SqlAlchemyUniversityRepository
+from andromeda.modules.proftest.services.catalog import ProftestCatalogService
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +35,9 @@ class AndromedaContainer:
 
     def proftest_catalog_reader(self, session: Session) -> SqlAlchemyProftestCatalogRepository:
         return SqlAlchemyProftestCatalogRepository(self.program_reader(session), self.curriculum_reader(session), self.discipline_reader(session))
+
+    def recommendation_catalog_reader(self, session: Session) -> CatalogRecommendationRepository:
+        return CatalogRecommendationRepository(ProftestCatalogService(self.proftest_catalog_reader(session)))
 
     @property
     def ingestion(self) -> SqlAlchemyIngestionRepository:

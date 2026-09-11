@@ -16,6 +16,11 @@ from .common import ApiModel
 def _decimal_from_json(value: object) -> object:
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return Decimal(str(value))
+    if isinstance(value, str):
+        try:
+            return Decimal(value)
+        except Exception:
+            return value
     return value
 
 
@@ -70,14 +75,14 @@ class QuestionnaireResponse(ApiModel):
 
 
 class ConfidenceResponse(ApiModel):
-    value: Decimal
+    value: JsonDecimal
     answered_base: int
     answered_adaptive: int
 
 
 class AntiInterestResponse(ApiModel):
     area: DisciplineAreaCode
-    intensity: Decimal
+    intensity: JsonDecimal
 
 
 class AdaptiveAnswerResponse(ApiModel):
@@ -88,14 +93,14 @@ class AdaptiveAnswerResponse(ApiModel):
 
 class UserProfileResponse(ApiModel):
     version: Literal[1]
-    interests: tuple[DisciplineAreaCode, ...]
-    activity_preferences: tuple[ActivityCode, ...]
-    anti_interests: tuple[AntiInterestResponse, ...]
-    preferred_subject_weights: dict[DisciplineAreaCode, Decimal]
-    preferred_activity_weights: dict[ActivityCode, Decimal]
-    negative_weights: dict[DisciplineAreaCode, Decimal]
+    interests: list[DisciplineAreaCode]
+    activity_preferences: list[ActivityCode]
+    anti_interests: list[AntiInterestResponse]
+    preferred_subject_weights: dict[DisciplineAreaCode, JsonDecimal]
+    preferred_activity_weights: dict[ActivityCode, JsonDecimal]
+    negative_weights: dict[DisciplineAreaCode, JsonDecimal]
     confidence: ConfidenceResponse
-    adaptive_answers: tuple[AdaptiveAnswerResponse, ...]
+    adaptive_answers: list[AdaptiveAnswerResponse]
 
 
 class AdaptiveDimensionResponse(ApiModel):
@@ -185,7 +190,7 @@ def questionnaire_response(questionnaire: Questionnaire) -> QuestionnaireRespons
 
 def preview_response(preview: ProftestPreview) -> ProftestPreviewResponse:
     return ProftestPreviewResponse(
-        profile=_profile_response(preview.profile),
+        profile=profile_response(preview.profile),
         adaptive=AdaptiveSelectionResponse.model_validate(preview.adaptive.model_dump()),
         question=_question_response(preview.question) if preview.question is not None else None,
         candidates=tuple(PreviewCandidateResponse.model_validate(candidate.model_dump()) for candidate in preview.candidates),
@@ -193,28 +198,28 @@ def preview_response(preview: ProftestPreview) -> ProftestPreviewResponse:
 
 
 def results_response(results: ProftestResults) -> ProftestResultsResponse:
-    return ProftestResultsResponse(profile=_profile_response(results.profile), recommendations=tuple(_recommendation_response(recommendation) for recommendation in results.recommendations))
+    return ProftestResultsResponse(profile=profile_response(results.profile), recommendations=tuple(recommendation_response(recommendation) for recommendation in results.recommendations))
 
 
 def _question_response(question: Question) -> QuestionResponse:
     return QuestionResponse(id=question.id, block=question.block, prompt=question.prompt, options=tuple(QuestionOptionResponse(id=option.id, label=option.label) for option in question.options), required=question.required, adaptive=question.adaptive, multi_select=question.multi_select, max_selected=question.max_selected)
 
 
-def _profile_response(profile: UserProfile) -> UserProfileResponse:
+def profile_response(profile: UserProfile) -> UserProfileResponse:
     return UserProfileResponse(
         version=profile.version,
-        interests=profile.interests,
-        activity_preferences=profile.activity_preferences,
-        anti_interests=tuple(AntiInterestResponse(area=item.area, intensity=item.intensity) for item in profile.anti_interests),
+        interests=list(profile.interests),
+        activity_preferences=list(profile.activity_preferences),
+        anti_interests=[AntiInterestResponse(area=item.area, intensity=item.intensity) for item in profile.anti_interests],
         preferred_subject_weights=profile.preferred_subject_weights,
         preferred_activity_weights=profile.preferred_activity_weights,
         negative_weights=profile.negative_weights,
         confidence=ConfidenceResponse.model_validate(profile.confidence.model_dump()),
-        adaptive_answers=tuple(AdaptiveAnswerResponse.model_validate(answer.model_dump()) for answer in profile.adaptive_answers),
+        adaptive_answers=[AdaptiveAnswerResponse.model_validate(answer.model_dump()) for answer in profile.adaptive_answers],
     )
 
 
-def _recommendation_response(recommendation: Recommendation) -> RecommendationResponse:
+def recommendation_response(recommendation: Recommendation) -> RecommendationResponse:
     return RecommendationResponse(
         program_id=recommendation.program_id,
         program_code=recommendation.program_code,
@@ -237,4 +242,8 @@ def _reason_response(reason: MatchReason) -> ReasonResponse:
     return ReasonResponse(kind=reason.kind, area=reason.area, activity=reason.activity, text=reason.text, workload=reason.workload, share=reason.share, source_names=reason.source_names)
 
 
-__all__ = ["ProftestSubmissionRequest", "ProftestPreviewResponse", "ProftestResultsResponse", "QuestionnaireResponse", "questionnaire_response", "preview_response", "results_response"]
+_profile_response = profile_response
+_recommendation_response = recommendation_response
+
+
+__all__ = ["ProftestSubmissionRequest", "ProftestPreviewResponse", "ProftestResultsResponse", "QuestionnaireResponse", "questionnaire_response", "preview_response", "results_response", "profile_response", "recommendation_response"]

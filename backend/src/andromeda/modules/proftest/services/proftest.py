@@ -9,37 +9,45 @@ from andromeda.shared.contracts.errors import ValidationError
 
 from ..contracts.public import (
     AnswerSet,
-    MatchScore,
     ProgramFingerprint,
     ProftestPreview,
     ProftestResults,
     PreviewCandidate,
     Question,
     Questionnaire,
-    Recommendation,
-    ReasonKind,
     UserProfile,
 )
 from ..domain.adaptive import AdaptiveSelection
 from .adaptive import AdaptiveCandidate, AdaptiveQuestionFactory, AdaptiveQuestionSelector
 from .catalog import ProftestCatalogService
-from .explanations import ExplanationBuilder
 from .profile_builder import UserProfileBuilder
 from .questionnaire import build_questionnaire
-from .ranking import RankingService
+from andromeda.modules.recommendations.repository.ports import RecommendationCatalogReader
+from andromeda.modules.recommendations.contracts.public import RecommendationRequest
+from andromeda.modules.recommendations.services.ranking import RankedFingerprint
+from andromeda.modules.recommendations.services.recommendations import RecommendationService
 
 
 logger = logging.getLogger("andromeda.proftest.application")
 
-RankedFingerprints = tuple[tuple[ProgramFingerprint, MatchScore], ...]
+RankedFingerprints = tuple[RankedFingerprint, ...]
+
+
+class _CatalogFingerprintReader(RecommendationCatalogReader):
+    """Compatibility adapter for direct ProftestService construction."""
+
+    def __init__(self, catalog: ProftestCatalogService) -> None:
+        self._catalog = catalog
+
+    def list_fingerprints(self) -> tuple[ProgramFingerprint, ...]:
+        return self._catalog.list_fingerprints()
 
 
 class ProftestService:
-    def __init__(self, catalog: ProftestCatalogService, profile_builder: UserProfileBuilder | None = None, ranking: RankingService | None = None, explanations: ExplanationBuilder | None = None) -> None:
+    def __init__(self, catalog: ProftestCatalogService, profile_builder: UserProfileBuilder | None = None, recommendations: RecommendationService | None = None) -> None:
         self._catalog = catalog
         self._profile_builder = profile_builder or UserProfileBuilder()
-        self._ranking = ranking or RankingService()
-        self._explanations = explanations or ExplanationBuilder()
+        self._recommendations = recommendations or RecommendationService(_CatalogFingerprintReader(catalog))
         self._adaptive_selector = AdaptiveQuestionSelector()
         self._adaptive_factory = AdaptiveQuestionFactory()
 
@@ -54,7 +62,7 @@ class ProftestService:
         selection = self._select_adaptive(ranked)
         question = self._adaptive_factory.create(selection)
         logger.info("preview_complete fingerprint_count=%d candidate_count=%d adaptive_status=%s", len(fingerprints), len(ranked), selection.status.value)
-        return ProftestPreview(profile=profile, adaptive=selection, question=question, candidates=tuple(PreviewCandidate(program_id=fingerprint.program_id, program_code=fingerprint.program_code, content_fit=score.content_fit) for fingerprint, score in ranked[:10]))
+        return ProftestPreview(profile=profile, adaptive=selection, question=question, candidates=tuple(PreviewCandidate(program_id=item.fingerprint.program_id, program_code=item.fingerprint.program_code, content_fit=item.score.content_fit) for item in ranked[:10]))
 
     def results(self, answer_set: AnswerSet) -> ProftestResults:
         questions = self.questionnaire().questions
@@ -71,19 +79,13 @@ class ProftestService:
             profile = self._build_profile(final_answer_set, questions, (adaptive_question,))
         else:
             profile = base_profile
-        ranked = self._rank_all(profile, fingerprints)
-        recommendations: list[Recommendation] = []
-        for fingerprint, score in ranked[:10]:
-            reasons = self._explanations.build(profile, fingerprint)
-            recommendation = Recommendation.from_fingerprint(fingerprint, score).model_copy(
-                update={
-                    "reasons": tuple(reason for reason in reasons if reason.kind is ReasonKind.FIT),
-                    "anti_fit_reasons": tuple(reason for reason in reasons if reason.kind is ReasonKind.ANTI_FIT),
-                }
-            )
-            recommendations.append(recommendation)
+        recommendation_result = self._recommendations.recommend_from_fingerprints(
+            self._recommendation_request(profile),
+            fingerprints,
+        )
+        recommendations = recommendation_result.recommendations
         logger.info("results_complete fingerprint_count=%d recommendation_count=%d adaptive_answers=%d", len(fingerprints), len(recommendations), len(answer_set.adaptive_answers))
-        return ProftestResults(profile=profile, recommendations=tuple(recommendations))
+        return ProftestResults(profile=profile, recommendations=recommendations)
 
     def _build_profile(
         self,
@@ -97,10 +99,14 @@ class ProftestService:
             raise ValidationError(str(exc)) from exc
 
     def _rank_all(self, profile: UserProfile, fingerprints: tuple[ProgramFingerprint, ...]) -> RankedFingerprints:
-        return self._ranking.rank(profile, fingerprints, limit=max(1, len(fingerprints)))
+        return self._recommendations.rank_fingerprints(profile, fingerprints, limit=max(1, len(fingerprints)))
 
     def _select_adaptive(self, ranked: RankedFingerprints) -> AdaptiveSelection:
-        return self._adaptive_selector.select(tuple(AdaptiveCandidate(fingerprint=fingerprint, score=Decimal(score.content_fit)) for fingerprint, score in ranked))
+        return self._adaptive_selector.select(tuple(AdaptiveCandidate(fingerprint=item.fingerprint, score=Decimal(item.score.content_fit)) for item in ranked))
+
+    @staticmethod
+    def _recommendation_request(profile: UserProfile) -> RecommendationRequest:
+        return RecommendationRequest(profile=profile, limit=10)
 
     @staticmethod
     def _validate_adaptive_answers(answer_set: AnswerSet, question: Question) -> AnswerSet:

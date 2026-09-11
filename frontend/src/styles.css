@@ -98,7 +98,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .result-score > span, .fit-score small { color: #7d8981; font-size: 13px; }
 .result-score button { margin-top: 12px; }
 .results-actions { justify-content: start; }
-.detail-card { background: #eef4ed; border: 1px solid #cadbc9; border-radius: 18px; margin-top: 30px; padding: 24px; scroll-margin-top: 24px; }
+.detail-card { background: #eef4ed; border: 1px solid #cadbc9; border-radius: 18px; margin-top: 30px; overflow: hidden; padding: 24px; scroll-margin-top: 24px; }
 .detail-card h2 { font-size: clamp(28px, 4vw, 46px); }
 .reason-columns { display: grid; gap: 20px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 28px 0; }
 .reason-columns section { background: #fff; border-radius: 13px; padding: 16px; }
@@ -110,4 +110,12 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .area-list li { align-items: center; display: grid; gap: 10px; grid-template-columns: 1fr 45px; margin: 12px 0; }
 .area-list li i { background: #d6e4d6; border-radius: 99px; display: block; grid-column: 1 / -1; height: 6px; overflow: hidden; }
 .area-list li b { background: #16745a; display: block; height: 100%; }
+.detail-grids { display: grid; gap: 20px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 26px; }
+.compact-list { list-style: none; margin: 0; padding: 0; }
+.compact-list li { align-items: baseline; border-bottom: 1px solid #d8e4d6; display: flex; gap: 12px; justify-content: space-between; padding: 10px 0; }
+.compact-list li span { color: #536159; overflow-wrap: anywhere; }
+.subject-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.subject-pill { background: #fff; border: 1px solid #d5e2d4; border-radius: 999px; color: #536159; font-size: 13px; line-height: 1.35; padding: 8px 11px; }
+.reason-line.anti-fit b { color: #bc6c4b; }
+@media (max-width: 720px) { .detail-grids { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .app-nav { align-items: flex-start; flex-direction: column; gap: 18px; margin-bottom: 30px; } .app-nav nav { width: 100%; } .nav-button { flex: 1; } .proftest-hero { padding-top: 0; } .question-options, .reason-columns { grid-template-columns: 1fr; } .result-card { align-items: flex-start; flex-direction: column; } .result-score { align-items: flex-start; flex-direction: row; flex-wrap: wrap; } .result-score button { margin-top: 0; } .detail-card { padding: 18px; } }

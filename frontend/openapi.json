@@ -575,6 +575,77 @@
           }
         }
       }
+    },
+    "/recommendations": {
+      "post": {
+        "tags": [
+          "recommendations"
+        ],
+        "summary": "Recommend",
+        "operationId": "recommend_recommendations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -703,14 +774,47 @@
         ],
         "title": "AdaptiveStatus"
       },
-      "AntiInterestResponse": {
+      "AntiInterestResponse-Input": {
+        "properties": {
+          "area": {
+            "$ref": "#/components/schemas/DisciplineAreaCode"
+          },
+          "intensity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Intensity",
+            "decimal_places": 4,
+            "ge": 0,
+            "le": 1,
+            "max_digits": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "area",
+          "intensity"
+        ],
+        "title": "AntiInterestResponse"
+      },
+      "AntiInterestResponse-Output": {
         "properties": {
           "area": {
             "$ref": "#/components/schemas/DisciplineAreaCode"
           },
           "intensity": {
             "type": "string",
-            "title": "Intensity"
+            "title": "Intensity",
+            "decimal_places": 4,
+            "ge": 0,
+            "le": 1,
+            "max_digits": 5
           }
         },
         "additionalProperties": false,
@@ -955,11 +1059,50 @@
         ],
         "title": "ComparisonTotalsResponse"
       },
-      "ConfidenceResponse": {
+      "ConfidenceResponse-Input": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value",
+            "decimal_places": 4,
+            "ge": 0,
+            "le": 1,
+            "max_digits": 5
+          },
+          "answeredBase": {
+            "type": "integer",
+            "title": "Answeredbase"
+          },
+          "answeredAdaptive": {
+            "type": "integer",
+            "title": "Answeredadaptive"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value",
+          "answeredBase",
+          "answeredAdaptive"
+        ],
+        "title": "ConfidenceResponse"
+      },
+      "ConfidenceResponse-Output": {
         "properties": {
           "value": {
             "type": "string",
-            "title": "Value"
+            "title": "Value",
+            "decimal_places": 4,
+            "ge": 0,
+            "le": 1,
+            "max_digits": 5
           },
           "answeredBase": {
             "type": "integer",
@@ -1509,7 +1652,7 @@
       "ProftestPreviewResponse": {
         "properties": {
           "profile": {
-            "$ref": "#/components/schemas/UserProfileResponse"
+            "$ref": "#/components/schemas/UserProfileResponse-Output"
           },
           "adaptive": {
             "$ref": "#/components/schemas/AdaptiveSelectionResponse"
@@ -1544,7 +1687,7 @@
       "ProftestResultsResponse": {
         "properties": {
           "profile": {
-            "$ref": "#/components/schemas/UserProfileResponse"
+            "$ref": "#/components/schemas/UserProfileResponse-Output"
           },
           "recommendations": {
             "items": {
@@ -1830,6 +1973,26 @@
         ],
         "title": "ReasonResponse"
       },
+      "RecommendationRequest": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/UserProfileResponse-Input"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 10
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile"
+        ],
+        "title": "RecommendationRequest"
+      },
       "RecommendationResponse": {
         "properties": {
           "programId": {
@@ -1926,6 +2089,27 @@
         ],
         "title": "RecommendationResponse"
       },
+      "RecommendationsResponse": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/UserProfileResponse-Output"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationResponse"
+            },
+            "type": "array",
+            "title": "Recommendations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile",
+          "recommendations"
+        ],
+        "title": "RecommendationsResponse"
+      },
       "ScoreBreakdownResponse": {
         "properties": {
           "subjectFit": {
@@ -1960,7 +2144,7 @@
         ],
         "title": "ScoreBreakdownResponse"
       },
-      "UserProfileResponse": {
+      "UserProfileResponse-Input": {
         "properties": {
           "version": {
             "type": "integer",
@@ -1983,14 +2167,25 @@
           },
           "antiInterests": {
             "items": {
-              "$ref": "#/components/schemas/AntiInterestResponse"
+              "$ref": "#/components/schemas/AntiInterestResponse-Input"
             },
             "type": "array",
             "title": "Antiinterests"
           },
           "preferredSubjectWeights": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "decimal_places": 4,
+              "ge": 0,
+              "le": 1,
+              "max_digits": 5
             },
             "propertyNames": {
               "$ref": "#/components/schemas/DisciplineAreaCode"
@@ -2000,7 +2195,18 @@
           },
           "preferredActivityWeights": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "decimal_places": 4,
+              "ge": 0,
+              "le": 1,
+              "max_digits": 5
             },
             "propertyNames": {
               "$ref": "#/components/schemas/ActivityCode"
@@ -2010,7 +2216,18 @@
           },
           "negativeWeights": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "decimal_places": 4,
+              "ge": 0,
+              "le": 1,
+              "max_digits": 5
             },
             "propertyNames": {
               "$ref": "#/components/schemas/DisciplineAreaCode"
@@ -2019,7 +2236,103 @@
             "title": "Negativeweights"
           },
           "confidence": {
-            "$ref": "#/components/schemas/ConfidenceResponse"
+            "$ref": "#/components/schemas/ConfidenceResponse-Input"
+          },
+          "adaptiveAnswers": {
+            "items": {
+              "$ref": "#/components/schemas/AdaptiveAnswerResponse"
+            },
+            "type": "array",
+            "title": "Adaptiveanswers"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "interests",
+          "activityPreferences",
+          "antiInterests",
+          "preferredSubjectWeights",
+          "preferredActivityWeights",
+          "negativeWeights",
+          "confidence",
+          "adaptiveAnswers"
+        ],
+        "title": "UserProfileResponse"
+      },
+      "UserProfileResponse-Output": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version"
+          },
+          "interests": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineAreaCode"
+            },
+            "type": "array",
+            "title": "Interests"
+          },
+          "activityPreferences": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityCode"
+            },
+            "type": "array",
+            "title": "Activitypreferences"
+          },
+          "antiInterests": {
+            "items": {
+              "$ref": "#/components/schemas/AntiInterestResponse-Output"
+            },
+            "type": "array",
+            "title": "Antiinterests"
+          },
+          "preferredSubjectWeights": {
+            "additionalProperties": {
+              "type": "string",
+              "decimal_places": 4,
+              "ge": 0,
+              "le": 1,
+              "max_digits": 5
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/DisciplineAreaCode"
+            },
+            "type": "object",
+            "title": "Preferredsubjectweights"
+          },
+          "preferredActivityWeights": {
+            "additionalProperties": {
+              "type": "string",
+              "decimal_places": 4,
+              "ge": 0,
+              "le": 1,
+              "max_digits": 5
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/ActivityCode"
+            },
+            "type": "object",
+            "title": "Preferredactivityweights"
+          },
+          "negativeWeights": {
+            "additionalProperties": {
+              "type": "string",
+              "decimal_places": 4,
+              "ge": 0,
+              "le": 1,
+              "max_digits": 5
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/DisciplineAreaCode"
+            },
+            "type": "object",
+            "title": "Negativeweights"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/ConfidenceResponse-Output"
           },
           "adaptiveAnswers": {
             "items": {

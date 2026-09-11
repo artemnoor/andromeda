@@ -1,19 +1,6 @@
-import { ApiError } from "../../api/errors";
-import { escapeHtml } from "./rendering";
+import { renderAdaptiveSkipped, renderRecommendationEmpty, renderRecommendationError, renderRecommendationLoading } from "../recommendations/RecommendationStates";
 
-export function renderLoading(root: HTMLElement): void {
-  root.innerHTML = `<section class="state-card" data-testid="proftest-loading" role="status"><p class="eyebrow">Andromeda</p><h2>Собираем профиль из учебных планов…</h2><p>Загружаем только данные API и считаем объяснимое совпадение.</p></section>`;
-}
-
-export function renderEmpty(root: HTMLElement, message: string): void {
-  root.innerHTML = `<section class="state-card" data-testid="proftest-empty"><p class="eyebrow">Нет данных</p><h2>${escapeHtml(message)}</h2><p>Попробуйте изменить ответы или дождитесь расширения каталога программ.</p></section>`;
-}
-
-export function renderError(root: HTMLElement, error: unknown): void {
-  const message = error instanceof ApiError ? `${error.payload.code}: ${error.payload.message}` : "Не удалось получить данные профтеста";
-  root.innerHTML = `<section class="state-card error" data-testid="proftest-error" role="alert"><p class="eyebrow">Ошибка API</p><h2>${escapeHtml(message)}</h2><p>Проверьте, что backend запущен и в базе есть реальные учебные планы.</p></section>`;
-}
-
-export function renderAdaptiveSkipped(root: HTMLElement, reason: string | null): void {
-  root.innerHTML = `<section class="state-card adaptive-skipped" data-testid="adaptive-skipped"><p class="eyebrow">Уточнение не требуется</p><h2>Кандидаты уже достаточно похожи</h2><p>${escapeHtml(reason ?? "Для текущего каталога дополнительный вопрос не даст полезного различия.")}</p><button class="primary-button" data-testid="adaptive-skipped-continue" type="button">Показать программы</button></section>`;
-}
+export const renderLoading = renderRecommendationLoading;
+export const renderEmpty = renderRecommendationEmpty;
+export const renderError = renderRecommendationError;
+export { renderAdaptiveSkipped };

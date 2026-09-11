@@ -2,9 +2,9 @@ import { getProftestQuestions, getProftestResults, previewProftest, type Proftes
 import type { components } from "../../api/generated";
 import { clearDraft, emptyDraft, loadDraft, saveDraft, setAnswer, setIntensity, toRequest, toggleAnswer, type ProftestDraft } from "./state";
 import { renderAdaptiveMarkup } from "./AdaptiveScreen";
-import { renderDetailMarkup } from "./ResultDetail";
+import { renderRecommendationDetail } from "../recommendations/RecommendationDetail";
 import { renderQuestionMarkup } from "./QuestionScreen";
-import { renderResultsMarkup } from "./ResultsScreen";
+import { renderRecommendationList } from "../recommendations/RecommendationList";
 import { renderAdaptiveSkipped, renderError, renderEmpty, renderLoading } from "./ProftestStates";
 
 type Question = components["schemas"]["QuestionResponse"];
@@ -137,7 +137,7 @@ export function renderProftestPage(root: HTMLElement): void {
       return;
     }
     selectedRecommendation = Math.min(selectedRecommendation, results.recommendations.length - 1);
-    root.innerHTML = renderResultsMarkup(results);
+    root.innerHTML = renderRecommendationList(results);
     root.querySelectorAll<HTMLButtonElement>("[data-result-detail]").forEach((button) => button.addEventListener("click", () => {
       selectedRecommendation = Number(button.dataset.resultDetail ?? 0);
       renderDetail(results.recommendations[selectedRecommendation]);
@@ -153,7 +153,7 @@ export function renderProftestPage(root: HTMLElement): void {
     if (!recommendation) return;
     const detail = root.querySelector<HTMLElement>("#proftest-detail");
     if (!detail) return;
-    detail.innerHTML = renderDetailMarkup(recommendation);
+    detail.innerHTML = renderRecommendationDetail(recommendation);
     detail.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 

@@ -16,15 +16,16 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 ## Что уже работает
 
 - BMSTU fixture/live ingestion с provenance и fail-closed source selection.
-- Изолированные модули universities, programs, curricula, disciplines и comparison.
+- Изолированные модули universities, programs, curricula, disciplines, comparison, proftest и recommendations.
 - SQLAlchemy/Alembic с FK, unique/check constraints и Decimal без float-конверсии.
 - FastAPI/OpenAPI и сгенерированные TypeScript-типы.
 - Выбор программ A/B, scope «всё обучение / семестр», блоки и состояния loading/empty/error.
 - Профиль содержания: сценарные вопросы, anti-interest, adaptive refinement и TOP реальных программ с объяснениями по учебному плану.
+- Recommendation vertical slice: готовый `UserProfile` → детерминированный Content Fit → reasons/anti-reasons по реальному fingerprint.
 
 ### Профиль содержания
 
-В UI выберите «Профиль содержания». Flow получает вопросы и результаты только через `GET /proftest/questions`, `POST /proftest/preview` и `POST /proftest/results`. После изменения API обновите frontend-контракт:
+В UI выберите «Профиль содержания». Flow получает вопросы и результаты только через `GET /proftest/questions`, `POST /proftest/preview` и `POST /proftest/results`. Готовый профиль также можно передать в `POST /recommendations`. После изменения API обновите frontend-контракт:
 
 ```powershell
 python backend/scripts/export_openapi.py --out frontend/openapi.json
