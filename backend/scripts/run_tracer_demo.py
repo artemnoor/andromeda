@@ -128,6 +128,22 @@ def verify_compare(api_base_url: str, program_codes: Sequence[str]) -> None:
     logger.info("stage_verified name=compare programs=%s rows=%d", ",".join(program_ids), len(rows))
 
 
+def verify_admissions(api_base_url: str, program_codes: Sequence[str]) -> None:
+    """Verify the admissions projection is reachable through the public API."""
+    for code in program_codes:
+        program_id = f"program:{code}"
+        body = _http_get(f"{api_base_url}/programs/{quote(program_id, safe='')}/admissions")
+        payload = _json_object(body, "admissions endpoint")
+        if payload.get("programId") != program_id:
+            raise DemoError(f"admissions response has an invalid program id for {program_id}")
+        offerings = payload.get("offerings")
+        if not isinstance(offerings, list) or not offerings:
+            raise DemoError(f"admissions response contains no offerings for {program_id}")
+        if not all(isinstance(item, dict) and item.get("provenance") for item in offerings):
+            raise DemoError(f"admissions response has an offering without provenance for {program_id}")
+        logger.info("stage_verified name=admissions program=%s offerings=%d", program_id, len(offerings))
+
+
 def _start_process(command: list[str], cwd: Path, env: dict[str, str], label: str) -> Popen[bytes]:
     logger.info("stage_start name=%s command=%s", label, " ".join(command))
     if os.name == "nt":
@@ -183,6 +199,7 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
     )
     api_base_url = f"http://{args.host}:{args.api_port}"
     frontend_url = f"http://{args.host}:{args.frontend_port}/"
+    child_env["VITE_API_PROXY_TARGET"] = api_base_url
     api_process: Popen[bytes] | None = None
     frontend_process: Popen[bytes] | None = None
     try:
@@ -202,6 +219,7 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
         wait_for_http(f"{api_base_url}/openapi.json", api_process, args.timeout, "api")
         wait_for_http(frontend_url, frontend_process, args.timeout, "frontend")
         verify_compare(api_base_url, program_codes)
+        verify_admissions(api_base_url, program_codes)
         if not args.check:
             logger.info("demo_ready api=%s frontend=%s; press Ctrl-C to stop", api_base_url, frontend_url)
             while True:

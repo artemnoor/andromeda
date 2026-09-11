@@ -34,6 +34,7 @@ backend/src/andromeda/
 ├── modules/{universities,programs,curricula,disciplines,comparison}/
 ├── modules/proftest/{domain,contracts,services,repository}/
 ├── modules/recommendations/{domain,contracts,services,repository}/
+├── modules/admissions/{domain,contracts,services,repository}/
 ├── ingestion/universities/bmstu/
 ├── infrastructure/{database,repositories,config,logging}/
 ├── api/{routes,schemas,dependencies}/
@@ -45,6 +46,8 @@ backend/src/andromeda/
 `proftest` использует те же публичные reader-контракты через собственный typed catalog port; его domain/services не знают об ORM, HTTP schemas или BMSTU parser. `ProgramFingerprint` и `UserProfile` остаются application contracts, а API routes только связывают их с HTTP.
 
 `recommendations` получает только публичные `UserProfile` и `ProgramFingerprint`, а для каталога использует `RecommendationCatalogReader`. Его scoring policy фиксирует Content Fit как сумму subject, activity и distinctive fit с отдельным anti-interest penalty. `Career Fit`, `Admission Fit` и `Workload readiness` typed как `not_available` и не меняют score. Старые proftest matching/ranking/explanation paths остаются compatibility facades.
+
+`admissions` публикует `ProgramAdmissions`, offering и child contracts через `AdmissionReader`. Его service получает программу через `ProgramReader`, а не через ORM. Admission Fit в этот модуль не входит: slice только показывает source-backed факты поступления и сохраняет их provenance. Новые университеты подключают собственный ingestion adapter, не меняя этот application path.
 
 BMSTU URL, selectors, PDF parser, mappings и browser fallback находятся в BMSTU adapter. Добавление нового вуза должно создавать новый adapter без зависимости comparison от структуры сайта.
 

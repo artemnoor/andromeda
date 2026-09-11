@@ -4,6 +4,7 @@ import { ApiError, isErrorResponse } from "./errors";
 type ProgramResponse = paths["/programs/{id}"]["get"]["responses"][200]["content"]["application/json"];
 type ProgramListResponse = paths["/programs"]["get"]["responses"][200]["content"]["application/json"];
 type CurriculumResponse = paths["/programs/{id}/curriculum"]["get"]["responses"][200]["content"]["application/json"];
+type ProgramAdmissionsResponse = paths["/programs/{id}/admissions"]["get"]["responses"][200]["content"]["application/json"];
 type CompareResponse = paths["/compare"]["get"]["responses"][200]["content"]["application/json"];
 type QuestionnaireResponse = paths["/proftest/questions"]["get"]["responses"][200]["content"]["application/json"];
 type ProftestRequest = NonNullable<paths["/proftest/preview"]["post"]["requestBody"]>["content"]["application/json"];
@@ -45,6 +46,10 @@ export function getCurriculum(id: string): Promise<CurriculumResponse> {
   return requestJson<CurriculumResponse>(`/programs/${encodeURIComponent(id)}/curriculum`);
 }
 
+export function getProgramAdmissions(id: string): Promise<ProgramAdmissionsResponse> {
+  return requestJson<ProgramAdmissionsResponse>(`/programs/${encodeURIComponent(id)}/admissions`);
+}
+
 export function comparePrograms(
   programIds: readonly [string, string],
   options: { scope?: components["schemas"]["ComparisonScope"]; semester?: number | undefined } = {},
@@ -70,4 +75,4 @@ export function getRecommendations(request: RecommendationRequest): Promise<Reco
   return requestJson<RecommendationsResponse>("/recommendations", { method: "POST", body: JSON.stringify(request) });
 }
 
-export type { CompareResponse, CurriculumResponse, ErrorContract, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse };
+export type { CompareResponse, CurriculumResponse, ErrorContract, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse };

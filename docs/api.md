@@ -1,4 +1,4 @@
-[← Архитектура](architecture.md) · [Back to README](../README.md) · [Конфигурация →](configuration.md)
+[← Архитектура](architecture.md) · [Back to README](../README.md) · [Admissions →](admissions.md)
 
 # API
 
@@ -11,6 +11,9 @@ FastAPI-приложение `andromeda.api.main` публикует OpenAPI н�
 | GET | `/programs` | Список программ для выбора A/B |
 | GET | `/programs/{id}` | Карточка программы |
 | GET | `/programs/{id}/curriculum` | Позиции учебного плана |
+| GET | `/programs/{id}/admissions` | Source-backed данные поступления |
+
+`GET /programs/{id}/admissions` возвращает strict `ProgramAdmissionsResponse`: каноническую программу и offering-записи по годам, форме и типу финансирования. В offering доступны места, ЕГЭ и минимумы, проходные баллы, квоты и стоимость обучения — только если они опубликованы в доступном источнике. Каждая запись и дочерний показатель содержит provenance с URL, временем capture и хэшем источника. Поля без источника остаются пустыми; значения `0` не используются как замена неизвестности.
 
 `DisciplineResponse` сохраняет `name`/`sourceName` и дополнительно отдаёт `areaWeights` — вектор областей с весами — и `primaryArea`. Каталог областей доступен через `GET /discipline-areas`; он содержит 22 стабильных кода, название, описание и позицию для сортировки.
 
@@ -82,6 +85,10 @@ Request содержит `profile` и `limit` (`1..20`). Профиль — то
 ```
 
 `/recommendations` и `/proftest/results` используют один RecommendationService. Он не импортирует ORM или parser, а получает fingerprints через infrastructure adapter, который делегирует существующий `Program/Curriculum/Discipline` catalog path.
+
+## Admissions
+
+Admission API — read-only application path. Route вызывает `AdmissionService`, service читает `ProgramReader` и `AdmissionReader`, а SQLAlchemy projection остаётся внутри infrastructure. BMSTU adapter преобразует detail-page `__NEXT_DATA__` в raw/canonical contracts и связывает записи с canonical `program_id`; HTTP schema не экспортирует ORM-модели.
 
 ## See Also
 

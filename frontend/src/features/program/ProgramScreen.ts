@@ -1,3 +1,6 @@
+import { getProgramAdmissions, type ProgramAdmissionsResponse } from "../../api/client";
+import { ApiError } from "../../api/errors";
+import { renderAdmissions, renderAdmissionsError, renderAdmissionsLoading } from "../admissions/AdmissionsBlock";
 import type { ProgramResponse } from "../../api/client";
 
 export function renderProgramScreen(root: HTMLElement, response: ProgramResponse): void {
@@ -13,7 +16,17 @@ export function renderProgramScreen(root: HTMLElement, response: ProgramResponse
       <article class="card"><span class="label">Контракт</span><strong>Проверен</strong><span>Ответ прошёл API schema</span></article>
     </section>
     <p class="provenance">Официальная программа МГТУ · <a href="${escapeAttribute(response.program.sourceUrl)}" target="_blank" rel="noreferrer">учебный план</a></p>
+    <div id="program-admissions"></div>
   `;
+  const admissionsRoot = root.querySelector<HTMLElement>("#program-admissions");
+  if (!admissionsRoot) return;
+  renderAdmissionsLoading(admissionsRoot);
+  void getProgramAdmissions(response.program.id)
+    .then((admissions: ProgramAdmissionsResponse) => renderAdmissions(admissionsRoot, admissions))
+    .catch((error: unknown) => {
+      const message = error instanceof ApiError ? `${error.payload.code}: ${error.payload.message}` : "Не удалось получить данные поступления";
+      renderAdmissionsError(admissionsRoot, message);
+    });
 }
 
 function escapeHtml(value: string): string {

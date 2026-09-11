@@ -27,13 +27,15 @@ cd ..
 python backend/scripts/run_tracer_demo.py --mode fixture --check
 ```
 
-Команда прогоняет captured BMSTU sources через ingestion, Alembic, SQLite, FastAPI и Vite, затем проверяет compare endpoint. Для ручного просмотра используйте ту же команду без `--check`.
+Команда прогоняет captured BMSTU sources через ingestion, Alembic, SQLite, FastAPI и Vite, затем проверяет compare и admissions endpoints. Для ручного просмотра используйте ту же команду без `--check`.
 
 ## Проверка результата
 
 - UI: `http://127.0.0.1:5173/`;
 - Swagger: `http://127.0.0.1:8000/docs`;
 - OpenAPI: `http://127.0.0.1:8000/openapi.json`.
+
+В UI откройте раздел «Программа», выберите одну из программ и дождитесь блока «Поступление». В нём отображаются текущие места и минимумы, исторические проходные баллы, а для платного набора — стоимость, если эти поля есть в captured BMSTU source. Ссылка «Источник» ведёт на официальный detail page.
 
 Для live-источников:
 

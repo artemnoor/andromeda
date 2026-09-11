@@ -32,6 +32,7 @@ from ..database.models import (
     UniversityModel,
 )
 from ..database.session import session_factory
+from .admissions import SqlAlchemyAdmissionRepository
 
 
 logger = logging.getLogger("andromeda.infrastructure.repositories.ingestion")
@@ -150,6 +151,7 @@ class SqlAlchemyIngestionRepository:
         ]
         records.extend(("Program", program.model_dump_json(), str(program.source_url)) for program in raw.programs)
         records.extend(("CurriculumRow", row.model_dump_json(), str(row.source_url)) for row in raw.curriculum_rows)
+        records.extend(("Admission", admission.model_dump_json(), str(admission.source_url)) for admission in raw.admissions)
         for index, (record_type, payload, source_url) in enumerate(records):
             snapshot_hash = hashes_by_url.get(source_url)
             if snapshot_hash is None:
@@ -211,6 +213,8 @@ class SqlAlchemyIngestionRepository:
                     immutable_fields=("direction_id", "code"),
                 )
             )
+        session.flush()
+        SqlAlchemyAdmissionRepository(session).sync(canonical.admissions)
         session.flush()
         disciplines_by_id = {discipline.id: discipline for discipline in canonical.disciplines}
         for discipline in canonical.disciplines:

@@ -213,6 +213,79 @@
         }
       }
     },
+    "/programs/{id}/admissions": {
+      "get": {
+        "tags": [
+          "admissions"
+        ],
+        "summary": "Get Program Admissions",
+        "operationId": "get_program_admissions_programs__id__admissions_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramAdmissionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/discipline-areas": {
       "get": {
         "tags": [
@@ -773,6 +846,164 @@
           "skipped"
         ],
         "title": "AdaptiveStatus"
+      },
+      "AdmissionOfferingResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "admissionYear": {
+            "type": "integer",
+            "title": "Admissionyear"
+          },
+          "studyForm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyForm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fundingType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundingType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AdmissionScope"
+          },
+          "places": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Places"
+          },
+          "exams": {
+            "items": {
+              "$ref": "#/components/schemas/ExamRequirementResponse"
+            },
+            "type": "array",
+            "title": "Exams"
+          },
+          "quotas": {
+            "items": {
+              "$ref": "#/components/schemas/QuotaResponse"
+            },
+            "type": "array",
+            "title": "Quotas"
+          },
+          "passingScores": {
+            "items": {
+              "$ref": "#/components/schemas/PassingScoreResponse"
+            },
+            "type": "array",
+            "title": "Passingscores"
+          },
+          "tuition": {
+            "items": {
+              "$ref": "#/components/schemas/TuitionCostResponse"
+            },
+            "type": "array",
+            "title": "Tuition"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionProvenanceResponse"
+            },
+            "type": "array",
+            "title": "Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "admissionYear",
+          "scope",
+          "exams",
+          "quotas",
+          "passingScores",
+          "tuition",
+          "provenance"
+        ],
+        "title": "AdmissionOfferingResponse"
+      },
+      "AdmissionProvenanceResponse": {
+        "properties": {
+          "sourceKind": {
+            "type": "string",
+            "title": "Sourcekind"
+          },
+          "sourceUrl": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Sourceurl"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Capturedat"
+          },
+          "contentSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Contentsha256"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locator"
+          },
+          "sourceName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcename"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sourceKind",
+          "sourceUrl",
+          "capturedAt",
+          "contentSha256"
+        ],
+        "title": "AdmissionProvenanceResponse"
+      },
+      "AdmissionScope": {
+        "type": "string",
+        "enum": [
+          "program",
+          "direction"
+        ],
+        "title": "AdmissionScope"
       },
       "AntiInterestResponse-Input": {
         "properties": {
@@ -1494,6 +1725,60 @@
         ],
         "title": "ErrorResponse"
       },
+      "ExamRequirementResponse": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "sourceName": {
+            "type": "string",
+            "title": "Sourcename"
+          },
+          "minimumScore": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimumscore"
+          },
+          "isChoice": {
+            "type": "boolean",
+            "title": "Ischoice"
+          },
+          "isRequired": {
+            "type": "boolean",
+            "title": "Isrequired"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/AdmissionProvenanceResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject",
+          "sourceName",
+          "isChoice",
+          "isRequired",
+          "provenance"
+        ],
+        "title": "ExamRequirementResponse"
+      },
+      "FundingType": {
+        "type": "string",
+        "enum": [
+          "budget",
+          "paid",
+          "targeted",
+          "unknown"
+        ],
+        "title": "FundingType"
+      },
       "MatchScoreResponse": {
         "properties": {
           "programId": {
@@ -1546,6 +1831,38 @@
           "status"
         ],
         "title": "OptionalMetricResponse"
+      },
+      "PassingScoreResponse": {
+        "properties": {
+          "scoreType": {
+            "$ref": "#/components/schemas/PassingScoreType"
+          },
+          "score": {
+            "type": "string",
+            "title": "Score"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/AdmissionProvenanceResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scoreType",
+          "score",
+          "provenance"
+        ],
+        "title": "PassingScoreResponse"
+      },
+      "PassingScoreType": {
+        "type": "string",
+        "enum": [
+          "budget",
+          "paid",
+          "average",
+          "other"
+        ],
+        "title": "PassingScoreType"
       },
       "PreviewCandidateResponse": {
         "properties": {
@@ -1725,6 +2042,32 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ProftestSubmissionRequest"
+      },
+      "ProgramAdmissionsResponse": {
+        "properties": {
+          "program": {
+            "$ref": "#/components/schemas/ProgramSummaryResponse"
+          },
+          "programId": {
+            "type": "string",
+            "title": "Programid"
+          },
+          "offerings": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionOfferingResponse"
+            },
+            "type": "array",
+            "title": "Offerings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program",
+          "programId",
+          "offerings"
+        ],
+        "title": "ProgramAdmissionsResponse"
       },
       "ProgramListResponse": {
         "properties": {
@@ -1908,6 +2251,43 @@
           "questions"
         ],
         "title": "QuestionnaireResponse"
+      },
+      "QuotaResponse": {
+        "properties": {
+          "quotaType": {
+            "$ref": "#/components/schemas/QuotaType"
+          },
+          "sourceName": {
+            "type": "string",
+            "title": "Sourcename"
+          },
+          "places": {
+            "type": "integer",
+            "title": "Places"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/AdmissionProvenanceResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "quotaType",
+          "sourceName",
+          "places",
+          "provenance"
+        ],
+        "title": "QuotaResponse"
+      },
+      "QuotaType": {
+        "type": "string",
+        "enum": [
+          "special",
+          "separate",
+          "targeted",
+          "other"
+        ],
+        "title": "QuotaType"
       },
       "ReasonKind": {
         "type": "string",
@@ -2143,6 +2523,77 @@
           "rawContentFit"
         ],
         "title": "ScoreBreakdownResponse"
+      },
+      "StudyForm": {
+        "type": "string",
+        "enum": [
+          "full_time",
+          "part_time",
+          "evening",
+          "online",
+          "unknown"
+        ],
+        "title": "StudyForm"
+      },
+      "TuitionCostResponse": {
+        "properties": {
+          "amount": {
+            "type": "string",
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "academicYear": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academicyear"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period"
+          },
+          "studyForm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyForm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isDiscounted": {
+            "type": "boolean",
+            "title": "Isdiscounted"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/AdmissionProvenanceResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "amount",
+          "currency",
+          "isDiscounted",
+          "provenance"
+        ],
+        "title": "TuitionCostResponse"
       },
       "UserProfileResponse-Input": {
         "properties": {

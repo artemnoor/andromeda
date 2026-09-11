@@ -1,15 +1,17 @@
 import { defineConfig } from "vite";
 
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8000";
+
 export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/programs": "http://127.0.0.1:8000",
-      "/compare": "http://127.0.0.1:8000",
-      "/proftest": "http://127.0.0.1:8000",
-      "/recommendations": "http://127.0.0.1:8000",
-      "/openapi.json": "http://127.0.0.1:8000",
-      "/docs": "http://127.0.0.1:8000"
+      "/programs": apiProxyTarget,
+      "/compare": apiProxyTarget,
+      "/proftest": apiProxyTarget,
+      "/recommendations": apiProxyTarget,
+      "/openapi.json": apiProxyTarget,
+      "/docs": apiProxyTarget,
     }
   }
 });

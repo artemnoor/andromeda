@@ -17,6 +17,8 @@ from ....modules.disciplines.contracts.public import Discipline
 from ....modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
 from .selectors import DEFAULT_FIXTURE_DIR, TARGET_PROGRAM_CODES, select_program_codes
 from .mappings.discipline_areas import BMSTU_DISCIPLINE_AREA_OVERRIDES
+from .normalizers.admissions import normalize_admissions
+from .parser.admissions import parse_detail_admissions
 
 
 fetch_logger = logging.getLogger("andromeda.ingestion.bmstu.fetch")
@@ -60,6 +62,8 @@ class BmstuUniversityAdapter:
         parse_logger.debug("stage=parse source_snapshots=%d programs=%d", len(legacy_snapshots), len(selected))
         legacy_raw = parse_legacy_captured(legacy_captured, program_codes=selected)
         raw = RawTracerBundle.model_validate(legacy_raw.model_dump())
+        admission_records = parse_detail_admissions(captured.first("bmstu_major_detail"), selected)
+        raw = raw.model_copy(update={"admissions": admission_records})
         legacy_canonical = normalize_legacy_bundle(legacy_raw)
         canonical = CanonicalSnapshot.model_validate(legacy_canonical.model_dump())
         classified_disciplines = tuple(
@@ -72,7 +76,15 @@ class BmstuUniversityAdapter:
             for discipline in canonical.disciplines
         )
         canonical = CanonicalSnapshot.model_validate(
-            {**canonical.model_dump(), "disciplines": classified_disciplines}
+            {
+                **canonical.model_dump(),
+                "disciplines": classified_disciplines,
+                "admissions": normalize_admissions(
+                    raw.admissions,
+                    programs=canonical.programs,
+                    snapshots=raw.snapshots,
+                ),
+            }
         )
         area_count = len({weight.area for discipline in canonical.disciplines for weight in discipline.area_weights})
         normalize_logger.info(

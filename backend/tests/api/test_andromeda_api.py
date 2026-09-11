@@ -4,9 +4,12 @@ from decimal import Decimal
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
+from sqlalchemy.orm import Session
 
 from andromeda.api.main import create_app
 from andromeda.infrastructure.database import Base, create_engine_for_url
+from andromeda.infrastructure.database.models import AdmissionOfferingModel
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 from andromeda.ingestion.universities.bmstu import BmstuUniversityAdapter
 
@@ -55,6 +58,45 @@ def test_discipline_area_catalog_and_curriculum_vectors_are_exposed(tmp_path: Pa
     assert discipline["areaWeights"]
     assert discipline["primaryArea"]
     assert sum((Decimal(item["weight"]) for item in discipline["areaWeights"]), Decimal("0")) == 1
+
+
+def test_program_admissions_are_exposed_with_source_backed_offerings(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    response = client.get("/programs/program:09.03.01-02/admissions")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["programId"] == "program:09.03.01-02"
+    assert payload["program"]["code"] == "09.03.01-02"
+    assert payload["offerings"]
+    budget = next(item for item in payload["offerings"] if item["admissionYear"] == 2026 and item["fundingType"] == "budget")
+    assert budget["places"] == 318
+    assert budget["exams"][0]["minimumScore"] == "46.00"
+    assert any(item["passingScores"] for item in payload["offerings"])
+    assert budget["provenance"][0]["sourceKind"] == "bmstu_major_detail"
+    paid = next(item for item in payload["offerings"] if item["admissionYear"] == 2026 and item["fundingType"] == "paid")
+    assert paid["tuition"][0]["amount"] == "529000.00"
+
+
+def test_program_admissions_unknown_program_uses_not_found_contract(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    response = client.get("/programs/program:99.99.99-99/admissions")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "NOT_FOUND"
+
+
+def test_program_admissions_without_source_is_a_stable_empty_response(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    with Session(client.app.state.engine) as session:
+        session.execute(delete(AdmissionOfferingModel).where(AdmissionOfferingModel.program_id == "program:09.03.01-02"))
+        session.commit()
+
+    response = client.get("/programs/program:09.03.01-02/admissions")
+
+    assert response.status_code == 200
+    assert response.json()["programId"] == "program:09.03.01-02"
+    assert response.json()["offerings"] == []
 
 
 def test_invalid_comparison_query_returns_strict_error_contract(tmp_path: Path) -> None:

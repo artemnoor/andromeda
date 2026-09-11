@@ -1,35 +1,46 @@
 import type { components } from "../api/generated";
 import { renderComparePage } from "./compare/ComparePage";
 import { renderProftestPage } from "./proftest/ProftestPage";
+import { renderProgramPage } from "./program/ProgramPage";
 
 type Program = components["schemas"]["ProgramSummaryResponse"];
 
 export function renderAppShell(root: HTMLElement, programs: readonly Program[]): void {
-  root.innerHTML = `<header class="app-nav"><div><p class="eyebrow">Andromeda · BMSTU</p><strong class="app-brand">Учебные планы как данные</strong></div><nav aria-label="Разделы приложения"><button class="nav-button active" data-testid="nav-compare" type="button">Сравнение</button><button class="nav-button" data-testid="nav-proftest" type="button">Профиль содержания</button></nav></header><div id="feature-root"></div>`;
+  root.innerHTML = `<header class="app-nav"><div><p class="eyebrow">Andromeda · BMSTU</p><strong class="app-brand">Учебные планы как данные</strong></div><nav aria-label="Разделы приложения"><button class="nav-button active" data-testid="nav-compare" type="button">Сравнение</button><button class="nav-button" data-testid="nav-proftest" type="button">Профиль содержания</button><button class="nav-button" data-testid="nav-program" type="button">Программа</button></nav></header><div id="feature-root"></div>`;
   const featureRoot = root.querySelector<HTMLElement>("#feature-root");
   const compareButton = root.querySelector<HTMLButtonElement>("[data-testid='nav-compare']");
   const proftestButton = root.querySelector<HTMLButtonElement>("[data-testid='nav-proftest']");
-  if (!featureRoot || !compareButton || !proftestButton) return;
+  const programButton = root.querySelector<HTMLButtonElement>("[data-testid='nav-program']");
+  if (!featureRoot || !compareButton || !proftestButton || !programButton) return;
 
-  let selectedFeature: "compare" | "proftest" = "compare";
-  const select = (feature: "compare" | "proftest"): void => {
-    selectedFeature = feature;
+  type Feature = "compare" | "proftest" | "program";
+  const select = (feature: Feature, programId?: string): void => {
     compareButton.classList.toggle("active", feature === "compare");
     proftestButton.classList.toggle("active", feature === "proftest");
+    programButton.classList.toggle("active", feature === "program");
     if (feature === "compare") renderComparePage(featureRoot, programs);
-    else renderProftestPage(featureRoot);
+    else if (feature === "proftest") renderProftestPage(featureRoot);
+    else renderProgramPage(featureRoot, programs, programId);
   };
-  const navigate = (feature: "compare" | "proftest"): void => {
-    const hash = `#${feature}`;
+  const navigate = (feature: Feature): void => {
+    const firstProgramId = programs[0]?.id;
+    const hash = feature === "program" && firstProgramId ? `#program/${encodeURIComponent(firstProgramId)}` : `#${feature}`;
     if (window.location.hash !== hash) window.location.hash = hash;
-    select(feature);
+    else select(feature, firstProgramId);
   };
-  const featureFromHash = (): "compare" | "proftest" => window.location.hash === "#proftest" ? "proftest" : "compare";
+  const featureFromHash = (): { feature: Feature; programId?: string } => {
+    if (window.location.hash === "#program") return { feature: "program" };
+    if (window.location.hash.startsWith("#program/")) return { feature: "program", programId: decodeURIComponent(window.location.hash.slice("#program/".length)) };
+    if (window.location.hash === "#proftest") return { feature: "proftest" };
+    return { feature: "compare" };
+  };
   compareButton.addEventListener("click", () => navigate("compare"));
   proftestButton.addEventListener("click", () => navigate("proftest"));
+  programButton.addEventListener("click", () => navigate("program"));
   window.addEventListener("hashchange", () => {
-    const feature = featureFromHash();
-    if (feature !== selectedFeature) select(feature);
+    const { feature, programId } = featureFromHash();
+    select(feature, programId);
   });
-  select(featureFromHash());
+  const initial = featureFromHash();
+  select(initial.feature, initial.programId);
 }

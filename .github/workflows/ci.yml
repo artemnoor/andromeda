@@ -92,7 +92,7 @@ jobs:
           done
           cat "$RUNNER_TEMP/andromeda-demo.log"
           exit 1
-      - name: Run browser comparison test
+      - name: Run browser comparison and admissions scenarios
         run: npm run test:e2e
         working-directory: frontend
       - name: Stop fixture demo

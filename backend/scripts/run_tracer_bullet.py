@@ -125,6 +125,7 @@ def result_payload(result: TracerRunResult, database_url: str) -> dict[str, obje
             "openapi": "/openapi.json",
             "program": "/programs/{id}",
             "curriculum": "/programs/{id}/curriculum",
+            "admissions": "/programs/{id}/admissions",
             "compare": "/compare?programIds=program:09.03.01-02,program:09.03.01-12",
         },
         "frontend": "http://localhost:5173/",

@@ -35,6 +35,7 @@ def test_demo_wires_ingest_api_frontend_and_compare(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(run_tracer_demo, "run_ingest", lambda **_: result)
     monkeypatch.setattr(run_tracer_demo, "wait_for_http", lambda *args: None)
     monkeypatch.setattr(run_tracer_demo, "verify_compare", lambda *args: None)
+    monkeypatch.setattr(run_tracer_demo, "verify_admissions", lambda *args: None)
 
     def fake_start(command: list[str], cwd: Path, env: dict[str, str], label: str) -> FakeProcess:
         commands.append(tuple(command))

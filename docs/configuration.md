@@ -1,4 +1,4 @@
-[← API](api.md) · [Back to README](../README.md) · [PostgreSQL →](postgresql.md)
+[← Admissions](admissions.md) · [Back to README](../README.md) · [PostgreSQL →](postgresql.md)
 
 # Конфигурация
 

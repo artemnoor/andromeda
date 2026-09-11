@@ -24,6 +24,7 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 - Выбор программ A/B, scope «всё обучение / семестр», блоки и состояния loading/empty/error.
 - Профиль содержания: сценарные вопросы, anti-interest, adaptive refinement и TOP реальных программ с объяснениями по учебному плану.
 - Recommendation vertical slice: готовый `UserProfile` → детерминированный Content Fit → reasons/anti-reasons по реальному fingerprint.
+- Admissions vertical slice: реальные BMSTU данные поступления по canonical `program_id` — места, ЕГЭ и минимумы, квоты, проходные баллы, стоимость и форма обучения.
 
 ### Профиль содержания
 
@@ -36,6 +37,10 @@ npm run generate-api
 ```
 
 `Content Fit` рассчитывается детерминированно по реальным часам/ЗЕТ и долям предметных областей. `Workload readiness`, `Career Fit` и `Admission Fit` пока имеют статус `not_available` и не влияют на результат.
+
+### Данные поступления
+
+В UI выберите «Программа». Страница получает карточку и `GET /programs/{id}/admissions` через generated OpenAPI client. Данные поступления проходят тот же BMSTU parser → canonical contracts → PostgreSQL/SQLite repository → FastAPI flow; отсутствующие официальные значения не заменяются нулями.
 
 ## Пример
 
@@ -52,6 +57,7 @@ GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&s
 | [Быстрый старт](docs/getting-started.md) | Установка и первый запуск |
 | [Архитектура](docs/architecture.md) | Модули и поток данных |
 | [API](docs/api.md) | OpenAPI endpoints и контракты |
+| [Admissions](docs/admissions.md) | Данные поступления и source gaps |
 | [Конфигурация](docs/configuration.md) | Переменные окружения |
 | [PostgreSQL](docs/postgresql.md) | Dev/staging, migrations и ingestion |
 | [Тестирование](docs/testing.md) | Локальные и CI-проверки |

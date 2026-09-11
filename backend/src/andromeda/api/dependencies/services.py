@@ -4,6 +4,8 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from andromeda.modules.comparison.services.compare_programs import CompareProgramsService
+from andromeda.modules.admissions.repository.ports import AdmissionReader
+from andromeda.modules.admissions.services.admissions import AdmissionService
 from andromeda.modules.curricula.repository.ports import CurriculumReader
 from andromeda.modules.disciplines.repository.ports import DisciplineReader
 from andromeda.modules.programs.repository.ports import ProgramReader
@@ -14,6 +16,7 @@ from andromeda.modules.recommendations.services.recommendations import Recommend
 
 from andromeda.infrastructure.repositories.curricula import SqlAlchemyCurriculumRepository
 from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDisciplineRepository
+from andromeda.infrastructure.repositories.admissions import SqlAlchemyAdmissionRepository
 from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepository
 from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
@@ -30,6 +33,17 @@ def get_curriculum_reader(session: Session = Depends(get_session)) -> Curriculum
 
 def get_discipline_reader(session: Session = Depends(get_session)) -> DisciplineReader:
     return SqlAlchemyDisciplineRepository(session)
+
+
+def get_admission_reader(session: Session = Depends(get_session)) -> AdmissionReader:
+    return SqlAlchemyAdmissionRepository(session)
+
+
+def get_admission_service(
+    programs: ProgramReader = Depends(get_program_reader),
+    admissions: AdmissionReader = Depends(get_admission_reader),
+) -> AdmissionService:
+    return AdmissionService(programs, admissions)
 
 
 def get_compare_service(

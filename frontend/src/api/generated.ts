@@ -52,6 +52,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/programs/{id}/admissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Program Admissions */
+        get: operations["get_program_admissions_programs__id__admissions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/discipline-areas": {
         parameters: {
             query?: never;
@@ -203,6 +220,54 @@ export interface components {
          * @enum {string}
          */
         AdaptiveStatus: "ready" | "skipped";
+        /** AdmissionOfferingResponse */
+        AdmissionOfferingResponse: {
+            /** Id */
+            id: string;
+            /** Admissionyear */
+            admissionYear: number;
+            studyForm?: components["schemas"]["StudyForm"] | null;
+            fundingType?: components["schemas"]["FundingType"] | null;
+            scope: components["schemas"]["AdmissionScope"];
+            /** Places */
+            places?: number | null;
+            /** Exams */
+            exams: components["schemas"]["ExamRequirementResponse"][];
+            /** Quotas */
+            quotas: components["schemas"]["QuotaResponse"][];
+            /** Passingscores */
+            passingScores: components["schemas"]["PassingScoreResponse"][];
+            /** Tuition */
+            tuition: components["schemas"]["TuitionCostResponse"][];
+            /** Provenance */
+            provenance: components["schemas"]["AdmissionProvenanceResponse"][];
+        };
+        /** AdmissionProvenanceResponse */
+        AdmissionProvenanceResponse: {
+            /** Sourcekind */
+            sourceKind: string;
+            /**
+             * Sourceurl
+             * Format: uri
+             */
+            sourceUrl: string;
+            /**
+             * Capturedat
+             * Format: date-time
+             */
+            capturedAt: string;
+            /** Contentsha256 */
+            contentSha256: string;
+            /** Locator */
+            locator?: string | null;
+            /** Sourcename */
+            sourceName?: string | null;
+        };
+        /**
+         * AdmissionScope
+         * @enum {string}
+         */
+        AdmissionScope: "program" | "direction";
         /** AntiInterestResponse */
         "AntiInterestResponse-Input": {
             area: components["schemas"]["DisciplineAreaCode"];
@@ -420,6 +485,25 @@ export interface components {
              */
             details: components["schemas"]["ErrorDetail"][];
         };
+        /** ExamRequirementResponse */
+        ExamRequirementResponse: {
+            /** Subject */
+            subject: string;
+            /** Sourcename */
+            sourceName: string;
+            /** Minimumscore */
+            minimumScore?: string | null;
+            /** Ischoice */
+            isChoice: boolean;
+            /** Isrequired */
+            isRequired: boolean;
+            provenance: components["schemas"]["AdmissionProvenanceResponse"];
+        };
+        /**
+         * FundingType
+         * @enum {string}
+         */
+        FundingType: "budget" | "paid" | "targeted" | "unknown";
         /** MatchScoreResponse */
         MatchScoreResponse: {
             /** Programid */
@@ -437,6 +521,18 @@ export interface components {
             /** Value */
             value?: number | null;
         };
+        /** PassingScoreResponse */
+        PassingScoreResponse: {
+            scoreType: components["schemas"]["PassingScoreType"];
+            /** Score */
+            score: string;
+            provenance: components["schemas"]["AdmissionProvenanceResponse"];
+        };
+        /**
+         * PassingScoreType
+         * @enum {string}
+         */
+        PassingScoreType: "budget" | "paid" | "average" | "other";
         /** PreviewCandidateResponse */
         PreviewCandidateResponse: {
             /** Programid */
@@ -484,6 +580,14 @@ export interface components {
             answers?: components["schemas"]["ProftestAnswerRequest"][];
             /** Adaptiveanswers */
             adaptiveAnswers?: components["schemas"]["ProftestAdaptiveAnswerRequest"][];
+        };
+        /** ProgramAdmissionsResponse */
+        ProgramAdmissionsResponse: {
+            program: components["schemas"]["ProgramSummaryResponse"];
+            /** Programid */
+            programId: string;
+            /** Offerings */
+            offerings: components["schemas"]["AdmissionOfferingResponse"][];
         };
         /** ProgramListResponse */
         ProgramListResponse: {
@@ -557,6 +661,20 @@ export interface components {
             /** Questions */
             questions: components["schemas"]["QuestionResponse"][];
         };
+        /** QuotaResponse */
+        QuotaResponse: {
+            quotaType: components["schemas"]["QuotaType"];
+            /** Sourcename */
+            sourceName: string;
+            /** Places */
+            places: number;
+            provenance: components["schemas"]["AdmissionProvenanceResponse"];
+        };
+        /**
+         * QuotaType
+         * @enum {string}
+         */
+        QuotaType: "special" | "separate" | "targeted" | "other";
         /**
          * ReasonKind
          * @enum {string}
@@ -636,6 +754,26 @@ export interface components {
             antiPenalty: string;
             /** Rawcontentfit */
             rawContentFit: string;
+        };
+        /**
+         * StudyForm
+         * @enum {string}
+         */
+        StudyForm: "full_time" | "part_time" | "evening" | "online" | "unknown";
+        /** TuitionCostResponse */
+        TuitionCostResponse: {
+            /** Amount */
+            amount: string;
+            /** Currency */
+            currency: string;
+            /** Academicyear */
+            academicYear?: string | null;
+            /** Period */
+            period?: string | null;
+            studyForm?: components["schemas"]["StudyForm"] | null;
+            /** Isdiscounted */
+            isDiscounted: boolean;
+            provenance: components["schemas"]["AdmissionProvenanceResponse"];
         };
         /** UserProfileResponse */
         "UserProfileResponse-Input": {
@@ -849,6 +987,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CurriculumResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_program_admissions_programs__id__admissions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramAdmissionsResponse"];
                 };
             };
             /** @description Bad Request */
