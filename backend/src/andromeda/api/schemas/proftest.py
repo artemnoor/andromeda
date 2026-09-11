@@ -27,6 +27,26 @@ def _decimal_from_json(value: object) -> object:
 JsonDecimal = Annotated[Decimal, BeforeValidator(_decimal_from_json), Field(strict=True, ge=0, le=1, max_digits=5, decimal_places=4)]
 
 
+def _discipline_area_from_json(value: object) -> DisciplineAreaCode:
+    if isinstance(value, DisciplineAreaCode):
+        return value
+    if isinstance(value, str):
+        return DisciplineAreaCode(value)
+    raise TypeError("discipline area must be a string")
+
+
+def _activity_code_from_json(value: object) -> ActivityCode:
+    if isinstance(value, ActivityCode):
+        return value
+    if isinstance(value, str):
+        return ActivityCode(value)
+    raise TypeError("activity code must be a string")
+
+
+JsonDisciplineAreaCode = Annotated[DisciplineAreaCode, BeforeValidator(_discipline_area_from_json)]
+JsonActivityCode = Annotated[ActivityCode, BeforeValidator(_activity_code_from_json)]
+
+
 class ProftestAnswerRequest(ApiModel):
     question_id: str = Field(alias="questionId", min_length=1, max_length=256)
     option_ids: list[str] = Field(alias="optionIds", min_length=1, max_length=6)
@@ -81,7 +101,7 @@ class ConfidenceResponse(ApiModel):
 
 
 class AntiInterestResponse(ApiModel):
-    area: DisciplineAreaCode
+    area: JsonDisciplineAreaCode
     intensity: JsonDecimal
 
 
@@ -93,12 +113,12 @@ class AdaptiveAnswerResponse(ApiModel):
 
 class UserProfileResponse(ApiModel):
     version: Literal[1]
-    interests: list[DisciplineAreaCode]
-    activity_preferences: list[ActivityCode]
+    interests: list[JsonDisciplineAreaCode]
+    activity_preferences: list[JsonActivityCode]
     anti_interests: list[AntiInterestResponse]
-    preferred_subject_weights: dict[DisciplineAreaCode, JsonDecimal]
-    preferred_activity_weights: dict[ActivityCode, JsonDecimal]
-    negative_weights: dict[DisciplineAreaCode, JsonDecimal]
+    preferred_subject_weights: dict[JsonDisciplineAreaCode, JsonDecimal]
+    preferred_activity_weights: dict[JsonActivityCode, JsonDecimal]
+    negative_weights: dict[JsonDisciplineAreaCode, JsonDecimal]
     confidence: ConfidenceResponse
     adaptive_answers: list[AdaptiveAnswerResponse]
 
