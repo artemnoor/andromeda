@@ -12,8 +12,12 @@ type QuestionnaireResponse = paths["/proftest/questions"]["get"]["responses"][20
 type ProftestRequest = NonNullable<paths["/proftest/preview"]["post"]["requestBody"]>["content"]["application/json"];
 type ProftestPreviewResponse = paths["/proftest/preview"]["post"]["responses"][200]["content"]["application/json"];
 type ProftestResultsResponse = paths["/proftest/results"]["post"]["responses"][200]["content"]["application/json"];
+type CurrentProfileResponse = paths["/proftest/profile"]["get"]["responses"][200]["content"]["application/json"];
+type CreateProfileRequest = NonNullable<paths["/proftest/profile"]["post"]["requestBody"]>["content"]["application/json"];
+type UpdateProfileRequest = NonNullable<paths["/proftest/profile"]["put"]["requestBody"]>["content"]["application/json"];
 type RecommendationRequest = NonNullable<paths["/recommendations"]["post"]["requestBody"]>["content"]["application/json"];
 type RecommendationsResponse = paths["/recommendations"]["post"]["responses"][200]["content"]["application/json"];
+type CurrentRecommendationsResponse = paths["/recommendations/current"]["get"]["responses"][200]["content"]["application/json"];
 type ErrorContract = components["schemas"]["ErrorResponse"];
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
@@ -25,7 +29,7 @@ function debug(message: string): void {
 
 async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   debug(`request_start path=${path}`);
-  const response = await fetch(`${apiBaseUrl}${path}`, { ...init, headers: { Accept: "application/json", "Content-Type": "application/json", ...init.headers } });
+  const response = await fetch(`${apiBaseUrl}${path}`, { ...init, credentials: "include", headers: { Accept: "application/json", "Content-Type": "application/json", ...init.headers } });
   const payload: unknown = await response.json();
   if (!response.ok) {
     console.warn(`[api] request_failed status=${response.status}`);
@@ -80,8 +84,24 @@ export function getProftestResults(request: ProftestRequest): Promise<ProftestRe
   return requestJson<ProftestResultsResponse>("/proftest/results", { method: "POST", body: JSON.stringify(request) });
 }
 
+export function getCurrentProfile(): Promise<CurrentProfileResponse> {
+  return requestJson<CurrentProfileResponse>("/proftest/profile");
+}
+
+export function createCurrentProfile(request: CreateProfileRequest): Promise<CurrentProfileResponse> {
+  return requestJson<CurrentProfileResponse>("/proftest/profile", { method: "POST", body: JSON.stringify(request) });
+}
+
+export function updateCurrentProfile(request: UpdateProfileRequest): Promise<CurrentProfileResponse> {
+  return requestJson<CurrentProfileResponse>("/proftest/profile", { method: "PUT", body: JSON.stringify(request) });
+}
+
 export function getRecommendations(request: RecommendationRequest): Promise<RecommendationsResponse> {
   return requestJson<RecommendationsResponse>("/recommendations", { method: "POST", body: JSON.stringify(request) });
 }
 
-export type { AdmissionFitRequest, AdmissionFitResponse, CompareResponse, CurriculumResponse, ErrorContract, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse };
+export function getCurrentRecommendations(limit = 10): Promise<CurrentRecommendationsResponse> {
+  return requestJson<CurrentRecommendationsResponse>(`/recommendations/current?limit=${encodeURIComponent(String(limit))}`);
+}
+
+export type { AdmissionFitRequest, AdmissionFitResponse, CompareResponse, CreateProfileRequest, CurrentProfileResponse, CurrentRecommendationsResponse, CurriculumResponse, ErrorContract, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse, UpdateProfileRequest };

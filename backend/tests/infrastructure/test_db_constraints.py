@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from andromeda.infrastructure.database import Base, create_engine_for_url
-from andromeda.infrastructure.database.models import CurriculumItemModel, CurriculumModel, DirectionModel, DisciplineModel, EducationLevelModel, ProgramModel, UniversityModel
+from andromeda.infrastructure.database.models import CurriculumItemModel, CurriculumModel, DirectionModel, DisciplineModel, EducationLevelModel, ProgramModel, UniversityModel, UserProfileModel
 
 
 def test_curriculum_item_identity_is_non_null_and_unique(tmp_path) -> None:
@@ -58,3 +59,28 @@ def test_curriculum_item_identity_is_non_null_and_unique(tmp_path) -> None:
             session.rollback()
         else:
             raise AssertionError("duplicate semester identity must be rejected")
+
+
+def test_user_profile_revision_and_session_hash_constraints(tmp_path) -> None:
+    engine = create_engine_for_url(f"sqlite:///{(tmp_path / 'profile-constraints.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    now = datetime.now(timezone.utc)
+    values = {
+        "profile_id": "profile:" + "a" * 32,
+        "session_key_hash": "b" * 64,
+        "profile_json": {"version": 1},
+        "revision": 1,
+        "created_at": now,
+        "updated_at": now,
+        "expires_at": now.replace(year=now.year + 1),
+    }
+    with Session(engine) as session:
+        session.add(UserProfileModel(**values))
+        session.commit()
+        session.add(UserProfileModel(**{**values, "profile_id": "profile:" + "c" * 32, "revision": 0}))
+        with pytest.raises(IntegrityError):
+            session.commit()
+        session.rollback()
+        session.add(UserProfileModel(**{**values, "profile_id": "profile:" + "d" * 32, "session_key_hash": "short"}))
+        with pytest.raises(IntegrityError):
+            session.commit()

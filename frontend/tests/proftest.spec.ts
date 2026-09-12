@@ -43,6 +43,18 @@ test("restores the current question after reload", async ({ page }) => {
   await expect(page.locator(".choice-card.selected")).toHaveCount(1);
 });
 
+test("restores completed profile and recommendations from the API after draft cleanup", async ({ page }) => {
+  await completeProftest(page);
+  const firstResultName = await page.locator("[data-testid='result-card']").first().locator("h3").innerText();
+
+  await page.evaluate(() => window.localStorage.removeItem("andromeda:proftest:v1"));
+  await page.reload();
+
+  await expect(page.getByTestId("profile-restored")).toBeVisible();
+  await expect(page.locator("[data-testid='result-card']").first().locator("h3")).toHaveText(firstResultName);
+  await expect(page.getByTestId("proftest-results")).toBeVisible();
+});
+
 test.describe("mobile proftest", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 

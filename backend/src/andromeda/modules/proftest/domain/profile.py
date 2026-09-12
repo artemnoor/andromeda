@@ -1,0 +1,83 @@
+"""Persistence-facing value objects owned by the proftest module.
+
+The profile itself remains a stable content contract.  Storage metadata lives
+in a separate snapshot envelope so consumers cannot accidentally persist
+answers, cookies, or infrastructure models as part of ``UserProfile``.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+import logging
+from typing import Annotated, Self, TypeAlias
+
+from pydantic import Field, StringConstraints, model_validator
+
+from andromeda.shared.contracts.base import ContractModel
+from andromeda.shared.contracts.ids import SourceHash
+
+from .entities import UserProfile
+
+
+logger = logging.getLogger("andromeda.proftest.contracts.profile")
+
+ProfileId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^profile:[0-9a-f]{32}$")]
+
+
+def _is_aware(value: datetime) -> bool:
+    """Return whether a datetime has an unambiguous UTC offset."""
+
+    return value.tzinfo is not None and value.utcoffset() is not None
+
+
+class ProfileScope(ContractModel):
+    """Opaque owner reference passed from the HTTP adapter to application code.
+
+    Only the one-way session hash crosses this boundary.  The raw cookie token
+    is intentionally not representable by this contract.
+    """
+
+    session_key_hash: SourceHash
+
+
+class UserProfileSnapshot(ContractModel):
+    """Current persisted profile plus storage metadata.
+
+    Expiry is checked here against the current clock so an expired row cannot
+    be exposed as a valid public snapshot.  Repository adapters must check the
+    row before constructing this contract and may return ``None`` for expired
+    records.
+    """
+
+    profile_id: ProfileId
+    profile: UserProfile
+    revision: int = Field(strict=True, ge=1)
+    created_at: datetime
+    updated_at: datetime
+    expires_at: datetime
+
+    @model_validator(mode="after")
+    def validate_identity_and_timestamps(self) -> Self:
+        logger.debug(
+            "profile_snapshot_validate profile_id=%s revision=%d profile_axis_count=%d",
+            self.profile_id,
+            self.revision,
+            len(self.profile.preferred_subject_weights) + len(self.profile.preferred_activity_weights),
+        )
+        timestamp_fields = (self.created_at, self.updated_at, self.expires_at)
+        if not all(_is_aware(value) for value in timestamp_fields):
+            logger.warning("profile_snapshot_rejected invariant=timezone_aware_timestamps")
+            raise ValueError("profile snapshot timestamps must be timezone-aware")
+        if self.created_at > self.updated_at:
+            logger.warning("profile_snapshot_rejected invariant=created_before_updated")
+            raise ValueError("profile snapshot created_at cannot be after updated_at")
+        if self.updated_at >= self.expires_at:
+            logger.warning("profile_snapshot_rejected invariant=expiry_after_updated")
+            raise ValueError("profile snapshot expires_at must be after updated_at")
+        if self.expires_at <= datetime.now(timezone.utc):
+            logger.warning("profile_snapshot_rejected invariant=not_expired")
+            raise ValueError("profile snapshot has expired")
+        return self
+
+
+__all__ = ["ProfileId", "ProfileScope", "UserProfileSnapshot"]

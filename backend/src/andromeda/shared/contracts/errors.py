@@ -10,6 +10,7 @@ from .base import ContractModel
 class ErrorCode(StrEnum):
     VALIDATION_ERROR = "VALIDATION_ERROR"
     NOT_FOUND = "NOT_FOUND"
+    CONFLICT = "CONFLICT"
     SOURCE_CONTRACT_ERROR = "SOURCE_CONTRACT_ERROR"
     CONTRACT_ERROR = "CONTRACT_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"
@@ -47,6 +48,11 @@ class ContractError(AndromedaError):
 class NotFoundError(AndromedaError):
     def __init__(self, message: str, details: Sequence[ErrorDetail] = ()) -> None:
         super().__init__(ErrorCode.NOT_FOUND, message, details)
+
+
+class ConflictError(AndromedaError):
+    def __init__(self, message: str, details: Sequence[ErrorDetail] = ()) -> None:
+        super().__init__(ErrorCode.CONFLICT, message, details)
 
 
 class ValidationError(AndromedaError):

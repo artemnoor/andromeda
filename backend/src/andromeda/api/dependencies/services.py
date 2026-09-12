@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
@@ -11,10 +11,13 @@ from andromeda.modules.admissions.services.admissions import AdmissionService
 from andromeda.modules.curricula.repository.ports import CurriculumReader
 from andromeda.modules.disciplines.repository.ports import DisciplineReader
 from andromeda.modules.programs.repository.ports import ProgramReader
-from andromeda.modules.proftest.repository.ports import ProftestCatalogReader
+from andromeda.modules.proftest.repository.ports import ProftestCatalogReader, UserProfileRepository
+from andromeda.modules.proftest.contracts.public import CurrentUserProfileReader
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
+from andromeda.modules.proftest.services.profile_persistence import UserProfilePersistenceService
 from andromeda.modules.proftest.services.proftest import ProftestService
 from andromeda.modules.recommendations.services.recommendations import RecommendationService
+from andromeda.modules.recommendations.services.current import CurrentRecommendationService
 
 from andromeda.infrastructure.repositories.curricula import SqlAlchemyCurriculumRepository
 from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDisciplineRepository
@@ -23,6 +26,7 @@ from andromeda.infrastructure.repositories.admission_fit import SqlAlchemyAdmiss
 from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepository
 from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
+from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
 from .request_context import get_session
 
 
@@ -84,6 +88,23 @@ def get_proftest_catalog_service(
     return ProftestCatalogService(catalog_reader)
 
 
+def get_user_profile_repository(session: Session = Depends(get_session)) -> UserProfileRepository:
+    return SqlAlchemyUserProfileRepository(session)
+
+
+def get_profile_persistence_service(
+    request: Request,
+    repository: UserProfileRepository = Depends(get_user_profile_repository),
+) -> UserProfilePersistenceService:
+    return UserProfilePersistenceService(repository, ttl_seconds=request.app.state.settings.profile_ttl_seconds)
+
+
+def get_current_user_profile_reader(
+    repository: UserProfileRepository = Depends(get_user_profile_repository),
+) -> CurrentUserProfileReader:
+    return repository
+
+
 def get_recommendation_service(
     catalog: ProftestCatalogService = Depends(get_proftest_catalog_service),
 ) -> RecommendationService:
@@ -93,5 +114,13 @@ def get_recommendation_service(
 def get_proftest_service(
     catalog: ProftestCatalogService = Depends(get_proftest_catalog_service),
     recommendations: RecommendationService = Depends(get_recommendation_service),
+    profile_persistence: UserProfilePersistenceService = Depends(get_profile_persistence_service),
 ) -> ProftestService:
-    return ProftestService(catalog, recommendations=recommendations)
+    return ProftestService(catalog, recommendations=recommendations, profile_persistence=profile_persistence)
+
+
+def get_current_recommendation_service(
+    profile_reader: CurrentUserProfileReader = Depends(get_current_user_profile_reader),
+    recommendations: RecommendationService = Depends(get_recommendation_service),
+) -> CurrentRecommendationService:
+    return CurrentRecommendationService(profile_reader, recommendations)

@@ -23,12 +23,13 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 - FastAPI/OpenAPI и сгенерированные TypeScript-типы.
 - Выбор программ A/B, scope «всё обучение / семестр», блоки и состояния loading/empty/error.
 - Профиль содержания: сценарные вопросы, anti-interest, adaptive refinement и TOP реальных программ с объяснениями по учебному плану.
+- Persistence профиля: completed `UserProfile` хранится по anonymous HttpOnly session cookie и восстанавливается после перезагрузки UI.
 - Recommendation vertical slice: готовый `UserProfile` → детерминированный Content Fit → reasons/anti-reasons по реальному fingerprint.
 - Admissions vertical slice: реальные BMSTU данные поступления по canonical `program_id` — места, ЕГЭ и минимумы, квоты, проходные баллы, стоимость и форма обучения.
 
 ### Профиль содержания
 
-В UI выберите «Профиль содержания». Flow получает вопросы и результаты только через `GET /proftest/questions`, `POST /proftest/preview` и `POST /proftest/results`. Готовый профиль также можно передать в `POST /recommendations`. После изменения API обновите frontend-контракт:
+В UI выберите «Профиль содержания». Flow получает вопросы и результаты только через API: `GET /proftest/questions`, `POST /proftest/preview` и `POST /proftest/results`. Финальный результат сохраняется в Andromeda по anonymous HttpOnly cookie; после reload UI использует `GET /proftest/profile` и `GET /recommendations/current`. Готовый профиль также можно передать в `POST /recommendations`. После изменения API обновите frontend-контракт:
 
 ```powershell
 python backend/scripts/export_openapi.py --out frontend/openapi.json

@@ -33,6 +33,14 @@ test.describe("recommendation vertical slice", () => {
     await expect(page.getByText(/Workload readiness/)).toBeVisible();
   });
 
+  test("restores current recommendations after a page reload", async ({ page }) => {
+    await completeTest(page);
+    await page.evaluate(() => window.localStorage.removeItem("andromeda:proftest:v1"));
+    await page.reload();
+    await expect(page.getByTestId("profile-restored")).toBeVisible();
+    await expect(page.getByTestId("proftest-results")).toBeVisible();
+  });
+
   test("keeps recommendation detail readable without horizontal overflow", async ({ page }) => {
     await completeTest(page);
     await page.locator("[data-result-detail='0']").click();

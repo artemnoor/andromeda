@@ -1,5 +1,5 @@
 """Proftest repository ports."""
 
-from .ports import ProftestCatalogReader
+from .ports import CurrentUserProfileReader, ProftestCatalogReader, UserProfileRepository
 
-__all__ = ["ProftestCatalogReader"]
+__all__ = ["CurrentUserProfileReader", "ProftestCatalogReader", "UserProfileRepository"]

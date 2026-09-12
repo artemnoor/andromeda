@@ -37,6 +37,13 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 
 В UI откройте раздел «Программа», выберите одну из программ и дождитесь блока «Поступление». В нём отображаются текущие места и минимумы, исторические проходные баллы, а для платного набора — стоимость, если эти поля есть в captured BMSTU source. Ссылка «Источник» ведёт на официальный detail page.
 
+Чтобы вручную проверить persistence профиля:
+
+1. Откройте «Профиль содержания» и пройдите 6 вопросов и adaptive step до TOP программ.
+2. Обновите страницу. При сохранённой anonymous cookie появится пометка «Профиль восстановлен из Andromeda», а карточки рекомендаций загрузятся через API.
+3. Для проверки server source of truth удалите только LocalStorage key `andromeda:proftest:v1` в DevTools и обновите страницу ещё раз. Незавершённый draft, напротив, должен восстанавливаться локально и не заменяться старым completed profile.
+4. Технические endpoints доступны в Swagger: `GET /proftest/profile`, `POST /proftest/profile`, `PUT /proftest/profile` и `GET /recommendations/current?limit=10`.
+
 Для live-источников:
 
 ```powershell

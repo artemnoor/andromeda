@@ -3,6 +3,7 @@ from .disciplines import SqlAlchemyDisciplineRepository
 from .ingestion import SqlAlchemyIngestionRepository
 from .programs import SqlAlchemyProgramRepository
 from .universities import SqlAlchemyUniversityRepository
+from .user_profiles import SqlAlchemyUserProfileRepository
 
 __all__ = [
     "SqlAlchemyCurriculumRepository",
@@ -10,4 +11,5 @@ __all__ = [
     "SqlAlchemyIngestionRepository",
     "SqlAlchemyProgramRepository",
     "SqlAlchemyUniversityRepository",
+    "SqlAlchemyUserProfileRepository",
 ]

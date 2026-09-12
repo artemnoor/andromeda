@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field
 
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
-from andromeda.modules.proftest.contracts.public import ActivityCode, AdaptiveAnswer, AdaptiveSelection, AdaptiveStatus, Answer, AnswerSet, MatchReason, MatchScore, ProftestPreview, ProftestResults, Question, Questionnaire, QuestionBlock, Recommendation, ReasonKind, UserProfile
+from andromeda.modules.proftest.contracts.public import ActivityCode, AdaptiveAnswer, AdaptiveSelection, AdaptiveStatus, Answer, AnswerSet, AntiInterest, Confidence, MatchReason, MatchScore, ProftestPreview, ProftestResults, Question, Questionnaire, QuestionBlock, Recommendation, ReasonKind, UserProfile, UserProfileSnapshot
 
 from .common import ApiModel
 
@@ -121,6 +122,30 @@ class UserProfileResponse(ApiModel):
     negative_weights: dict[JsonDisciplineAreaCode, JsonDecimal]
     confidence: ConfidenceResponse
     adaptive_answers: list[AdaptiveAnswerResponse]
+
+
+class UserProfileCreateRequest(ApiModel):
+    profile: UserProfileResponse
+
+    def to_contract(self) -> UserProfile:
+        return profile_contract(self.profile)
+
+
+class UserProfileUpdateRequest(ApiModel):
+    profile: UserProfileResponse
+    expected_revision: int = Field(alias="expectedRevision", strict=True, ge=1)
+
+    def to_contract(self) -> UserProfile:
+        return profile_contract(self.profile)
+
+
+class UserProfileSnapshotResponse(ApiModel):
+    profile_id: str = Field(alias="profileId", min_length=1, max_length=96)
+    profile: UserProfileResponse
+    revision: int = Field(strict=True, ge=1)
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+    expires_at: datetime = Field(alias="expiresAt")
 
 
 class AdaptiveDimensionResponse(ApiModel):
@@ -239,6 +264,42 @@ def profile_response(profile: UserProfile) -> UserProfileResponse:
     )
 
 
+def profile_contract(profile: UserProfileResponse) -> UserProfile:
+    """Convert the sole HTTP profile shape to the stable module contract."""
+
+    return UserProfile(
+        version=profile.version,
+        interests=tuple(DisciplineAreaCode(value) for value in profile.interests),
+        activity_preferences=tuple(ActivityCode(value) for value in profile.activity_preferences),
+        anti_interests=tuple(AntiInterest(area=DisciplineAreaCode(item.area), intensity=item.intensity) for item in profile.anti_interests),
+        preferred_subject_weights={
+            DisciplineAreaCode(area): weight
+            for area, weight in profile.preferred_subject_weights.items()
+        },
+        preferred_activity_weights={
+            ActivityCode(activity): weight
+            for activity, weight in profile.preferred_activity_weights.items()
+        },
+        negative_weights={
+            DisciplineAreaCode(area): weight
+            for area, weight in profile.negative_weights.items()
+        },
+        confidence=Confidence(**profile.confidence.model_dump()),
+        adaptive_answers=tuple(AdaptiveAnswer(**answer.model_dump()) for answer in profile.adaptive_answers),
+    )
+
+
+def snapshot_response(snapshot: UserProfileSnapshot) -> UserProfileSnapshotResponse:
+    return UserProfileSnapshotResponse(
+        profileId=snapshot.profile_id,
+        profile=profile_response(snapshot.profile),
+        revision=snapshot.revision,
+        createdAt=snapshot.created_at,
+        updatedAt=snapshot.updated_at,
+        expiresAt=snapshot.expires_at,
+    )
+
+
 def recommendation_response(recommendation: Recommendation) -> RecommendationResponse:
     return RecommendationResponse(
         program_id=recommendation.program_id,
@@ -266,4 +327,20 @@ _profile_response = profile_response
 _recommendation_response = recommendation_response
 
 
-__all__ = ["ProftestSubmissionRequest", "ProftestPreviewResponse", "ProftestResultsResponse", "QuestionnaireResponse", "questionnaire_response", "preview_response", "results_response", "profile_response", "recommendation_response"]
+__all__ = [
+    "ProftestSubmissionRequest",
+    "ProftestPreviewResponse",
+    "ProftestResultsResponse",
+    "QuestionnaireResponse",
+    "UserProfileCreateRequest",
+    "UserProfileResponse",
+    "UserProfileSnapshotResponse",
+    "UserProfileUpdateRequest",
+    "questionnaire_response",
+    "preview_response",
+    "results_response",
+    "profile_contract",
+    "profile_response",
+    "snapshot_response",
+    "recommendation_response",
+]

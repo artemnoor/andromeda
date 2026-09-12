@@ -27,6 +27,18 @@ programs / curricula / disciplines public readers
   → generated frontend types
 ```
 
+После завершения профтеста application flow сохраняет финальный профиль через отдельный persistence port:
+
+```text
+POST /proftest/results
+  → UserProfilePersistenceService
+  → UserProfileRepository
+  → user_profiles (session hash + JSON snapshot + revision/TTL)
+  → GET /proftest/profile | GET /recommendations/current
+```
+
+Anonymous identity — это случайный HttpOnly cookie, а в domain/infrastructure boundary передаётся только typed `ProfileScope` с SHA-256 hash. `UserProfile` не содержит storage metadata; revision и timestamps находятся в `UserProfileSnapshot`. Admission Fit остаётся отдельным score и не влияет на Content Fit.
+
 ## Границы
 
 ```text
@@ -68,6 +80,8 @@ BMSTU URL, selectors, PDF parser, mappings и browser fallback находятс�
 ## Storage boundary
 
 `BMSTU_DATABASE_URL` — единый target для FastAPI, Alembic и ingestion runner. `SqlAlchemy*Repository` и `SqlAlchemyIngestionRepository` — infrastructure adapters; модули видят только public contracts и repository ports. Поэтому PostgreSQL не меняет comparison/proftest/recommendations и не требует переписывать их scoring или fingerprint logic.
+
+`user_profiles` хранит только сериализованный public `UserProfile` и nullable future `account_id`; raw session token, answers и ORM objects не являются публичными контрактами. LocalStorage во frontend используется только для незавершённого draft. Completed profile восстанавливается через API и cookie.
 
 `ANDROMEDA_ENV=development` и `ANDROMEDA_ENV=staging` fail fast с non-PostgreSQL URL. `ANDROMEDA_ENV=test` сохраняет SQLite для быстрых тестов. Raw source snapshots остаются immutable provenance, а canonical domain projection обновляется атомарной ingestion sync-транзакцией.
 

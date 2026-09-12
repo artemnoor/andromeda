@@ -50,8 +50,11 @@ class RecommendationsResponse(ApiModel):
     recommendations: tuple[RecommendationResponse, ...]
 
 
+CurrentRecommendationsResponse = RecommendationsResponse
+
+
 def recommendations_response(result: RecommendationResult) -> RecommendationsResponse:
     return RecommendationsResponse(profile=profile_response(result.profile), recommendations=tuple(recommendation_response(item) for item in result.recommendations))
 
 
-__all__ = ["RecommendationRequest", "RecommendationsResponse", "recommendations_response"]
+__all__ = ["CurrentRecommendationsResponse", "RecommendationRequest", "RecommendationsResponse", "recommendations_response"]

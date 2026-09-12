@@ -15,6 +15,7 @@ from ..contracts.public import (
     PreviewCandidate,
     Question,
     Questionnaire,
+    ProfileScope,
     UserProfile,
 )
 from ..domain.adaptive import AdaptiveSelection
@@ -22,6 +23,7 @@ from .adaptive import AdaptiveCandidate, AdaptiveQuestionFactory, AdaptiveQuesti
 from .catalog import ProftestCatalogService
 from .profile_builder import UserProfileBuilder
 from .questionnaire import build_questionnaire
+from .profile_persistence import UserProfilePersistenceService
 from andromeda.modules.recommendations.repository.ports import RecommendationCatalogReader
 from andromeda.modules.recommendations.contracts.public import RecommendationRequest
 from andromeda.modules.recommendations.services.ranking import RankedFingerprint
@@ -44,10 +46,17 @@ class _CatalogFingerprintReader(RecommendationCatalogReader):
 
 
 class ProftestService:
-    def __init__(self, catalog: ProftestCatalogService, profile_builder: UserProfileBuilder | None = None, recommendations: RecommendationService | None = None) -> None:
+    def __init__(
+        self,
+        catalog: ProftestCatalogService,
+        profile_builder: UserProfileBuilder | None = None,
+        recommendations: RecommendationService | None = None,
+        profile_persistence: UserProfilePersistenceService | None = None,
+    ) -> None:
         self._catalog = catalog
         self._profile_builder = profile_builder or UserProfileBuilder()
         self._recommendations = recommendations or RecommendationService(_CatalogFingerprintReader(catalog))
+        self._profile_persistence = profile_persistence
         self._adaptive_selector = AdaptiveQuestionSelector()
         self._adaptive_factory = AdaptiveQuestionFactory()
 
@@ -64,7 +73,7 @@ class ProftestService:
         logger.info("preview_complete fingerprint_count=%d candidate_count=%d adaptive_status=%s", len(fingerprints), len(ranked), selection.status.value)
         return ProftestPreview(profile=profile, adaptive=selection, question=question, candidates=tuple(PreviewCandidate(program_id=item.fingerprint.program_id, program_code=item.fingerprint.program_code, content_fit=item.score.content_fit) for item in ranked[:10]))
 
-    def results(self, answer_set: AnswerSet) -> ProftestResults:
+    def results(self, answer_set: AnswerSet, profile_scope: ProfileScope | None = None) -> ProftestResults:
         questions = self.questionnaire().questions
         base_profile = self._build_profile(answer_set, questions)
         fingerprints = self._catalog.list_fingerprints()
@@ -84,6 +93,11 @@ class ProftestService:
             fingerprints,
         )
         recommendations = recommendation_result.recommendations
+        if profile_scope is not None:
+            if self._profile_persistence is None:
+                raise ValidationError("Profile persistence is not configured")
+            snapshot = self._profile_persistence.save_completed(profile_scope, profile)
+            logger.info("results_profile_saved revision=%d", snapshot.revision)
         logger.info("results_complete fingerprint_count=%d recommendation_count=%d adaptive_answers=%d", len(fingerprints), len(recommendations), len(answer_set.adaptive_answers))
         return ProftestResults(profile=profile, recommendations=recommendations)
 

@@ -14,6 +14,7 @@ from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepo
 from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
 from andromeda.infrastructure.repositories.universities import SqlAlchemyUniversityRepository
+from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
 from andromeda.modules.admissions.repository.ports import AdmissionReader
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
@@ -45,6 +46,9 @@ class AndromedaContainer:
 
     def proftest_catalog_reader(self, session: Session) -> SqlAlchemyProftestCatalogRepository:
         return SqlAlchemyProftestCatalogRepository(self.program_reader(session), self.curriculum_reader(session), self.discipline_reader(session))
+
+    def user_profile_repository(self, session: Session) -> SqlAlchemyUserProfileRepository:
+        return SqlAlchemyUserProfileRepository(session)
 
     def recommendation_catalog_reader(self, session: Session) -> CatalogRecommendationRepository:
         return CatalogRecommendationRepository(ProftestCatalogService(self.proftest_catalog_reader(session)))

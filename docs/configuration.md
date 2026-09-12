@@ -14,6 +14,11 @@
 | `BMSTU_DB_POOL_RECYCLE` | backend | `1800` | Connection recycle interval, seconds |
 | `VITE_FRONTEND_ORIGIN` | backend | `http://localhost:5173` | CORS origin |
 | `LOG_LEVEL` | backend | `INFO` | logging level |
+| `ANDROMEDA_PROFILE_COOKIE_NAME` | backend | `andromeda_profile_session` | Anonymous profile cookie name |
+| `ANDROMEDA_PROFILE_COOKIE_MAX_AGE` | backend | `2592000` | Browser cookie lifetime, seconds |
+| `ANDROMEDA_PROFILE_TTL_SECONDS` | backend | `2592000` | Persisted profile retention, seconds |
+| `ANDROMEDA_PROFILE_COOKIE_SECURE` | backend | `false` in test/dev, `true` in staging | Require HTTPS for the profile cookie |
+| `ANDROMEDA_PROFILE_COOKIE_SAMESITE` | backend | `lax` | Cookie SameSite policy (`lax`, `strict`, `none`; `none` requires Secure) |
 | `VITE_API_BASE_URL` | frontend | empty | API base URL; empty uses Vite proxy |
 | `VITE_LOG_LEVEL` | frontend | `WARN` | client diagnostics |
 
@@ -26,6 +31,8 @@ python backend/scripts/run_tracer_bullet.py --mode fixture --database-url sqlite
 `LOG_LEVEL=DEBUG` включает технические stage-сообщения, но raw response body, PDF text и signed query strings в логах не выводятся.
 
 В development/staging credentials передаются только через environment. Database URL в логах редактируется до `dialect://host:port/database`; password и query parameters не выводятся. SQLite fallback предназначен для быстрых тестов и старых локальных команд, не для staging.
+
+Profile persistence is anonymous by default: the server creates an opaque HttpOnly cookie, stores only its SHA-256 hash, and expires the profile after `ANDROMEDA_PROFILE_TTL_SECONDS`. The browser must not copy this cookie into LocalStorage or JavaScript state. Use `Secure=true` with HTTPS in staging; local HTTP development keeps it `false`.
 
 ## See Also
 

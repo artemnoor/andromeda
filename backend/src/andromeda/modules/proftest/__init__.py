@@ -12,12 +12,15 @@ from .contracts.public import (
     Confidence,
     CurriculumEvidence,
     DistinctiveSubject,
+    CurrentUserProfileReader,
+    ProfileScope,
     ProgramFingerprint,
     Question,
     QuestionBlock,
     QuestionOption,
     Questionnaire,
     UserProfile,
+    UserProfileSnapshot,
 )
 
 __all__ = [
@@ -31,11 +34,14 @@ __all__ = [
     "AntiInterest",
     "Confidence",
     "CurriculumEvidence",
+    "CurrentUserProfileReader",
     "DistinctiveSubject",
     "ProgramFingerprint",
     "Question",
     "QuestionBlock",
     "QuestionOption",
     "Questionnaire",
+    "ProfileScope",
     "UserProfile",
+    "UserProfileSnapshot",
 ]

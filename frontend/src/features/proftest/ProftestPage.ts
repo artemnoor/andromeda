@@ -1,6 +1,7 @@
 import { getProftestQuestions, getProftestResults, previewProftest, type ProftestPreviewResponse } from "../../api/client";
 import type { components } from "../../api/generated";
-import { clearDraft, emptyDraft, loadDraft, saveDraft, setAnswer, setIntensity, toRequest, toggleAnswer, type ProftestDraft } from "./state";
+import { clearDraft, emptyDraft, hasInProgressDraft, loadDraft, saveDraft, setAnswer, setIntensity, toRequest, toggleAnswer, type ProftestDraft } from "./state";
+import { loadPersistedResults } from "./profilePersistence";
 import { renderAdaptiveMarkup } from "./AdaptiveScreen";
 import { renderRecommendationDetail } from "../recommendations/RecommendationDetail";
 import { renderQuestionMarkup } from "./QuestionScreen";
@@ -18,11 +19,20 @@ export function renderProftestPage(root: HTMLElement): void {
   renderLoading(root);
 
   void getProftestQuestions()
-    .then((response) => {
+    .then(async (response) => {
       questions = response.questions;
-      if (draft.results && draft.screen === "results") renderResults();
-      else if (draft.screen === "base" && draft.currentQuestion < questions.length) renderQuestion();
-      else if (draft.screen === "adaptive" && draft.adaptiveAnswer === null) void requestPreview();
+      if (hasInProgressDraft(draft)) {
+        if (draft.screen === "base" && draft.currentQuestion < questions.length) renderQuestion();
+        else if (draft.screen === "adaptive" && draft.adaptiveAnswer === null) void requestPreview();
+        else renderIntro();
+        return;
+      }
+      const persisted = await loadPersistedResults();
+      if (persisted) {
+        draft = { ...draft, screen: "results", results: persisted };
+        saveDraft(draft);
+        renderResults(true);
+      } else if (draft.results && draft.screen === "results") renderResults();
       else renderIntro();
     })
     .catch((error: unknown) => renderError(root, error));
@@ -130,14 +140,14 @@ export function renderProftestPage(root: HTMLElement): void {
     }
   }
 
-  function renderResults(): void {
+  function renderResults(restored = false): void {
     const results = draft.results;
     if (!results || results.recommendations.length === 0) {
       renderEmpty(root, "Для этого профиля пока нет подходящих программ");
       return;
     }
     selectedRecommendation = Math.min(selectedRecommendation, results.recommendations.length - 1);
-    root.innerHTML = renderRecommendationList(results);
+    root.innerHTML = renderRecommendationList(results, { restored });
     root.querySelectorAll<HTMLButtonElement>("[data-result-detail]").forEach((button) => button.addEventListener("click", () => {
       selectedRecommendation = Number(button.dataset.resultDetail ?? 0);
       renderDetail(results.recommendations[selectedRecommendation]);

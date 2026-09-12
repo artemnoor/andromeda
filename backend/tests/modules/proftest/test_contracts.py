@@ -13,13 +13,15 @@ from andromeda.modules.proftest.contracts.public import (
     AntiInterest,
     Confidence,
     CurriculumEvidence,
+    ProfileScope,
     ProgramFingerprint,
     UserProfile,
+    UserProfileSnapshot,
 )
 
 
 def test_public_contracts_are_strict() -> None:
-    contracts = (Answer, AnswerSet, AntiInterest, Confidence, CurriculumEvidence, ProgramFingerprint, UserProfile)
+    contracts = (Answer, AnswerSet, AntiInterest, Confidence, CurriculumEvidence, ProfileScope, ProgramFingerprint, UserProfile, UserProfileSnapshot)
     assert all(contract.model_config["extra"] == "forbid" for contract in contracts)
 
 

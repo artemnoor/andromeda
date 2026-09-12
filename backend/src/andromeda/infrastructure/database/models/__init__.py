@@ -3,6 +3,7 @@ from .disciplines import DisciplineAreaModel, DisciplineAreaWeightModel, Discipl
 from .ingestion import IngestRunModel, RawSourceRecordModel, SourceSnapshotModel
 from .admissions import AdmissionExamRequirementModel, AdmissionOfferingModel, AdmissionPassingScoreModel, AdmissionQuotaModel, AdmissionTuitionModel
 from .programs import EducationalProgramModel, ProgramModel
+from .proftest import UserProfileModel
 from .universities import DirectionModel, EducationLevelModel, UniversityModel
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "RawSourceRecordModel",
     "SourceSnapshotModel",
     "UniversityModel",
+    "UserProfileModel",
 ]

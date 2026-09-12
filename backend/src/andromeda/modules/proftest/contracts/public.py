@@ -15,9 +15,11 @@ from ..domain.entities import (
     QuestionOption,
     UserProfile,
 )
+from ..domain.profile import ProfileScope, UserProfileSnapshot
 from ..domain.adaptive import AdaptiveDimension, AdaptiveSelection, AdaptiveStatus
 from ..domain.questions import Questionnaire
 from ..domain.results import MatchReason, MatchScore, MetricStatus, OptionalMetric, PreviewCandidate, ProftestPreview, ProftestResults, ReasonKind, Recommendation, ScoreBreakdown
+from ..repository.ports import CurrentUserProfileReader
 
 __all__ = [
     "ActivityCode",
@@ -45,6 +47,9 @@ __all__ = [
     "Questionnaire",
     "ReasonKind",
     "Recommendation",
+    "CurrentUserProfileReader",
+    "ProfileScope",
     "ScoreBreakdown",
     "UserProfile",
+    "UserProfileSnapshot",
 ]

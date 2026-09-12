@@ -36,7 +36,7 @@ GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&s
 
 ## Ошибки
 
-Ответ ошибки имеет strict-поля `code`, `message`, `details`. Основные коды: `VALIDATION_ERROR`, `NOT_FOUND`, `CONTRACT_ERROR`, `SOURCE_CONTRACT_ERROR`, `INTERNAL_ERROR`.
+Ответ ошибки имеет strict-поля `code`, `message`, `details`. Основные коды: `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, `CONTRACT_ERROR`, `SOURCE_CONTRACT_ERROR`, `INTERNAL_ERROR`.
 
 ## Профиль содержания
 
@@ -45,6 +45,9 @@ GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&s
 | GET | `/proftest/questions` | Versioned bank scenario-based вопросов без внутренних весов |
 | POST | `/proftest/preview` | Строит `UserProfile`, первичный ranking и adaptive selection |
 | POST | `/proftest/results` | Строит финальный профиль и TOP рекомендаций с fit/anti-fit evidence |
+| GET | `/proftest/profile` | Читает current completed profile anonymous session |
+| POST | `/proftest/profile` | Создаёт current profile; повторное создание возвращает `409 CONFLICT` |
+| PUT | `/proftest/profile` | Обновляет профиль по optimistic `expectedRevision` |
 
 Оба POST endpoint принимают strict `answers` и optional `adaptiveAnswers`. `UserProfile` строится до matching, а response содержит integer `contentFit`, breakdown компонентов, реальные workload/share и исходные названия отличительных дисциплин. В этих Content Fit responses optional metrics (`workloadReadiness`, `careerFit`, `admissionFit`) возвращаются с `status: "not_available"` и не влияют на scoring. Отдельный endpoint Admission Fit описан ниже и также не меняет этот ranking.
 
@@ -62,6 +65,7 @@ npm run check-api-drift
 | Метод | Endpoint | Назначение |
 |---|---|---|
 | POST | `/recommendations` | Ранжирует реальные программы для готового `UserProfile` |
+| GET | `/recommendations/current?limit=10` | Ранжирует программы для current persisted profile |
 
 Request содержит `profile` и `limit` (`1..20`). Профиль — тот же strict public contract, который возвращает proftest. Ответ `RecommendationsResponse` содержит профиль и TOP программ с integer `contentFit`, breakdown (`subjectFit`, `activityFit`, `distinctiveFit`, `antiPenalty`), долями областей и блоков, распределением по семестрам, отличительными дисциплинами и evidence-backed `reasons`/`antiFitReasons`.
 
@@ -85,6 +89,8 @@ Request содержит `profile` и `limit` (`1..20`). Профиль — то
 ```
 
 `/recommendations` и `/proftest/results` используют один RecommendationService. Он не импортирует ORM или parser, а получает fingerprints через infrastructure adapter, который делегирует существующий `Program/Curriculum/Discipline` catalog path.
+
+`POST /proftest/results` сохраняет только финальный `UserProfile` (без `AnswerSet` и cookie token). `GET /proftest/profile` и `GET /recommendations/current` используют anonymous HttpOnly session cookie. Если профиля нет или его TTL истёк, API возвращает `NOT_FOUND`; устаревший `expectedRevision` и duplicate create возвращают `CONFLICT`. Session key в БД представлен только SHA-256 hash.
 
 ## Admission Fit
 

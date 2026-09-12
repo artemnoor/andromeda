@@ -64,6 +64,10 @@ export function clearDraft(): void {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+export function hasInProgressDraft(draft: ProftestDraft): boolean {
+  return draft.screen === "base" || draft.screen === "adaptive" || draft.screen === "loading";
+}
+
 function isDraft(value: unknown): value is ProftestDraft {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ProftestDraft>;

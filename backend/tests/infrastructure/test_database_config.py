@@ -55,3 +55,29 @@ def test_settings_emit_safe_debug_diagnostic(monkeypatch: pytest.MonkeyPatch, ca
 
     assert "secret" not in caplog.text
     assert "settings_loaded" in caplog.text
+
+
+def test_profile_cookie_settings_are_environment_configurable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_ENV", "staging")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", "postgresql+psycopg://user:secret@example.test/andromeda")
+    monkeypatch.setenv("ANDROMEDA_PROFILE_COOKIE_NAME", "andromeda_staging_session")
+    monkeypatch.setenv("ANDROMEDA_PROFILE_COOKIE_MAX_AGE", "7200")
+    monkeypatch.setenv("ANDROMEDA_PROFILE_TTL_SECONDS", "86400")
+    monkeypatch.setenv("ANDROMEDA_PROFILE_COOKIE_SECURE", "true")
+    monkeypatch.setenv("ANDROMEDA_PROFILE_COOKIE_SAMESITE", "strict")
+
+    settings = Settings.from_environment()
+
+    assert settings.profile_cookie_name == "andromeda_staging_session"
+    assert settings.profile_cookie_max_age == 7200
+    assert settings.profile_ttl_seconds == 86400
+    assert settings.profile_cookie_secure is True
+    assert settings.profile_cookie_samesite == "strict"
+
+
+def test_profile_cookie_none_requires_secure_transport(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_PROFILE_COOKIE_SAMESITE", "none")
+    monkeypatch.setenv("ANDROMEDA_PROFILE_COOKIE_SECURE", "false")
+
+    with pytest.raises(ValueError, match="SameSite=None"):
+        Settings.from_environment()

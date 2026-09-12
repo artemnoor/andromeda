@@ -70,6 +70,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .proftest-hero { max-width: 900px; }
 .proftest-meta, .profile-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0; }
 .proftest-meta span, .profile-pills span { background: #e9eee8; border-radius: 999px; color: #4e6258; font-size: 13px; padding: 8px 12px; }
+.profile-restored { background: #e7f1e8; border: 1px solid #b9d3bf; border-radius: 10px; color: #315247; display: inline-block; font-size: 13px; margin: 18px 0 0; padding: 9px 12px; }
 .test-shell { max-width: 820px; padding: 18px 0 40px; }
 .test-topline, .detail-heading { align-items: baseline; display: flex; justify-content: space-between; }
 .step-count { color: #68736d; font-size: 14px; }

@@ -138,7 +138,7 @@ jobs:
         run: python -m alembic upgrade head
         working-directory: backend
       - name: Run parser to PostgreSQL API smoke
-        run: python -m pytest -q tests/integration/test_postgresql_ingestion.py tests/integration/test_postgresql_smoke.py tests/integration/test_admission_fit_vertical_slice.py
+        run: python -m pytest -q tests/integration/test_postgresql_ingestion.py tests/integration/test_postgresql_smoke.py tests/integration/test_postgresql_user_profile.py tests/integration/test_admission_fit_vertical_slice.py
         working-directory: backend
       - uses: actions/setup-node@v4
         with:
@@ -193,7 +193,7 @@ jobs:
           python-version: "3.11"
       - run: python -m pip install -e "backend[dev]"
       - name: Run production proftest contract and integration tests
-        run: python -m pytest -q backend/tests/modules/proftest backend/tests/modules/admission_fit backend/tests/api/test_proftest_api.py backend/tests/api/test_proftest_contract.py backend/tests/api/test_admission_fit_api.py backend/tests/api/test_admission_fit_contract.py backend/tests/integration/test_proftest_catalog.py backend/tests/integration/test_proftest_vertical_slice.py backend/tests/integration/test_admission_fit_vertical_slice.py
+        run: python -m pytest -q backend/tests/modules/proftest backend/tests/modules/admission_fit backend/tests/api/test_proftest_api.py backend/tests/api/test_proftest_contract.py backend/tests/api/test_proftest_profile_api.py backend/tests/api/test_proftest_profile_contract.py backend/tests/api/test_admission_fit_api.py backend/tests/api/test_admission_fit_contract.py backend/tests/integration/test_proftest_catalog.py backend/tests/integration/test_proftest_vertical_slice.py backend/tests/integration/test_user_profile_persistence.py backend/tests/integration/test_admission_fit_vertical_slice.py
       - name: Run recommendation module and API integration tests
         run: python -m pytest -q backend/tests/modules/recommendations backend/tests/api/test_recommendations_api.py backend/tests/api/test_recommendations_contract.py backend/tests/integration/test_recommendations_catalog.py
       - name: Run strict Andromeda typing gate

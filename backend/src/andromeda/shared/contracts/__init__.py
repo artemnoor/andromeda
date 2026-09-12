@@ -5,6 +5,7 @@ from .enums import AssessmentType, CompareStatus, ComparisonScope, EducationLeve
 from .errors import (
     AndromedaError,
     ContractError,
+    ConflictError,
     ErrorCode,
     ErrorDetail,
     ErrorResponse,
@@ -37,6 +38,7 @@ __all__ = [
     "CompareStatus",
     "ComparisonScope",
     "ContractError",
+    "ConflictError",
     "ContractModel",
     "Credits",
     "CurriculumId",

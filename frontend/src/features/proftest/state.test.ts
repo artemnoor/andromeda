@@ -1,6 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { emptyDraft, setAnswer, setIntensity, toRequest, toggleAnswer } from "./state";
+import { emptyDraft, hasInProgressDraft, loadDraft, setAnswer, setIntensity, STORAGE_KEY, toRequest, toggleAnswer } from "./state";
+
+const storage = new Map<string, string>();
+
+afterEach(() => {
+  storage.clear();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+function stubLocalStorage(): void {
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+    removeItem: (key: string) => storage.delete(key),
+  });
+}
 
 describe("proftest draft state", () => {
   it("keeps single and capped multi-select answers in the API shape", () => {
@@ -21,5 +37,21 @@ describe("proftest draft state", () => {
 
     expect(initial.answers.anti_subjects?.intensity).toBe(0.5);
     expect(updated.answers.anti_subjects?.intensity).toBe(0.95);
+  });
+
+  it("keeps an unfinished draft ahead of a completed server profile", () => {
+    expect(hasInProgressDraft({ ...emptyDraft(), screen: "base" })).toBe(true);
+    expect(hasInProgressDraft({ ...emptyDraft(), screen: "adaptive" })).toBe(true);
+    expect(hasInProgressDraft({ ...emptyDraft(), screen: "results" })).toBe(false);
+  });
+
+  it("clears malformed persisted state instead of treating it as an in-progress draft", () => {
+    stubLocalStorage();
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ screen: "base", answers: "not-an-object" }));
+
+    expect(loadDraft()).toEqual(emptyDraft());
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(warning).toHaveBeenCalledWith("[proftest] restored_state_invalid");
   });
 });
