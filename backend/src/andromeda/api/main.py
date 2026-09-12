@@ -18,12 +18,23 @@ from andromeda.api.routes.disciplines import router as disciplines_router
 from andromeda.api.routes.programs import router as programs_router
 from andromeda.api.routes.proftest import router as proftest_router
 from andromeda.api.routes.recommendations import router as recommendations_router
+from andromeda.api.routes.events import router as events_router
 from andromeda.shared.contracts.errors import AndromedaError, ErrorCode, ErrorResponse, details_from_validation
 from andromeda.infrastructure.config.settings import Settings
 from andromeda.infrastructure.database.base import create_engine_for_url
 
 
 logger = logging.getLogger("andromeda.api.request")
+
+SECURITY_HEADERS = {
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+}
+API_CONTENT_SECURITY_POLICY = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+DOCS_CONTENT_SECURITY_POLICY = "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com; connect-src 'self'"
+HSTS_HEADER = "max-age=31536000; includeSubDomains"
 
 
 def create_app(database_url: str | None = None) -> FastAPI:
@@ -54,6 +65,11 @@ def create_app(database_url: str | None = None) -> FastAPI:
         if isinstance(profile_cookie_header, str):
             response.headers["set-cookie"] = profile_cookie_header
         response.headers["X-Correlation-Id"] = correlation_id
+        for header, value in SECURITY_HEADERS.items():
+            response.headers[header] = value
+        response.headers["Content-Security-Policy"] = DOCS_CONTENT_SECURITY_POLICY if response.headers.get("content-type", "").startswith("text/html") else API_CONTENT_SECURITY_POLICY
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = HSTS_HEADER
         return response
 
     @app.exception_handler(AndromedaError)
@@ -95,6 +111,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(compare_router)
     app.include_router(proftest_router)
     app.include_router(recommendations_router)
+    app.include_router(events_router)
     return app
 
 

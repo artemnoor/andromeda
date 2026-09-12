@@ -33,6 +33,7 @@ def test_postgresql_supports_the_existing_api_vertical_slice() -> None:
     programs = client.get("/programs")
     curriculum = client.get("/programs/program:09.03.01-02/curriculum")
     admissions = client.get("/programs/program:09.03.01-02/admissions")
+    events = client.get("/events", params={"format": "online"})
     comparison = client.get(
         "/compare",
         params={"programIds": "program:09.03.01-02,program:09.03.01-12", "scope": "semester", "semester": 1},
@@ -67,6 +68,8 @@ def test_postgresql_supports_the_existing_api_vertical_slice() -> None:
     assert len(programs.json()["items"]) == 2
     assert curriculum.status_code == 200
     assert admissions.status_code == 200
+    assert events.status_code == 200
+    assert events.json()["items"][0]["id"] == "event:bmstu:online-open-lecture-2026"
     assert curriculum.json()["items"]
     assert comparison.status_code == 200
     assert comparison.json()["rows"]

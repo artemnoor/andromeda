@@ -16,9 +16,12 @@ from ...contracts.source import CapturedSources, RawSourceSnapshot
 from ....modules.disciplines.contracts.public import Discipline
 from ....modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
 from .selectors import DEFAULT_FIXTURE_DIR, TARGET_PROGRAM_CODES, select_program_codes
+from .selectors import DEFAULT_EVENT_FIXTURE_DIR
 from .mappings.discipline_areas import BMSTU_DISCIPLINE_AREA_OVERRIDES
 from .normalizers.admissions import normalize_admissions
+from .normalizers.events import normalize_events
 from .parser.admissions import parse_detail_admissions
+from .parser.events import load_event_fixture, parse_events
 
 
 fetch_logger = logging.getLogger("andromeda.ingestion.bmstu.fetch")
@@ -42,12 +45,20 @@ class BmstuUniversityAdapter:
     def close(self) -> None:
         self._source.close()
 
-    def capture(self, mode: str = "fixture", fixture_dir: Path | None = None) -> CapturedSources:
+    def capture(
+        self,
+        mode: str = "fixture",
+        fixture_dir: Path | None = None,
+        event_fixture_dir: Path | None = None,
+    ) -> CapturedSources:
         fetch_logger.debug("stage=capture mode=%s", mode)
         legacy_captured = self._source.capture(mode=mode, fixture_dir=fixture_dir or DEFAULT_FIXTURE_DIR)
         snapshots = tuple(RawSourceSnapshot.model_validate(snapshot.model_dump()) for snapshot in legacy_captured.snapshots)
+        if mode == "fixture":
+            event_snapshot = load_event_fixture(event_fixture_dir or DEFAULT_EVENT_FIXTURE_DIR)
+            snapshots += (RawSourceSnapshot.model_validate(event_snapshot.model_dump()),)
         result = CapturedSources(snapshots=snapshots)
-        fetch_logger.info("stage=capture_complete mode=%s snapshots=%d", mode, len(result.snapshots))
+        fetch_logger.info("stage=capture_complete mode=%s snapshots=%d event_source=%s", mode, len(result.snapshots), mode == "fixture")
         return result
 
     def parse(
@@ -63,7 +74,11 @@ class BmstuUniversityAdapter:
         legacy_raw = parse_legacy_captured(legacy_captured, program_codes=selected)
         raw = RawTracerBundle.model_validate(legacy_raw.model_dump())
         admission_records = parse_detail_admissions(captured.first("bmstu_major_detail"), selected)
-        raw = raw.model_copy(update={"admissions": admission_records})
+        event_snapshots = captured.by_kind("bmstu_events")
+        if len(event_snapshots) > 1:
+            raise ValueError("expected at most one BMSTU event source snapshot")
+        event_records = parse_events(event_snapshots[0]) if event_snapshots else ()
+        raw = raw.model_copy(update={"admissions": admission_records, "events": event_records})
         legacy_canonical = normalize_legacy_bundle(legacy_raw)
         canonical = CanonicalSnapshot.model_validate(legacy_canonical.model_dump())
         classified_disciplines = tuple(
@@ -84,6 +99,12 @@ class BmstuUniversityAdapter:
                     programs=canonical.programs,
                     snapshots=raw.snapshots,
                 ),
+                "events": normalize_events(
+                    raw.events,
+                    programs=canonical.programs,
+                    snapshots=raw.snapshots,
+                    known_program_codes=TARGET_PROGRAM_CODES,
+                ),
             }
         )
         area_count = len({weight.area for discipline in canonical.disciplines for weight in discipline.area_weights})
@@ -95,15 +116,17 @@ class BmstuUniversityAdapter:
             sum(len(curriculum.items) for curriculum in canonical.curricula),
             area_count,
         )
+        normalize_logger.info("stage=events_complete events=%d", len(canonical.events))
         return raw, canonical
 
     def parse_sources(
         self,
         mode: str = "fixture",
         fixture_dir: Path | None = None,
+        event_fixture_dir: Path | None = None,
         program_codes: Sequence[str] = TARGET_PROGRAM_CODES,
     ) -> tuple[RawTracerBundle, CanonicalSnapshot]:
-        captured = self.capture(mode=mode, fixture_dir=fixture_dir)
+        captured = self.capture(mode=mode, fixture_dir=fixture_dir, event_fixture_dir=event_fixture_dir)
         return self.parse(captured, program_codes=program_codes)
 
 

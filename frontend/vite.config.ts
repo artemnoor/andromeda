@@ -10,6 +10,7 @@ export default defineConfig({
       "/compare": apiProxyTarget,
       "/proftest": apiProxyTarget,
       "/recommendations": apiProxyTarget,
+      "/events": apiProxyTarget,
       "/openapi.json": apiProxyTarget,
       "/docs": apiProxyTarget,
     }

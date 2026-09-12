@@ -15,9 +15,11 @@ from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCat
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
 from andromeda.infrastructure.repositories.universities import SqlAlchemyUniversityRepository
 from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
+from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
 from andromeda.modules.admissions.repository.ports import AdmissionReader
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
+from andromeda.modules.events.services.events import EventService
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +45,12 @@ class AndromedaContainer:
 
     def university_reader(self, session: Session) -> SqlAlchemyUniversityRepository:
         return SqlAlchemyUniversityRepository(session)
+
+    def event_reader(self, session: Session) -> SqlAlchemyEventRepository:
+        return SqlAlchemyEventRepository(session)
+
+    def event_service(self, session: Session) -> EventService:
+        return EventService(self.event_reader(session))
 
     def proftest_catalog_reader(self, session: Session) -> SqlAlchemyProftestCatalogRepository:
         return SqlAlchemyProftestCatalogRepository(self.program_reader(session), self.curriculum_reader(session), self.discipline_reader(session))

@@ -224,6 +224,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Events */
+        get: operations["list_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Event */
+        get: operations["get_event"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -645,6 +679,83 @@ export interface components {
              */
             details: components["schemas"]["ErrorDetail"][];
         };
+        /** EventDetailResponse */
+        EventDetailResponse: {
+            event: components["schemas"]["EventResponse"];
+        };
+        /**
+         * EventFormat
+         * @enum {string}
+         */
+        EventFormat: "offline" | "online" | "hybrid";
+        /**
+         * EventKind
+         * @enum {string}
+         */
+        EventKind: "additional_education" | "open_day" | "lecture" | "competition" | "career" | "other";
+        /** EventListResponse */
+        EventListResponse: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["EventResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** EventProvenanceResponse */
+        EventProvenanceResponse: {
+            kind: components["schemas"]["SourceKind"];
+            /**
+             * Url
+             * Format: uri
+             */
+            url: string;
+            /**
+             * Capturedat
+             * Format: date-time
+             */
+            capturedAt: string;
+            /** Contentsha256 */
+            contentSha256: string;
+            /** Locator */
+            locator?: string | null;
+        };
+        /** EventResponse */
+        EventResponse: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            kind: components["schemas"]["EventKind"];
+            format: components["schemas"]["EventFormat"];
+            /**
+             * Startsat
+             * Format: date-time
+             */
+            startsAt: string;
+            /** Endsat */
+            endsAt?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Registrationurl */
+            registrationUrl?: string | null;
+            /** Universityids */
+            universityIds: string[];
+            /**
+             * Departmentids
+             * @default []
+             */
+            departmentIds: string[];
+            /**
+             * Programids
+             * @default []
+             */
+            programIds: string[];
+            venue?: components["schemas"]["VenueResponse"] | null;
+            /** Provenance */
+            provenance: components["schemas"]["EventProvenanceResponse"][];
+        };
         /** ExamRequirementResponse */
         ExamRequirementResponse: {
             /** Subject */
@@ -916,6 +1027,11 @@ export interface components {
             rawContentFit: string;
         };
         /**
+         * SourceKind
+         * @enum {string}
+         */
+        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_events";
+        /**
          * StudyForm
          * @enum {string}
          */
@@ -1025,6 +1141,19 @@ export interface components {
             profile: components["schemas"]["UserProfileResponse-Input"];
             /** Expectedrevision */
             expectedRevision: number;
+        };
+        /** VenueResponse */
+        VenueResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Address */
+            address?: string | null;
+            /** Latitude */
+            latitude?: string | null;
+            /** Longitude */
+            longitude?: string | null;
         };
         /** WorkloadResponse */
         WorkloadResponse: {
@@ -2012,6 +2141,148 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecommendationsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_events: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+                kind?: components["schemas"]["EventKind"] | null;
+                format?: components["schemas"]["EventFormat"] | null;
+                universityId?: string | null;
+                departmentId?: string | null;
+                programId?: string | null;
+                recommended?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDetailResponse"];
                 };
             };
             /** @description Bad Request */

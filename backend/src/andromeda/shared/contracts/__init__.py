@@ -16,10 +16,12 @@ from .ids import (
     Credits,
     CurriculumId,
     CurriculumItemId,
+    DepartmentId,
     DirectionCode,
     DirectionId,
     DisciplineId,
     EducationYear,
+    EventId,
     HourCount,
     NonEmptyText,
     ProgramCode,
@@ -29,6 +31,7 @@ from .ids import (
     SourcePosition,
     Semester,
     UniversityId,
+    VenueId,
 )
 from .provenance import SourceAttribution
 
@@ -43,10 +46,12 @@ __all__ = [
     "Credits",
     "CurriculumId",
     "CurriculumItemId",
+    "DepartmentId",
     "DirectionCode",
     "DirectionId",
     "DisciplineId",
     "EducationLevel",
+    "EventId",
     "EducationYear",
     "ErrorCode",
     "ErrorDetail",
@@ -64,4 +69,5 @@ __all__ = [
     "SourceKind",
     "ValidationError",
     "UniversityId",
+    "VenueId",
 ]

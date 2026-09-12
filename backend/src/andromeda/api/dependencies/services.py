@@ -18,6 +18,7 @@ from andromeda.modules.proftest.services.profile_persistence import UserProfileP
 from andromeda.modules.proftest.services.proftest import ProftestService
 from andromeda.modules.recommendations.services.recommendations import RecommendationService
 from andromeda.modules.recommendations.services.current import CurrentRecommendationService
+from andromeda.modules.events.services.events import EventService
 
 from andromeda.infrastructure.repositories.curricula import SqlAlchemyCurriculumRepository
 from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDisciplineRepository
@@ -27,6 +28,7 @@ from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepo
 from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
 from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
+from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
 from .request_context import get_session
 
 
@@ -124,3 +126,13 @@ def get_current_recommendation_service(
     recommendations: RecommendationService = Depends(get_recommendation_service),
 ) -> CurrentRecommendationService:
     return CurrentRecommendationService(profile_reader, recommendations)
+
+
+def get_event_reader(session: Session = Depends(get_session)) -> SqlAlchemyEventRepository:
+    return SqlAlchemyEventRepository(session)
+
+
+def get_event_service(
+    reader: SqlAlchemyEventRepository = Depends(get_event_reader),
+) -> EventService:
+    return EventService(reader)

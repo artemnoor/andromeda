@@ -7,6 +7,7 @@ from typing import TypeAlias
 from pydantic import Field, HttpUrl
 
 from ...shared.contracts.base import ContractModel
+from ...shared.contracts.ids import UniversityId
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
@@ -115,6 +116,32 @@ class RawAdmissionRecord(ContractModel):
     locator: SourceLocator
 
 
+class RawVenueRecord(ContractModel):
+    external_key: str = Field(min_length=1, max_length=128)
+    name: str = Field(min_length=1, max_length=512)
+    address: str | None = Field(default=None, min_length=1, max_length=1024)
+    latitude: Decimal | None = Field(default=None, strict=True, ge=Decimal("-90"), le=Decimal("90"), max_digits=9, decimal_places=6)
+    longitude: Decimal | None = Field(default=None, strict=True, ge=Decimal("-180"), le=Decimal("180"), max_digits=9, decimal_places=6)
+
+
+class RawEventRecord(ContractModel):
+    external_key: str = Field(min_length=1, max_length=128)
+    title: str = Field(min_length=1, max_length=512)
+    kind: str = Field(min_length=1, max_length=64)
+    format: str = Field(min_length=1, max_length=32)
+    starts_at: datetime
+    ends_at: datetime | None = None
+    description: str | None = Field(default=None, min_length=1, max_length=10_000)
+    registration_url: HttpUrl | None = None
+    university_ids: tuple[UniversityId, ...] = Field(min_length=1)
+    department_codes: tuple[str, ...] = ()
+    program_codes: tuple[str, ...] = ()
+    venue: RawVenueRecord | None = None
+    source_kind: str = Field(min_length=1, max_length=128)
+    source_url: HttpUrl
+    locator: SourceLocator
+
+
 class RawTracerBundle(ContractModel):
     snapshots: tuple[RawSourceSnapshot, ...] = Field(min_length=1)
     university: RawUniversityRecord
@@ -122,3 +149,4 @@ class RawTracerBundle(ContractModel):
     programs: tuple[RawProgramRecord, ...] = Field(min_length=1)
     curriculum_rows: tuple[RawCurriculumRow, ...] = Field(min_length=1)
     admissions: tuple[RawAdmissionRecord, ...] = ()
+    events: tuple[RawEventRecord, ...] = ()

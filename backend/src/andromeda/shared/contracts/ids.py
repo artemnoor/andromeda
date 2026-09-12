@@ -15,6 +15,18 @@ ProgramId: TypeAlias = Annotated[
     StringConstraints(pattern=r"^program:[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9]{2,3}$"),
 ]
 ProgramCode: TypeAlias = Annotated[str, StringConstraints(pattern=r"^[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9]{2,3}$")]
+DepartmentId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^department:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,62}$"),
+]
+EventId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^event:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,127}$"),
+]
+VenueId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^venue:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,62}$"),
+]
 CurriculumId: TypeAlias = Annotated[
     str,
     StringConstraints(pattern=r"^curriculum:[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9]{2,3}-20[0-9]{2}$"),

@@ -33,6 +33,7 @@ from ..database.models import (
 )
 from ..database.session import session_factory
 from .admissions import SqlAlchemyAdmissionRepository
+from .events import SqlAlchemyEventRepository
 
 
 logger = logging.getLogger("andromeda.infrastructure.repositories.ingestion")
@@ -74,7 +75,11 @@ class SqlAlchemyIngestionRepository:
                         self._insert_snapshot(session, run_id, snapshot)
                     session.flush()
                     self._insert_raw_records(session, raw)
-                    stats = self._insert_domain(session, canonical)
+                    stats = self._insert_domain(
+                        session,
+                        canonical,
+                        event_source_present=any(snapshot.source_kind == "bmstu_events" for snapshot in raw.snapshots),
+                    )
                     run = session.get(IngestRunModel, run_id)
                     if run is None:
                         raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest run disappeared before commit")
@@ -152,6 +157,7 @@ class SqlAlchemyIngestionRepository:
         records.extend(("Program", program.model_dump_json(), str(program.source_url)) for program in raw.programs)
         records.extend(("CurriculumRow", row.model_dump_json(), str(row.source_url)) for row in raw.curriculum_rows)
         records.extend(("Admission", admission.model_dump_json(), str(admission.source_url)) for admission in raw.admissions)
+        records.extend(("Event", event.model_dump_json(), str(event.source_url)) for event in raw.events)
         for index, (record_type, payload, source_url) in enumerate(records):
             snapshot_hash = hashes_by_url.get(source_url)
             if snapshot_hash is None:
@@ -161,7 +167,13 @@ class SqlAlchemyIngestionRepository:
                 session.add(RawSourceRecordModel(id=record_id, snapshot_sha256=snapshot_hash, record_type=record_type, payload_json=payload))
 
     @classmethod
-    def _insert_domain(cls, session: Session, canonical: CanonicalSnapshot) -> _SyncStats:
+    def _insert_domain(
+        cls,
+        session: Session,
+        canonical: CanonicalSnapshot,
+        *,
+        event_source_present: bool = False,
+    ) -> _SyncStats:
         stats = _SyncStats()
         stats.record(
             cls._upsert(
@@ -215,6 +227,15 @@ class SqlAlchemyIngestionRepository:
             )
         session.flush()
         SqlAlchemyAdmissionRepository(session).sync(canonical.admissions)
+        session.flush()
+        event_stats = SqlAlchemyEventRepository(session).sync(
+            canonical.events,
+            source_scope="bmstu_events" if event_source_present else None,
+        )
+        stats.inserted += event_stats.inserted + event_stats.venues
+        stats.updated += event_stats.updated
+        stats.unchanged += event_stats.unchanged
+        stats.removed += event_stats.removed
         session.flush()
         disciplines_by_id = {discipline.id: discipline for discipline in canonical.disciplines}
         for discipline in canonical.disciplines:

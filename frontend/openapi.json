@@ -1226,6 +1226,301 @@
           }
         }
       }
+    },
+    "/events": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "List Events",
+        "operationId": "list_events",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EventKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EventFormat"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Format"
+            }
+          },
+          {
+            "name": "universityId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^university:[a-z0-9][a-z0-9-]{0,62}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Universityid"
+            }
+          },
+          {
+            "name": "departmentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^department:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,62}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Departmentid"
+            }
+          },
+          {
+            "name": "programId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Programid"
+            }
+          },
+          {
+            "name": "recommended",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Recommended"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/events/{id}": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Get Event",
+        "operationId": "get_event",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^event:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,127}$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2578,6 +2873,229 @@
         ],
         "title": "ErrorResponse"
       },
+      "EventDetailResponse": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/EventResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event"
+        ],
+        "title": "EventDetailResponse"
+      },
+      "EventFormat": {
+        "type": "string",
+        "enum": [
+          "offline",
+          "online",
+          "hybrid"
+        ],
+        "title": "EventFormat"
+      },
+      "EventKind": {
+        "type": "string",
+        "enum": [
+          "additional_education",
+          "open_day",
+          "lecture",
+          "competition",
+          "career",
+          "other"
+        ],
+        "title": "EventKind"
+      },
+      "EventListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EventResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "title": "EventListResponse"
+      },
+      "EventProvenanceResponse": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SourceKind"
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Capturedat"
+          },
+          "contentSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Contentsha256"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locator"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "url",
+          "capturedAt",
+          "contentSha256"
+        ],
+        "title": "EventProvenanceResponse"
+      },
+      "EventResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^event:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,127}$",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EventKind"
+          },
+          "format": {
+            "$ref": "#/components/schemas/EventFormat"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Startsat"
+          },
+          "endsAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endsat"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "registrationUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registrationurl"
+          },
+          "universityIds": {
+            "items": {
+              "type": "string",
+              "pattern": "^university:[a-z0-9][a-z0-9-]{0,62}$"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Universityids"
+          },
+          "departmentIds": {
+            "items": {
+              "type": "string",
+              "pattern": "^department:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,62}$"
+            },
+            "type": "array",
+            "title": "Departmentids",
+            "default": []
+          },
+          "programIds": {
+            "items": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+            },
+            "type": "array",
+            "title": "Programids",
+            "default": []
+          },
+          "venue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VenueResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/EventProvenanceResponse"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "format",
+          "startsAt",
+          "universityIds",
+          "provenance"
+        ],
+        "title": "EventResponse"
+      },
       "ExamRequirementResponse": {
         "properties": {
           "subject": {
@@ -3377,6 +3895,17 @@
         ],
         "title": "ScoreBreakdownResponse"
       },
+      "SourceKind": {
+        "type": "string",
+        "enum": [
+          "bmstu_common",
+          "bmstu_major_catalog",
+          "bmstu_major_detail",
+          "bmstu_curriculum_document",
+          "bmstu_events"
+        ],
+        "title": "SourceKind"
+      },
       "StudyForm": {
         "type": "string",
         "enum": [
@@ -3736,6 +4265,63 @@
           "expectedRevision"
         ],
         "title": "UserProfileUpdateRequest"
+      },
+      "VenueResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^venue:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,62}$",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1024,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "VenueResponse"
       },
       "WorkloadResponse": {
         "properties": {

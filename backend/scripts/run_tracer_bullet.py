@@ -17,7 +17,7 @@ from alembic.config import Config
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 
-from andromeda.ingestion.universities.bmstu import DEFAULT_FIXTURE_DIR, BmstuUniversityAdapter
+from andromeda.ingestion.universities.bmstu import DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR, BmstuUniversityAdapter
 from andromeda.infrastructure.config import Settings, redact_database_url
 from andromeda.infrastructure.database import create_engine_for_url
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
@@ -34,6 +34,7 @@ class TracerRunResult:
     curriculum_item_count: int
     source_count: int
     source_hashes: tuple[str, ...]
+    event_count: int
 
 
 def configure_logging(log_level: str) -> None:
@@ -65,6 +66,7 @@ def run_ingest(
     *,
     mode: str,
     fixture_dir: Path,
+    event_fixture_dir: Path | None = None,
     database_url: str,
     program_codes: Sequence[str],
 ) -> TracerRunResult:
@@ -87,6 +89,7 @@ def run_ingest(
             raw, normalized = source.parse_sources(
                 mode=mode,
                 fixture_dir=fixture_dir,
+                event_fixture_dir=event_fixture_dir or DEFAULT_EVENT_FIXTURE_DIR,
                 program_codes=program_codes,
             )
         finally:
@@ -99,13 +102,15 @@ def run_ingest(
             curriculum_item_count=sum(len(curriculum.items) for curriculum in normalized.curricula),
             source_count=len(normalized.sources),
             source_hashes=tuple(source.content_sha256 for source in normalized.sources),
+            event_count=len(normalized.events),
         )
         logger.info(
-            "ingest_complete run_id=%s programs=%d curriculum_items=%d sources=%d",
+            "ingest_complete run_id=%s programs=%d curriculum_items=%d sources=%d events=%d",
             result.run_id,
             len(result.program_ids),
             result.curriculum_item_count,
             result.source_count,
+            result.event_count,
         )
         return result
     finally:
@@ -119,6 +124,7 @@ def result_payload(result: TracerRunResult, database_url: str) -> dict[str, obje
         "curriculumItemCount": result.curriculum_item_count,
         "sourceCount": result.source_count,
         "sourceHashes": list(result.source_hashes),
+        "eventCount": result.event_count,
         "databaseTarget": redact_database_url(database_url),
         "api": {
             "docs": "/docs",
@@ -127,6 +133,7 @@ def result_payload(result: TracerRunResult, database_url: str) -> dict[str, obje
             "curriculum": "/programs/{id}/curriculum",
             "admissions": "/programs/{id}/admissions",
             "compare": "/compare?programIds=program:09.03.01-02,program:09.03.01-12",
+            "events": "/events",
         },
         "frontend": "http://localhost:5173/",
     }
@@ -136,6 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Ingest official BMSTU data through the tracer bullet contracts")
     parser.add_argument("--mode", choices=("fixture", "live"), default="fixture")
     parser.add_argument("--fixture-dir", type=Path, default=DEFAULT_FIXTURE_DIR)
+    parser.add_argument("--event-fixture-dir", type=Path, default=DEFAULT_EVENT_FIXTURE_DIR)
     parser.add_argument("--database-url", default=None)
     parser.add_argument("--program-code", action="append", dest="program_codes")
     parser.add_argument("--program-id", action="append", dest="program_ids")
@@ -154,6 +162,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     result = run_ingest(
         mode=args.mode,
         fixture_dir=args.fixture_dir,
+        event_fixture_dir=args.event_fixture_dir,
         database_url=database_url,
         program_codes=program_codes,
     )

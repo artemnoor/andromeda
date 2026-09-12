@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from http.cookiejar import CookieJar
 import json
 import logging
 import os
@@ -15,7 +16,7 @@ from subprocess import Popen
 from typing import Sequence, cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.request import HTTPCookieProcessor, Request, build_opener, urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = REPO_ROOT / "backend"
@@ -23,7 +24,7 @@ FRONTEND_ROOT = REPO_ROOT / "frontend"
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from bmstu_parser.tracer import DEFAULT_FIXTURE_DIR  # noqa: E402
+from andromeda.ingestion.universities.bmstu import DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR  # noqa: E402
 from andromeda.infrastructure.config import Settings  # noqa: E402
 from run_tracer_bullet import (  # noqa: E402
     TracerRunResult,
@@ -64,6 +65,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the complete BMSTU tracer bullet")
     parser.add_argument("--mode", choices=("fixture", "live"), default="fixture")
     parser.add_argument("--fixture-dir", type=Path, default=DEFAULT_FIXTURE_DIR)
+    parser.add_argument("--event-fixture-dir", type=Path, default=DEFAULT_EVENT_FIXTURE_DIR)
     parser.add_argument("--database-url", default=default_database_url())
     parser.add_argument("--program-code", action="append", dest="program_codes")
     parser.add_argument("--program-id", action="append", dest="program_ids")
@@ -144,6 +146,72 @@ def verify_admissions(api_base_url: str, program_codes: Sequence[str]) -> None:
         logger.info("stage_verified name=admissions program=%s offerings=%d", program_id, len(offerings))
 
 
+def verify_events(api_base_url: str, expected_event_count: int = 5) -> None:
+    """Verify event projection, provenance, canonical links, and recommendation filtering."""
+    body = _http_get(f"{api_base_url}/events")
+    payload = _json_object(body, "events endpoint")
+    items = payload.get("items")
+    if not isinstance(items, list) or len(items) < expected_event_count:
+        raise DemoError(f"events response contains fewer than {expected_event_count} fixture events")
+    if payload.get("total", 0) < expected_event_count:
+        raise DemoError("events response total is smaller than the fixture count")
+    for item in items:
+        if not isinstance(item, dict) or not str(item.get("id", "")).startswith("event:bmstu:"):
+            raise DemoError("events response has an invalid canonical event id")
+        provenance = item.get("provenance")
+        first_provenance = provenance[0] if isinstance(provenance, list) and provenance else None
+        if not isinstance(first_provenance, dict) or first_provenance.get("kind") != "bmstu_events":
+            raise DemoError("events response has missing BMSTU provenance")
+        program_ids = item.get("programIds", [])
+        if not isinstance(program_ids, list):
+            raise DemoError("events response has invalid program links")
+        for program_id in program_ids:
+            if not isinstance(program_id, str) or not program_id.startswith("program:"):
+                raise DemoError("events response has a non-canonical program link")
+    logger.info("stage_verified name=events count=%d", len(items))
+
+    opener = build_opener(HTTPCookieProcessor(CookieJar()))
+    request = Request(
+        f"{api_base_url}/proftest/results",
+        data=json.dumps(
+            {
+                "answers": [
+                    {"questionId": "interest_free_day", "optionIds": ["software_tool"]},
+                    {"questionId": "interest_investigation", "optionIds": ["prove_model"]},
+                    {"questionId": "activity_build", "optionIds": ["system_scheme"]},
+                    {"questionId": "activity_working_style", "optionIds": ["analyze_options"]},
+                    {"questionId": "anti_subjects", "optionIds": ["avoid_physics"], "intensity": 0.9},
+                    {"questionId": "activity_depth", "optionIds": ["practical_prototype"]},
+                ]
+            }
+        ).encode("utf-8"),
+        headers={"Accept": "application/json", "Content-Type": "application/json"},
+        method="POST",
+    )
+    with opener.open(request, timeout=5.0) as response:
+        if response.status != 200:
+            raise DemoError("profile creation failed during events verification")
+        recommendations = _json_object(response.read(), "profile result endpoint").get("recommendations")
+    if not isinstance(recommendations, list) or not recommendations:
+        raise DemoError("profile creation returned no recommendations for events verification")
+    recommended_ids = {item.get("programId") for item in recommendations if isinstance(item, dict)}
+    with opener.open(Request(f"{api_base_url}/events?recommended=true", headers={"Accept": "application/json"}), timeout=5.0) as response:
+        if response.status != 200:
+            raise DemoError("recommended events query failed after profile creation")
+        recommended_payload = _json_object(response.read(), "recommended events endpoint")
+    recommended_items = recommended_payload.get("items")
+    if not isinstance(recommended_items, list):
+        raise DemoError("recommended events response does not contain an item list")
+    for item in recommended_items:
+        if not isinstance(item, dict) or not isinstance(item.get("programIds"), list) or not (set(item["programIds"]) & recommended_ids):
+            raise DemoError("recommended events response contains an event without recommendation evidence")
+    if not recommended_items and recommended_ids:
+        logger.warning("stage_verified name=events_recommended count=0 recommendation_count=%d", len(recommended_ids))
+    if any(item.get("id") == "event:bmstu:research-day-2026" for item in recommended_items if isinstance(item, dict)):
+        raise DemoError("unlinked university event was returned by recommended filter")
+    logger.info("stage_verified name=events_recommended count=%d recommendation_count=%d", len(recommended_items), len(recommended_ids))
+
+
 def _start_process(command: list[str], cwd: Path, env: dict[str, str], label: str) -> Popen[bytes]:
     logger.info("stage_start name=%s command=%s", label, " ".join(command))
     if os.name == "nt":
@@ -184,13 +252,16 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
     program_codes = selected_program_codes(args.program_codes, args.program_ids)
     database_url = resolve_database_url(args.database_url)
     fixture_dir = args.fixture_dir if args.fixture_dir.is_absolute() else (REPO_ROOT / args.fixture_dir).resolve()
+    configured_event_fixture_dir = getattr(args, "event_fixture_dir", DEFAULT_EVENT_FIXTURE_DIR)
+    event_fixture_dir = configured_event_fixture_dir if configured_event_fixture_dir.is_absolute() else (REPO_ROOT / configured_event_fixture_dir).resolve()
     result = run_ingest(
         mode=args.mode,
         fixture_dir=fixture_dir,
+        event_fixture_dir=event_fixture_dir,
         database_url=database_url,
         program_codes=program_codes,
     )
-    logger.info("stage_complete name=database run_id=%s items=%d", result.run_id, result.curriculum_item_count)
+    logger.info("stage_complete name=database run_id=%s items=%d events=%d", result.run_id, result.curriculum_item_count, result.event_count)
 
     child_env = os.environ.copy()
     child_env["BMSTU_DATABASE_URL"] = database_url
@@ -220,6 +291,7 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
         wait_for_http(frontend_url, frontend_process, args.timeout, "frontend")
         verify_compare(api_base_url, program_codes)
         verify_admissions(api_base_url, program_codes)
+        verify_events(api_base_url, result.event_count)
         if not args.check:
             logger.info("demo_ready api=%s frontend=%s; press Ctrl-C to stop", api_base_url, frontend_url)
             while True:
@@ -255,6 +327,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "curriculumItemCount": result.curriculum_item_count,
                 "sourceCount": result.source_count,
                 "sourceHashes": list(result.source_hashes),
+                "eventCount": result.event_count,
                 "mode": args.mode,
                 "check": args.check,
             },
