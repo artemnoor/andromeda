@@ -92,7 +92,7 @@ jobs:
           done
           cat "$RUNNER_TEMP/andromeda-demo.log"
           exit 1
-      - name: Run browser comparison, admissions, events, and regression scenarios
+      - name: Run browser comparison, admissions, events, personal plan, and regression scenarios
         run: npm run test:e2e
         working-directory: frontend
       - name: Stop fixture demo
@@ -138,7 +138,7 @@ jobs:
         run: python -m alembic upgrade head
         working-directory: backend
       - name: Run parser to PostgreSQL API smoke
-        run: python -m pytest -q tests/integration/test_postgresql_ingestion.py tests/integration/test_postgresql_smoke.py tests/integration/test_postgresql_user_profile.py tests/integration/test_admission_fit_vertical_slice.py tests/integration/test_campus_storage_vertical_slice.py tests/integration/test_campus_live_projection_safety.py tests/vertical/test_campus_vertical_slice.py
+        run: python -m pytest -q tests/integration/test_postgresql_ingestion.py tests/integration/test_postgresql_smoke.py tests/integration/test_postgresql_user_profile.py tests/integration/test_personal_route_vertical_slice.py tests/integration/test_admission_fit_vertical_slice.py tests/integration/test_campus_storage_vertical_slice.py tests/integration/test_campus_live_projection_safety.py tests/vertical/test_campus_vertical_slice.py tests/vertical/test_personal_route_scope_guard.py
         working-directory: backend
       - uses: actions/setup-node@v4
         with:

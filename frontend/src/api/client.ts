@@ -21,6 +21,7 @@ type CurrentRecommendationsResponse = paths["/recommendations/current"]["get"]["
 type EventListResponse = paths["/events"]["get"]["responses"][200]["content"]["application/json"];
 type EventResponse = paths["/events/{id}"]["get"]["responses"][200]["content"]["application/json"];
 type EventQuery = NonNullable<paths["/events"]["get"]["parameters"]["query"]>;
+type PersonalRouteResponse = paths["/personal-route"]["get"]["responses"][200]["content"]["application/json"];
 type ErrorContract = components["schemas"]["ErrorResponse"];
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
@@ -126,4 +127,9 @@ export function getEvent(id: string): Promise<EventResponse> {
   return requestJson<EventResponse>(`/events/${encodeURIComponent(id)}`);
 }
 
-export type { AdmissionFitRequest, AdmissionFitResponse, CompareResponse, CreateProfileRequest, CurrentProfileResponse, CurrentRecommendationsResponse, CurriculumResponse, ErrorContract, EventListResponse, EventQuery, EventResponse, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse, UpdateProfileRequest };
+export function getPersonalRoute(limit = 10): Promise<PersonalRouteResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return requestJson<PersonalRouteResponse>(`/personal-route?${params.toString()}`);
+}
+
+export type { AdmissionFitRequest, AdmissionFitResponse, CompareResponse, CreateProfileRequest, CurrentProfileResponse, CurrentRecommendationsResponse, CurriculumResponse, ErrorContract, EventListResponse, EventQuery, EventResponse, PersonalRouteResponse, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse, UpdateProfileRequest };

@@ -18,6 +18,7 @@ SUBJECT_MODULES = (
     "admission_fit",
     "events",
     "campus",
+    "personal_route",
 )
 SUBJECT_LAYERS = ("domain", "contracts", "services", "repository")
 FORBIDDEN_SUBJECT_IMPORTS = (

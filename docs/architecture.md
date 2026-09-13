@@ -62,6 +62,7 @@ backend/src/andromeda/
 ├── modules/admission_fit/{domain,contracts,services,repository}/
 ├── modules/events/{domain,contracts,services,repository}/
 ├── modules/campus/{domain,contracts,services,repository}/
+├── modules/personal_route/{domain,contracts,services,repository}/
 ├── ingestion/universities/bmstu/
 ├── infrastructure/{database,repositories,config,logging}/
 ├── api/{routes,schemas,dependencies}/
@@ -90,6 +91,8 @@ ProgramReader + AdmissionReader public contracts
 `admissions` публикует `ProgramAdmissions`, offering и child contracts через `AdmissionReader`. Его service получает программу через `ProgramReader`, а не через ORM. Admission Fit в этот модуль не входит: slice только показывает source-backed факты поступления и сохраняет их provenance. Новые университеты подключают собственный ingestion adapter, не меняя этот application path.
 
 `events` публикует event/venue contracts и фильтры для списков, карточек и recommendation-aware reads. `campus` публикует point contracts, point details, events-at-point и recommendation results; он не владеет картой и не вычисляет маршруты. Оба модуля используют canonical `UniversityId`, `DepartmentId`, `ProgramId` и `VenueId`, поэтому карта может запрашивать данные без дублирования university/program сущностей.
+
+`personal_route` — тонкий application slice для текущего пользователя. Его public contracts описывают explainable logical steps, а Protocol-порты читают существующие recommendation/event/campus contracts. Composition wiring собирает `PersonalRouteService`; модуль не имеет ORM, миграций, ingestion, HTTP или map dependency. Он не хранит собственную сущность маршрута: каждый read заново строит plan из current profile, source-backed recommendations, будущих событий и связанных campus point details. `attend_event` может быть online и тогда не содержит venue/point; физическая близость, граф связей, directions и оптимизация маршрута намеренно остаются за будущим независимым map-модулем.
 
 Старые пути `proftest.services.ranking`, `proftest.services.matching` и `proftest.services.explanations` сохранены как точечные compatibility facades. Они не являются разрешением импортировать recommendation internals в новый runtime-код и перечислены в architecture test как единственные переходные aliases.
 

@@ -11,6 +11,11 @@ from andromeda.shared.contracts.ids import DepartmentId, ProgramId, UniversityId
 
 from ..domain.entities import CampusPoint, CampusPointDetail, CampusPointType
 
+# Result envelopes are re-exported from the public module so consumers use the
+# same public-surface rule as the other subject modules. The results module
+# imports only domain types, so this late import does not form a cycle.
+from .results import CampusRecommendationResult
+
 
 class CampusPointFilters(ContractModel):
     university_id: UniversityId | None = None
@@ -52,4 +57,5 @@ __all__ = [
     "CampusPointFilters",
     "CampusPointType",
     "CampusRecommendationFilters",
+    "CampusRecommendationResult",
 ]

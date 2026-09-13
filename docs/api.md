@@ -90,6 +90,47 @@ Request содержит `profile` и `limit` (`1..20`). Профиль — то
 
 `/recommendations` и `/proftest/results` используют один RecommendationService. Он не импортирует ORM или parser, а получает fingerprints через infrastructure adapter, который делегирует существующий `Program/Curriculum/Discipline` catalog path.
 
+## Personal route
+
+| Метод | Endpoint | Назначение |
+|---|---|---|
+| GET | `/personal-route?limit=10` | Строит логический персональный план по current profile |
+
+`GET /personal-route` — read-only orchestration поверх существующих `CurrentRecommendationService`, `EventService` и `CampusService`. Он не создаёт новую сущность профиля, программы, события или точки и не хранит отдельный route snapshot. `limit` ограничен диапазоном `1..20`.
+
+Ответ `PersonalRouteResponse` содержит `status`, `summary`, те же source-backed `recommendations` и последовательность typed `steps`. Шаги имеют только логические типы `explore_program`, `compare_programs` и `attend_event`; позиция означает порядок действия, а не перемещение между местами. Шаг программы ссылается на canonical `programId`, шаг события — на существующий `eventId`, `venueId` и, если точка известна, полную `CampusPointDetailResponse` с карточкой, coordinate/address и university/department/program links. Для онлайн-события `venueId` и `point` остаются `null`.
+
+Без current profile endpoint возвращает стандартный `404 NOT_FOUND`; пустая рекомендационная выдача получает `status: "no_recommendations"`, а отсутствие будущих подходящих событий — `status: "no_events"` при сохранённых шагах программ. События отфильтрованы по рекомендованным canonical program IDs, текущему времени и deterministic UTC ordering. Endpoint не возвращает geometry, directions, расстояния, карту или route optimizer.
+
+Минимальный пример ответа:
+
+```json
+{
+  "status": "ready",
+  "summary": "План по рекомендациям профиля",
+  "recommendations": [],
+  "steps": [
+    {
+      "position": 1,
+      "kind": "explore_program",
+      "reason": "Начните с программы с самым высоким Content Fit",
+      "programIds": ["program:09.03.01-02"]
+    },
+    {
+      "position": 3,
+      "kind": "attend_event",
+      "reason": "Событие связано с рекомендованной программой",
+      "programIds": ["program:09.03.01-02"],
+      "eventId": "event:bmstu:dod-2026",
+      "venueId": "venue:bmstu:main-campus",
+      "startsAt": "2026-10-17T08:00:00Z"
+    }
+  ]
+}
+```
+
+Frontend client генерирует `PersonalRouteResponse` из `/openapi.json`; для UI используется только логический план, без маршрутизации по карте.
+
 `POST /proftest/results` сохраняет только финальный `UserProfile` (без `AnswerSet` и cookie token). `GET /proftest/profile` и `GET /recommendations/current` используют anonymous HttpOnly session cookie. Если профиля нет или его TTL истёк, API возвращает `NOT_FOUND`; устаревший `expectedRevision` и duplicate create возвращают `CONFLICT`. Session key в БД представлен только SHA-256 hash.
 
 ## Admission Fit
