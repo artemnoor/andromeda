@@ -38,8 +38,11 @@ product scope и не запуская Personal Route. Итогом должна
   cookies/profile persistence, API validation, DB/secrets, CORS/headers и
   events/campus endpoints; исправлять только подтверждённые blockers через
   отдельный fix cycle.
-- [ ] Task 6: Push `main`, дождаться полного remote CI green и подтвердить
-  стабильный итоговый SHA.
+- [x] Task 6: Push `main`, дождаться полного remote CI green и подтвердить
+  стабильный итоговый SHA. Remote Actions run `34769391787` на SHA
+  `18df9ebec87e60aecd614539870ae3489e37d729` завершился `success`; jobs
+  `backend`, `frontend`, `fullstack`, `postgresql-integration`,
+  `proftest-integration` и `proftest-spike` зелёные.
 
 ## Merge decision
 
