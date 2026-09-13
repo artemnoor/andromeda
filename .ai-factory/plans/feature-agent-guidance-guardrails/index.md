@@ -77,7 +77,7 @@ Source: `.ai-factory/research/agent-guidance-guardrails/RESEARCH.md` (Active Sum
 
 ### Phase 4: Verification and handoff
 
-- [ ] Task 4: Выполнить strict verification, review и CI handoff ([details](phase-04-verification-and-handoff.md#task-4-verification-review-и-ci)) (depends on 1, 2, 3)
+- [x] Task 4: Выполнить strict verification, review и CI handoff ([details](phase-04-verification-and-handoff.md#task-4-verification-review-и-ci)) (depends on 1, 2, 3)
 
 ## Commit Plan
 
