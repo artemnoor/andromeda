@@ -39,6 +39,18 @@ POST /proftest/results
 
 Anonymous identity — это случайный HttpOnly cookie, а в domain/infrastructure boundary передаётся только typed `ProfileScope` с SHA-256 hash. `UserProfile` не содержит storage metadata; revision и timestamps находятся в `UserProfileSnapshot`. Admission Fit остаётся отдельным score и не влияет на Content Fit.
 
+Университетские события и campus points используют общий canonical venue boundary:
+
+```text
+events ingestion / campus ingestion
+  → Event + Venue + CampusPoint canonical contracts
+  → infrastructure repositories
+  → /events и /campus/* FastAPI contracts
+  → список/карточка события или физической точки
+```
+
+`campus` отдаёт map-agnostic spatial data: название и canonical ID точки, тип (корпус, зона, место события, вход или другая категория), адрес, известные координаты, university/department/program links, events в точке, время событий и поля карточки. Эти данные предназначены для UI и будущего внешнего map-модуля. Внутри Andromeda не задаются визуальная раскладка объектов, 2D/3D-визуализация, связи, маршруты, route optimizer или библиотека карт.
+
 ## Границы
 
 ```text
@@ -48,13 +60,15 @@ backend/src/andromeda/
 ├── modules/recommendations/{domain,contracts,services,repository}/
 ├── modules/admissions/{domain,contracts,services,repository}/
 ├── modules/admission_fit/{domain,contracts,services,repository}/
+├── modules/events/{domain,contracts,services,repository}/
+├── modules/campus/{domain,contracts,services,repository}/
 ├── ingestion/universities/bmstu/
 ├── infrastructure/{database,repositories,config,logging}/
 ├── api/{routes,schemas,dependencies}/
 └── composition/
 ```
 
-Предметные модули публикуют `contracts.public` и Protocol-порты. `comparison` получает программы, curricula и disciplines через reader-контракты. SQLAlchemy-модели и `Session` остаются внутри infrastructure.
+Предметные модули публикуют `contracts.public` и Protocol-порты. Cross-module imports разрешены только через `modules/<module>/contracts/public.py` и typed `modules/<module>/repository/ports.py`; concrete domain/services/repository internals остаются закрытыми. `comparison` получает программы, curricula и disciplines через reader-контракты. SQLAlchemy-модели и `Session` остаются внутри infrastructure.
 
 `proftest` использует те же публичные reader-контракты через собственный typed catalog port; его domain/services не знают об ORM, HTTP schemas или BMSTU parser. `ProgramFingerprint` и `UserProfile` остаются application contracts, а API routes только связывают их с HTTP.
 
@@ -74,6 +88,10 @@ ProgramReader + AdmissionReader public contracts
 `Admission Fit` оценивает только реалистичность поступления по опубликованным admissions facts. Он не принимает `UserProfile`, `ProgramFingerprint` или Content Fit score и не вызывается из `RecommendationService`; поэтому его результат не меняет ranking рекомендаций.
 
 `admissions` публикует `ProgramAdmissions`, offering и child contracts через `AdmissionReader`. Его service получает программу через `ProgramReader`, а не через ORM. Admission Fit в этот модуль не входит: slice только показывает source-backed факты поступления и сохраняет их provenance. Новые университеты подключают собственный ingestion adapter, не меняя этот application path.
+
+`events` публикует event/venue contracts и фильтры для списков, карточек и recommendation-aware reads. `campus` публикует point contracts, point details, events-at-point и recommendation results; он не владеет картой и не вычисляет маршруты. Оба модуля используют canonical `UniversityId`, `DepartmentId`, `ProgramId` и `VenueId`, поэтому карта может запрашивать данные без дублирования university/program сущностей.
+
+Старые пути `proftest.services.ranking`, `proftest.services.matching` и `proftest.services.explanations` сохранены как точечные compatibility facades. Они не являются разрешением импортировать recommendation internals в новый runtime-код и перечислены в architecture test как единственные переходные aliases.
 
 BMSTU URL, selectors, PDF parser, mappings и browser fallback находятся в BMSTU adapter. Добавление нового вуза должно создавать новый adapter без зависимости comparison от структуры сайта.
 

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from decimal import Decimal
-from typing import Any
 
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
-from andromeda.modules.proftest.contracts.public import ActivityCode, Answer, AnswerSet, ProgramFingerprint
-from andromeda.modules.recommendations.contracts.public import RecommendationRequest, RecommendationResult
+from andromeda.modules.proftest.contracts.public import ActivityCode, Answer, AnswerSet, ProgramFingerprint, UserProfile
+from andromeda.modules.recommendations.contracts.public import RankedFingerprint, RecommendationRequest, RecommendationResult, RecommendationServicePort
 from andromeda.modules.proftest.services.proftest import ProftestService
-from andromeda.modules.recommendations.services.ranking import RankedFingerprint
 from andromeda.modules.recommendations.services.scoring import RecommendationScoringService
 
 
@@ -32,7 +31,7 @@ class _RecommendationSpy:
         self.requests: list[RecommendationRequest] = []
         self.scorer = RecommendationScoringService()
 
-    def rank_fingerprints(self, profile: Any, fingerprints: tuple[ProgramFingerprint, ...], *, limit: int | None = None) -> tuple[RankedFingerprint, ...]:
+    def rank_fingerprints(self, profile: UserProfile, fingerprints: Iterable[ProgramFingerprint], *, limit: int | None = None) -> tuple[RankedFingerprint, ...]:
         return tuple(RankedFingerprint(fingerprint, self.scorer.score(profile, fingerprint)) for fingerprint in fingerprints)
 
     def recommend_from_fingerprints(self, request: RecommendationRequest, fingerprints: tuple[ProgramFingerprint, ...]) -> RecommendationResult:
@@ -40,14 +39,20 @@ class _RecommendationSpy:
         return RecommendationResult(profile=request.profile, recommendations=())
 
 
+def _as_recommendation_port(service: RecommendationServicePort) -> RecommendationServicePort:
+    return service
+
+
 def test_final_proftest_ranking_is_delegated_as_profile_contract() -> None:
     spy = _RecommendationSpy()
-    service = ProftestService(_Catalog((_fingerprint(),)), recommendations=spy)  # type: ignore[arg-type]
+    service = ProftestService(_Catalog((_fingerprint(),)), recommendations=_as_recommendation_port(spy))
     questionnaire = service.questionnaire()
     answers = AnswerSet(answers=tuple(Answer(question_id=question.id, option_ids=(question.options[0].id,)) for question in questionnaire.questions))
 
+    preview = service.preview(answers)
     result = service.results(answers)
 
+    assert len(preview.candidates) == 1
     assert result.recommendations == ()
     assert len(spy.requests) == 1
     assert spy.requests[0].profile == result.profile

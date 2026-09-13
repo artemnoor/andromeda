@@ -10,6 +10,7 @@ from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.ids import DepartmentId, ProgramId, UniversityId
 
 from ..domain.entities import Event, EventFormat, EventKind, Venue
+from .results import EventListResult
 
 
 class EventFilters(ContractModel):
@@ -38,4 +39,4 @@ class EventFilters(ContractModel):
         return self
 
 
-__all__ = ["Event", "EventFilters", "EventFormat", "EventKind", "Venue"]
+__all__ = ["Event", "EventFilters", "EventFormat", "EventKind", "EventListResult", "Venue"]

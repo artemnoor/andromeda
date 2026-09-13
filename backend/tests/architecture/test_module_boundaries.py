@@ -6,66 +6,225 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parents[2]
 ANDROMEDA_ROOT = PROJECT_ROOT / "src" / "andromeda"
+SUBJECT_MODULES = (
+    "universities",
+    "programs",
+    "curricula",
+    "disciplines",
+    "comparison",
+    "proftest",
+    "recommendations",
+    "admissions",
+    "admission_fit",
+    "events",
+    "campus",
+)
+SUBJECT_LAYERS = ("domain", "contracts", "services", "repository")
+FORBIDDEN_SUBJECT_IMPORTS = (
+    "andromeda.infrastructure",
+    "andromeda.api",
+    "andromeda.composition",
+    "andromeda.ingestion",
+    "sqlalchemy",
+    "bmstu_parser",
+    "proftest_spike",
+)
+COMPATIBILITY_FACADE_IMPORTS = {
+    "modules/proftest/services/ranking.py": {
+        "andromeda.modules.recommendations.services.ranking": (
+            "RankedFingerprint",
+            "RankingService",
+        ),
+    },
+    "modules/proftest/services/matching.py": {
+        "andromeda.modules.recommendations.services.scoring": (
+            "MatchingService",
+            "RecommendationScoringService",
+        ),
+    },
+    "modules/proftest/services/explanations.py": {
+        "andromeda.modules.recommendations.services.explanations": (
+            "ExplanationBuilder",
+        ),
+    },
+}
 
 
 def _module_name(path: Path) -> str:
     return ".".join(path.relative_to(ANDROMEDA_ROOT).with_suffix("").parts)
 
 
-def test_andromeda_package_has_subject_module_boundaries() -> None:
-    expected = {
-        "modules/universities/domain",
-        "modules/universities/contracts",
-        "modules/universities/services",
-        "modules/universities/repository",
-        "modules/programs/domain",
-        "modules/programs/contracts",
-        "modules/programs/services",
-        "modules/programs/repository",
-        "modules/curricula/domain",
-        "modules/curricula/contracts",
-        "modules/curricula/services",
-        "modules/curricula/repository",
-        "modules/disciplines/domain",
-        "modules/disciplines/contracts",
-        "modules/disciplines/services",
-        "modules/disciplines/repository",
-        "modules/comparison/domain",
-        "modules/comparison/contracts",
-        "modules/comparison/services",
-        "modules/comparison/repository",
-        "modules/proftest/domain",
-        "modules/proftest/contracts",
-        "modules/proftest/services",
-        "modules/proftest/repository",
-        "modules/recommendations/domain",
-        "modules/recommendations/contracts",
-        "modules/recommendations/services",
-        "modules/recommendations/repository",
-        "modules/events/domain",
-        "modules/events/contracts",
-        "modules/events/services",
-        "modules/events/repository",
-        "modules/campus/domain",
-        "modules/campus/contracts",
-        "modules/campus/services",
-        "modules/campus/repository",
+def _subject_module(path: Path) -> str | None:
+    relative = path.relative_to(ANDROMEDA_ROOT).parts
+    if len(relative) >= 2 and relative[0] == "modules" and relative[1] in SUBJECT_MODULES:
+        return relative[1]
+    return None
+
+
+def _import_names(tree: ast.AST) -> tuple[str, ...]:
+    names: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            names.append(node.module)
+    return tuple(names)
+
+
+def _import_bindings(path: Path) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    bindings: list[tuple[str, tuple[str, ...]]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            bindings.append((node.module, tuple(alias.name for alias in node.names)))
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                bindings.append((alias.name, (alias.asname or alias.name.split(".")[-1],)))
+    return tuple(bindings)
+
+
+def _subject_python_files() -> tuple[Path, ...]:
+    return tuple(
+        path
+        for path in ANDROMEDA_ROOT.glob("modules/**/*.py")
+        if _subject_module(path) is not None
+    )
+
+
+def _resolved_import_names(path: Path, tree: ast.AST) -> tuple[str, ...]:
+    names = list(_import_names(tree))
+    relative_parts = path.relative_to(ANDROMEDA_ROOT).with_suffix("").parts
+    package_parts = ("andromeda",) + relative_parts[:-1]
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom) or node.level == 0:
+            continue
+        base_length = len(package_parts) - (node.level - 1)
+        if base_length < 1:
+            continue
+        base = package_parts[:base_length]
+        if node.module:
+            names.append(".".join(base + tuple(node.module.split("."))))
+        else:
+            names.extend(".".join(base + (alias.name,)) for alias in node.names)
+    return tuple(names)
+
+
+def _cross_module_imports(path: Path) -> tuple[str, ...]:
+    current = _subject_module(path)
+    if current is None:
+        return ()
+    imports = []
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for imported in _resolved_import_names(path, tree):
+        prefix = "andromeda.modules."
+        if not imported.startswith(prefix):
+            continue
+        target = imported[len(prefix) :].split(".", 1)[0]
+        if target != current:
+            imports.append(imported)
+    return tuple(imports)
+
+
+def _is_allowed_cross_module_import(path: Path, imported: str) -> bool:
+    relative = path.relative_to(ANDROMEDA_ROOT).as_posix()
+    parts = imported.split(".")
+    if len(parts) == 5 and tuple(parts[:2]) == ("andromeda", "modules") and tuple(parts[-2:]) == ("contracts", "public"):
+        return True
+    if len(parts) == 5 and tuple(parts[:2]) == ("andromeda", "modules") and tuple(parts[-2:]) == ("repository", "ports"):
+        return True
+    return imported in COMPATIBILITY_FACADE_IMPORTS.get(relative, {})
+
+
+def test_subject_module_registry_covers_all_current_modules_and_layers() -> None:
+    modules_root = ANDROMEDA_ROOT / "modules"
+    actual_modules = {
+        path.name
+        for path in modules_root.iterdir()
+        if path.is_dir() and not path.name.startswith("_")
     }
-    actual = {path.relative_to(ANDROMEDA_ROOT).as_posix() for path in ANDROMEDA_ROOT.glob("modules/*/*") if path.is_dir()}
-    assert expected <= actual
+    assert actual_modules == set(SUBJECT_MODULES)
+
+    expected_layers = {
+        f"modules/{module}/{layer}"
+        for module in SUBJECT_MODULES
+        for layer in SUBJECT_LAYERS
+    }
+    actual_layers = {
+        path.relative_to(ANDROMEDA_ROOT).as_posix()
+        for path in modules_root.glob("*/*")
+        if path.is_dir() and path.name in SUBJECT_LAYERS
+    }
+    assert actual_layers == expected_layers
 
 
-def test_core_modules_do_not_import_infrastructure_api_or_legacy_package() -> None:
-    forbidden_fragments = ("andromeda.infrastructure", "andromeda.api", "sqlalchemy", "bmstu_parser", "proftest_spike")
+def test_subject_modules_do_not_import_outer_boundaries_or_legacy_packages() -> None:
     violations: list[str] = []
-    for path in ANDROMEDA_ROOT.glob("modules/**/*.py"):
+    for path in _subject_python_files():
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
-            imported = ""
-            if isinstance(node, ast.Import):
-                imported = ",".join(alias.name for alias in node.names)
-            elif isinstance(node, ast.ImportFrom):
-                imported = node.module or ""
-            if any(fragment in imported for fragment in forbidden_fragments):
+        imports = _resolved_import_names(path, tree)
+        for imported in imports:
+            if any(
+                imported == forbidden or imported.startswith(f"{forbidden}.")
+                for forbidden in FORBIDDEN_SUBJECT_IMPORTS
+            ):
                 violations.append(f"{_module_name(path)} -> {imported}")
     assert violations == []
+
+
+def test_subject_modules_use_only_public_cross_module_surfaces() -> None:
+    violations: list[str] = []
+    for path in _subject_python_files():
+        for imported in _cross_module_imports(path):
+            if not _is_allowed_cross_module_import(path, imported):
+                violations.append(f"{_module_name(path)} -> {imported}")
+    assert violations == []
+
+
+def test_cross_module_policy_is_narrow_and_explicit() -> None:
+    comparison_file = ANDROMEDA_ROOT / "modules" / "comparison" / "services" / "aggregation.py"
+    facade_file = ANDROMEDA_ROOT / "modules" / "proftest" / "services" / "ranking.py"
+
+    assert _is_allowed_cross_module_import(
+        comparison_file,
+        "andromeda.modules.disciplines.contracts.public",
+    )
+    assert _is_allowed_cross_module_import(
+        comparison_file,
+        "andromeda.modules.disciplines.repository.ports",
+    )
+    assert not _is_allowed_cross_module_import(
+        comparison_file,
+        "andromeda.modules.disciplines.domain.areas",
+    )
+    assert not _is_allowed_cross_module_import(
+        comparison_file,
+        "andromeda.modules.disciplines.services.reader",
+    )
+    assert _is_allowed_cross_module_import(
+        facade_file,
+        "andromeda.modules.recommendations.services.ranking",
+    )
+    assert not _is_allowed_cross_module_import(
+        comparison_file,
+        "andromeda.modules.recommendations.services.ranking",
+    )
+    assert not _is_allowed_cross_module_import(
+        comparison_file,
+        "andromeda.modules.disciplines.contracts.public.internal",
+    )
+    assert not _is_allowed_cross_module_import(
+        comparison_file,
+        "andromeda.modules.disciplines.repository.ports.internal",
+    )
+    assert not _is_allowed_cross_module_import(
+        comparison_file,
+        "andromeda.modules.disciplines.domain.foo.contracts.public",
+    )
+    relative_import = ast.parse("from ...recommendations.services import RecommendationService")
+    assert "andromeda.modules.recommendations.services" in _resolved_import_names(comparison_file, relative_import)
+
+
+def test_compatibility_facades_have_exact_documented_imports() -> None:
+    for relative, expected in COMPATIBILITY_FACADE_IMPORTS.items():
+        path = ANDROMEDA_ROOT / relative
+        assert dict(_import_bindings(path)) == expected

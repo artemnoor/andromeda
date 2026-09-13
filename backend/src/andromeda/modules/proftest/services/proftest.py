@@ -24,10 +24,11 @@ from .catalog import ProftestCatalogService
 from .profile_builder import UserProfileBuilder
 from .questionnaire import build_questionnaire
 from .profile_persistence import UserProfilePersistenceService
-from andromeda.modules.recommendations.repository.ports import RecommendationCatalogReader
-from andromeda.modules.recommendations.contracts.public import RecommendationRequest
-from andromeda.modules.recommendations.services.ranking import RankedFingerprint
-from andromeda.modules.recommendations.services.recommendations import RecommendationService
+from andromeda.modules.recommendations.contracts.public import (
+    RankedFingerprint,
+    RecommendationRequest,
+    RecommendationServicePort,
+)
 
 
 logger = logging.getLogger("andromeda.proftest.application")
@@ -35,27 +36,17 @@ logger = logging.getLogger("andromeda.proftest.application")
 RankedFingerprints = tuple[RankedFingerprint, ...]
 
 
-class _CatalogFingerprintReader(RecommendationCatalogReader):
-    """Compatibility adapter for direct ProftestService construction."""
-
-    def __init__(self, catalog: ProftestCatalogService) -> None:
-        self._catalog = catalog
-
-    def list_fingerprints(self) -> tuple[ProgramFingerprint, ...]:
-        return self._catalog.list_fingerprints()
-
-
 class ProftestService:
     def __init__(
         self,
         catalog: ProftestCatalogService,
+        recommendations: RecommendationServicePort,
         profile_builder: UserProfileBuilder | None = None,
-        recommendations: RecommendationService | None = None,
         profile_persistence: UserProfilePersistenceService | None = None,
     ) -> None:
         self._catalog = catalog
         self._profile_builder = profile_builder or UserProfileBuilder()
-        self._recommendations = recommendations or RecommendationService(_CatalogFingerprintReader(catalog))
+        self._recommendations = recommendations
         self._profile_persistence = profile_persistence
         self._adaptive_selector = AdaptiveQuestionSelector()
         self._adaptive_factory = AdaptiveQuestionFactory()

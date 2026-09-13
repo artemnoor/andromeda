@@ -4,8 +4,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from decimal import Decimal
 
-from andromeda.modules.disciplines.contracts.public import Discipline, DisciplineAreaCode, DisciplineAreaSummary
-from andromeda.modules.disciplines.domain.areas import area_position
+from andromeda.modules.disciplines.contracts.public import Discipline, DisciplineAreaCode, DisciplineAreaSummary, area_position
 
 from ..contracts.results import ComparisonBlock, ComparisonTotals
 from ..domain.alignment import AlignedWorkload

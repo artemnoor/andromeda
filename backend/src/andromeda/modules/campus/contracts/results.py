@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from andromeda.modules.events.contracts.results import EventListResult
-from andromeda.modules.events.domain.entities import Event
+from andromeda.modules.events.contracts.public import Event, EventListResult
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.ids import ProgramId, VenueId
 
