@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import TypeAlias
+from typing import Self, TypeAlias
 
-from pydantic import Field, HttpUrl
+from pydantic import Field, HttpUrl, model_validator
 
 from ...shared.contracts.base import ContractModel
 from ...shared.contracts.ids import UniversityId
@@ -124,6 +124,27 @@ class RawVenueRecord(ContractModel):
     longitude: Decimal | None = Field(default=None, strict=True, ge=Decimal("-180"), le=Decimal("180"), max_digits=9, decimal_places=6)
 
 
+class RawCampusPointRecord(ContractModel):
+    external_key: str = Field(min_length=1, max_length=128)
+    point_type: str = Field(min_length=1, max_length=32)
+    name: str = Field(min_length=1, max_length=512)
+    address: str | None = Field(default=None, min_length=1, max_length=1024)
+    latitude: Decimal | None = Field(default=None, strict=True, ge=Decimal("-90"), le=Decimal("90"), max_digits=9, decimal_places=6)
+    longitude: Decimal | None = Field(default=None, strict=True, ge=Decimal("-180"), le=Decimal("180"), max_digits=9, decimal_places=6)
+    university_ids: tuple[UniversityId, ...] = Field(min_length=1)
+    department_codes: tuple[str, ...] = ()
+    program_codes: tuple[str, ...] = ()
+    source_kind: str = Field(min_length=1, max_length=128)
+    source_url: HttpUrl
+    locator: SourceLocator
+
+    @model_validator(mode="after")
+    def validate_coordinates(self) -> Self:
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("campus point latitude and longitude must be provided together")
+        return self
+
+
 class RawEventRecord(ContractModel):
     external_key: str = Field(min_length=1, max_length=128)
     title: str = Field(min_length=1, max_length=512)
@@ -150,3 +171,4 @@ class RawTracerBundle(ContractModel):
     curriculum_rows: tuple[RawCurriculumRow, ...] = Field(min_length=1)
     admissions: tuple[RawAdmissionRecord, ...] = ()
     events: tuple[RawEventRecord, ...] = ()
+    campus_points: tuple[RawCampusPointRecord, ...] = ()

@@ -80,3 +80,44 @@ def test_postgresql_supports_the_existing_api_vertical_slice() -> None:
     recommendations = client.post("/recommendations", json={"profile": profile, "limit": 2})
     assert recommendations.status_code == 200
     assert len(recommendations.json()["recommendations"]) == 2
+
+
+def test_postgresql_supports_the_campus_data_contract() -> None:
+    database_url = os.environ.get("ANDROMEDA_POSTGRES_TEST_URL")
+    if not database_url or not database_url.startswith(("postgresql://", "postgresql+")):
+        pytest.skip("ANDROMEDA_POSTGRES_TEST_URL is not configured")
+
+    fixture_root = Path(__file__).parents[1]
+    adapter = BmstuUniversityAdapter()
+    try:
+        raw, canonical = adapter.parse_sources(
+            fixture_dir=fixture_root / "fixtures" / "tracer" / "raw",
+            campus_fixture_dir=fixture_root / "fixtures" / "campus" / "raw",
+        )
+    finally:
+        adapter.close()
+
+    engine = create_engine_for_url(database_url)
+    try:
+        SqlAlchemyIngestionRepository(engine).ingest(raw, canonical)
+    finally:
+        engine.dispose()
+
+    client = TestClient(create_app(database_url))
+    points = client.get("/campus/points", params={"universityId": "university:bmstu", "limit": 100})
+    detail = client.get("/campus/points/venue:bmstu:main-campus")
+    events = client.get("/campus/points/venue:bmstu:main-campus/events")
+
+    assert points.status_code == 200
+    assert points.json()["total"] >= 5
+    assert {item["pointType"] for item in points.json()["items"]} >= {
+        "building",
+        "room_zone",
+        "event_venue",
+        "entrance",
+        "other",
+    }
+    assert detail.status_code == 200
+    assert detail.json()["programs"]
+    assert events.status_code == 200
+    assert events.json()["items"]

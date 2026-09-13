@@ -17,7 +17,7 @@ from alembic.config import Config
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 
-from andromeda.ingestion.universities.bmstu import DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR, BmstuUniversityAdapter
+from andromeda.ingestion.universities.bmstu import DEFAULT_CAMPUS_FIXTURE_DIR, DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR, BmstuUniversityAdapter
 from andromeda.infrastructure.config import Settings, redact_database_url
 from andromeda.infrastructure.database import create_engine_for_url
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
@@ -35,6 +35,7 @@ class TracerRunResult:
     source_count: int
     source_hashes: tuple[str, ...]
     event_count: int
+    campus_point_count: int = 0
 
 
 def configure_logging(log_level: str) -> None:
@@ -67,6 +68,7 @@ def run_ingest(
     mode: str,
     fixture_dir: Path,
     event_fixture_dir: Path | None = None,
+    campus_fixture_dir: Path | None = None,
     database_url: str,
     program_codes: Sequence[str],
 ) -> TracerRunResult:
@@ -90,6 +92,7 @@ def run_ingest(
                 mode=mode,
                 fixture_dir=fixture_dir,
                 event_fixture_dir=event_fixture_dir or DEFAULT_EVENT_FIXTURE_DIR,
+                campus_fixture_dir=campus_fixture_dir or DEFAULT_CAMPUS_FIXTURE_DIR,
                 program_codes=program_codes,
             )
         finally:
@@ -103,14 +106,16 @@ def run_ingest(
             source_count=len(normalized.sources),
             source_hashes=tuple(source.content_sha256 for source in normalized.sources),
             event_count=len(normalized.events),
+            campus_point_count=len(normalized.campus_points),
         )
         logger.info(
-            "ingest_complete run_id=%s programs=%d curriculum_items=%d sources=%d events=%d",
+            "ingest_complete run_id=%s programs=%d curriculum_items=%d sources=%d events=%d campus_points=%d",
             result.run_id,
             len(result.program_ids),
             result.curriculum_item_count,
             result.source_count,
             result.event_count,
+            result.campus_point_count,
         )
         return result
     finally:
@@ -125,6 +130,7 @@ def result_payload(result: TracerRunResult, database_url: str) -> dict[str, obje
         "sourceCount": result.source_count,
         "sourceHashes": list(result.source_hashes),
         "eventCount": result.event_count,
+        "campusPointCount": result.campus_point_count,
         "databaseTarget": redact_database_url(database_url),
         "api": {
             "docs": "/docs",
@@ -134,6 +140,8 @@ def result_payload(result: TracerRunResult, database_url: str) -> dict[str, obje
             "admissions": "/programs/{id}/admissions",
             "compare": "/compare?programIds=program:09.03.01-02,program:09.03.01-12",
             "events": "/events",
+            "campusPoints": "/campus/points",
+            "campusRecommendations": "/campus/recommendations",
         },
         "frontend": "http://localhost:5173/",
     }
@@ -144,6 +152,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mode", choices=("fixture", "live"), default="fixture")
     parser.add_argument("--fixture-dir", type=Path, default=DEFAULT_FIXTURE_DIR)
     parser.add_argument("--event-fixture-dir", type=Path, default=DEFAULT_EVENT_FIXTURE_DIR)
+    parser.add_argument("--campus-fixture-dir", type=Path, default=DEFAULT_CAMPUS_FIXTURE_DIR)
     parser.add_argument("--database-url", default=None)
     parser.add_argument("--program-code", action="append", dest="program_codes")
     parser.add_argument("--program-id", action="append", dest="program_ids")
@@ -163,6 +172,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         mode=args.mode,
         fixture_dir=args.fixture_dir,
         event_fixture_dir=args.event_fixture_dir,
+        campus_fixture_dir=args.campus_fixture_dir,
         database_url=database_url,
         program_codes=program_codes,
     )

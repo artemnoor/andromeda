@@ -46,6 +46,10 @@ def test_andromeda_package_has_subject_module_boundaries() -> None:
         "modules/events/contracts",
         "modules/events/services",
         "modules/events/repository",
+        "modules/campus/domain",
+        "modules/campus/contracts",
+        "modules/campus/services",
+        "modules/campus/repository",
     }
     actual = {path.relative_to(ANDROMEDA_ROOT).as_posix() for path in ANDROMEDA_ROOT.glob("modules/*/*") if path.is_dir()}
     assert expected <= actual

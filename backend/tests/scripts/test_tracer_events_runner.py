@@ -20,7 +20,9 @@ def test_fixture_runner_reports_event_count_and_endpoint(tmp_path: Path) -> None
     )
     payload = result_payload(result, "sqlite:///runner.db")
     assert payload["eventCount"] == 5
+    assert payload["campusPointCount"] == 5
     assert payload["api"]["events"] == "/events"
+    assert payload["api"]["campusPoints"] == "/campus/points"
 
 
 @pytest.mark.parametrize(

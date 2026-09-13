@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from hashlib import sha256
 
 import pytest
 from pydantic import ValidationError
 
-from andromeda.ingestion.contracts.raw import RawSourceSnapshot, SourceLocator
+from andromeda.ingestion.contracts.raw import RawCampusPointRecord, RawSourceSnapshot, SourceLocator
 
 
 def test_raw_source_contract_rejects_extra_fields_and_preserves_provenance() -> None:
@@ -30,3 +31,18 @@ def test_locator_is_typed_and_explicitly_nullable() -> None:
     locator = SourceLocator(source_url="https://bmstu.ru/", page=None, row=2, field=None)
     assert locator.page is None
     assert locator.row == 2
+
+
+def test_raw_campus_point_contract_rejects_partial_coordinates() -> None:
+    with pytest.raises(ValidationError, match="provided together"):
+        RawCampusPointRecord(
+            external_key="main-campus",
+            point_type="building",
+            name="Главный корпус",
+            latitude=Decimal("55.7666"),
+            longitude=None,
+            university_ids=("university:bmstu",),
+            source_kind="bmstu_campus_points",
+            source_url="https://bmstu.ru/campus/points",
+            locator=SourceLocator(source_url="https://bmstu.ru/campus/points", row=1),
+        )

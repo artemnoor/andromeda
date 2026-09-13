@@ -215,8 +215,16 @@ class SqlAlchemyEventRepository(EventRepository):
         self._session.add_all([EventProgramLinkModel(event_id=event.id, program_id=value) for value in event.program_ids])
 
     def _upsert_venue(self, venue: Venue, provenance: SourceAttribution) -> str:
+        existing = self._session.get(VenueModel, venue.id)
+        if existing is not None and existing.source_kind == SourceKind.BMSTU_CAMPUS_POINTS.value:
+            # Campus source is authoritative for shared point metadata. An
+            # event-only/live run must not erase a previously captured campus
+            # projection merely because campus capture is unavailable.
+            logger.debug("event_projection_venue_preserved identity=%s reason=campus_source_precedence", venue.id)
+            return "unchanged"
         values = {
             "id": venue.id,
+            "point_type": "event_venue",
             "name": venue.name,
             "address": venue.address,
             "latitude": venue.latitude,

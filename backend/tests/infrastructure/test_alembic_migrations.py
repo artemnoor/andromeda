@@ -30,10 +30,15 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(tmp_path: 
         assert "educational_programs" in inspector.get_table_names()
         assert "discipline_areas" in inspector.get_table_names()
         assert "user_profiles" in inspector.get_table_names()
+        assert "venue_university_links" in inspector.get_table_names()
+        assert "venue_department_links" in inspector.get_table_names()
+        assert "venue_program_links" in inspector.get_table_names()
         profile_columns = {column["name"] for column in inspector.get_columns("user_profiles")}
         assert {"profile_id", "session_key_hash", "profile_json", "revision", "expires_at"}.issubset(profile_columns)
         columns = {column["name"] for column in inspector.get_columns("curriculum_items")}
         assert {"source_name", "semester_identity"}.issubset(columns)
+        venue_columns = {column["name"] for column in inspector.get_columns("venues")}
+        assert "point_type" in venue_columns
         unique_names = {constraint["name"] for constraint in inspector.get_unique_constraints("curriculum_items")}
         assert "uq_curriculum_item_identity" in unique_names
     finally:

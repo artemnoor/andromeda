@@ -25,3 +25,9 @@ def test_bmstu_fixture_is_emitted_as_raw_and_canonical_contracts() -> None:
     assert len(canonical.disciplines) == 101
     assert all(discipline.area_weights for discipline in canonical.disciplines)
     assert all(sum(weight.weight for weight in discipline.area_weights) == 1 for discipline in canonical.disciplines)
+    assert len(raw.campus_points) == len(canonical.campus_points) == 5
+    assert {point.id for point in canonical.campus_points} >= {
+        "venue:bmstu:main-campus",
+        "venue:bmstu:lab-iu7",
+        "venue:bmstu:main-entrance",
+    }

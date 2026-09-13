@@ -34,6 +34,7 @@ from ..database.models import (
 from ..database.session import session_factory
 from .admissions import SqlAlchemyAdmissionRepository
 from .events import SqlAlchemyEventRepository
+from .campus import SqlAlchemyCampusPointRepository
 
 
 logger = logging.getLogger("andromeda.infrastructure.repositories.ingestion")
@@ -79,6 +80,7 @@ class SqlAlchemyIngestionRepository:
                         session,
                         canonical,
                         event_source_present=any(snapshot.source_kind == "bmstu_events" for snapshot in raw.snapshots),
+                        campus_source_present=any(snapshot.source_kind == "bmstu_campus_points" for snapshot in raw.snapshots),
                     )
                     run = session.get(IngestRunModel, run_id)
                     if run is None:
@@ -158,6 +160,7 @@ class SqlAlchemyIngestionRepository:
         records.extend(("CurriculumRow", row.model_dump_json(), str(row.source_url)) for row in raw.curriculum_rows)
         records.extend(("Admission", admission.model_dump_json(), str(admission.source_url)) for admission in raw.admissions)
         records.extend(("Event", event.model_dump_json(), str(event.source_url)) for event in raw.events)
+        records.extend(("CampusPoint", point.model_dump_json(), str(point.source_url)) for point in raw.campus_points)
         for index, (record_type, payload, source_url) in enumerate(records):
             snapshot_hash = hashes_by_url.get(source_url)
             if snapshot_hash is None:
@@ -173,6 +176,7 @@ class SqlAlchemyIngestionRepository:
         canonical: CanonicalSnapshot,
         *,
         event_source_present: bool = False,
+        campus_source_present: bool = False,
     ) -> _SyncStats:
         stats = _SyncStats()
         stats.record(
@@ -236,6 +240,15 @@ class SqlAlchemyIngestionRepository:
         stats.updated += event_stats.updated
         stats.unchanged += event_stats.unchanged
         stats.removed += event_stats.removed
+        session.flush()
+        campus_stats = SqlAlchemyCampusPointRepository(session).sync(
+            canonical.campus_points,
+            source_scope="bmstu_campus_points" if campus_source_present else None,
+        )
+        stats.inserted += campus_stats.inserted
+        stats.updated += campus_stats.updated
+        stats.unchanged += campus_stats.unchanged
+        stats.removed += campus_stats.removed
         session.flush()
         disciplines_by_id = {discipline.id: discipline for discipline in canonical.disciplines}
         for discipline in canonical.disciplines:

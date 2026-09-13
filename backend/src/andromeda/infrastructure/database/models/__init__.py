@@ -5,7 +5,7 @@ from .admissions import AdmissionExamRequirementModel, AdmissionOfferingModel, A
 from .programs import EducationalProgramModel, ProgramModel
 from .proftest import UserProfileModel
 from .universities import DirectionModel, EducationLevelModel, UniversityModel
-from .events import EventDepartmentLinkModel, EventModel, EventProgramLinkModel, EventUniversityLinkModel, VenueModel
+from .events import EventDepartmentLinkModel, EventModel, EventProgramLinkModel, EventUniversityLinkModel, VenueDepartmentLinkModel, VenueModel, VenueProgramLinkModel, VenueUniversityLinkModel
 
 __all__ = [
     "AssessmentTypeModel",
@@ -34,4 +34,7 @@ __all__ = [
     "EventProgramLinkModel",
     "EventUniversityLinkModel",
     "VenueModel",
+    "VenueDepartmentLinkModel",
+    "VenueProgramLinkModel",
+    "VenueUniversityLinkModel",
 ]

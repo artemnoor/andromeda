@@ -19,6 +19,8 @@ from andromeda.modules.proftest.services.proftest import ProftestService
 from andromeda.modules.recommendations.services.recommendations import RecommendationService
 from andromeda.modules.recommendations.services.current import CurrentRecommendationService
 from andromeda.modules.events.services.events import EventService
+from andromeda.modules.campus.repository.ports import CampusPointReader
+from andromeda.modules.campus.services.campus import CampusService
 
 from andromeda.infrastructure.repositories.curricula import SqlAlchemyCurriculumRepository
 from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDisciplineRepository
@@ -29,6 +31,7 @@ from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCat
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
 from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
 from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
+from andromeda.infrastructure.repositories.campus import SqlAlchemyCampusPointRepository
 from .request_context import get_session
 
 
@@ -136,3 +139,13 @@ def get_event_service(
     reader: SqlAlchemyEventRepository = Depends(get_event_reader),
 ) -> EventService:
     return EventService(reader)
+
+
+def get_campus_point_reader(session: Session = Depends(get_session)) -> CampusPointReader:
+    return SqlAlchemyCampusPointRepository(session)
+
+
+def get_campus_service(
+    reader: CampusPointReader = Depends(get_campus_point_reader),
+) -> CampusService:
+    return CampusService(reader)

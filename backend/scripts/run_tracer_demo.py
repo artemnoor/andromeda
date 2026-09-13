@@ -15,7 +15,7 @@ from pathlib import Path
 from subprocess import Popen
 from typing import Sequence, cast
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from urllib.request import HTTPCookieProcessor, Request, build_opener, urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -24,7 +24,7 @@ FRONTEND_ROOT = REPO_ROOT / "frontend"
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from andromeda.ingestion.universities.bmstu import DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR  # noqa: E402
+from andromeda.ingestion.universities.bmstu import DEFAULT_CAMPUS_FIXTURE_DIR, DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR  # noqa: E402
 from andromeda.infrastructure.config import Settings  # noqa: E402
 from run_tracer_bullet import (  # noqa: E402
     TracerRunResult,
@@ -66,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mode", choices=("fixture", "live"), default="fixture")
     parser.add_argument("--fixture-dir", type=Path, default=DEFAULT_FIXTURE_DIR)
     parser.add_argument("--event-fixture-dir", type=Path, default=DEFAULT_EVENT_FIXTURE_DIR)
+    parser.add_argument("--campus-fixture-dir", type=Path, default=DEFAULT_CAMPUS_FIXTURE_DIR)
     parser.add_argument("--database-url", default=default_database_url())
     parser.add_argument("--program-code", action="append", dest="program_codes")
     parser.add_argument("--program-id", action="append", dest="program_ids")
@@ -212,6 +213,105 @@ def verify_events(api_base_url: str, expected_event_count: int = 5) -> None:
     logger.info("stage_verified name=events_recommended count=%d recommendation_count=%d", len(recommended_items), len(recommended_ids))
 
 
+def verify_campus_data(api_base_url: str, expected_point_count: int = 5) -> None:
+    """Verify the external-consumer campus contract without exercising map UI."""
+    logger.info("stage_start name=campus_data")
+    body = _http_get(f"{api_base_url}/campus/points?limit=100")
+    payload = _json_object(body, "campus points endpoint")
+    items = payload.get("items")
+    if not isinstance(items, list) or len(items) < expected_point_count:
+        raise DemoError(f"campus response contains fewer than {expected_point_count} fixture points")
+    if payload.get("total", 0) < expected_point_count:
+        raise DemoError("campus response total is smaller than the fixture point count")
+    for item in items:
+        if not isinstance(item, dict) or not str(item.get("id", "")).startswith("venue:bmstu:"):
+            raise DemoError("campus response has an invalid canonical point id")
+        if item.get("pointType") not in {"building", "room_zone", "event_venue", "entrance", "other"}:
+            raise DemoError("campus response has an invalid point type")
+        provenance = item.get("provenance")
+        first_provenance = provenance[0] if isinstance(provenance, list) and provenance else None
+        if not isinstance(first_provenance, dict) or first_provenance.get("kind") != "bmstu_campus_points":
+            raise DemoError("campus response has missing campus provenance")
+    logger.info("stage_verified name=campus_points count=%d", len(items))
+
+    point_id = "venue:bmstu:main-campus"
+    detail = _json_object(_http_get(f"{api_base_url}/campus/points/{quote(point_id, safe='')}"), "campus point detail endpoint")
+    if detail.get("id") != point_id or not isinstance(detail.get("universities"), list):
+        raise DemoError("campus point detail is missing card references")
+    point_events = _json_object(
+        _http_get(f"{api_base_url}/campus/points/{quote(point_id, safe='')}/events"),
+        "campus point events endpoint",
+    )
+    point_event_items = point_events.get("items")
+    if not isinstance(point_event_items, list) or not point_event_items:
+        raise DemoError("campus point events response is empty")
+    logger.info("stage_verified name=campus_point_detail point_id=%s events=%d", point_id, len(point_event_items))
+
+    program_query = urlencode({"programId": "program:09.03.01-02", "limit": 100})
+    program_payload = _json_object(_http_get(f"{api_base_url}/campus/points?{program_query}"), "campus program filter endpoint")
+    program_items = program_payload.get("items")
+    if not isinstance(program_items, list) or not program_items:
+        raise DemoError("campus program filter returned no points")
+    department_query = urlencode({"departmentId": "department:bmstu:iu7", "limit": 100})
+    department_payload = _json_object(_http_get(f"{api_base_url}/campus/points?{department_query}"), "campus department filter endpoint")
+    department_items = department_payload.get("items")
+    if not isinstance(department_items, list) or not department_items:
+        raise DemoError("campus department filter returned no points")
+    logger.info("stage_verified name=campus_filters program_count=%d department_count=%d", len(program_items), len(department_items))
+
+    opener = build_opener(HTTPCookieProcessor(CookieJar()))
+    request = Request(
+        f"{api_base_url}/proftest/results",
+        data=json.dumps(
+            {
+                "answers": [
+                    {"questionId": "interest_free_day", "optionIds": ["software_tool"]},
+                    {"questionId": "interest_investigation", "optionIds": ["prove_model"]},
+                    {"questionId": "activity_build", "optionIds": ["system_scheme"]},
+                    {"questionId": "activity_working_style", "optionIds": ["analyze_options"]},
+                    {"questionId": "anti_subjects", "optionIds": ["avoid_physics"], "intensity": 0.9},
+                    {"questionId": "activity_depth", "optionIds": ["practical_prototype"]},
+                ]
+            }
+        ).encode("utf-8"),
+        headers={"Accept": "application/json", "Content-Type": "application/json"},
+        method="POST",
+    )
+    with opener.open(request, timeout=5.0) as response:
+        if response.status != 200:
+            raise DemoError("profile creation failed during campus verification")
+    with opener.open(Request(f"{api_base_url}/campus/recommendations", headers={"Accept": "application/json"}), timeout=5.0) as response:
+        if response.status != 200:
+            raise DemoError("recommended campus query failed after profile creation")
+        recommendation_payload = _json_object(response.read(), "recommended campus endpoint")
+    recommended_ids = recommendation_payload.get("recommendedProgramIds")
+    recommended_points = recommendation_payload.get("points")
+    recommended_events = recommendation_payload.get("events")
+    unplaced_events = recommendation_payload.get("eventsWithoutPoint")
+    if not isinstance(recommended_ids, list) or not recommended_ids:
+        raise DemoError("recommended campus response contains no recommended programs")
+    if not isinstance(recommended_points, list) or not isinstance(recommended_events, list) or not isinstance(unplaced_events, list):
+        raise DemoError("recommended campus response has an invalid data envelope")
+    for item in recommended_points:
+        if not isinstance(item, dict) or not (set(item.get("programIds", [])) & set(recommended_ids)):
+            raise DemoError("recommended campus response contains a point without program intersection")
+    for item in recommended_events:
+        if not isinstance(item, dict) or not isinstance(item.get("programIds"), list) or not (set(item["programIds"]) & set(recommended_ids)):
+            raise DemoError("recommended campus response contains an event without program intersection")
+        if not isinstance(item.get("venue"), dict):
+            raise DemoError("recommended campus physical event is missing a venue")
+    for item in unplaced_events:
+        if not isinstance(item, dict) or item.get("venue") is not None:
+            raise DemoError("unplaced campus event unexpectedly contains a venue")
+    logger.info(
+        "stage_verified name=campus_recommended points=%d events=%d unplaced_events=%d recommendation_count=%d",
+        len(recommended_points),
+        len(recommended_events),
+        len(unplaced_events),
+        len(recommended_ids),
+    )
+
+
 def _start_process(command: list[str], cwd: Path, env: dict[str, str], label: str) -> Popen[bytes]:
     logger.info("stage_start name=%s command=%s", label, " ".join(command))
     if os.name == "nt":
@@ -254,14 +354,23 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
     fixture_dir = args.fixture_dir if args.fixture_dir.is_absolute() else (REPO_ROOT / args.fixture_dir).resolve()
     configured_event_fixture_dir = getattr(args, "event_fixture_dir", DEFAULT_EVENT_FIXTURE_DIR)
     event_fixture_dir = configured_event_fixture_dir if configured_event_fixture_dir.is_absolute() else (REPO_ROOT / configured_event_fixture_dir).resolve()
+    configured_campus_fixture_dir = getattr(args, "campus_fixture_dir", DEFAULT_CAMPUS_FIXTURE_DIR)
+    campus_fixture_dir = configured_campus_fixture_dir if configured_campus_fixture_dir.is_absolute() else (REPO_ROOT / configured_campus_fixture_dir).resolve()
     result = run_ingest(
         mode=args.mode,
         fixture_dir=fixture_dir,
         event_fixture_dir=event_fixture_dir,
+        campus_fixture_dir=campus_fixture_dir,
         database_url=database_url,
         program_codes=program_codes,
     )
-    logger.info("stage_complete name=database run_id=%s items=%d events=%d", result.run_id, result.curriculum_item_count, result.event_count)
+    logger.info(
+        "stage_complete name=database run_id=%s items=%d events=%d campus_points=%d",
+        result.run_id,
+        result.curriculum_item_count,
+        result.event_count,
+        result.campus_point_count,
+    )
 
     child_env = os.environ.copy()
     child_env["BMSTU_DATABASE_URL"] = database_url
@@ -292,6 +401,7 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
         verify_compare(api_base_url, program_codes)
         verify_admissions(api_base_url, program_codes)
         verify_events(api_base_url, result.event_count)
+        verify_campus_data(api_base_url, result.campus_point_count)
         if not args.check:
             logger.info("demo_ready api=%s frontend=%s; press Ctrl-C to stop", api_base_url, frontend_url)
             while True:
@@ -328,6 +438,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "sourceCount": result.source_count,
                 "sourceHashes": list(result.source_hashes),
                 "eventCount": result.event_count,
+                "campusPointCount": result.campus_point_count,
                 "mode": args.mode,
                 "check": args.check,
             },

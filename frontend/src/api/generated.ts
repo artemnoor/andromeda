@@ -258,6 +258,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/campus/points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Campus Points */
+        get: operations["list_campus_points"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/campus/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Campus Recommendations */
+        get: operations["get_campus_recommendations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/campus/points/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Campus Point */
+        get: operations["get_campus_point"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/campus/points/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Campus Point Events */
+        get: operations["list_campus_point_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -479,6 +547,199 @@ export interface components {
          * @enum {string}
          */
         AssessmentType: "exam" | "credit" | "graded_credit" | "coursework" | "course_project" | "state_exam";
+        /** CampusDepartmentReferenceResponse */
+        CampusDepartmentReferenceResponse: {
+            /** Id */
+            id: string;
+        };
+        /** CampusPointDetailResponse */
+        CampusPointDetailResponse: {
+            /** Id */
+            id: string;
+            pointType: components["schemas"]["CampusPointType"];
+            /** Name */
+            name: string;
+            /** Address */
+            address?: string | null;
+            /** Latitude */
+            latitude?: string | null;
+            /** Longitude */
+            longitude?: string | null;
+            /** Universityids */
+            universityIds: string[];
+            /**
+             * Departmentids
+             * @default []
+             */
+            departmentIds: string[];
+            /**
+             * Programids
+             * @default []
+             */
+            programIds: string[];
+            /** Eventcount */
+            eventCount: number;
+            /** Provenance */
+            provenance: components["schemas"]["CampusProvenanceResponse"][];
+            /**
+             * Universities
+             * @default []
+             */
+            universities: components["schemas"]["CampusUniversityReferenceResponse"][];
+            /**
+             * Departments
+             * @default []
+             */
+            departments: components["schemas"]["CampusDepartmentReferenceResponse"][];
+            /**
+             * Programs
+             * @default []
+             */
+            programs: components["schemas"]["CampusProgramReferenceResponse"][];
+        };
+        /** CampusPointEventsResponse */
+        CampusPointEventsResponse: {
+            /** Pointid */
+            pointId: string;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["EventResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** CampusPointListResponse */
+        CampusPointListResponse: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["CampusPointResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** CampusPointResponse */
+        CampusPointResponse: {
+            /** Id */
+            id: string;
+            pointType: components["schemas"]["CampusPointType"];
+            /** Name */
+            name: string;
+            /** Address */
+            address?: string | null;
+            /** Latitude */
+            latitude?: string | null;
+            /** Longitude */
+            longitude?: string | null;
+            /** Universityids */
+            universityIds: string[];
+            /**
+             * Departmentids
+             * @default []
+             */
+            departmentIds: string[];
+            /**
+             * Programids
+             * @default []
+             */
+            programIds: string[];
+            /** Eventcount */
+            eventCount: number;
+            /** Provenance */
+            provenance: components["schemas"]["CampusProvenanceResponse"][];
+        };
+        /**
+         * CampusPointType
+         * @description Stable semantic categories understood by external campus consumers.
+         * @enum {string}
+         */
+        CampusPointType: "building" | "room_zone" | "event_venue" | "entrance" | "other";
+        /** CampusProgramReferenceResponse */
+        CampusProgramReferenceResponse: {
+            /** Id */
+            id: string;
+            /** Directionid */
+            directionId: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Educationyear */
+            educationYear: number;
+            /**
+             * Studyplanurl
+             * Format: uri
+             */
+            studyPlanUrl: string;
+            /**
+             * Sourceurl
+             * Format: uri
+             */
+            sourceUrl: string;
+        };
+        /** CampusProvenanceResponse */
+        CampusProvenanceResponse: {
+            kind: components["schemas"]["SourceKind"];
+            /**
+             * Url
+             * Format: uri
+             */
+            url: string;
+            /**
+             * Capturedat
+             * Format: date-time
+             */
+            capturedAt: string;
+            /** Contentsha256 */
+            contentSha256: string;
+            /** Locator */
+            locator?: string | null;
+        };
+        /** CampusRecommendationsResponse */
+        CampusRecommendationsResponse: {
+            /**
+             * Recommendedprogramids
+             * @default []
+             */
+            recommendedProgramIds: string[];
+            /**
+             * Recommendations
+             * @default []
+             */
+            recommendations: components["schemas"]["RecommendationResponse"][];
+            /**
+             * Points
+             * @default []
+             */
+            points: components["schemas"]["CampusPointDetailResponse"][];
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["EventResponse"][];
+            /**
+             * Eventswithoutpoint
+             * @default []
+             */
+            eventsWithoutPoint: components["schemas"]["EventResponse"][];
+        };
+        /** CampusUniversityReferenceResponse */
+        CampusUniversityReferenceResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** City */
+            city: string;
+            /** Address */
+            address: string;
+            /**
+             * Officialsite
+             * Format: uri
+             */
+            officialSite: string;
+        };
         /**
          * CompareStatus
          * @enum {string}
@@ -1030,7 +1291,7 @@ export interface components {
          * SourceKind
          * @enum {string}
          */
-        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_events";
+        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_events" | "bmstu_campus_points";
         /**
          * StudyForm
          * @enum {string}
@@ -2283,6 +2544,283 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_campus_points: {
+        parameters: {
+            query?: {
+                universityId?: string | null;
+                departmentId?: string | null;
+                programId?: string | null;
+                pointType?: components["schemas"]["CampusPointType"] | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampusPointListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_campus_recommendations: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampusRecommendationsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_campus_point: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampusPointDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_campus_point_events: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+                recommended?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampusPointEventsResponse"];
                 };
             };
             /** @description Bad Request */

@@ -13,6 +13,7 @@ class VenueModel(Base):
     __tablename__ = "venues"
 
     id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    point_type: Mapped[str] = mapped_column(String(32), nullable=False, default="event_venue")
     name: Mapped[str] = mapped_column(String(512), nullable=False)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
@@ -25,6 +26,7 @@ class VenueModel(Base):
 
     __table_args__ = (
         CheckConstraint("id LIKE 'venue:%:%'", name="ck_venues_id_shape"),
+        CheckConstraint("point_type IN ('building', 'room_zone', 'event_venue', 'entrance', 'other')", name="ck_venues_point_type"),
         CheckConstraint("length(name) > 0", name="ck_venues_name_non_empty"),
         CheckConstraint("address IS NULL OR length(address) > 0", name="ck_venues_address_non_empty"),
         CheckConstraint("latitude IS NULL OR (latitude >= -90 AND latitude <= 90)", name="ck_venues_latitude_range"),
@@ -100,10 +102,43 @@ class EventProgramLinkModel(Base):
     )
 
 
+class VenueUniversityLinkModel(Base):
+    __tablename__ = "venue_university_links"
+
+    venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id", ondelete="CASCADE"), primary_key=True)
+    university_id: Mapped[str] = mapped_column(ForeignKey("universities.id"), primary_key=True)
+
+    __table_args__ = (Index("ix_venue_university_links_university_id", "university_id"),)
+
+
+class VenueDepartmentLinkModel(Base):
+    __tablename__ = "venue_department_links"
+
+    venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id", ondelete="CASCADE"), primary_key=True)
+    department_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+
+    __table_args__ = (
+        CheckConstraint("department_id LIKE 'department:%:%'", name="ck_venue_departments_id_shape"),
+        Index("ix_venue_department_links_department_id", "department_id"),
+    )
+
+
+class VenueProgramLinkModel(Base):
+    __tablename__ = "venue_program_links"
+
+    venue_id: Mapped[str] = mapped_column(ForeignKey("venues.id", ondelete="CASCADE"), primary_key=True)
+    program_id: Mapped[str] = mapped_column(ForeignKey("educational_programs.id"), primary_key=True)
+
+    __table_args__ = (Index("ix_venue_program_links_program_id", "program_id"),)
+
+
 __all__ = [
     "EventDepartmentLinkModel",
     "EventModel",
     "EventProgramLinkModel",
     "EventUniversityLinkModel",
     "VenueModel",
+    "VenueDepartmentLinkModel",
+    "VenueProgramLinkModel",
+    "VenueUniversityLinkModel",
 ]

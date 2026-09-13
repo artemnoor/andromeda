@@ -1,6 +1,7 @@
 from .normalized import CanonicalSnapshot
 from .raw import (
     RawCurriculumRow,
+    RawCampusPointRecord,
     RawDirectionRecord,
     RawProgramRecord,
     RawTracerBundle,
@@ -13,6 +14,7 @@ __all__ = [
     "CapturedSources",
     "CanonicalSnapshot",
     "RawCurriculumRow",
+    "RawCampusPointRecord",
     "RawDirectionRecord",
     "RawProgramRecord",
     "RawSourceSnapshot",

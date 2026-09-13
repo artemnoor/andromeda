@@ -23,6 +23,7 @@ class SourceKind(StrEnum):
     BMSTU_MAJOR_DETAIL = "bmstu_major_detail"
     BMSTU_CURRICULUM_DOCUMENT = "bmstu_curriculum_document"
     BMSTU_EVENTS = "bmstu_events"
+    BMSTU_CAMPUS_POINTS = "bmstu_campus_points"
 
 
 class CompareStatus(StrEnum):

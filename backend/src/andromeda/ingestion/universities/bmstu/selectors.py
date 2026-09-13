@@ -6,6 +6,7 @@ TARGET_DIRECTION_CODE = "09.03.01"
 TARGET_PROGRAM_CODES = ("09.03.01-02", "09.03.01-12")
 DEFAULT_FIXTURE_DIR = Path(__file__).resolve().parents[5] / "tests" / "fixtures" / "tracer" / "raw"
 DEFAULT_EVENT_FIXTURE_DIR = Path(__file__).resolve().parents[5] / "tests" / "fixtures" / "events" / "raw"
+DEFAULT_CAMPUS_FIXTURE_DIR = Path(__file__).resolve().parents[5] / "tests" / "fixtures" / "campus" / "raw"
 
 
 def select_program_codes(values: tuple[str, ...] | None = None) -> tuple[str, ...]:

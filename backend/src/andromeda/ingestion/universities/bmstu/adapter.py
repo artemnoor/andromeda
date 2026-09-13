@@ -14,13 +14,16 @@ from ...contracts.normalized import CanonicalSnapshot
 from ...contracts.raw import RawTracerBundle
 from ...contracts.source import CapturedSources, RawSourceSnapshot
 from ....modules.disciplines.contracts.public import Discipline
+from ....shared.contracts.enums import SourceKind
+from ....shared.contracts.provenance import SourceAttribution
 from ....modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
-from .selectors import DEFAULT_FIXTURE_DIR, TARGET_PROGRAM_CODES, select_program_codes
-from .selectors import DEFAULT_EVENT_FIXTURE_DIR
+from .selectors import DEFAULT_CAMPUS_FIXTURE_DIR, DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR, TARGET_PROGRAM_CODES, select_program_codes
 from .mappings.discipline_areas import BMSTU_DISCIPLINE_AREA_OVERRIDES
 from .normalizers.admissions import normalize_admissions
+from .normalizers.campus import normalize_campus_points
 from .normalizers.events import normalize_events
 from .parser.admissions import parse_detail_admissions
+from .parser.campus import load_campus_fixture, parse_campus_points
 from .parser.events import load_event_fixture, parse_events
 
 
@@ -50,15 +53,26 @@ class BmstuUniversityAdapter:
         mode: str = "fixture",
         fixture_dir: Path | None = None,
         event_fixture_dir: Path | None = None,
+        campus_fixture_dir: Path | None = None,
     ) -> CapturedSources:
         fetch_logger.debug("stage=capture mode=%s", mode)
         legacy_captured = self._source.capture(mode=mode, fixture_dir=fixture_dir or DEFAULT_FIXTURE_DIR)
         snapshots = tuple(RawSourceSnapshot.model_validate(snapshot.model_dump()) for snapshot in legacy_captured.snapshots)
         if mode == "fixture":
             event_snapshot = load_event_fixture(event_fixture_dir or DEFAULT_EVENT_FIXTURE_DIR)
-            snapshots += (RawSourceSnapshot.model_validate(event_snapshot.model_dump()),)
+            campus_snapshot = load_campus_fixture(campus_fixture_dir or DEFAULT_CAMPUS_FIXTURE_DIR)
+            snapshots += (
+                RawSourceSnapshot.model_validate(event_snapshot.model_dump()),
+                RawSourceSnapshot.model_validate(campus_snapshot.model_dump()),
+            )
         result = CapturedSources(snapshots=snapshots)
-        fetch_logger.info("stage=capture_complete mode=%s snapshots=%d event_source=%s", mode, len(result.snapshots), mode == "fixture")
+        fetch_logger.info(
+            "stage=capture_complete mode=%s snapshots=%d event_source=%s campus_source=%s",
+            mode,
+            len(result.snapshots),
+            mode == "fixture",
+            mode == "fixture",
+        )
         return result
 
     def parse(
@@ -67,20 +81,44 @@ class BmstuUniversityAdapter:
         program_codes: Sequence[str] = TARGET_PROGRAM_CODES,
     ) -> tuple[RawTracerBundle, CanonicalSnapshot]:
         selected = select_program_codes(tuple(program_codes))
-        legacy_snapshots = tuple(LegacyRawSourceSnapshot.model_validate(snapshot.model_dump()) for snapshot in captured.snapshots)
+        campus_source_kind = "bmstu_campus_points"
+        legacy_snapshots = tuple(
+            LegacyRawSourceSnapshot.model_validate(snapshot.model_dump())
+            for snapshot in captured.snapshots
+            if snapshot.source_kind != campus_source_kind
+        )
         legacy_captured = LegacyCapturedSources(snapshots=legacy_snapshots)
         select_logger.debug("stage=selected source_snapshots=%d programs=%d", len(legacy_snapshots), len(selected))
         parse_logger.debug("stage=parse source_snapshots=%d programs=%d", len(legacy_snapshots), len(selected))
         legacy_raw = parse_legacy_captured(legacy_captured, program_codes=selected)
-        raw = RawTracerBundle.model_validate(legacy_raw.model_dump())
+        raw = RawTracerBundle.model_validate({**legacy_raw.model_dump(), "snapshots": captured.snapshots})
         admission_records = parse_detail_admissions(captured.first("bmstu_major_detail"), selected)
         event_snapshots = captured.by_kind("bmstu_events")
         if len(event_snapshots) > 1:
             raise ValueError("expected at most one BMSTU event source snapshot")
         event_records = parse_events(event_snapshots[0]) if event_snapshots else ()
-        raw = raw.model_copy(update={"admissions": admission_records, "events": event_records})
+        campus_snapshots = captured.by_kind(campus_source_kind)
+        if len(campus_snapshots) > 1:
+            raise ValueError("expected at most one BMSTU campus source snapshot")
+        campus_records = parse_campus_points(campus_snapshots[0]) if campus_snapshots else ()
+        raw = raw.model_copy(update={"admissions": admission_records, "events": event_records, "campus_points": campus_records})
         legacy_canonical = normalize_legacy_bundle(legacy_raw)
         canonical = CanonicalSnapshot.model_validate(legacy_canonical.model_dump())
+        if campus_snapshots:
+            campus_snapshot = campus_snapshots[0]
+            canonical = canonical.model_copy(
+                update={
+                    "sources": (
+                        *canonical.sources,
+                        SourceAttribution(
+                            kind=SourceKind.BMSTU_CAMPUS_POINTS,
+                            url=campus_snapshot.requested_url,
+                            captured_at=campus_snapshot.captured_at,
+                            content_sha256=campus_snapshot.content_sha256,
+                        ),
+                    )
+                }
+            )
         classified_disciplines = tuple(
             Discipline.model_validate(
                 {
@@ -105,6 +143,12 @@ class BmstuUniversityAdapter:
                     snapshots=raw.snapshots,
                     known_program_codes=TARGET_PROGRAM_CODES,
                 ),
+                "campus_points": normalize_campus_points(
+                    raw.campus_points,
+                    programs=canonical.programs,
+                    snapshots=raw.snapshots,
+                    known_program_codes=TARGET_PROGRAM_CODES,
+                ),
             }
         )
         area_count = len({weight.area for discipline in canonical.disciplines for weight in discipline.area_weights})
@@ -117,6 +161,7 @@ class BmstuUniversityAdapter:
             area_count,
         )
         normalize_logger.info("stage=events_complete events=%d", len(canonical.events))
+        normalize_logger.info("stage=campus_complete points=%d", len(canonical.campus_points))
         return raw, canonical
 
     def parse_sources(
@@ -124,9 +169,15 @@ class BmstuUniversityAdapter:
         mode: str = "fixture",
         fixture_dir: Path | None = None,
         event_fixture_dir: Path | None = None,
+        campus_fixture_dir: Path | None = None,
         program_codes: Sequence[str] = TARGET_PROGRAM_CODES,
     ) -> tuple[RawTracerBundle, CanonicalSnapshot]:
-        captured = self.capture(mode=mode, fixture_dir=fixture_dir, event_fixture_dir=event_fixture_dir)
+        captured = self.capture(
+            mode=mode,
+            fixture_dir=fixture_dir,
+            event_fixture_dir=event_fixture_dir,
+            campus_fixture_dir=campus_fixture_dir,
+        )
         return self.parse(captured, program_codes=program_codes)
 
 

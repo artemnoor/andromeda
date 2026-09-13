@@ -91,4 +91,6 @@ def test_event_projection_is_idempotent_updates_and_reconciles_stale_source(tmp_
 
     repository.ingest(raw, canonical.model_copy(update={"events": ()}))
     with session_scope(engine) as session:
-        assert session.scalar(select(func.count()).select_from(VenueModel)) == 0
+        assert session.scalar(
+            select(func.count()).select_from(VenueModel).where(VenueModel.source_kind == "bmstu_events")
+        ) == 0
