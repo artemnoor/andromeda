@@ -431,7 +431,7 @@ class SqlAlchemyCampusPointRepository(CampusPointReader):
         removed = 0
         for model in (VenueUniversityLinkModel, VenueDepartmentLinkModel, VenueProgramLinkModel):
             result = self._session.execute(delete(model).where(model.venue_id == point_id))
-            removed += int(result.rowcount or 0)
+            removed += int(getattr(result, "rowcount", 0) or 0)
         return removed
 
     def _retain_event_fallback(self, point_id: str) -> None:
