@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createCurrentProfile, getCurrentProfile, getCurrentRecommendations, getEvents, updateCurrentProfile, type CreateProfileRequest, type UpdateProfileRequest } from "./client";
+import { createCurrentProfile, getCurrentProfile, getCurrentRecommendations, getEvents, getPersonalRoute, updateCurrentProfile, type CreateProfileRequest, type UpdateProfileRequest } from "./client";
 
 const originalFetch = globalThis.fetch;
 const profile: CreateProfileRequest["profile"] = {
@@ -66,6 +66,16 @@ describe("typed API client", () => {
     await getEvents({ kind: "additional_education", format: "offline", programId: "program:09.03.01-02", recommended: true, limit: 10 });
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/events?kind=additional_education&format=offline&programId=program%3A09.03.01-02&recommended=true&limit=10");
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ credentials: "include" }));
+  });
+
+  it("requests the logical personal plan with the bounded limit", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ status: "no_recommendations", summary: "empty", recommendations: [], steps: [] }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+
+    await getPersonalRoute(4);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/personal-route?limit=4");
     expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ credentials: "include" }));
   });
 });

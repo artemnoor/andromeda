@@ -326,6 +326,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/personal-route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Personal Route */
+        get: operations["get_personal_route"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1065,6 +1082,55 @@ export interface components {
          * @enum {string}
          */
         PassingScoreType: "budget" | "paid" | "average" | "other";
+        /** PersonalRouteResponse */
+        PersonalRouteResponse: {
+            status: components["schemas"]["PersonalRouteStatus"];
+            /** Summary */
+            summary: string;
+            /**
+             * Recommendations
+             * @default []
+             */
+            recommendations: components["schemas"]["RecommendationResponse"][];
+            /**
+             * Steps
+             * @default []
+             */
+            steps: components["schemas"]["PersonalRouteStepResponse"][];
+        };
+        /**
+         * PersonalRouteStatus
+         * @enum {string}
+         */
+        PersonalRouteStatus: "ready" | "no_recommendations" | "no_events";
+        /**
+         * PersonalRouteStepKind
+         * @description Logical actions; these values intentionally do not describe movement.
+         * @enum {string}
+         */
+        PersonalRouteStepKind: "explore_program" | "compare_programs" | "attend_event";
+        /** PersonalRouteStepResponse */
+        PersonalRouteStepResponse: {
+            /** Position */
+            position: number;
+            kind: components["schemas"]["PersonalRouteStepKind"];
+            /** Reason */
+            reason: string;
+            /**
+             * Programids
+             * @default []
+             */
+            programIds: string[];
+            recommendation?: components["schemas"]["RecommendationResponse"] | null;
+            /** Eventid */
+            eventId?: string | null;
+            event?: components["schemas"]["EventResponse"] | null;
+            /** Venueid */
+            venueId?: string | null;
+            point?: components["schemas"]["CampusPointDetailResponse"] | null;
+            /** Startsat */
+            startsAt?: string | null;
+        };
         /** PreviewCandidateResponse */
         PreviewCandidateResponse: {
             /** Programid */
@@ -2821,6 +2887,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampusPointEventsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_personal_route: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalRouteResponse"];
                 };
             };
             /** @description Bad Request */

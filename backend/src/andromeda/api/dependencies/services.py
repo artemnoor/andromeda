@@ -21,6 +21,7 @@ from andromeda.modules.recommendations.services.current import CurrentRecommenda
 from andromeda.modules.events.services.events import EventService
 from andromeda.modules.campus.repository.ports import CampusPointReader
 from andromeda.modules.campus.services.campus import CampusService
+from andromeda.modules.personal_route.services.personal_route import PersonalRouteService
 
 from andromeda.infrastructure.repositories.curricula import SqlAlchemyCurriculumRepository
 from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDisciplineRepository
@@ -149,3 +150,13 @@ def get_campus_service(
     reader: CampusPointReader = Depends(get_campus_point_reader),
 ) -> CampusService:
     return CampusService(reader)
+
+
+def get_personal_route_service(
+    current_recommendations: CurrentRecommendationService = Depends(get_current_recommendation_service),
+    events: EventService = Depends(get_event_service),
+    campus: CampusService = Depends(get_campus_service),
+) -> PersonalRouteService:
+    """Compose the logical plan from existing application services only."""
+
+    return PersonalRouteService(current_recommendations, events, campus)

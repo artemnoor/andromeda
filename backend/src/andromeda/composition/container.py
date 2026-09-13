@@ -23,6 +23,9 @@ from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataRea
 from andromeda.modules.events.services.events import EventService
 from andromeda.modules.campus.repository.ports import CampusPointReader
 from andromeda.modules.campus.services.campus import CampusService
+from andromeda.modules.personal_route.services.personal_route import PersonalRouteService
+from andromeda.modules.recommendations.services.current import CurrentRecommendationService
+from andromeda.modules.recommendations.services.recommendations import RecommendationService
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +63,19 @@ class AndromedaContainer:
 
     def campus_service(self, session: Session) -> CampusService:
         return CampusService(self.campus_point_reader(session))
+
+    def current_recommendation_service(self, session: Session) -> CurrentRecommendationService:
+        return CurrentRecommendationService(
+            self.user_profile_repository(session),
+            RecommendationService(self.recommendation_catalog_reader(session)),
+        )
+
+    def personal_route_service(self, session: Session) -> PersonalRouteService:
+        return PersonalRouteService(
+            self.current_recommendation_service(session),
+            self.event_service(session),
+            self.campus_service(session),
+        )
 
     def proftest_catalog_reader(self, session: Session) -> SqlAlchemyProftestCatalogRepository:
         return SqlAlchemyProftestCatalogRepository(self.program_reader(session), self.curriculum_reader(session), self.discipline_reader(session))

@@ -1980,6 +1980,91 @@
           }
         }
       }
+    },
+    "/personal-route": {
+      "get": {
+        "tags": [
+          "personal-route"
+        ],
+        "summary": "Get Personal Route",
+        "operationId": "get_personal_route",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalRouteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4197,6 +4282,163 @@
           "other"
         ],
         "title": "PassingScoreType"
+      },
+      "PersonalRouteResponse": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/PersonalRouteStatus"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Summary"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationResponse"
+            },
+            "type": "array",
+            "title": "Recommendations",
+            "default": []
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalRouteStepResponse"
+            },
+            "type": "array",
+            "title": "Steps",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "summary"
+        ],
+        "title": "PersonalRouteResponse"
+      },
+      "PersonalRouteStatus": {
+        "type": "string",
+        "enum": [
+          "ready",
+          "no_recommendations",
+          "no_events"
+        ],
+        "title": "PersonalRouteStatus"
+      },
+      "PersonalRouteStepKind": {
+        "type": "string",
+        "enum": [
+          "explore_program",
+          "compare_programs",
+          "attend_event"
+        ],
+        "title": "PersonalRouteStepKind",
+        "description": "Logical actions; these values intentionally do not describe movement."
+      },
+      "PersonalRouteStepResponse": {
+        "properties": {
+          "position": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Position"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PersonalRouteStepKind"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "programIds": {
+            "items": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+            },
+            "type": "array",
+            "title": "Programids",
+            "default": []
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eventId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^event:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,127}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eventid"
+          },
+          "event": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "venueId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^venue:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,62}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venueid"
+          },
+          "point": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampusPointDetailResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startsAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startsat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "position",
+          "kind",
+          "reason"
+        ],
+        "title": "PersonalRouteStepResponse"
       },
       "PreviewCandidateResponse": {
         "properties": {
