@@ -4,10 +4,12 @@ import logging
 
 from sqlalchemy import Engine
 
+from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
+from andromeda.ingestion.contracts.raw import RawTracerBundle as CanonicalRawTracerBundle
+from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
+
 from ..contracts.domain import NormalizedTracerSnapshot
 from ..contracts.raw import RawTracerBundle
-from ..db.repositories import ingest_snapshot
-from ..db.session import session_scope
 
 logger = logging.getLogger("tracer.ingest")
 
@@ -19,9 +21,9 @@ class TracerIngestService:
     def ingest(self, raw: RawTracerBundle, normalized: NormalizedTracerSnapshot) -> str:
         logger.debug("ingest_service_enter programs=%d", len(normalized.programs))
         try:
-            with session_scope(self.engine) as session:
-                with session.begin():
-                    run_id = ingest_snapshot(session, raw, normalized)
+            canonical_raw = CanonicalRawTracerBundle.model_validate(raw.model_dump())
+            canonical = CanonicalSnapshot.model_validate(normalized.model_dump())
+            run_id = SqlAlchemyIngestionRepository(self.engine).ingest(canonical_raw, canonical)
             logger.debug("ingest_service_exit run_id=%s", run_id)
             return run_id
         except Exception:

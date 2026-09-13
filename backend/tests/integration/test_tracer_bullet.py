@@ -39,7 +39,7 @@ def test_partial_ingest_rolls_back_when_identity_conflicts(tmp_path: Path) -> No
     Base.metadata.create_all(engine)
     service = TracerIngestService(engine)
     service.ingest(raw, normalized)
-    conflicting_program = normalized.programs[0].model_copy(update={"name": "contract-conflict"})
+    conflicting_program = normalized.programs[0].model_copy(update={"code": "09.03.01-99"})
     conflicting = normalized.model_copy(update={"programs": (conflicting_program, *normalized.programs[1:])})
 
     try:

@@ -17,9 +17,10 @@ from alembic.config import Config
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 
-from bmstu_parser.db.base import create_engine_for_url
-from bmstu_parser.tracer import DEFAULT_FIXTURE_DIR, TracerSource, parse_sources
-from bmstu_parser.tracer.ingest import TracerIngestService
+from andromeda.ingestion.universities.bmstu import DEFAULT_CAMPUS_FIXTURE_DIR, DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR, BmstuUniversityAdapter
+from andromeda.infrastructure.config import Settings, redact_database_url
+from andromeda.infrastructure.database import create_engine_for_url
+from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 
 DEFAULT_PROGRAM_CODES = ("09.03.01-02", "09.03.01-12")
 logger = logging.getLogger("tracer.runner")
@@ -33,6 +34,8 @@ class TracerRunResult:
     curriculum_item_count: int
     source_count: int
     source_hashes: tuple[str, ...]
+    event_count: int
+    campus_point_count: int = 0
 
 
 def configure_logging(log_level: str) -> None:
@@ -64,6 +67,8 @@ def run_ingest(
     *,
     mode: str,
     fixture_dir: Path,
+    event_fixture_dir: Path | None = None,
+    campus_fixture_dir: Path | None = None,
     database_url: str,
     program_codes: Sequence[str],
 ) -> TracerRunResult:
@@ -72,7 +77,7 @@ def run_ingest(
         database_path = Path(database_url.removeprefix("sqlite:///"))
         database_path.parent.mkdir(parents=True, exist_ok=True)
 
-    logger.info("ingest_start mode=%s programs=%s database=%s", mode, ",".join(program_codes), database_url)
+    logger.info("ingest_start mode=%s programs=%s database_target=%s", mode, ",".join(program_codes), redact_database_url(database_url))
     engine = create_engine_for_url(database_url)
     try:
         migration_config = Config(str(BACKEND_ROOT / "alembic.ini"))
@@ -81,31 +86,36 @@ def run_ingest(
         command.upgrade(migration_config, "head")
         _restore_tracer_loggers()
 
-        source = TracerSource()
+        source = BmstuUniversityAdapter()
         try:
-            raw, normalized = parse_sources(
-                source,
+            raw, normalized = source.parse_sources(
                 mode=mode,
                 fixture_dir=fixture_dir,
+                event_fixture_dir=event_fixture_dir or DEFAULT_EVENT_FIXTURE_DIR,
+                campus_fixture_dir=campus_fixture_dir or DEFAULT_CAMPUS_FIXTURE_DIR,
                 program_codes=program_codes,
             )
         finally:
             source.close()
 
-        run_id = TracerIngestService(engine).ingest(raw, normalized)
+        run_id = SqlAlchemyIngestionRepository(engine).ingest(raw, normalized)
         result = TracerRunResult(
             run_id=run_id,
             program_ids=tuple(program.id for program in normalized.programs),
             curriculum_item_count=sum(len(curriculum.items) for curriculum in normalized.curricula),
             source_count=len(normalized.sources),
             source_hashes=tuple(source.content_sha256 for source in normalized.sources),
+            event_count=len(normalized.events),
+            campus_point_count=len(normalized.campus_points),
         )
         logger.info(
-            "ingest_complete run_id=%s programs=%d curriculum_items=%d sources=%d",
+            "ingest_complete run_id=%s programs=%d curriculum_items=%d sources=%d events=%d campus_points=%d",
             result.run_id,
             len(result.program_ids),
             result.curriculum_item_count,
             result.source_count,
+            result.event_count,
+            result.campus_point_count,
         )
         return result
     finally:
@@ -119,13 +129,19 @@ def result_payload(result: TracerRunResult, database_url: str) -> dict[str, obje
         "curriculumItemCount": result.curriculum_item_count,
         "sourceCount": result.source_count,
         "sourceHashes": list(result.source_hashes),
-        "databaseUrl": database_url,
+        "eventCount": result.event_count,
+        "campusPointCount": result.campus_point_count,
+        "databaseTarget": redact_database_url(database_url),
         "api": {
             "docs": "/docs",
             "openapi": "/openapi.json",
             "program": "/programs/{id}",
             "curriculum": "/programs/{id}/curriculum",
+            "admissions": "/programs/{id}/admissions",
             "compare": "/compare?programIds=program:09.03.01-02,program:09.03.01-12",
+            "events": "/events",
+            "campusPoints": "/campus/points",
+            "campusRecommendations": "/campus/recommendations",
         },
         "frontend": "http://localhost:5173/",
     }
@@ -135,7 +151,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Ingest official BMSTU data through the tracer bullet contracts")
     parser.add_argument("--mode", choices=("fixture", "live"), default="fixture")
     parser.add_argument("--fixture-dir", type=Path, default=DEFAULT_FIXTURE_DIR)
-    parser.add_argument("--database-url", default="sqlite:///./data/tracer.db")
+    parser.add_argument("--event-fixture-dir", type=Path, default=DEFAULT_EVENT_FIXTURE_DIR)
+    parser.add_argument("--campus-fixture-dir", type=Path, default=DEFAULT_CAMPUS_FIXTURE_DIR)
+    parser.add_argument("--database-url", default=None)
     parser.add_argument("--program-code", action="append", dest="program_codes")
     parser.add_argument("--program-id", action="append", dest="program_ids")
     parser.add_argument("--log-level", choices=("DEBUG", "INFO", "WARNING", "ERROR"), default="INFO")
@@ -148,14 +166,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         program_codes = selected_program_codes(args.program_codes, args.program_ids)
     except ValueError as exc:
-        parser.error(str(exc))
+        raise SystemExit(f"argument error: {exc}") from exc
+    database_url = Settings.from_environment(args.database_url).database_url
     result = run_ingest(
         mode=args.mode,
         fixture_dir=args.fixture_dir,
-        database_url=args.database_url,
+        event_fixture_dir=args.event_fixture_dir,
+        campus_fixture_dir=args.campus_fixture_dir,
+        database_url=database_url,
         program_codes=program_codes,
     )
-    print(json.dumps(result_payload(result, args.database_url), ensure_ascii=False, indent=2))
+    print(json.dumps(result_payload(result, database_url), ensure_ascii=False, indent=2))
     return 0
 
 

@@ -10,7 +10,7 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 
-from bmstu_parser.api.main import create_app
+from andromeda.api.main import create_app
 
 
 def main() -> int:

@@ -61,7 +61,27 @@ python -m bmstu_parser merge `
 
 По умолчанию без `--source` запускаются все 19 источников. Для регулярного запуска лучше указывать отдельную директорию на каждый снимок, чтобы не перезаписывать историю.
 
-## Contract-first tracer bullet
+## Andromeda: сравнение образовательных программ
+
+Текущий vertical slice использует modular monolith: `andromeda/ingestion` принимает BMSTU sources, предметные модули публикуют typed contracts, `infrastructure` содержит SQLAlchemy/Alembic, а `andromeda/api` отдаёт FastAPI/OpenAPI. Сравнение поддерживает весь учебный план и выбранный семестр, блоки, часы, ЗЕТ, контроль и статусы `both`/`different`/`only_a`/`only_b`.
+
+Все 101 уникальные дисциплины текущего BMSTU fixture классифицируются в 22 области Andromeda. Классификация многомерная: у предмета хранится вектор весов, исходное имя не заменяется и неоднозначные предметы не объединяются. BMSTU-specific векторы находятся в `andromeda/ingestion/universities/bmstu/mappings/discipline_areas.py`; агрегированный профиль программы считается по учебной нагрузке и доступен в `areaBreakdownA`/`areaBreakdownB`.
+
+Повторяемый fixture-запуск из корня репозитория:
+
+```powershell
+python backend/scripts/run_tracer_demo.py --mode fixture --check
+```
+
+Для разработки API запускается из нового delivery layer:
+
+```powershell
+cd backend
+python scripts/run_tracer_bullet.py --mode fixture --database-url sqlite:///./data/tracer.db
+python -m uvicorn andromeda.api.main:app --reload --port 8000
+```
+
+Межмодульные зависимости проходят через `andromeda.modules.*.contracts.public` и Protocol-порты. ORM-модели не выходят из `andromeda.infrastructure`.
 
 The demonstrable vertical slice uses official BMSTU S01/S06 pages and the two linked study-plan PDFs. It keeps raw bytes, validates typed raw DTOs, normalizes domain entities, writes SQLite constraints, and serves the database through FastAPI/OpenAPI.
 
@@ -81,7 +101,7 @@ For a backend-only run:
 cd backend
 python -m pip install -e ".[dev]"
 python scripts/run_tracer_bullet.py --mode fixture --database-url sqlite:///./data/tracer.db
-python -m uvicorn bmstu_parser.api.main:app --reload --port 8000
+python -m uvicorn andromeda.api.main:app --reload --port 8000
 ```
 
 The runner applies `alembic upgrade head` before ingest; it can also be run manually with `python -m alembic -c alembic.ini upgrade head`.
