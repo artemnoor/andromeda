@@ -71,6 +71,7 @@ def downgrade() -> None:
     if bind.dialect.name == "sqlite":
         with op.batch_alter_table("curriculum_items", recreate="always") as batch:
             batch.drop_constraint("uq_curriculum_item_identity", type_="unique")
+            batch.drop_constraint("ck_item_semester_identity", type_="check")
             batch.create_unique_constraint("uq_curriculum_item_identity", ["curriculum_id", "discipline_id", "semester"])
             batch.drop_column("semester_identity")
             batch.drop_column("source_name")

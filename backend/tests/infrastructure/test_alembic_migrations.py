@@ -45,6 +45,22 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(tmp_path: 
         engine.dispose()
 
 
+def test_sqlite_migration_chain_can_downgrade_to_base(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'migration-round-trip.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+
+    config = _alembic_config("sqlite:///ignored-by-environment.db")
+    command.upgrade(config, "head")
+    command.downgrade(config, "base")
+
+    engine = create_engine(database_url)
+    try:
+        assert inspect(engine).get_table_names() == ["alembic_version"]
+    finally:
+        engine.dispose()
+
+
 def test_environment_url_is_used_for_alembic_even_when_ini_differs(tmp_path: Path, monkeypatch) -> None:
     target_url = f"sqlite:///{(tmp_path / 'environment-target.db').as_posix()}"
     ignored_url = f"sqlite:///{(tmp_path / 'ini-target.db').as_posix()}"
