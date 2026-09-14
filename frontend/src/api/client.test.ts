@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createCurrentProfile, getCurrentProfile, getCurrentRecommendations, getEvents, getIngestionRun, getIngestionRuns, getPersonalRoute, retryIngestion, updateCurrentProfile, type CreateProfileRequest, type UpdateProfileRequest } from "./client";
+import { createCurrentProfile, getAuthSession, getCurrentProfile, getCurrentRecommendations, getEvents, getIngestionRun, getIngestionRuns, getPersonalRoute, loginAccount, logoutAccount, registerAccount, retryIngestion, updateCurrentProfile, type CreateProfileRequest, type UpdateProfileRequest } from "./client";
 
 const originalFetch = globalThis.fetch;
 const profile: CreateProfileRequest["profile"] = {
@@ -31,6 +31,21 @@ describe("typed API client", () => {
       "/proftest/profile",
       expect.objectContaining({ credentials: "include", headers: expect.objectContaining({ Accept: "application/json" }) }),
     );
+  });
+
+  it("uses credentialed auth endpoints without exposing cookie values", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ authenticated: false, account: null }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+
+    await getAuthSession();
+    await registerAccount({ email: "student@example.com", password: "a-secure-password" });
+    await loginAccount({ email: "student@example.com", password: "a-secure-password" });
+    await logoutAccount();
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/auth/session");
+    expect(fetchMock.mock.calls[1]?.[1]).toEqual(expect.objectContaining({ credentials: "include", method: "POST" }));
+    expect(fetchMock.mock.calls[1]?.[1]).not.toHaveProperty("headers.cookie");
+    expect(fetchMock.mock.calls[3]?.[0]).toBe("/auth/logout");
   });
 
   it("keeps current recommendation query typed and does not log response bodies", async () => {

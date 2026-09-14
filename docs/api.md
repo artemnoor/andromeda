@@ -36,7 +36,20 @@ GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&s
 
 ## Ошибки
 
-Ответ ошибки имеет strict-поля `code`, `message`, `details`. Основные коды: `VALIDATION_ERROR`, `NOT_FOUND`, `CONFLICT`, `CONTRACT_ERROR`, `SOURCE_CONTRACT_ERROR`, `INTERNAL_ERROR`.
+Ответ ошибки имеет strict-поля `code`, `message`, `details`. Основные коды: `VALIDATION_ERROR`, `UNAUTHORIZED`, `NOT_FOUND`, `CONFLICT`, `CONTRACT_ERROR`, `SOURCE_CONTRACT_ERROR`, `INTERNAL_ERROR`.
+
+## Аутентификация и аккаунт
+
+| Метод | Endpoint | Назначение |
+|---|---|---|
+| POST | `/auth/register` | Создаёт аккаунт, persistent server-side session и при наличии переносит текущий anonymous profile |
+| POST | `/auth/login` | Проверяет credentials, создаёт новую session и восстанавливает account profile |
+| POST | `/auth/logout` | Отзывает текущую session и очищает auth cookie |
+| GET | `/auth/session` | Возвращает безопасное authenticated/unauthenticated состояние и public account |
+
+`email` нормализуется к lowercase, пароль при регистрации должен содержать не менее 12 символов. Login использует одинаковую generic ошибку `Invalid email or password` для неизвестного email и неверного пароля. Raw password не хранится: backend использует Argon2id через `argon2-cffi`. Raw session token существует только в `HttpOnly` cookie; в `auth_sessions` хранится только его SHA-256 hash с expiry/revocation.
+
+Auth cookie не читается frontend JavaScript и имеет `Path=/`, `HttpOnly`, `Max-Age`, `Secure` и настроенный `SameSite`. Для credentialed state-changing auth requests при наличии `Origin` API принимает только configured frontend origins.
 
 ## Профиль содержания
 
@@ -45,7 +58,7 @@ GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&s
 | GET | `/proftest/questions` | Versioned bank scenario-based вопросов без внутренних весов |
 | POST | `/proftest/preview` | Строит `UserProfile`, первичный ranking и adaptive selection |
 | POST | `/proftest/results` | Строит финальный профиль и TOP рекомендаций с fit/anti-fit evidence |
-| GET | `/proftest/profile` | Читает current completed profile anonymous session |
+| GET | `/proftest/profile` | Читает current completed profile по account scope или anonymous session |
 | POST | `/proftest/profile` | Создаёт current profile; повторное создание возвращает `409 CONFLICT` |
 | PUT | `/proftest/profile` | Обновляет профиль по optimistic `expectedRevision` |
 
@@ -131,7 +144,7 @@ Request содержит `profile` и `limit` (`1..20`). Профиль — то
 
 Frontend client генерирует `PersonalRouteResponse` из `/openapi.json`; для UI используется только логический план, без маршрутизации по карте.
 
-`POST /proftest/results` сохраняет только финальный `UserProfile` (без `AnswerSet` и cookie token). `GET /proftest/profile` и `GET /recommendations/current` используют anonymous HttpOnly session cookie. Если профиля нет или его TTL истёк, API возвращает `NOT_FOUND`; устаревший `expectedRevision` и duplicate create возвращают `CONFLICT`. Session key в БД представлен только SHA-256 hash.
+`POST /proftest/results` сохраняет только финальный `UserProfile` (без `AnswerSet` и cookie token). До login/register профиль принадлежит anonymous scope. При register/login активный anonymous profile переносится к account, если account profile ещё отсутствует. Если существуют оба, account profile wins, anonymous row остаётся отдельной и не merge-ится. Account-owned row больше не доступен по anonymous cookie; новый authenticated session восстанавливает его по canonical account ID. Если профиля нет или его TTL истёк, API возвращает `NOT_FOUND`; устаревший `expectedRevision` и duplicate create возвращают `CONFLICT`. Session keys и auth tokens в БД представлены только hash-значениями.
 
 ## Admission Fit
 

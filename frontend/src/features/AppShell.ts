@@ -6,6 +6,7 @@ import { renderEventsPage } from "./events/EventsPage";
 import { renderPersonalRoutePage } from "./personal-route/PersonalRoutePage";
 import { renderUnifiedMvpPage } from "./unified-flow/UnifiedMvpPage";
 import { renderAdminOpsPage } from "./admin-ops/AdminOpsPage";
+import { renderAuthPanel } from "./auth/AuthPanel";
 
 type Program = components["schemas"]["ProgramSummaryResponse"];
 
@@ -28,7 +29,8 @@ export function hashForFeature(feature: Feature, firstProgramId?: string): strin
 }
 
 export function renderAppShell(root: HTMLElement, programs: readonly Program[]): void {
-  root.innerHTML = `<header class="app-nav"><div><p class="eyebrow">Andromeda · BMSTU</p><strong class="app-brand">Учебные планы как данные</strong></div><nav aria-label="Разделы приложения"><button class="nav-button" data-testid="nav-unified-flow" type="button">Единый путь</button><button class="nav-button active" data-testid="nav-compare" type="button">Сравнение</button><button class="nav-button" data-testid="nav-events" type="button">События</button><button class="nav-button" data-testid="nav-personal-route" type="button">Мой план</button><button class="nav-button" data-testid="nav-proftest" type="button">Профиль содержания</button><button class="nav-button" data-testid="nav-program" type="button">Программа</button></nav></header><div id="feature-root"></div>`;
+  root.innerHTML = `<header class="app-nav"><div><p class="eyebrow">Andromeda · BMSTU</p><strong class="app-brand">Учебные планы как данные</strong></div><nav aria-label="Разделы приложения"><button class="nav-button" data-testid="nav-unified-flow" type="button">Единый путь</button><button class="nav-button active" data-testid="nav-compare" type="button">Сравнение</button><button class="nav-button" data-testid="nav-events" type="button">События</button><button class="nav-button" data-testid="nav-personal-route" type="button">Мой план</button><button class="nav-button" data-testid="nav-proftest" type="button">Профиль содержания</button><button class="nav-button" data-testid="nav-program" type="button">Программа</button></nav></header><div id="auth-root"></div><div id="feature-root"></div>`;
+  const authRoot = root.querySelector<HTMLElement>("#auth-root");
   const featureRoot = root.querySelector<HTMLElement>("#feature-root");
   const flowButton = root.querySelector<HTMLButtonElement>("[data-testid='nav-unified-flow']");
   const compareButton = root.querySelector<HTMLButtonElement>("[data-testid='nav-compare']");
@@ -36,7 +38,8 @@ export function renderAppShell(root: HTMLElement, programs: readonly Program[]):
   const personalRouteButton = root.querySelector<HTMLButtonElement>("[data-testid='nav-personal-route']");
   const proftestButton = root.querySelector<HTMLButtonElement>("[data-testid='nav-proftest']");
   const programButton = root.querySelector<HTMLButtonElement>("[data-testid='nav-program']");
-  if (!featureRoot || !flowButton || !compareButton || !eventsButton || !personalRouteButton || !proftestButton || !programButton) return;
+  if (!authRoot || !featureRoot || !flowButton || !compareButton || !eventsButton || !personalRouteButton || !proftestButton || !programButton) return;
+  renderAuthPanel(authRoot);
 
   const select = (feature: Feature, programId?: string): void => {
     flowButton.classList.toggle("active", feature === "flow");

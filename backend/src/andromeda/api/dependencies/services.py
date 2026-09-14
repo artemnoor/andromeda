@@ -3,6 +3,10 @@ from __future__ import annotations
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
+from andromeda.api.dependencies.auth_session import get_auth_repository
+from andromeda.infrastructure.security.passwords import Argon2PasswordHasher
+from andromeda.modules.auth.repository.ports import AccountRepository
+from andromeda.modules.auth.services.authentication import AuthenticationService
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
 from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
 from andromeda.modules.comparison.services.compare_programs import CompareProgramsService
@@ -11,7 +15,7 @@ from andromeda.modules.admissions.services.admissions import AdmissionService
 from andromeda.modules.curricula.repository.ports import CurriculumReader
 from andromeda.modules.disciplines.repository.ports import DisciplineReader
 from andromeda.modules.programs.repository.ports import ProgramReader
-from andromeda.modules.proftest.repository.ports import ProftestCatalogReader, UserProfileRepository
+from andromeda.modules.proftest.repository.ports import ProfileBindingPort, ProftestCatalogReader, UserProfileRepository
 from andromeda.modules.proftest.contracts.public import CurrentUserProfileReader
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
 from andromeda.modules.proftest.services.profile_persistence import UserProfilePersistenceService
@@ -100,6 +104,25 @@ def get_proftest_catalog_service(
 
 def get_user_profile_repository(session: Session = Depends(get_session)) -> UserProfileRepository:
     return SqlAlchemyUserProfileRepository(session)
+
+
+def get_profile_binding_port(session: Session = Depends(get_session)) -> ProfileBindingPort:
+    return SqlAlchemyUserProfileRepository(session)
+
+
+def get_auth_service(
+    request: Request,
+    repository: AccountRepository = Depends(get_auth_repository),
+    profile_binding: ProfileBindingPort = Depends(get_profile_binding_port),
+) -> AuthenticationService:
+    settings = request.app.state.settings
+    return AuthenticationService(
+        repository,
+        Argon2PasswordHasher(),
+        profile_binding,
+        password_min_length=settings.auth_password_min_length,
+        session_ttl_seconds=settings.auth_session_ttl_seconds,
+    )
 
 
 def get_profile_persistence_service(

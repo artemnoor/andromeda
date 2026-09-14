@@ -13,6 +13,7 @@ export default defineConfig({
       "/events": apiProxyTarget,
       "/personal-route": apiProxyTarget,
       "/ops": apiProxyTarget,
+      "/auth": apiProxyTarget,
       "/openapi.json": apiProxyTarget,
       "/docs": apiProxyTarget,
     }

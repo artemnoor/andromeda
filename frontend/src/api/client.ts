@@ -28,6 +28,9 @@ type IngestionRetryRequest = NonNullable<paths["/ops/ingestion/runs/retry"]["pos
 type IngestionRetryResponse = paths["/ops/ingestion/runs/retry"]["post"]["responses"][200]["content"]["application/json"];
 type IngestionRunStatus = components["schemas"]["IngestionRunStatus"];
 type ErrorContract = components["schemas"]["ErrorResponse"];
+type AuthSessionResponse = paths["/auth/session"]["get"]["responses"][200]["content"]["application/json"];
+type RegisterRequest = NonNullable<paths["/auth/register"]["post"]["requestBody"]>["content"]["application/json"];
+type LoginRequest = NonNullable<paths["/auth/login"]["post"]["requestBody"]>["content"]["application/json"];
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 const logLevel = (import.meta.env.VITE_LOG_LEVEL as string | undefined) ?? "WARN";
@@ -137,6 +140,22 @@ export function getPersonalRoute(limit = 10): Promise<PersonalRouteResponse> {
   return requestJson<PersonalRouteResponse>(`/personal-route?${params.toString()}`);
 }
 
+export function getAuthSession(): Promise<AuthSessionResponse> {
+  return requestJson<AuthSessionResponse>("/auth/session");
+}
+
+export function registerAccount(request: RegisterRequest): Promise<AuthSessionResponse> {
+  return requestJson<AuthSessionResponse>("/auth/register", { method: "POST", body: JSON.stringify(request) });
+}
+
+export function loginAccount(request: LoginRequest): Promise<AuthSessionResponse> {
+  return requestJson<AuthSessionResponse>("/auth/login", { method: "POST", body: JSON.stringify(request) });
+}
+
+export function logoutAccount(): Promise<AuthSessionResponse> {
+  return requestJson<AuthSessionResponse>("/auth/logout", { method: "POST" });
+}
+
 function opsHeaders(opsKey: string): HeadersInit {
   return { "X-Andromeda-Ops-Key": opsKey };
 }
@@ -157,4 +176,4 @@ export function retryIngestion(request: IngestionRetryRequest, opsKey: string): 
   return requestJson<IngestionRetryResponse>("/ops/ingestion/runs/retry", { method: "POST", headers: opsHeaders(opsKey), body: JSON.stringify(request) });
 }
 
-export type { AdmissionFitRequest, AdmissionFitResponse, CompareResponse, CreateProfileRequest, CurrentProfileResponse, CurrentRecommendationsResponse, CurriculumResponse, ErrorContract, EventListResponse, EventQuery, EventResponse, IngestionRetryRequest, IngestionRetryResponse, IngestionRunDetailResponse, IngestionRunListResponse, IngestionRunStatus, PersonalRouteResponse, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse, UpdateProfileRequest };
+export type { AdmissionFitRequest, AdmissionFitResponse, AuthSessionResponse, CompareResponse, CreateProfileRequest, CurrentProfileResponse, CurrentRecommendationsResponse, CurriculumResponse, ErrorContract, EventListResponse, EventQuery, EventResponse, IngestionRetryRequest, IngestionRetryResponse, IngestionRunDetailResponse, IngestionRunListResponse, IngestionRunStatus, LoginRequest, PersonalRouteResponse, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse, RegisterRequest, UpdateProfileRequest };

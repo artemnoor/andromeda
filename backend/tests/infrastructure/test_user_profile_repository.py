@@ -10,7 +10,7 @@ from andromeda.infrastructure.database import Base, create_engine_for_url
 from andromeda.infrastructure.database.models import UserProfileModel
 from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
-from andromeda.modules.proftest.contracts.public import ActivityCode, ProfileScope, UserProfile
+from andromeda.modules.proftest.contracts.public import ActivityCode, ProfileBindingOutcome, ProfileScope, UserProfile
 from andromeda.shared.contracts.errors import ConflictError, NotFoundError
 
 
@@ -100,3 +100,36 @@ def test_update_missing_profile_raises_not_found(tmp_path) -> None:
             SqlAlchemyUserProfileRepository(session).update(
                 ProfileScope(session_key_hash="e" * 64), _profile(), expected_revision=1, expires_at=_expires()
             )
+
+
+def test_binding_clears_anonymous_owner_and_restores_by_account(tmp_path) -> None:
+    engine = create_engine_for_url(f"sqlite:///{(tmp_path / 'binding.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    anonymous_scope = ProfileScope(session_key_hash="f" * 64)
+    account_id = "account:" + "1" * 32
+    account_scope = ProfileScope(session_key_hash="f" * 64, account_id=account_id)
+
+    with Session(engine) as session:
+        repository = SqlAlchemyUserProfileRepository(session)
+        repository.create(anonymous_scope, _profile(), expires_at=_expires())
+        assert repository.bind_anonymous_to_account(anonymous_scope, account_id) is ProfileBindingOutcome.BOUND
+        assert repository.get_current(anonymous_scope) is None
+        restored = repository.get_current(account_scope)
+
+    assert restored is not None
+
+
+def test_account_profile_wins_without_merging_anonymous_row(tmp_path) -> None:
+    engine = create_engine_for_url(f"sqlite:///{(tmp_path / 'binding-conflict.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    account_id = "account:" + "2" * 32
+    account_scope = ProfileScope(session_key_hash="1" * 64, account_id=account_id)
+    anonymous_scope = ProfileScope(session_key_hash="2" * 64)
+
+    with Session(engine) as session:
+        repository = SqlAlchemyUserProfileRepository(session)
+        account_profile = repository.create(account_scope, _profile(DisciplineAreaCode.MATHEMATICS_STATISTICS), expires_at=_expires())
+        repository.create(anonymous_scope, _profile(), expires_at=_expires())
+        assert repository.bind_anonymous_to_account(anonymous_scope, account_id) is ProfileBindingOutcome.ACCOUNT_PROFILE_KEPT
+        assert repository.get_current(account_scope).profile.interests == account_profile.profile.interests  # type: ignore[union-attr]
+        assert repository.get_current(anonymous_scope) is not None

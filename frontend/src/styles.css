@@ -59,6 +59,16 @@ code { background: #e9eee8; border-radius: 5px; padding: 2px 5px; }
 @media (max-width: 900px) { .compare-controls { grid-template-columns: 1fr 1fr; } .compare-controls button { min-height: 42px; } }
 @media (max-width: 720px) { #app { padding-top: 28px; } .identity-grid, .compare-head, .summary-grid, .area-grid { grid-template-columns: 1fr; } .compare-controls { grid-template-columns: 1fr; } }
 .app-nav { align-items: end; border-bottom: 1px solid #dfe5de; display: flex; gap: 30px; justify-content: space-between; margin-bottom: 56px; min-width: 0; padding-bottom: 16px; }
+.auth-panel { align-items: center; background: #e9eee8; border: 1px solid #d5ddd3; border-radius: 16px; display: flex; gap: 16px; justify-content: space-between; margin: -28px 0 28px; padding: 14px 16px; }
+.auth-panel form { align-items: end; display: flex; flex: 1; gap: 10px; justify-content: flex-end; }
+.auth-panel label { color: #65716a; display: flex; flex-direction: column; font-size: 11px; font-weight: 700; gap: 5px; letter-spacing: .08em; text-transform: uppercase; }
+.auth-panel input { background: #fff; border: 1px solid #cbd5c9; border-radius: 8px; font: inherit; min-height: 38px; min-width: 160px; padding: 0 9px; }
+.auth-copy, .auth-panel-account > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.auth-copy strong, .auth-panel-account strong { color: #315247; overflow-wrap: anywhere; }
+.auth-panel small { overflow-wrap: anywhere; }
+.auth-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.auth-error { color: #a44e36; margin: 5px 0 0; }
+.auth-status { color: #65716a; margin: 0; }
 .app-brand { display: block; font-size: 17px; margin-top: 8px; }
 .app-nav nav { display: flex; gap: 6px; min-width: 0; }
 .nav-button, .primary-button, .secondary-button { border: 1px solid #cbd5c9; border-radius: 9px; cursor: pointer; font: inherit; min-height: 42px; padding: 0 16px; }
@@ -303,3 +313,4 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .unified-flow-error-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 @media (max-width: 900px) { .unified-flow-readiness { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .unified-flow-heading { align-items: flex-start; flex-direction: column; gap: 12px; } .unified-flow-stage { gap: 12px; grid-template-columns: 1fr; padding: 18px; } .unified-flow-stage-number { height: 38px; width: 38px; } .unified-flow-stage-topline { align-items: flex-start; flex-direction: column; } .unified-flow-cta { align-self: stretch; text-align: center; } .unified-flow-error-links { align-items: stretch; flex-direction: column; } .unified-flow-error-links a { text-align: center; } }
+@media (max-width: 720px) { .auth-panel, .auth-panel form { align-items: stretch; flex-direction: column; } .auth-panel input { min-width: 0; width: 100%; } .auth-actions { flex-direction: column; } .auth-actions button { width: 100%; } }

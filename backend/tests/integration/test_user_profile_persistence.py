@@ -79,3 +79,24 @@ def test_migration_ingestion_profile_api_and_fresh_process_round_trip(tmp_path: 
     isolated = TestClient(create_app(database_url))
     assert isolated.get("/proftest/profile").status_code == 404
     assert isolated.get("/recommendations/current").status_code == 404
+
+
+def test_register_binds_anonymous_profile_and_restores_it_for_a_fresh_auth_session(tmp_path: Path, monkeypatch) -> None:
+    database_url = _seed(tmp_path, monkeypatch)
+    anonymous = TestClient(create_app(database_url))
+    saved = anonymous.post("/proftest/results", json=_answers())
+    assert saved.status_code == 200, saved.text
+    expected_profile = saved.json()["profile"]
+
+    registered = anonymous.post("/auth/register", json={"email": "profile-owner@example.com", "password": "a-secure-password"})
+    assert registered.status_code == 201, registered.text
+    auth_cookie = anonymous.cookies.get("andromeda_auth_session")
+    assert auth_cookie is not None
+    anonymous.close()
+
+    fresh = TestClient(create_app(database_url))
+    fresh.cookies.set("andromeda_auth_session", auth_cookie)
+    restored = fresh.get("/proftest/profile")
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["profile"] == expected_profile
+    fresh.close()

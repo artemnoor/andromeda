@@ -19,7 +19,7 @@ from ..domain.profile import ProfileScope, UserProfileSnapshot
 from ..domain.adaptive import AdaptiveDimension, AdaptiveSelection, AdaptiveStatus
 from ..domain.questions import Questionnaire
 from ..domain.results import MatchReason, MatchScore, MetricStatus, OptionalMetric, PreviewCandidate, ProftestPreview, ProftestResults, ReasonKind, Recommendation, ScoreBreakdown
-from ..repository.ports import CurrentUserProfileReader
+from ..repository.ports import CurrentUserProfileReader, ProfileBindingOutcome, ProfileBindingPort
 
 __all__ = [
     "ActivityCode",
@@ -48,6 +48,8 @@ __all__ = [
     "ReasonKind",
     "Recommendation",
     "CurrentUserProfileReader",
+    "ProfileBindingOutcome",
+    "ProfileBindingPort",
     "ProfileScope",
     "ScoreBreakdown",
     "UserProfile",

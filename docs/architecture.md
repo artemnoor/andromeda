@@ -39,6 +39,8 @@ POST /proftest/results
 
 Anonymous identity — это случайный HttpOnly cookie, а в domain/infrastructure boundary передаётся только typed `ProfileScope` с SHA-256 hash. `UserProfile` не содержит storage metadata; revision и timestamps находятся в `UserProfileSnapshot`. Admission Fit остаётся отдельным score и не влияет на Content Fit.
 
+Auth identity follows the same boundary: `modules/auth` publishes typed `Account` and application ports; infrastructure stores Argon2 password hashes and opaque session-token hashes in `accounts`/`auth_sessions`. The API alone reads the raw HttpOnly cookie. `ProfileScope` may carry a canonical `AccountId` in addition to the anonymous session hash, so the existing proftest/recommendations/personal-route flows restore account-owned profiles without adding `account_id` to `UserProfile`. Binding is explicit and non-merging: account profile wins when both owners have a profile, while the anonymous row remains isolated.
+
 Университетские события и campus points используют общий canonical venue boundary:
 
 ```text

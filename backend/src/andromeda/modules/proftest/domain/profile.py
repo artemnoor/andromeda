@@ -14,7 +14,7 @@ from typing import Annotated, Self, TypeAlias
 from pydantic import Field, StringConstraints, model_validator
 
 from andromeda.shared.contracts.base import ContractModel
-from andromeda.shared.contracts.ids import SourceHash
+from andromeda.shared.contracts.ids import AccountId, SourceHash
 
 from .entities import UserProfile
 
@@ -33,11 +33,12 @@ def _is_aware(value: datetime) -> bool:
 class ProfileScope(ContractModel):
     """Opaque owner reference passed from the HTTP adapter to application code.
 
-    Only the one-way session hash crosses this boundary.  The raw cookie token
-    is intentionally not representable by this contract.
+    Only the one-way session hash and optional canonical account ID cross this
+    boundary. Raw cookie tokens are intentionally not representable here.
     """
 
     session_key_hash: SourceHash
+    account_id: AccountId | None = None
 
 
 class UserProfileSnapshot(ContractModel):

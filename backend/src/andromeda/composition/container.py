@@ -18,6 +18,8 @@ from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserPr
 from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
 from andromeda.infrastructure.repositories.campus import SqlAlchemyCampusPointRepository
 from andromeda.infrastructure.repositories.admin_ops import SqlAlchemyIngestionRunReader
+from andromeda.infrastructure.repositories.auth import SqlAlchemyAccountRepository
+from andromeda.infrastructure.security.passwords import Argon2PasswordHasher
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
 from andromeda.modules.admissions.repository.ports import AdmissionReader
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
@@ -28,6 +30,7 @@ from andromeda.modules.personal_route.services.personal_route import PersonalRou
 from andromeda.modules.recommendations.services.current import CurrentRecommendationService
 from andromeda.modules.recommendations.services.recommendations import RecommendationService
 from andromeda.modules.admin_ops.services.ingestion_runs import IngestionRunService
+from andromeda.modules.auth.services.authentication import AuthenticationService
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +87,16 @@ class AndromedaContainer:
 
     def user_profile_repository(self, session: Session) -> SqlAlchemyUserProfileRepository:
         return SqlAlchemyUserProfileRepository(session)
+
+    def account_repository(self, session: Session) -> SqlAlchemyAccountRepository:
+        return SqlAlchemyAccountRepository(session)
+
+    def auth_service(self, session: Session) -> AuthenticationService:
+        return AuthenticationService(
+            self.account_repository(session),
+            Argon2PasswordHasher(),
+            self.user_profile_repository(session),
+        )
 
     def recommendation_catalog_reader(self, session: Session) -> CatalogRecommendationRepository:
         return CatalogRecommendationRepository(ProftestCatalogService(self.proftest_catalog_reader(session)))
