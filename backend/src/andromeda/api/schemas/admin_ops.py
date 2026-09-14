@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import Field
 
-from andromeda.modules.admin_ops.contracts.public import IngestionRetrySource, IngestionRunStatus
+from andromeda.modules.admin_ops.contracts.public import IngestionRunStatus
 from andromeda.modules.admin_ops.contracts.results import IngestionRunDetailResult, IngestionRunListResult
 from andromeda.modules.admin_ops.domain.entities import IngestionRunDetail, IngestionRunSummary
 from andromeda.shared.contracts.ids import IngestRunId, SourceHash
@@ -45,7 +46,7 @@ class IngestionRunDetailEnvelope(ApiModel):
 
 
 class IngestionRetryRequestBody(ApiModel):
-    source: IngestionRetrySource = IngestionRetrySource.BMSTU_FIXTURE
+    source: Literal["bmstu_fixture", "bmstu_live"] = "bmstu_fixture"
 
 
 def ingestion_run_summary_response(run: IngestionRunSummary) -> IngestionRunSummaryResponse:

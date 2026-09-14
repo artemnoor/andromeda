@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 
 from andromeda.api.dependencies import get_ingestion_run_service, require_ops_access
 from andromeda.api.schemas.admin_ops import IngestionRetryRequestBody, IngestionRunDetailEnvelope, IngestionRunListResponse, ingestion_run_detail_response, ingestion_run_list_response
-from andromeda.modules.admin_ops.contracts.public import IngestionRetryRequest, IngestionRunFilters, IngestionRunStatus
+from andromeda.modules.admin_ops.contracts.public import IngestionRetryRequest, IngestionRetrySource, IngestionRunFilters, IngestionRunStatus
 from andromeda.modules.admin_ops.contracts.results import IngestionRunDetailResult
 from andromeda.modules.admin_ops.services.ingestion_runs import IngestionRunService
 from andromeda.shared.contracts.ids import IngestRunId
@@ -21,9 +21,9 @@ def retry_ingestion_run(
     body: IngestionRetryRequestBody,
     service: IngestionRunService = Depends(get_ingestion_run_service),
 ) -> IngestionRunDetailEnvelope:
-    result = service.retry(IngestionRetryRequest(source=body.source))
+    result = service.retry(IngestionRetryRequest(source=IngestionRetrySource(body.source)))
     response = ingestion_run_detail_response(IngestionRunDetailResult(run=result.run))
-    logger.info("admin_ops_ingestion_retry_complete run_id=%s source=%s", result.run.id, body.source.value)
+    logger.info("admin_ops_ingestion_retry_complete run_id=%s source=%s", result.run.id, body.source)
     return response
 
 

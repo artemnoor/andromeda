@@ -4516,21 +4516,18 @@
       "IngestionRetryRequestBody": {
         "properties": {
           "source": {
-            "$ref": "#/components/schemas/IngestionRetrySource",
+            "type": "string",
+            "enum": [
+              "bmstu_fixture",
+              "bmstu_live"
+            ],
+            "title": "Source",
             "default": "bmstu_fixture"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "IngestionRetryRequestBody"
-      },
-      "IngestionRetrySource": {
-        "type": "string",
-        "enum": [
-          "bmstu_fixture",
-          "bmstu_live"
-        ],
-        "title": "IngestionRetrySource"
       },
       "IngestionRunDetailEnvelope": {
         "properties": {

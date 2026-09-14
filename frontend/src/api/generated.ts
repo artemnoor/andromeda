@@ -1106,14 +1106,13 @@ export interface components {
         FundingType: "budget" | "paid" | "targeted" | "unknown";
         /** IngestionRetryRequestBody */
         IngestionRetryRequestBody: {
-            /** @default bmstu_fixture */
-            source: components["schemas"]["IngestionRetrySource"];
+            /**
+             * Source
+             * @default bmstu_fixture
+             * @enum {string}
+             */
+            source: "bmstu_fixture" | "bmstu_live";
         };
-        /**
-         * IngestionRetrySource
-         * @enum {string}
-         */
-        IngestionRetrySource: "bmstu_fixture" | "bmstu_live";
         /** IngestionRunDetailEnvelope */
         IngestionRunDetailEnvelope: {
             run: components["schemas"]["IngestionRunDetailResponse"];
