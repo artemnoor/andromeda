@@ -13,7 +13,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    with op.batch_alter_table("ingest_runs", recreate="always") as batch:
+    with op.batch_alter_table("ingest_runs", recreate="auto") as batch:
         batch.add_column(sa.Column("error_code", sa.String(length=64), nullable=True))
         batch.add_column(sa.Column("error_message", sa.String(length=512), nullable=True))
         for name in (
@@ -46,7 +46,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    with op.batch_alter_table("ingest_runs", recreate="always") as batch:
+    with op.batch_alter_table("ingest_runs", recreate="auto") as batch:
         batch.drop_constraint("ck_ingest_run_status", type_="check")
         for name in (
             "source_count",
