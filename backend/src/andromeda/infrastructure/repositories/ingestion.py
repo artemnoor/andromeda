@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
 from dataclasses import dataclass
@@ -13,7 +14,7 @@ from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawSourceSnapshot, RawTracerBundle
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaWeight, area_catalog
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel
-from andromeda.shared.contracts.errors import ContractError, ErrorCode
+from andromeda.shared.contracts.errors import AndromedaError, ContractError, ErrorCode
 
 from ..database.models import (
     AssessmentTypeModel,
@@ -65,11 +66,24 @@ class SqlAlchemyIngestionRepository:
     def ingest(self, raw: RawTracerBundle, canonical: CanonicalSnapshot) -> str:
         run_id = f"ingest:{uuid4().hex}"
         started_at = datetime.now(timezone.utc)
+        source_hashes = tuple(snapshot.content_sha256 for snapshot in raw.snapshots)
+        source_kinds = tuple(snapshot.source_kind for snapshot in raw.snapshots)
+        self._create_run(
+            run_id,
+            started_at,
+            source_count=len(source_hashes),
+            source_hashes=source_hashes,
+            source_kinds=source_kinds,
+            program_count=len(canonical.programs),
+            curriculum_item_count=sum(len(curriculum.items) for curriculum in canonical.curricula),
+            event_count=len(canonical.events),
+            campus_point_count=len(canonical.campus_points),
+        )
         logger.info("ingest_transaction_start run_id=%s", run_id)
+        stats = _SyncStats()
         with self._factory() as session:
             try:
                 with session.begin():
-                    session.add(IngestRunModel(id=run_id, started_at=started_at, status="running"))
                     self._seed_reference_tables(session)
                     session.flush()
                     for snapshot in raw.snapshots:
@@ -82,14 +96,15 @@ class SqlAlchemyIngestionRepository:
                         event_source_present=any(snapshot.source_kind == "bmstu_events" for snapshot in raw.snapshots),
                         campus_source_present=any(snapshot.source_kind == "bmstu_campus_points" for snapshot in raw.snapshots),
                     )
-                    run = session.get(IngestRunModel, run_id)
-                    if run is None:
-                        raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest run disappeared before commit")
-                    run.status = "completed"
-                    run.finished_at = datetime.now(timezone.utc)
-            except Exception:
-                logger.exception("ingest_transaction_rollback run_id=%s", run_id)
+            except Exception as exc:
+                logger.warning("ingest_transaction_rollback run_id=%s error_code=%s", run_id, _safe_error_code(exc))
+                self._mark_failed(run_id, exc)
                 raise
+        try:
+            self._mark_completed(run_id, stats)
+        except Exception:
+            logger.exception("ingest_audit_complete_failed run_id=%s", run_id)
+            raise
         logger.info(
             "ingest_transaction_commit run_id=%s programs=%d curriculum_items=%d inserted=%d updated=%d unchanged=%d removed=%d",
             run_id,
@@ -101,6 +116,66 @@ class SqlAlchemyIngestionRepository:
             stats.removed,
         )
         return run_id
+
+    def _create_run(
+        self,
+        run_id: str,
+        started_at: datetime,
+        *,
+        source_count: int,
+        source_hashes: tuple[str, ...],
+        source_kinds: tuple[str, ...],
+        program_count: int,
+        curriculum_item_count: int,
+        event_count: int,
+        campus_point_count: int,
+    ) -> None:
+        with self._factory() as session:
+            with session.begin():
+                session.add(
+                    IngestRunModel(
+                        id=run_id,
+                        started_at=started_at,
+                        status="running",
+                        source_count=source_count,
+                        source_hashes_json=json.dumps(source_hashes, separators=(",", ":")),
+                        source_kinds_json=json.dumps(source_kinds, separators=(",", ":")),
+                        program_count=program_count,
+                        curriculum_item_count=curriculum_item_count,
+                        event_count=event_count,
+                        campus_point_count=campus_point_count,
+                    )
+                )
+
+    def _mark_completed(self, run_id: str, stats: _SyncStats) -> None:
+        with self._factory() as session:
+            with session.begin():
+                run = session.get(IngestRunModel, run_id)
+                if run is None:
+                    raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest audit row disappeared")
+                run.status = "completed"
+                run.finished_at = datetime.now(timezone.utc)
+                run.inserted_count = stats.inserted
+                run.updated_count = stats.updated
+                run.unchanged_count = stats.unchanged
+                run.removed_count = stats.removed
+
+    def _mark_failed(self, run_id: str, error: Exception) -> None:
+        error_code = _safe_error_code(error)
+        error_message = _safe_error_message(error)
+        try:
+            with self._factory() as session:
+                with session.begin():
+                    run = session.get(IngestRunModel, run_id)
+                    if run is None:
+                        logger.error("ingest_audit_failure_missing run_id=%s error_code=%s", run_id, error_code)
+                        return
+                    run.status = "failed"
+                    run.finished_at = datetime.now(timezone.utc)
+                    run.error_code = error_code
+                    run.error_message = error_message
+        except Exception:
+            logger.exception("ingest_audit_failure_update_failed run_id=%s error_code=%s", run_id, error_code)
 
     @staticmethod
     def _seed_reference_tables(session: Session) -> None:
@@ -433,3 +508,14 @@ def _values_equal(actual: object, expected: object) -> bool:
         expected_utc = expected.replace(tzinfo=timezone.utc) if expected.tzinfo is None else expected.astimezone(timezone.utc)
         return actual_utc == expected_utc
     return actual == expected or str(actual) == str(expected)
+
+
+def _safe_error_code(error: Exception) -> str:
+    if isinstance(error, AndromedaError):
+        return error.code.value
+    return "INGESTION_FAILED"
+
+
+def _safe_error_message(error: Exception) -> str:
+    del error
+    return "Ingestion failed"

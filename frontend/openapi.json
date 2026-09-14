@@ -2065,6 +2065,222 @@
           }
         }
       }
+    },
+    "/ops/ingestion/runs": {
+      "get": {
+        "tags": [
+          "admin-ops"
+        ],
+        "summary": "List Ingestion Runs",
+        "operationId": "list_ingestion_runs",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/IngestionRunStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Andromeda-Ops-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Andromeda-Ops-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionRunListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/ops/ingestion/runs/{id}": {
+      "get": {
+        "tags": [
+          "admin-ops"
+        ],
+        "summary": "Get Ingestion Run",
+        "operationId": "get_ingestion_run",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ingest:[a-f0-9]{32}$",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "X-Andromeda-Ops-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Andromeda-Ops-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionRunDetailEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4197,6 +4413,302 @@
           "unknown"
         ],
         "title": "FundingType"
+      },
+      "IngestionRunDetailEnvelope": {
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/IngestionRunDetailResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run"
+        ],
+        "title": "IngestionRunDetailEnvelope"
+      },
+      "IngestionRunDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ingest:[a-f0-9]{32}$",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IngestionRunStatus"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Startedat"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "sourceCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sourcecount"
+          },
+          "programCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Programcount"
+          },
+          "curriculumItemCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Curriculumitemcount"
+          },
+          "eventCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Eventcount"
+          },
+          "campusPointCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Campuspointcount"
+          },
+          "insertedCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Insertedcount"
+          },
+          "updatedCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Updatedcount"
+          },
+          "unchangedCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unchangedcount"
+          },
+          "removedCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Removedcount"
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errorcode"
+          },
+          "errorMessage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errormessage"
+          },
+          "sourceHashes": {
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "type": "array",
+            "title": "Sourcehashes",
+            "default": []
+          },
+          "sourceKinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcekinds",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "startedAt",
+          "sourceCount",
+          "programCount",
+          "curriculumItemCount",
+          "eventCount",
+          "campusPointCount",
+          "insertedCount",
+          "updatedCount",
+          "unchangedCount",
+          "removedCount"
+        ],
+        "title": "IngestionRunDetailResponse"
+      },
+      "IngestionRunListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IngestionRunSummaryResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "title": "IngestionRunListResponse"
+      },
+      "IngestionRunStatus": {
+        "type": "string",
+        "enum": [
+          "running",
+          "completed",
+          "failed"
+        ],
+        "title": "IngestionRunStatus"
+      },
+      "IngestionRunSummaryResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ingest:[a-f0-9]{32}$",
+            "title": "Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IngestionRunStatus"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Startedat"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "sourceCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sourcecount"
+          },
+          "programCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Programcount"
+          },
+          "curriculumItemCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Curriculumitemcount"
+          },
+          "eventCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Eventcount"
+          },
+          "campusPointCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Campuspointcount"
+          },
+          "insertedCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Insertedcount"
+          },
+          "updatedCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Updatedcount"
+          },
+          "unchangedCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Unchangedcount"
+          },
+          "removedCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Removedcount"
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errorcode"
+          },
+          "errorMessage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errormessage"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "startedAt",
+          "sourceCount",
+          "programCount",
+          "curriculumItemCount",
+          "eventCount",
+          "campusPointCount",
+          "insertedCount",
+          "updatedCount",
+          "unchangedCount",
+          "removedCount"
+        ],
+        "title": "IngestionRunSummaryResponse"
       },
       "MatchScoreResponse": {
         "properties": {

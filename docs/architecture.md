@@ -51,6 +51,17 @@ events ingestion / campus ingestion
 
 `campus` отдаёт map-agnostic spatial data: название и canonical ID точки, тип (корпус, зона, место события, вход или другая категория), адрес, известные координаты, university/department/program links, events в точке, время событий и поля карточки. Эти данные предназначены для UI и будущего внешнего map-модуля. Внутри Andromeda не задаются визуальная раскладка объектов, 2D/3D-визуализация, связи, маршруты, route optimizer или библиотека карт.
 
+Ingestion quality для operator-инструментов использует существующий `ingest_runs` и отдельный read-only `admin_ops` module:
+
+```text
+ingestion lifecycle
+  → ingest_runs (running → completed|failed + bounded counters)
+  → admin_ops reader port/service
+  → protected GET /ops/ingestion/runs[/{id}]
+```
+
+Run создаётся до атомарной projection transaction, а failure обновляет только безопасный audit status и generic error message после rollback. `admin_ops` не читает raw snapshot bodies или `RawSourceRecord.payload_json`, не знает ORM/parser и не реализует retry, correction, CMS, Auth/RBAC или UI.
+
 ## Границы
 
 ```text
@@ -63,6 +74,7 @@ backend/src/andromeda/
 ├── modules/events/{domain,contracts,services,repository}/
 ├── modules/campus/{domain,contracts,services,repository}/
 ├── modules/personal_route/{domain,contracts,services,repository}/
+├── modules/admin_ops/{domain,contracts,services,repository}/
 ├── ingestion/universities/bmstu/
 ├── infrastructure/{database,repositories,config,logging}/
 ├── api/{routes,schemas,dependencies}/

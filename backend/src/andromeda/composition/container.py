@@ -17,6 +17,7 @@ from andromeda.infrastructure.repositories.universities import SqlAlchemyUnivers
 from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
 from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
 from andromeda.infrastructure.repositories.campus import SqlAlchemyCampusPointRepository
+from andromeda.infrastructure.repositories.admin_ops import SqlAlchemyIngestionRunReader
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
 from andromeda.modules.admissions.repository.ports import AdmissionReader
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
@@ -26,6 +27,7 @@ from andromeda.modules.campus.services.campus import CampusService
 from andromeda.modules.personal_route.services.personal_route import PersonalRouteService
 from andromeda.modules.recommendations.services.current import CurrentRecommendationService
 from andromeda.modules.recommendations.services.recommendations import RecommendationService
+from andromeda.modules.admin_ops.services.ingestion_runs import IngestionRunService
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +87,9 @@ class AndromedaContainer:
 
     def recommendation_catalog_reader(self, session: Session) -> CatalogRecommendationRepository:
         return CatalogRecommendationRepository(ProftestCatalogService(self.proftest_catalog_reader(session)))
+
+    def ingestion_run_service(self, session: Session) -> IngestionRunService:
+        return IngestionRunService(SqlAlchemyIngestionRunReader(session))
 
     @property
     def ingestion(self) -> SqlAlchemyIngestionRepository:

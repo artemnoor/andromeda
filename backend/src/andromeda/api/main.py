@@ -21,6 +21,7 @@ from andromeda.api.routes.recommendations import router as recommendations_route
 from andromeda.api.routes.events import router as events_router
 from andromeda.api.routes.campus import router as campus_router
 from andromeda.api.routes.personal_route import router as personal_route_router
+from andromeda.api.routes.admin_ops import router as admin_ops_router
 from andromeda.shared.contracts.errors import AndromedaError, ErrorCode, ErrorResponse, details_from_validation
 from andromeda.infrastructure.config.settings import Settings
 from andromeda.infrastructure.database.base import create_engine_for_url
@@ -116,6 +117,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(events_router)
     app.include_router(campus_router)
     app.include_router(personal_route_router)
+    app.include_router(admin_ops_router)
     return app
 
 

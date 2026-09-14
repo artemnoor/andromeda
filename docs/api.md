@@ -175,6 +175,19 @@ Endpoint принимает баллы абитуриента и явный `off
 
 Admission API — read-only application path. Route вызывает `AdmissionService`, service читает `ProgramReader` и `AdmissionReader`, а SQLAlchemy projection остаётся внутри infrastructure. BMSTU adapter преобразует detail-page `__NEXT_DATA__` в raw/canonical contracts и связывает записи с canonical `program_id`; HTTP schema не экспортирует ORM-модели.
 
+## Admin/Ops: ingestion quality
+
+Admin/Ops API — узкий read-only контракт для будущих operator-инструментов. Он выключен по умолчанию: доступ появляется только при непустом `ANDROMEDA_OPS_API_KEY`, переданном в заголовке `X-Andromeda-Ops-Key`. При выключенном API, отсутствующем или неверном ключе сервер возвращает одинаковый `404 NOT_FOUND`.
+
+| Метод | Endpoint | Назначение |
+|---|---|---|
+| GET | `/ops/ingestion/runs?status=completed&limit=50` | Ограниченный список запусков ingestion, newest-first |
+| GET | `/ops/ingestion/runs/{id}` | Детали одного запуска по canonical `ingest:<32 hex>` ID |
+
+Ответ содержит lifecycle status, timestamps, source count/kind/hash metadata, counts canonical projection и безопасные error code/message для failed run. `limit` ограничен диапазоном `1..100`; `status` принимает только `running`, `completed` или `failed`. API не возвращает тела snapshot, raw payload, credentials, cookies или traceback и не предоставляет POST retry, PUT correction, DELETE, arbitrary SQL, CMS, Auth/RBAC или Admin UI.
+
+Audit row создаётся до projection transaction, поэтому failed ingestion сохраняет безопасный факт ошибки даже при полном rollback projection. Источник истины — существующий `ingest_runs`; новая сущность raw provenance не создаётся.
+
 ## See Also
 
 - [Архитектура](architecture.md) — почему API не импортирует ORM.
