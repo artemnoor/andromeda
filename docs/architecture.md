@@ -110,7 +110,7 @@ ProgramReader + AdmissionReader public contracts
 
 Старые пути `proftest.services.ranking`, `proftest.services.matching` и `proftest.services.explanations` сохранены как точечные compatibility facades. Они не являются разрешением импортировать recommendation internals в новый runtime-код и перечислены в architecture test как единственные переходные aliases.
 
-BMSTU URL, selectors, PDF parser, mappings и browser fallback находятся в BMSTU adapter. Добавление нового вуза должно создавать новый adapter без зависимости comparison от структуры сайта.
+BMSTU URL, catalog pagination, detail/API shape, public study-plan resolver, PDF parser, mappings и browser fallback находятся в BMSTU adapter. Live ingestion начинает с официального catalog API, обнаруживает все detail slugs/profiles и связывает curriculum/admissions по сохранённому source code и study-plan URL; ручной список программ не является production input. Добавление нового вуза должно создавать новый adapter без зависимости comparison от структуры сайта.
 
 ## Storage boundary
 
@@ -128,7 +128,7 @@ BMSTU URL, selectors, PDF parser, mappings и browser fallback находятс�
 
 Каждая дисциплина получает не единственный ярлык, а нормализованный вектор `area_weights`: веса по 22 верхнеуровневым областям Andromeda. Веса строго положительны, не дублируют область и в сумме дают `1.0000`. Поэтому междисциплинарные предметы не теряют вторичную область: например, машинное обучение хранится как компьютерные науки + математика.
 
-Для BMSTU явные сопоставления находятся в `ingestion/universities/bmstu/mappings/discipline_areas.py`. Это часть university-specific ingestion adapter, а не core comparison. На входе сохраняется исходное название, затем adapter применяет точное сопоставление по нормализованному имени; прозрачные keyword rules и универсальная область являются только fallback для новых или неизвестных предметов.
+Для BMSTU явные сопоставления находятся в `ingestion/universities/bmstu/mappings/discipline_areas.py`. Это часть university-specific ingestion adapter, а не core comparison. На входе сохраняется исходное название, затем adapter применяет точное сопоставление по нормализованному имени; прозрачные keyword rules и универсальная область являются fallback только для новых или неизвестных предметов. В полном live audit все 2 582 обнаруженные дисциплины получили vector без `fallback_unclassified`; отсутствующая в каталоге 22-я область не подменяется искусственными предметами.
 
 Распределение содержания программы считается в `comparison` по часам позиций учебного плана (при отсутствии часов используется ЗЕТ). Вектор предмета умножается на долю его нагрузки, после чего веса агрегируются по программе и выбранному семестру. Один предмет может влиять на несколько профилей, но исходная дисциплина и её workload остаются отдельной строкой сравнения.
 

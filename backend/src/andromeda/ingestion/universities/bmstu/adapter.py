@@ -4,20 +4,22 @@ import logging
 from pathlib import Path
 from typing import Sequence
 
+from bmstu_parser.contracts.raw import RawProgramRecord as LegacyRawProgramRecord
 from bmstu_parser.contracts.raw import RawSourceSnapshot as LegacyRawSourceSnapshot
 from bmstu_parser.tracer.normalizer import normalize_bundle as normalize_legacy_bundle
 from bmstu_parser.tracer.parser import parse_captured as parse_legacy_captured
 from bmstu_parser.tracer.source import CapturedSources as LegacyCapturedSources
 from bmstu_parser.tracer.source import TracerSource as LegacyTracerSource
+from bmstu_parser.tracer.source import _detail_plan_records
 
 from ...contracts.normalized import CanonicalSnapshot
-from ...contracts.raw import RawTracerBundle
+from ...contracts.raw import RawAdmissionRecord, RawProgramRecord, RawTracerBundle
 from ...contracts.source import CapturedSources, RawSourceSnapshot
 from ....modules.disciplines.contracts.public import Discipline
 from ....shared.contracts.enums import SourceKind
 from ....shared.contracts.provenance import SourceAttribution
 from ....modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
-from .selectors import DEFAULT_CAMPUS_FIXTURE_DIR, DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR, TARGET_PROGRAM_CODES, select_program_codes
+from .selectors import DEFAULT_CAMPUS_FIXTURE_DIR, DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR, select_program_codes
 from .mappings.discipline_areas import BMSTU_DISCIPLINE_AREA_OVERRIDES
 from .normalizers.admissions import normalize_admissions
 from .normalizers.campus import normalize_campus_points
@@ -78,9 +80,9 @@ class BmstuUniversityAdapter:
     def parse(
         self,
         captured: CapturedSources,
-        program_codes: Sequence[str] = TARGET_PROGRAM_CODES,
+        program_codes: Sequence[str] | None = None,
     ) -> tuple[RawTracerBundle, CanonicalSnapshot]:
-        selected = select_program_codes(tuple(program_codes))
+        selected = select_program_codes(tuple(program_codes)) if program_codes is not None else _fixture_documented_codes(captured)
         campus_source_kind = "bmstu_campus_points"
         legacy_snapshots = tuple(
             LegacyRawSourceSnapshot.model_validate(snapshot.model_dump())
@@ -88,11 +90,16 @@ class BmstuUniversityAdapter:
             if snapshot.source_kind != campus_source_kind
         )
         legacy_captured = LegacyCapturedSources(snapshots=legacy_snapshots)
-        select_logger.debug("stage=selected source_snapshots=%d programs=%d", len(legacy_snapshots), len(selected))
-        parse_logger.debug("stage=parse source_snapshots=%d programs=%d", len(legacy_snapshots), len(selected))
+        select_logger.debug("stage=selected source_snapshots=%d programs=%s", len(legacy_snapshots), len(selected) if selected is not None else "discovery")
+        parse_logger.debug("stage=parse source_snapshots=%d programs=%s", len(legacy_snapshots), len(selected) if selected is not None else "discovery")
         legacy_raw = parse_legacy_captured(legacy_captured, program_codes=selected)
         raw = RawTracerBundle.model_validate({**legacy_raw.model_dump(), "snapshots": captured.snapshots})
-        admission_records = parse_detail_admissions(captured.first("bmstu_major_detail"), selected)
+        admission_records = tuple(
+            record
+            for detail_snapshot in captured.by_kind("bmstu_major_detail")
+            for record in parse_detail_admissions(detail_snapshot, selected)
+        )
+        admission_records = tuple(_canonicalize_admission_code(record, raw.programs) for record in admission_records)
         event_snapshots = captured.by_kind("bmstu_events")
         if len(event_snapshots) > 1:
             raise ValueError("expected at most one BMSTU event source snapshot")
@@ -141,13 +148,13 @@ class BmstuUniversityAdapter:
                     raw.events,
                     programs=canonical.programs,
                     snapshots=raw.snapshots,
-                    known_program_codes=TARGET_PROGRAM_CODES,
+                    known_program_codes=tuple(program.code for program in canonical.programs),
                 ),
                 "campus_points": normalize_campus_points(
                     raw.campus_points,
                     programs=canonical.programs,
                     snapshots=raw.snapshots,
-                    known_program_codes=TARGET_PROGRAM_CODES,
+                    known_program_codes=tuple(program.code for program in canonical.programs),
                 ),
             }
         )
@@ -170,7 +177,7 @@ class BmstuUniversityAdapter:
         fixture_dir: Path | None = None,
         event_fixture_dir: Path | None = None,
         campus_fixture_dir: Path | None = None,
-        program_codes: Sequence[str] = TARGET_PROGRAM_CODES,
+        program_codes: Sequence[str] | None = None,
     ) -> tuple[RawTracerBundle, CanonicalSnapshot]:
         captured = self.capture(
             mode=mode,
@@ -179,6 +186,42 @@ class BmstuUniversityAdapter:
             campus_fixture_dir=campus_fixture_dir,
         )
         return self.parse(captured, program_codes=program_codes)
+
+
+def _canonicalize_admission_code(record: RawAdmissionRecord, programs: Sequence[RawProgramRecord]) -> RawAdmissionRecord:
+    from bmstu_parser.tracer.identity import map_source_program_code
+    from typing import cast
+
+    source_code = record.program_code
+    source_name = record.program_name
+    canonical = map_source_program_code(
+        source_code,
+        source_name,
+        cast(Sequence[LegacyRawProgramRecord], programs),
+    )
+    return record.model_copy(update={"program_code": canonical, "source_program_code": source_code})
+
+
+def _fixture_documented_codes(captured: CapturedSources) -> tuple[str, ...] | None:
+    """Scope only the historical fixture when its HTML detail has extra profiles."""
+
+    detail_snapshots = captured.by_kind("bmstu_major_detail")
+    if not detail_snapshots or any("api.www.bmstu.ru/majors/" in str(snapshot.requested_url) for snapshot in detail_snapshots):
+        return None
+    document_urls = {str(snapshot.requested_url) for snapshot in captured.by_kind("bmstu_curriculum_document")}
+    if not document_urls:
+        return None
+    codes = tuple(
+        _canonical_code(code)
+        for snapshot in detail_snapshots
+        for code, _, plan in _detail_plan_records(snapshot.body)
+        if plan in document_urls
+    )
+    return tuple(dict.fromkeys(codes)) or None
+
+
+def _canonical_code(value: str) -> str:
+    return value.replace("–", "-").replace("—", "-").replace("/", "-").replace(" ", "")
 
 
 __all__ = ["BmstuUniversityAdapter"]

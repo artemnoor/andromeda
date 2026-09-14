@@ -63,6 +63,14 @@ class Fetcher:
             direct.error = "; ".join(filter(None, [direct.error, f"browser fallback failed: {type(exc).__name__}: {exc}"]))
         return direct
 
+    def fetch_http(self, url: str) -> FetchedResource:
+        """Fetch a resource without browser fallback.
+
+        Machine-readable metadata and immutable PDF downloads must not start a
+        browser session merely because a CDN response resembles a JS shell.
+        """
+        return self._fetch_http(url)
+
     def _fetch_http(self, url: str) -> FetchedResource:
         last_error: str | None = None
         for attempt in range(self.config.retries + 1):

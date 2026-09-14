@@ -60,6 +60,13 @@ def normalize_campus_points(
         for code in record.program_codes:
             normalized_code = normalize_code(code)
             if normalized_code not in known_codes:
+                if known_program_codes is not None:
+                    logger.warning(
+                        "campus_program_ignored source_key=%s code=%s reason=outside_selected_program_scope",
+                        record.external_key,
+                        code,
+                    )
+                    continue
                 logger.error("campus_program_rejected source_key=%s code=%s reason=unknown_program", record.external_key, code)
                 raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Unknown BMSTU campus program identity: {code}")
             program_id = program_by_code.get(normalized_code)

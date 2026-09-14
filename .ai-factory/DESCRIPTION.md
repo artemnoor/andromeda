@@ -8,7 +8,7 @@ Andromeda — source-backed modular monolith для работы с образо
 
 ## Текущий BMSTU scope
 
-- BMSTU fixture/live ingestion с provenance, нормализацией и canonical IDs.
+- BMSTU fixture/live ingestion с dynamic catalog discovery, provenance, нормализацией и canonical IDs; live source gaps сохраняются явно.
 - Учебные планы, программы, curricula и дисциплины с workload, семестрами, формами контроля и taxonomy areas.
 - Профиль содержания пользователя (`UserProfile`), Content Fit и рекомендации по реальным fingerprints.
 - Source-backed admissions facts и отдельный Admission Fit для явно выбранной программы.

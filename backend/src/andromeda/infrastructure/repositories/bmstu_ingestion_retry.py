@@ -5,7 +5,6 @@ from typing import Any
 from uuid import uuid4
 
 from andromeda.ingestion.universities.bmstu import BmstuUniversityAdapter
-from andromeda.ingestion.universities.bmstu.selectors import TARGET_PROGRAM_CODES
 from andromeda.modules.admin_ops.contracts.public import IngestionRetryRequest, IngestionRetrySource
 from andromeda.modules.admin_ops.contracts.results import IngestionRetryOutcome
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
@@ -17,7 +16,7 @@ logger = logging.getLogger("andromeda.infrastructure.repositories.bmstu_ingestio
 
 
 class SqlAlchemyBmstuIngestionRetryExecutor:
-    """Runs only the repository-owned BMSTU ingestion profiles."""
+    """Runs the repository-owned BMSTU catalog discovery ingestion."""
 
     def __init__(self, engine: Any, environment: str) -> None:
         self._engine = engine
@@ -35,7 +34,7 @@ class SqlAlchemyBmstuIngestionRetryExecutor:
         try:
             captured = adapter.capture(mode=mode)
             repository.record_captured_metadata(run_id, captured)
-            raw, canonical = adapter.parse(captured, program_codes=TARGET_PROGRAM_CODES)
+            raw, canonical = adapter.parse(captured)
             repository.record_source_metadata(run_id, raw)
             repository.ingest(raw, canonical, run_id=run_id)
         except Exception as exc:

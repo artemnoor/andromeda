@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+from html import unescape
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 from typing import cast
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -23,10 +25,10 @@ selection_logger = logging.getLogger("tracer.source.select")
 
 S01_URL = "https://bmstu.ru/sveden/common/"
 S06_CATALOG_URL = "https://bmstu.ru/bachelor/majors"
-S06_API_URL = "https://api.www.bmstu.ru/majors/baccalaureate-and-specialty?limit=100&offset=0"
-S06_DETAIL_URL = "https://bmstu.ru/bachelor/majors/informatika-i-vycislitelnaa-tehnika-090301"
-TARGET_PROGRAM_CODES = ("09.03.01-02", "09.03.01-12")
-TARGET_DIRECTION_CODE = "09.03.01"
+S06_API_BASE_URL = "https://api.www.bmstu.ru/majors/baccalaureate-and-specialty"
+S06_DETAIL_API_BASE_URL = "https://api.www.bmstu.ru/majors/"
+PUBLIC_PLAN_HOSTS = frozenset(("disk.yandex.ru", "clck.ru", "clck.su"))
+PUBLIC_DOWNLOAD_HOST_SUFFIXES = (".yandex.ru", ".yandex.net")
 DEFAULT_FIXTURE_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "tracer" / "raw"
 
 
@@ -112,54 +114,100 @@ class TracerSource:
         snapshots: list[RawSourceSnapshot] = []
         snapshots.append(self._fetch_snapshot("bmstu_common", S01_URL))
         snapshots.append(self._fetch_snapshot("bmstu_major_catalog", S06_CATALOG_URL))
-        snapshots.append(self._fetch_snapshot("bmstu_major_catalog", S06_API_URL))
-        detail = self._fetch_snapshot("bmstu_major_detail", S06_DETAIL_URL)
-        snapshots.append(detail)
+        catalog_items: list[JsonObject] = []
+        offset = 0
+        page_size = 100
+        while True:
+            url = f"{S06_API_BASE_URL}?limit={page_size}&offset={offset}"
+            page_snapshot = self._fetch_snapshot("bmstu_major_catalog", url)
+            snapshots.append(page_snapshot)
+            page_items, total = _catalog_page(page_snapshot.body)
+            catalog_items.extend(page_items)
+            if not page_items:
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU catalog page is empty before meta.count")
+            previous_offset = offset
+            offset += len(page_items)
+            if offset >= total:
+                break
+            if offset <= previous_offset:
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU catalog pagination made no progress")
 
-        plans = _target_plan_urls(detail.body)
-        selection_logger.debug("target_plan_candidates count=%d", len(plans))
-        if set(plans) != set(TARGET_PROGRAM_CODES):
-            missing = sorted(set(TARGET_PROGRAM_CODES) - set(plans))
-            raise ContractError(
-                ErrorCode.SOURCE_CONTRACT_ERROR,
-                "Official detail page did not expose both target study plans",
-                [ErrorDetail(path="programs", message=f"missing target codes: {missing}", type="source_selection")],
-            )
-        for code in TARGET_PROGRAM_CODES:
-            snapshots.append(self._fetch_public_document(code, plans[code]))
+        slugs: list[str] = []
+        for index, item in enumerate(catalog_items, start=1):
+            slug = _text(item.get("slug"))
+            if not slug:
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"BMSTU catalog card {index} has no detail slug")
+            slugs.append(slug)
+        if len(slugs) != len(set(slugs)):
+            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU catalog contains duplicate slugs")
+        detail_snapshots: list[RawSourceSnapshot] = []
+        plan_urls: list[str] = []
+        for slug in slugs:
+            detail_url = S06_DETAIL_API_BASE_URL + quote(slug, safe="")
+            detail_snapshot = self._fetch_snapshot("bmstu_major_detail", detail_url)
+            detail_snapshots.append(detail_snapshot)
+            plan_urls.extend(_detail_plan_urls(detail_snapshot.body))
+        snapshots.extend(detail_snapshots)
+
+        for plan_url in dict.fromkeys(plan_urls):
+            snapshots.extend(self._fetch_public_documents(plan_url))
+        selection_logger.info(
+            "catalog_discovered cards=%d details=%d profiles=%d unique_plans=%d",
+            len(catalog_items),
+            len(detail_snapshots),
+            sum(len(_detail_profiles(snapshot.body)) for snapshot in detail_snapshots),
+            len(set(plan_urls)),
+        )
         return CapturedSources(tuple(snapshots))
 
-    def _fetch_public_document(self, code: str, public_url: str) -> RawSourceSnapshot:
-        metadata_url = "https://cloud-api.yandex.net/v1/disk/public/resources?public_key=" + quote(public_url, safe="")
-        metadata = self.fetcher.fetch(metadata_url)
+    def _fetch_public_documents(self, public_url: str) -> tuple[RawSourceSnapshot, ...]:
+        if not _is_supported_public_plan_url(public_url):
+            selection_logger.warning("study_plan_host_rejected plan_url=%s", public_url)
+            return ()
+        if "disk.yandex.ru/" in public_url:
+            resolved_url = public_url.split("?", 1)[0]
+        else:
+            fetch_http = getattr(self.fetcher, "fetch_http", None)
+            resolver_resource = fetch_http(public_url) if fetch_http is not None else self.fetcher.fetch(public_url)
+            resolved_url = _public_resource_url(resolver_resource, public_url)
+        metadata_url = "https://cloud-api.yandex.net/v1/disk/public/resources?public_key=" + quote(resolved_url, safe="")
+        metadata = self.fetcher.fetch_http(metadata_url)
         if metadata.error or not metadata.body:
-            raise ContractError(
-                ErrorCode.SOURCE_CONTRACT_ERROR,
-                f"Could not resolve study plan for {code}",
-                [ErrorDetail(path=f"programs[{code}].study_plan_url", message="document metadata unavailable", type="source_fetch")],
-            )
+            selection_logger.warning("study_plan_metadata_unavailable plan_url=%s", public_url)
+            return ()
         payload = _json_object(metadata.body)
         embedded = _object(payload.get("_embedded"))
         items = _list(embedded.get("items")) if embedded else []
-        direct_url: str | None = None
+        direct_urls: list[str] = []
+        top_level_file = _text(payload.get("file"))
+        if top_level_file:
+            direct_urls.append(top_level_file)
         for item in items:
             item_object = _object(item)
             if item_object is None:
                 continue
             direct_url = _text(item_object.get("file"))
             if direct_url:
-                break
-        if not direct_url:
-            raise ContractError(
-                ErrorCode.SOURCE_CONTRACT_ERROR,
-                f"Could not resolve a document file for {code}",
-                [ErrorDetail(path=f"programs[{code}].study_plan_url", message="no downloadable document", type="source_shape")],
-            )
-        resource = self.fetcher.fetch(direct_url)
-        return self._snapshot("bmstu_curriculum_document", public_url, resource)
+                direct_urls.append(direct_url)
+        metadata_snapshot = self._snapshot("bmstu_curriculum_metadata", public_url, metadata)
+        if not direct_urls:
+            selection_logger.warning("study_plan_document_unavailable plan_url=%s resource_type=%s", public_url, payload.get("type"))
+            return (metadata_snapshot,)
+        snapshots = [metadata_snapshot]
+        for direct_url in dict.fromkeys(direct_urls):
+            if not _is_supported_download_url(direct_url):
+                selection_logger.warning("study_plan_download_host_rejected plan_url=%s", public_url)
+                continue
+            resource = self.fetcher.fetch_http(direct_url)
+            if resource.error or not resource.body:
+                selection_logger.warning("study_plan_download_failed plan_url=%s", public_url)
+                continue
+            snapshots.append(self._snapshot("bmstu_curriculum_document", public_url, resource))
+        return tuple(snapshots)
 
     def _fetch_snapshot(self, kind: str, url: str) -> RawSourceSnapshot:
-        resource = self.fetcher.fetch(url)
+        fetch_http = getattr(self.fetcher, "fetch_http", None)
+        resource = fetch_http(url) if fetch_http is not None and ("api.www.bmstu.ru" in url or "cloud-api.yandex.net" in url) else self.fetcher.fetch(url)
         return self._snapshot(kind, url, resource)
 
     @staticmethod
@@ -245,30 +293,90 @@ class TracerSource:
         return CapturedSources(tuple(snapshots))
 
 
-def _target_plan_urls(body: bytes) -> dict[str, str]:
-    soup = BeautifulSoup(body, "html.parser")
-    script = soup.find("script", id="__NEXT_DATA__")
-    if script is None or not script.string:
-        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "S06 detail page has no __NEXT_DATA__")
-    root = _json_object(script.string.encode("utf-8"))
+def _catalog_page(body: bytes) -> tuple[list[JsonObject], int]:
+    root = _json_object(body)
+    values = _list(root.get("data"))
+    meta = _object(root.get("meta"))
+    total = meta.get("count") if meta is not None else None
+    if not isinstance(total, int) or total < len(values):
+        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU catalog response has invalid meta.count")
+    items: list[JsonObject] = []
+    for value in values:
+        item = _object(value)
+        if item is None:
+            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU catalog response contains a non-object item")
+        items.append(item)
+    return items, total
+
+
+def _detail_plan_urls(body: bytes) -> list[str]:
+    return [plan for _, _, plan in _detail_plan_records(body)]
+
+
+def _detail_profiles(body: bytes) -> list[JsonObject]:
+    return [{"code": code, "name": name, "plan": plan} for code, name, plan in _detail_plan_records(body)]
+
+
+def _detail_plan_records(body: bytes) -> list[tuple[str, str, str]]:
+    root: JsonObject
+    try:
+        root = _json_object(body)
+    except ContractError:
+        soup = BeautifulSoup(body, "html.parser")
+        script = soup.find("script", id="__NEXT_DATA__")
+        if script is None or not script.string:
+            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "S06 detail has neither JSON nor __NEXT_DATA__")
+        root = _json_object(script.string.encode("utf-8"))
+    data = _detail_data(root)
+    chairs = _object(data.get("chairs"))
+    result: list[tuple[str, str, str]] = []
+    for chair_value in _list(chairs.get("items")) if chairs else []:
+        chair = _object(chair_value)
+        if chair is None:
+            continue
+        educational = _object(chair.get("educationalProgram"))
+        for program_value in _list(educational.get("items")) if educational else []:
+            program = _object(program_value)
+            if program is None:
+                continue
+            code = _text(program.get("code"))
+            name = _text(program.get("name"))
+            plan = _text(program.get("plan"))
+            if code and name and plan:
+                result.append((code, unescape(name), plan))
+    return result
+
+
+def _detail_data(root: JsonObject) -> JsonObject:
+    if _object(root.get("additional")) or _object(root.get("chairs")):
+        return root
+    direct = _object(root.get("data"))
+    if direct and (_object(direct.get("additional")) or _object(direct.get("chairs"))):
+        return direct
     props = _object(root.get("props"))
     initial_state = _object(props.get("initialState")) if props else None
     details = _object(initial_state.get("bachelorMajorsDetails")) if initial_state else None
     data = _object(details.get("data")) if details else None
-    chairs = _object(data.get("chairs")) if data else None
-    result: dict[str, str] = {}
-    for chair_value in _list(chairs.get("items")) if chairs else []:
-        chair = _object(chair_value)
-        educational = _object(chair.get("educationalProgram")) if chair else None
-        for program_value in _list(educational.get("items")) if educational else []:
-            program = _object(program_value)
-            code = _canonical_code(_text(program.get("code"))) if program else None
-            plan = _text(program.get("plan")) if program else None
-            if code in TARGET_PROGRAM_CODES and plan:
-                if code in result and result[code] != plan:
-                    raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Ambiguous plan URL for {code}")
-                result[code] = plan
-    return result
+    return data or {}
+
+
+def _public_resource_url(resource: FetchedResource, fallback: str) -> str:
+    candidate = resource.final_url.split("?", 1)[0] if "disk.yandex.ru/" in resource.final_url else ""
+    if candidate:
+        return candidate
+    matches = re.findall(r"https://disk\.yandex\.ru/(?:d|i)/[A-Za-z0-9_-]+", resource.body.decode("utf-8", errors="ignore"))
+    return matches[0] if matches else fallback
+
+
+def _is_supported_public_plan_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return parsed.scheme == "https" and parsed.hostname in PUBLIC_PLAN_HOSTS
+
+
+def _is_supported_download_url(value: str) -> bool:
+    parsed = urlparse(value)
+    hostname = parsed.hostname or ""
+    return parsed.scheme == "https" and any(hostname == suffix[1:] or hostname.endswith(suffix) for suffix in PUBLIC_DOWNLOAD_HOST_SUFFIXES)
 
 
 def _canonical_code(value: str | None) -> str | None:

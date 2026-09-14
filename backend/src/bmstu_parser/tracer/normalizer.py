@@ -21,6 +21,7 @@ from ..contracts.domain import (
 from ..contracts.enums import AssessmentType, EducationLevel, SourceKind
 from ..contracts.errors import ContractError, ErrorCode, ErrorDetail
 from ..contracts.raw import RawTracerBundle
+from .identity import direction_codes
 
 logger = logging.getLogger("contracts.validation")
 
@@ -44,17 +45,31 @@ def normalize_bundle(raw: RawTracerBundle) -> NormalizedTracerSnapshot:
         official_site=raw.university.official_site,
         address=_text(raw.university.address),
     )
-    direction = Direction(
-        id=f"direction:{raw.direction.code}",
-        university_id=university.id,
-        code=_code(raw.direction.code),
-        name=_text(raw.direction.name),
-        education_level=_level(raw.direction.education_level),
-    )
+    raw_directions = raw.directions or (raw.direction,)
+    directions: list[Direction] = []
+    seen_direction_codes: set[str] = set()
+    for raw_direction in raw_directions:
+        for direction_code in direction_codes(raw_direction.code) or (_code(raw_direction.code),):
+            if direction_code in seen_direction_codes:
+                continue
+            seen_direction_codes.add(direction_code)
+            directions.append(
+                Direction(
+                    id=f"direction:{direction_code}",
+                    university_id=university.id,
+                    code=direction_code,
+                    name=_text(raw_direction.name),
+                    education_level=_level(raw_direction.education_level),
+                )
+            )
+    if not directions:
+        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU source has no canonical directions")
+    direction = directions[0]
+    directions_by_code = {item.code: item for item in directions}
     programs = tuple(
         EducationalProgram(
             id=f"program:{_code(program.code)}",
-            direction_id=direction.id,
+            direction_id=f"direction:{_program_direction(program, directions_by_code, direction.code)}",
             code=_code(program.code),
             name=_text(program.name),
             education_year=program.education_year,
@@ -96,7 +111,7 @@ def normalize_bundle(raw: RawTracerBundle) -> NormalizedTracerSnapshot:
             subject_group=_nullable_text(row.subject_group),
             source_position=row.source_position,
         )
-        items_by_program[program.code].append(item)
+        _append_curriculum_item(items_by_program[program.code], item)
 
     curricula = tuple(
         Curriculum(
@@ -108,6 +123,7 @@ def normalize_bundle(raw: RawTracerBundle) -> NormalizedTracerSnapshot:
             items=tuple(items_by_program[program.code]),
         )
         for program in programs
+        if items_by_program[program.code]
     )
     sources = tuple(
         SourceAttribution(
@@ -125,6 +141,8 @@ def normalize_bundle(raw: RawTracerBundle) -> NormalizedTracerSnapshot:
         disciplines=tuple(disciplines.values()),
         curricula=curricula,
         sources=sources,
+        directions=tuple(directions),
+        source_gaps=tuple(raw.source_gaps),
     )
     logger.debug("boundary_validated boundary=normalized programs=%d disciplines=%d", len(programs), len(disciplines))
     return result
@@ -157,11 +175,25 @@ def _level(value: str) -> EducationLevel:
 def _assessment(value: str | None) -> tuple[AssessmentType, ...] | None:
     if not value or not value.strip():
         return None
-    key = " ".join(value.casefold().split())
+    key = " ".join(value.casefold().replace("ё", "е").split())
     try:
         return ASSESSMENT_MAPPING[key]
-    except KeyError as exc:
-        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Unsupported assessment mark: {value}") from exc
+    except KeyError:
+        inferred: list[AssessmentType] = []
+        if any(token in key for token in ("экз", "экзам")):
+            inferred.append(AssessmentType.EXAM)
+        if any(token in key for token in ("зчт", "зач", "зет")):
+            inferred.append(AssessmentType.GRADED_CREDIT if "дзч" in key or "диф" in key else AssessmentType.CREDIT)
+        if "куп" in key or "проект" in key:
+            inferred.append(AssessmentType.COURSE_PROJECT)
+        elif "кур" in key:
+            inferred.append(AssessmentType.COURSEWORK)
+        if any(token in key for token in ("гэк", "гос экзам", "государственн")):
+            inferred.append(AssessmentType.STATE_EXAM)
+        if inferred:
+            return tuple(dict.fromkeys(inferred))
+        logger.warning("unsupported_bmstu_assessment_mark value=%s", value)
+        return None
 
 
 def _credits(value: str | float | int | None, path: str) -> Decimal | None:
@@ -183,5 +215,51 @@ def _source_kind(value: str) -> SourceKind:
 
 
 def _captured_at(raw: RawTracerBundle, program_code: str) -> datetime:
-    matching = [snapshot.captured_at for snapshot in raw.snapshots if snapshot.source_kind == "bmstu_curriculum_document" and program_code in str(snapshot.requested_url)]
+    program = next((item for item in raw.programs if item.code == program_code), None)
+    matching = [
+        snapshot.captured_at
+        for snapshot in raw.snapshots
+        if snapshot.source_kind == "bmstu_curriculum_document"
+        and program is not None
+        and str(snapshot.requested_url) == str(program.study_plan_url)
+    ]
     return matching[0] if matching else raw.snapshots[0].captured_at
+
+
+def _program_direction(program: object, directions: dict[str, Direction], fallback: str) -> str:
+    value = getattr(program, "direction_code", "")
+    candidates = direction_codes(value) if isinstance(value, str) else ()
+    for candidate in candidates:
+        if candidate in directions:
+            return candidate
+    code = getattr(program, "code", "")
+    candidates = direction_codes(code) if isinstance(code, str) else ()
+    return next((candidate for candidate in candidates if candidate in directions), fallback)
+
+
+def _append_curriculum_item(items: list[CurriculumItem], item: CurriculumItem) -> None:
+    """Collapse repeated PDF rows without losing workload/control facts."""
+    for index, existing in enumerate(items):
+        if (existing.discipline_id, existing.semester) != (item.discipline_id, item.semester):
+            continue
+        existing_assessments = existing.assessment_types or ()
+        item_assessments = item.assessment_types or ()
+        assessment_types = tuple(dict.fromkeys((*existing_assessments, *item_assessments))) or None
+        items[index] = existing.model_copy(
+            update={
+                "hours": max(existing.hours, item.hours),
+                "credits": existing.credits if existing.credits is not None else item.credits,
+                "assessment_types": assessment_types,
+                "subject_group": existing.subject_group or item.subject_group,
+                "source_position": min(
+                    value for value in (existing.source_position, item.source_position) if value is not None
+                ) if existing.source_position is not None or item.source_position is not None else None,
+            }
+        )
+        logger.warning(
+            "duplicate_curriculum_row_collapsed program_item=%s semester=%s",
+            existing.discipline_id,
+            existing.semester,
+        )
+        return
+    items.append(item)
