@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import Field
 
-from andromeda.modules.admin_ops.contracts.public import IngestionRunStatus
+from andromeda.modules.admin_ops.contracts.public import IngestionRetrySource, IngestionRunStatus
 from andromeda.modules.admin_ops.contracts.results import IngestionRunDetailResult, IngestionRunListResult
 from andromeda.modules.admin_ops.domain.entities import IngestionRunDetail, IngestionRunSummary
 from andromeda.shared.contracts.ids import IngestRunId, SourceHash
@@ -44,6 +44,10 @@ class IngestionRunDetailEnvelope(ApiModel):
     run: IngestionRunDetailResponse
 
 
+class IngestionRetryRequestBody(ApiModel):
+    source: IngestionRetrySource = IngestionRetrySource.BMSTU_FIXTURE
+
+
 def ingestion_run_summary_response(run: IngestionRunSummary) -> IngestionRunSummaryResponse:
     return IngestionRunSummaryResponse.model_validate(run.model_dump(mode="python"))
 
@@ -65,6 +69,7 @@ __all__ = [
     "IngestionRunDetailResponse",
     "IngestionRunListResponse",
     "IngestionRunSummaryResponse",
+    "IngestionRetryRequestBody",
     "ingestion_run_detail_response",
     "ingestion_run_list_response",
 ]

@@ -82,6 +82,36 @@ def test_postgresql_supports_the_existing_api_vertical_slice() -> None:
     assert len(recommendations.json()["recommendations"]) == 2
 
 
+def test_postgresql_supports_protected_admin_ops_retry(monkeypatch) -> None:
+    database_url = os.environ.get("ANDROMEDA_POSTGRES_TEST_URL")
+    if not database_url or not database_url.startswith(("postgresql://", "postgresql+")):
+        pytest.skip("ANDROMEDA_POSTGRES_TEST_URL is not configured")
+
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", "postgres-admin-ops-test-key")
+    adapter = BmstuUniversityAdapter()
+    try:
+        raw, canonical = adapter.parse_sources(fixture_dir=Path(__file__).parents[1] / "fixtures" / "tracer" / "raw")
+    finally:
+        adapter.close()
+
+    engine = create_engine_for_url(database_url)
+    try:
+        SqlAlchemyIngestionRepository(engine).ingest(raw, canonical)
+    finally:
+        engine.dispose()
+
+    client = TestClient(create_app(database_url))
+    response = client.post(
+        "/ops/ingestion/runs/retry",
+        json={"source": "bmstu_fixture"},
+        headers={"X-Andromeda-Ops-Key": "postgres-admin-ops-test-key"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["run"]["status"] == "completed"
+    assert "body" not in response.text
+    assert "payload_json" not in response.text
+
+
 def test_postgresql_supports_the_campus_data_contract() -> None:
     database_url = os.environ.get("ANDROMEDA_POSTGRES_TEST_URL")
     if not database_url or not database_url.startswith(("postgresql://", "postgresql+")):

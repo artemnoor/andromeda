@@ -22,7 +22,7 @@ from andromeda.modules.events.services.events import EventService
 from andromeda.modules.campus.repository.ports import CampusPointReader
 from andromeda.modules.campus.services.campus import CampusService
 from andromeda.modules.personal_route.services.personal_route import PersonalRouteService
-from andromeda.modules.admin_ops.repository.ports import IngestionRunReader
+from andromeda.modules.admin_ops.repository.ports import IngestionRetryExecutor, IngestionRunReader
 from andromeda.modules.admin_ops.services.ingestion_runs import IngestionRunService
 
 from andromeda.infrastructure.repositories.curricula import SqlAlchemyCurriculumRepository
@@ -36,6 +36,7 @@ from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserPr
 from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
 from andromeda.infrastructure.repositories.campus import SqlAlchemyCampusPointRepository
 from andromeda.infrastructure.repositories.admin_ops import SqlAlchemyIngestionRunReader
+from andromeda.infrastructure.repositories.bmstu_ingestion_retry import SqlAlchemyBmstuIngestionRetryExecutor
 from .request_context import get_session
 
 
@@ -169,7 +170,13 @@ def get_ingestion_run_reader(session: Session = Depends(get_session)) -> Ingesti
     return SqlAlchemyIngestionRunReader(session)
 
 
+def get_ingestion_retry_executor(request: Request) -> IngestionRetryExecutor:
+    settings = request.app.state.settings
+    return SqlAlchemyBmstuIngestionRetryExecutor(request.app.state.engine, settings.environment)
+
+
 def get_ingestion_run_service(
     reader: IngestionRunReader = Depends(get_ingestion_run_reader),
+    executor: IngestionRetryExecutor = Depends(get_ingestion_retry_executor),
 ) -> IngestionRunService:
-    return IngestionRunService(reader)
+    return IngestionRunService(reader, executor)

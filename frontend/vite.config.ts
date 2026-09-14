@@ -12,6 +12,7 @@ export default defineConfig({
       "/recommendations": apiProxyTarget,
       "/events": apiProxyTarget,
       "/personal-route": apiProxyTarget,
+      "/ops": apiProxyTarget,
       "/openapi.json": apiProxyTarget,
       "/docs": apiProxyTarget,
     }

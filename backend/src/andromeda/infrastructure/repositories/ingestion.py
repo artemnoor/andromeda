@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawSourceSnapshot, RawTracerBundle
+from andromeda.ingestion.contracts.source import CapturedSources
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaWeight, area_catalog
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel
 from andromeda.shared.contracts.errors import AndromedaError, ContractError, ErrorCode
@@ -63,14 +64,50 @@ class SqlAlchemyIngestionRepository:
     def __init__(self, engine: Any) -> None:
         self._factory = session_factory(engine)
 
-    def ingest(self, raw: RawTracerBundle, canonical: CanonicalSnapshot) -> str:
-        run_id = f"ingest:{uuid4().hex}"
-        started_at = datetime.now(timezone.utc)
+    def start_run(self, run_id: str | None = None) -> str:
+        resolved_run_id = run_id or f"ingest:{uuid4().hex}"
+        self._create_run(
+            resolved_run_id,
+            datetime.now(timezone.utc),
+            source_count=0,
+            source_hashes=(),
+            source_kinds=(),
+            program_count=0,
+            curriculum_item_count=0,
+            event_count=0,
+            campus_point_count=0,
+        )
+        logger.info("ingest_audit_started run_id=%s", resolved_run_id)
+        return resolved_run_id
+
+    def record_source_metadata(self, run_id: str, raw: RawTracerBundle) -> None:
+        self.record_captured_metadata(run_id, raw.snapshots)
+        self._update_run_metadata(
+            run_id,
+            source_count=len(raw.snapshots),
+            source_hashes=tuple(snapshot.content_sha256 for snapshot in raw.snapshots),
+            source_kinds=tuple(snapshot.source_kind for snapshot in raw.snapshots),
+            program_count=len(raw.programs),
+            curriculum_item_count=len(raw.curriculum_rows),
+            event_count=len(raw.events),
+            campus_point_count=len(raw.campus_points),
+        )
+
+    def record_captured_metadata(self, run_id: str, captured: CapturedSources | tuple[RawSourceSnapshot, ...]) -> None:
+        snapshots = captured.snapshots if isinstance(captured, CapturedSources) else captured
+        self._update_run_metadata(
+            run_id,
+            source_count=len(snapshots),
+            source_hashes=tuple(snapshot.content_sha256 for snapshot in snapshots),
+            source_kinds=tuple(snapshot.source_kind for snapshot in snapshots),
+        )
+
+    def ingest(self, raw: RawTracerBundle, canonical: CanonicalSnapshot, *, run_id: str | None = None) -> str:
+        resolved_run_id = run_id or self.start_run()
         source_hashes = tuple(snapshot.content_sha256 for snapshot in raw.snapshots)
         source_kinds = tuple(snapshot.source_kind for snapshot in raw.snapshots)
-        self._create_run(
-            run_id,
-            started_at,
+        self._update_run_metadata(
+            resolved_run_id,
             source_count=len(source_hashes),
             source_hashes=source_hashes,
             source_kinds=source_kinds,
@@ -79,7 +116,7 @@ class SqlAlchemyIngestionRepository:
             event_count=len(canonical.events),
             campus_point_count=len(canonical.campus_points),
         )
-        logger.info("ingest_transaction_start run_id=%s", run_id)
+        logger.info("ingest_transaction_start run_id=%s", resolved_run_id)
         stats = _SyncStats()
         with self._factory() as session:
             try:
@@ -87,7 +124,7 @@ class SqlAlchemyIngestionRepository:
                     self._seed_reference_tables(session)
                     session.flush()
                     for snapshot in raw.snapshots:
-                        self._insert_snapshot(session, run_id, snapshot)
+                        self._insert_snapshot(session, resolved_run_id, snapshot)
                     session.flush()
                     self._insert_raw_records(session, raw)
                     stats = self._insert_domain(
@@ -97,17 +134,17 @@ class SqlAlchemyIngestionRepository:
                         campus_source_present=any(snapshot.source_kind == "bmstu_campus_points" for snapshot in raw.snapshots),
                     )
             except Exception as exc:
-                logger.warning("ingest_transaction_rollback run_id=%s error_code=%s", run_id, _safe_error_code(exc))
-                self._mark_failed(run_id, exc)
+                logger.warning("ingest_transaction_rollback run_id=%s error_code=%s", resolved_run_id, _safe_error_code(exc))
+                self._mark_failed(resolved_run_id, exc)
                 raise
         try:
-            self._mark_completed(run_id, stats)
+            self._mark_completed(resolved_run_id, stats)
         except Exception:
-            logger.exception("ingest_audit_complete_failed run_id=%s", run_id)
+            logger.exception("ingest_audit_complete_failed run_id=%s", resolved_run_id)
             raise
         logger.info(
             "ingest_transaction_commit run_id=%s programs=%d curriculum_items=%d inserted=%d updated=%d unchanged=%d removed=%d",
-            run_id,
+            resolved_run_id,
             len(canonical.programs),
             sum(len(curriculum.items) for curriculum in canonical.curricula),
             stats.inserted,
@@ -115,7 +152,36 @@ class SqlAlchemyIngestionRepository:
             stats.unchanged,
             stats.removed,
         )
-        return run_id
+        return resolved_run_id
+
+    def _update_run_metadata(
+        self,
+        run_id: str,
+        *,
+        source_count: int,
+        source_hashes: tuple[str, ...],
+        source_kinds: tuple[str, ...],
+        program_count: int | None = None,
+        curriculum_item_count: int | None = None,
+        event_count: int | None = None,
+        campus_point_count: int | None = None,
+    ) -> None:
+        with self._factory() as session:
+            with session.begin():
+                run = session.get(IngestRunModel, run_id)
+                if run is None or run.status != "running":
+                    raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest audit row is not running")
+                run.source_count = source_count
+                run.source_hashes_json = json.dumps(source_hashes, separators=(",", ":"))
+                run.source_kinds_json = json.dumps(source_kinds, separators=(",", ":"))
+                if program_count is not None:
+                    run.program_count = program_count
+                if curriculum_item_count is not None:
+                    run.curriculum_item_count = curriculum_item_count
+                if event_count is not None:
+                    run.event_count = event_count
+                if campus_point_count is not None:
+                    run.campus_point_count = campus_point_count
 
     def _create_run(
         self,
@@ -176,6 +242,9 @@ class SqlAlchemyIngestionRepository:
                     run.error_message = error_message
         except Exception:
             logger.exception("ingest_audit_failure_update_failed run_id=%s error_code=%s", run_id, error_code)
+
+    def mark_failed(self, run_id: str, error: Exception) -> None:
+        self._mark_failed(run_id, error)
 
     @staticmethod
     def _seed_reference_tables(session: Session) -> None:

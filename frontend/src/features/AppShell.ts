@@ -5,10 +5,11 @@ import { renderProgramPage } from "./program/ProgramPage";
 import { renderEventsPage } from "./events/EventsPage";
 import { renderPersonalRoutePage } from "./personal-route/PersonalRoutePage";
 import { renderUnifiedMvpPage } from "./unified-flow/UnifiedMvpPage";
+import { renderAdminOpsPage } from "./admin-ops/AdminOpsPage";
 
 type Program = components["schemas"]["ProgramSummaryResponse"];
 
-export type Feature = "flow" | "compare" | "events" | "personal-route" | "proftest" | "program";
+export type Feature = "flow" | "compare" | "events" | "personal-route" | "proftest" | "program" | "ops";
 
 export type FeatureSelection = Readonly<{ feature: Feature; programId?: string }>;
 
@@ -19,6 +20,7 @@ export function parseFeatureHash(hash: string): FeatureSelection {
   if (hash === "#events") return { feature: "events" };
   if (hash === "#personal-route") return { feature: "personal-route" };
   if (hash === "#proftest") return { feature: "proftest" };
+  if (hash === "#ops") return { feature: "ops" };
   return { feature: "compare" };
 }
 export function hashForFeature(feature: Feature, firstProgramId?: string): string {
@@ -48,6 +50,7 @@ export function renderAppShell(root: HTMLElement, programs: readonly Program[]):
     else if (feature === "events") renderEventsPage(featureRoot, programs);
     else if (feature === "personal-route") renderPersonalRoutePage(featureRoot, programs);
     else if (feature === "proftest") renderProftestPage(featureRoot);
+    else if (feature === "ops") renderAdminOpsPage(featureRoot);
     else renderProgramPage(featureRoot, programs, programId);
   };
   const navigate = (feature: Feature): void => {

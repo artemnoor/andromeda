@@ -2066,6 +2066,105 @@
         }
       }
     },
+    "/ops/ingestion/runs/retry": {
+      "post": {
+        "tags": [
+          "admin-ops"
+        ],
+        "summary": "Retry Ingestion Run",
+        "operationId": "retry_ingestion_run",
+        "parameters": [
+          {
+            "name": "X-Andromeda-Ops-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Andromeda-Ops-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestionRetryRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionRunDetailEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/ops/ingestion/runs": {
       "get": {
         "tags": [
@@ -4413,6 +4512,25 @@
           "unknown"
         ],
         "title": "FundingType"
+      },
+      "IngestionRetryRequestBody": {
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/IngestionRetrySource",
+            "default": "bmstu_fixture"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IngestionRetryRequestBody"
+      },
+      "IngestionRetrySource": {
+        "type": "string",
+        "enum": [
+          "bmstu_fixture",
+          "bmstu_live"
+        ],
+        "title": "IngestionRetrySource"
       },
       "IngestionRunDetailEnvelope": {
         "properties": {

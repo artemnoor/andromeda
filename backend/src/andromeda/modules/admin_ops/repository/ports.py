@@ -4,8 +4,8 @@ from typing import Protocol
 
 from andromeda.shared.contracts.ids import IngestRunId
 
-from ..contracts.public import IngestionRunFilters
-from ..contracts.results import IngestionRunDetailResult, IngestionRunListResult
+from ..contracts.public import IngestionRetryRequest, IngestionRunFilters
+from ..contracts.results import IngestionRetryOutcome, IngestionRunDetailResult, IngestionRunListResult
 
 
 class IngestionRunReader(Protocol):
@@ -14,4 +14,8 @@ class IngestionRunReader(Protocol):
     def get(self, run_id: IngestRunId) -> IngestionRunDetailResult | None: ...
 
 
-__all__ = ["IngestionRunReader"]
+class IngestionRetryExecutor(Protocol):
+    def execute(self, request: IngestionRetryRequest) -> IngestionRetryOutcome: ...
+
+
+__all__ = ["IngestionRetryExecutor", "IngestionRunReader"]

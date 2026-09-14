@@ -62,3 +62,58 @@ def test_admin_ops_api_exposes_bounded_read_contract_only_with_key(tmp_path: Pat
     assert wrong_key.status_code == 404
     assert invalid_limit.status_code == 422
     assert missing.status_code == 404
+
+
+def test_admin_ops_retry_uses_fixture_profile_and_creates_audited_run(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", OPS_KEY)
+    database_url = _database_with_fixture(tmp_path)
+    client = TestClient(create_app(database_url))
+    headers = {"X-Andromeda-Ops-Key": OPS_KEY}
+
+    response = client.post("/ops/ingestion/runs/retry", json={"source": "bmstu_fixture"}, headers=headers)
+
+    assert response.status_code == 200, response.text
+    run = response.json()["run"]
+    assert run["status"] == "completed"
+    assert run["sourceKinds"]
+    assert "body" not in response.text
+    assert "payload_json" not in response.text
+
+    listing = client.get("/ops/ingestion/runs", headers=headers)
+    assert listing.json()["total"] == 2
+    assert listing.json()["items"][0]["id"] == run["id"]
+
+
+def test_admin_ops_retry_rejects_when_a_run_is_running(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", OPS_KEY)
+    database_url = _database_with_fixture(tmp_path)
+    from andromeda.infrastructure.database import create_engine_for_url
+    from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
+
+    engine = create_engine_for_url(database_url)
+    SqlAlchemyIngestionRepository(engine).start_run()
+    client = TestClient(create_app(database_url))
+
+    response = client.post(
+        "/ops/ingestion/runs/retry",
+        json={"source": "bmstu_fixture"},
+        headers={"X-Andromeda-Ops-Key": OPS_KEY},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "CONFLICT"
+
+
+def test_admin_ops_live_retry_is_staging_only(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", OPS_KEY)
+    database_url = _database_with_fixture(tmp_path)
+    client = TestClient(create_app(database_url))
+
+    response = client.post(
+        "/ops/ingestion/runs/retry",
+        json={"source": "bmstu_live"},
+        headers={"X-Andromeda-Ops-Key": OPS_KEY},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "CONTRACT_ERROR"

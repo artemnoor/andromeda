@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createCurrentProfile, getCurrentProfile, getCurrentRecommendations, getEvents, getPersonalRoute, updateCurrentProfile, type CreateProfileRequest, type UpdateProfileRequest } from "./client";
+import { createCurrentProfile, getCurrentProfile, getCurrentRecommendations, getEvents, getIngestionRun, getIngestionRuns, getPersonalRoute, retryIngestion, updateCurrentProfile, type CreateProfileRequest, type UpdateProfileRequest } from "./client";
 
 const originalFetch = globalThis.fetch;
 const profile: CreateProfileRequest["profile"] = {
@@ -77,5 +77,18 @@ describe("typed API client", () => {
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/personal-route?limit=4");
     expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ credentials: "include" }));
+  });
+
+  it("keeps the operator key in the request header and calls bounded retry", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ items: [], total: 0 }), { status: 200 }));
+    globalThis.fetch = fetchMock;
+
+    await getIngestionRuns({ status: "failed", limit: 10 }, "test-only-ops-key");
+    await getIngestionRun("ingest:" + "a".repeat(32), "test-only-ops-key");
+    await retryIngestion({ source: "bmstu_fixture" }, "test-only-ops-key");
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/ops/ingestion/runs?status=failed&limit=10");
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ headers: expect.objectContaining({ "X-Andromeda-Ops-Key": "test-only-ops-key" }) }));
+    expect(fetchMock.mock.calls[2]?.[1]).toEqual(expect.objectContaining({ method: "POST", body: JSON.stringify({ source: "bmstu_fixture" }) }));
   });
 });

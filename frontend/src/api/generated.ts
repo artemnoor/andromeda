@@ -343,6 +343,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ops/ingestion/runs/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Ingestion Run */
+        post: operations["retry_ingestion_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ops/ingestion/runs": {
         parameters: {
             query?: never;
@@ -1087,6 +1104,16 @@ export interface components {
          * @enum {string}
          */
         FundingType: "budget" | "paid" | "targeted" | "unknown";
+        /** IngestionRetryRequestBody */
+        IngestionRetryRequestBody: {
+            /** @default bmstu_fixture */
+            source: components["schemas"]["IngestionRetrySource"];
+        };
+        /**
+         * IngestionRetrySource
+         * @enum {string}
+         */
+        IngestionRetrySource: "bmstu_fixture" | "bmstu_live";
         /** IngestionRunDetailEnvelope */
         IngestionRunDetailEnvelope: {
             run: components["schemas"]["IngestionRunDetailResponse"];
@@ -3087,6 +3114,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PersonalRouteResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    retry_ingestion_run: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Andromeda-Ops-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestionRetryRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionRunDetailEnvelope"];
                 };
             };
             /** @description Bad Request */

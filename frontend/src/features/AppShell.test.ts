@@ -9,12 +9,14 @@ describe("AppShell hash navigation", () => {
     expect(parseFeatureHash("#events")).toEqual({ feature: "events" });
     expect(parseFeatureHash("#personal-route")).toEqual({ feature: "personal-route" });
     expect(parseFeatureHash("#proftest")).toEqual({ feature: "proftest" });
+    expect(parseFeatureHash("#ops")).toEqual({ feature: "ops" });
   });
 
   it("keeps program IDs encoded in the existing program entrypoint", () => {
     expect(parseFeatureHash("#program/program%3A09.03.01-02")).toEqual({ feature: "program", programId: "program:09.03.01-02" });
     expect(hashForFeature("program", "program:09.03.01-02")).toBe("#program/program%3A09.03.01-02");
     expect(hashForFeature("flow")).toBe("#flow");
+    expect(hashForFeature("ops")).toBe("#ops");
   });
 
   it("keeps compare as the safe fallback for unknown hashes", () => {

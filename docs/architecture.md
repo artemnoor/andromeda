@@ -56,11 +56,11 @@ Ingestion quality для operator-инструментов использует 
 ```text
 ingestion lifecycle
   → ingest_runs (running → completed|failed + bounded counters)
-  → admin_ops reader port/service
-  → protected GET /ops/ingestion/runs[/{id}]
+  → admin_ops reader/service + typed retry executor port
+  → protected GET /ops/ingestion/runs[/{id}] and POST /ops/ingestion/runs/retry
 ```
 
-Run создаётся до атомарной projection transaction, а failure обновляет только безопасный audit status и generic error message после rollback. `admin_ops` не читает raw snapshot bodies или `RawSourceRecord.payload_json`, не знает ORM/parser и не реализует retry, correction, CMS, Auth/RBAC или UI.
+Run создаётся до capture и атомарной projection transaction, а failure обновляет только безопасный audit status и generic error message после rollback. `admin_ops` не читает raw snapshot bodies или `RawSourceRecord.payload_json`, не знает ORM/parser и получает retry через typed executor port. Infrastructure связывает этот port с существующим BMSTU adapter/repository; retry ограничен фиксированными профилями и не принимает URL/команды. `#ops` UI не является обычной навигацией и не реализует correction, CMS, Auth/RBAC, карту или пользовательское scoring.
 
 ## Границы
 
