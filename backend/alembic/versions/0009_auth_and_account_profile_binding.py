@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from alembic import op
 
 
-revision = "0009_auth_and_account_profile_binding"
+revision = "0009_auth_profile_binding"
 down_revision = "0008_admin_ops_ingest_audit"
 branch_labels = None
 depends_on = None
