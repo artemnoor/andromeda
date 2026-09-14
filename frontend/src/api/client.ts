@@ -22,6 +22,11 @@ type EventListResponse = paths["/events"]["get"]["responses"][200]["content"]["a
 type EventResponse = paths["/events/{id}"]["get"]["responses"][200]["content"]["application/json"];
 type EventQuery = NonNullable<paths["/events"]["get"]["parameters"]["query"]>;
 type PersonalRouteResponse = paths["/personal-route"]["get"]["responses"][200]["content"]["application/json"];
+type IngestionRunListResponse = paths["/ops/ingestion/runs"]["get"]["responses"][200]["content"]["application/json"];
+type IngestionRunDetailResponse = paths["/ops/ingestion/runs/{id}"]["get"]["responses"][200]["content"]["application/json"];
+type IngestionRetryRequest = NonNullable<paths["/ops/ingestion/runs/retry"]["post"]["requestBody"]>["content"]["application/json"];
+type IngestionRetryResponse = paths["/ops/ingestion/runs/retry"]["post"]["responses"][200]["content"]["application/json"];
+type IngestionRunStatus = components["schemas"]["IngestionRunStatus"];
 type ErrorContract = components["schemas"]["ErrorResponse"];
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
@@ -132,4 +137,24 @@ export function getPersonalRoute(limit = 10): Promise<PersonalRouteResponse> {
   return requestJson<PersonalRouteResponse>(`/personal-route?${params.toString()}`);
 }
 
-export type { AdmissionFitRequest, AdmissionFitResponse, CompareResponse, CreateProfileRequest, CurrentProfileResponse, CurrentRecommendationsResponse, CurriculumResponse, ErrorContract, EventListResponse, EventQuery, EventResponse, PersonalRouteResponse, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse, UpdateProfileRequest };
+function opsHeaders(opsKey: string): HeadersInit {
+  return { "X-Andromeda-Ops-Key": opsKey };
+}
+
+export function getIngestionRuns(options: { status?: IngestionRunStatus; limit?: number } = {}, opsKey: string): Promise<IngestionRunListResponse> {
+  const params = new URLSearchParams();
+  if (options.status) params.set("status", options.status);
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  const query = params.toString();
+  return requestJson<IngestionRunListResponse>(`/ops/ingestion/runs${query ? `?${query}` : ""}`, { headers: opsHeaders(opsKey) });
+}
+
+export function getIngestionRun(id: string, opsKey: string): Promise<IngestionRunDetailResponse> {
+  return requestJson<IngestionRunDetailResponse>(`/ops/ingestion/runs/${encodeURIComponent(id)}`, { headers: opsHeaders(opsKey) });
+}
+
+export function retryIngestion(request: IngestionRetryRequest, opsKey: string): Promise<IngestionRetryResponse> {
+  return requestJson<IngestionRetryResponse>("/ops/ingestion/runs/retry", { method: "POST", headers: opsHeaders(opsKey), body: JSON.stringify(request) });
+}
+
+export type { AdmissionFitRequest, AdmissionFitResponse, CompareResponse, CreateProfileRequest, CurrentProfileResponse, CurrentRecommendationsResponse, CurriculumResponse, ErrorContract, EventListResponse, EventQuery, EventResponse, IngestionRetryRequest, IngestionRetryResponse, IngestionRunDetailResponse, IngestionRunListResponse, IngestionRunStatus, PersonalRouteResponse, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse, UpdateProfileRequest };

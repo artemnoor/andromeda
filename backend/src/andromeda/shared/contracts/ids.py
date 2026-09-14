@@ -40,6 +40,7 @@ CurriculumItemId: TypeAlias = Annotated[
 DisciplineId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^discipline:[a-f0-9]{16}$")]
 SourcePosition: TypeAlias = Annotated[int, Field(strict=True, ge=1, le=10_000)]
 SourceHash: TypeAlias = Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+IngestRunId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^ingest:[a-f0-9]{32}$")]
 EducationYear: TypeAlias = Annotated[int, Field(strict=True, ge=2000, le=2100)]
 Semester: TypeAlias = Annotated[int, Field(strict=True, ge=1, le=12)]
 HourCount: TypeAlias = Annotated[int, Field(strict=True, ge=0, le=2000)]

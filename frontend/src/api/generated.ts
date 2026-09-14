@@ -343,6 +343,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ops/ingestion/runs/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Ingestion Run */
+        post: operations["retry_ingestion_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/ingestion/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Ingestion Runs */
+        get: operations["list_ingestion_runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/ingestion/runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ingestion Run */
+        get: operations["get_ingestion_run"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1053,6 +1104,114 @@ export interface components {
          * @enum {string}
          */
         FundingType: "budget" | "paid" | "targeted" | "unknown";
+        /** IngestionRetryRequestBody */
+        IngestionRetryRequestBody: {
+            /**
+             * Source
+             * @default bmstu_fixture
+             * @enum {string}
+             */
+            source: "bmstu_fixture" | "bmstu_live";
+        };
+        /** IngestionRunDetailEnvelope */
+        IngestionRunDetailEnvelope: {
+            run: components["schemas"]["IngestionRunDetailResponse"];
+        };
+        /** IngestionRunDetailResponse */
+        IngestionRunDetailResponse: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["IngestionRunStatus"];
+            /**
+             * Startedat
+             * Format: date-time
+             */
+            startedAt: string;
+            /** Finishedat */
+            finishedAt?: string | null;
+            /** Sourcecount */
+            sourceCount: number;
+            /** Programcount */
+            programCount: number;
+            /** Curriculumitemcount */
+            curriculumItemCount: number;
+            /** Eventcount */
+            eventCount: number;
+            /** Campuspointcount */
+            campusPointCount: number;
+            /** Insertedcount */
+            insertedCount: number;
+            /** Updatedcount */
+            updatedCount: number;
+            /** Unchangedcount */
+            unchangedCount: number;
+            /** Removedcount */
+            removedCount: number;
+            /** Errorcode */
+            errorCode?: string | null;
+            /** Errormessage */
+            errorMessage?: string | null;
+            /**
+             * Sourcehashes
+             * @default []
+             */
+            sourceHashes: string[];
+            /**
+             * Sourcekinds
+             * @default []
+             */
+            sourceKinds: string[];
+        };
+        /** IngestionRunListResponse */
+        IngestionRunListResponse: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["IngestionRunSummaryResponse"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * IngestionRunStatus
+         * @enum {string}
+         */
+        IngestionRunStatus: "running" | "completed" | "failed";
+        /** IngestionRunSummaryResponse */
+        IngestionRunSummaryResponse: {
+            /** Id */
+            id: string;
+            status: components["schemas"]["IngestionRunStatus"];
+            /**
+             * Startedat
+             * Format: date-time
+             */
+            startedAt: string;
+            /** Finishedat */
+            finishedAt?: string | null;
+            /** Sourcecount */
+            sourceCount: number;
+            /** Programcount */
+            programCount: number;
+            /** Curriculumitemcount */
+            curriculumItemCount: number;
+            /** Eventcount */
+            eventCount: number;
+            /** Campuspointcount */
+            campusPointCount: number;
+            /** Insertedcount */
+            insertedCount: number;
+            /** Updatedcount */
+            updatedCount: number;
+            /** Unchangedcount */
+            unchangedCount: number;
+            /** Removedcount */
+            removedCount: number;
+            /** Errorcode */
+            errorCode?: string | null;
+            /** Errormessage */
+            errorMessage?: string | null;
+        };
         /** MatchScoreResponse */
         MatchScoreResponse: {
             /** Programid */
@@ -2954,6 +3113,216 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PersonalRouteResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    retry_ingestion_run: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Andromeda-Ops-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestionRetryRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionRunDetailEnvelope"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_ingestion_runs: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["IngestionRunStatus"] | null;
+                limit?: number;
+            };
+            header?: {
+                "X-Andromeda-Ops-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionRunListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_ingestion_run: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Andromeda-Ops-Key"?: string | null;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionRunDetailEnvelope"];
                 };
             };
             /** @description Bad Request */

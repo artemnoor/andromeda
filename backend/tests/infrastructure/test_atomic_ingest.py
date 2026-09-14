@@ -31,7 +31,11 @@ def test_ingest_is_atomic_on_identity_conflict(tmp_path: Path) -> None:
     else:
         raise AssertionError("identity conflict must fail")
     with Session(engine) as session:
-        assert session.scalar(select(func.count()).select_from(IngestRunModel)) == 1
+        assert session.scalar(select(func.count()).select_from(IngestRunModel)) == 2
+        failed_run = session.scalar(select(IngestRunModel).where(IngestRunModel.status == "failed"))
+        assert failed_run is not None
+        assert failed_run.error_code == "SOURCE_CONTRACT_ERROR"
+        assert failed_run.error_message == "Ingestion failed"
         assert session.scalar(select(func.count()).select_from(ProgramModel)) == 2
 
 
@@ -79,4 +83,5 @@ def test_ingest_is_idempotent_for_same_canonical_snapshot(tmp_path: Path) -> Non
 
     with Session(engine) as session:
         assert session.scalar(select(func.count()).select_from(IngestRunModel)) == 2
+        assert session.scalar(select(func.count()).select_from(IngestRunModel).where(IngestRunModel.status == "completed")) == 2
         assert session.scalar(select(func.count()).select_from(ProgramModel)) == 2

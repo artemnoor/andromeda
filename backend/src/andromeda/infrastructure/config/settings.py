@@ -36,6 +36,7 @@ class Settings:
     profile_cookie_secure: bool = False
     profile_cookie_samesite: str = "lax"
     profile_ttl_seconds: int = DEFAULT_PROFILE_TTL_SECONDS
+    ops_api_key: str | None = None
 
     @classmethod
     def from_environment(cls, database_url: str | None = None) -> Settings:
@@ -60,6 +61,7 @@ class Settings:
             profile_cookie_secure=_bool_from_environment("ANDROMEDA_PROFILE_COOKIE_SECURE", environment == "staging"),
             profile_cookie_samesite=_samesite_from_environment(),
             profile_ttl_seconds=_positive_int_from_environment("ANDROMEDA_PROFILE_TTL_SECONDS", DEFAULT_PROFILE_TTL_SECONDS),
+            ops_api_key=_optional_secret_from_environment("ANDROMEDA_OPS_API_KEY"),
         )
         _validate_profile_cookie_settings(settings)
         logger.debug(
@@ -121,6 +123,14 @@ def _samesite_from_environment() -> str:
     if value not in VALID_SAMESITE_VALUES:
         raise ValueError("ANDROMEDA_PROFILE_COOKIE_SAMESITE must be one of: lax, strict, none")
     return value
+
+
+def _optional_secret_from_environment(name: str) -> str | None:
+    value = os.environ.get(name)
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
 
 
 def _validate_profile_cookie_settings(settings: Settings) -> None:

@@ -175,6 +175,22 @@ Endpoint принимает баллы абитуриента и явный `off
 
 Admission API — read-only application path. Route вызывает `AdmissionService`, service читает `ProgramReader` и `AdmissionReader`, а SQLAlchemy projection остаётся внутри infrastructure. BMSTU adapter преобразует detail-page `__NEXT_DATA__` в raw/canonical contracts и связывает записи с canonical `program_id`; HTTP schema не экспортирует ORM-модели.
 
+## Admin/Ops: ingestion quality
+
+Admin/Ops API — узкий контракт для operator-инструментов. Он выключен по умолчанию: доступ появляется только при непустом `ANDROMEDA_OPS_API_KEY`, переданном в заголовке `X-Andromeda-Ops-Key`. При выключенном API, отсутствующем или неверном ключе сервер возвращает одинаковый `404 NOT_FOUND`.
+
+| Метод | Endpoint | Назначение |
+|---|---|---|
+| GET | `/ops/ingestion/runs?status=completed&limit=50` | Ограниченный список запусков ingestion, newest-first |
+| GET | `/ops/ingestion/runs/{id}` | Детали одного запуска по canonical `ingest:<32 hex>` ID |
+| POST | `/ops/ingestion/runs/retry` | Bounded повтор разрешённого ingestion profile (`bmstu_fixture` или staging-only `bmstu_live`) |
+
+Ответ содержит lifecycle status, timestamps, source count/kind/hash metadata, counts canonical projection и безопасные error code/message для failed run. `limit` ограничен диапазоном `1..100`; `status` принимает только `running`, `completed` или `failed`. Retry не принимает URL, shell-команду, program IDs или raw payload: body содержит только allowlisted `source`. Одновременный retry отклоняется с `409 CONFLICT`; live profile разрешён только в staging и использует зафиксированные официальные источники adapter-а.
+
+Операторский экран открывается только явным `/#ops`, отсутствует в обычной пользовательской навигации, держит введённый ключ только в памяти страницы и очищает поле после подключения. Он показывает loading/empty/error states, status filter, detail/counters/safe errors и просит подтверждение перед `bmstu_fixture` retry. Сырые тела snapshot, raw payload, credentials, cookies или traceback не возвращаются и не показываются; произвольное исправление данных, DELETE, arbitrary SQL, CMS и Auth/RBAC не входят в контракт.
+
+Audit row создаётся до capture и projection transaction, поэтому failed ingestion сохраняет безопасный факт ошибки даже при полном rollback projection. Источник истины — существующий `ingest_runs`; новая сущность raw provenance не создаётся. Повтор использует тот же typed BMSTU adapter и атомарный canonical sync, поэтому остаётся идемпотентным в пределах возможностей существующей projection.
+
 ## See Also
 
 - [Архитектура](architecture.md) — почему API не импортирует ORM.

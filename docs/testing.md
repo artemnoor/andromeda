@@ -30,6 +30,17 @@ python -m pytest -q tests/integration/test_postgresql_smoke.py tests/integration
 
 Без PostgreSQL DSN smoke-тест явно `skipped`; CI передаёт disposable PostgreSQL URL.
 
+Admin/Ops data-quality slice проверяется отдельным bounded read-only набором:
+
+```powershell
+cd backend
+python -m pytest -q tests/modules/admin_ops tests/api/test_admin_ops_contract.py tests/api/test_admin_ops_api.py tests/infrastructure/test_admin_ops_repository.py tests/integration/test_admin_ops_vertical_slice.py tests/vertical/test_admin_ops_vertical_contract.py tests/infrastructure/test_atomic_ingest.py
+python -m pytest -q tests/architecture/test_module_boundaries.py
+python -m mypy
+```
+
+Проверки покрывают lifecycle `running → completed|failed`, сохранение failed audit после rollback, deterministic list/detail, bounded fixture retry, running conflict, staging-only live boundary, malformed audit data, explicit key guard, отсутствие raw source fields и OpenAPI operation IDs. Admin/Ops endpoint выключен без `ANDROMEDA_OPS_API_KEY`; ключ не попадает в логи или ответы. Browser check открывает только `/#ops`, проверяет safe detail, unavailable conflict notice, confirmation перед retry и wrong-key error state.
+
 Personal Route проверяется отдельными contract/API и vertical tests:
 
 ```powershell
