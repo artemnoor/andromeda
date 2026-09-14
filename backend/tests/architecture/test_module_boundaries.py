@@ -20,6 +20,7 @@ SUBJECT_MODULES = (
     "campus",
     "personal_route",
     "admin_ops",
+    "auth",
 )
 SUBJECT_LAYERS = ("domain", "contracts", "services", "repository")
 FORBIDDEN_SUBJECT_IMPORTS = (

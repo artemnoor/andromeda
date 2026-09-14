@@ -12,7 +12,8 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from andromeda.modules.proftest.contracts.public import ProfileScope, UserProfile, UserProfileSnapshot
-from andromeda.modules.proftest.repository.ports import UserProfileRepository
+from andromeda.modules.proftest.repository.ports import ProfileBindingOutcome, ProfileBindingPort, UserProfileRepository
+from andromeda.shared.contracts.ids import AccountId
 from andromeda.shared.contracts.errors import ConflictError, ContractError, ErrorCode, NotFoundError
 
 from ..database.models import UserProfileModel
@@ -21,8 +22,8 @@ from ..database.models import UserProfileModel
 logger = logging.getLogger("andromeda.infrastructure.repositories.user_profiles")
 
 
-class SqlAlchemyUserProfileRepository(UserProfileRepository):
-    """Persist exactly one current snapshot for each anonymous profile scope."""
+class SqlAlchemyUserProfileRepository(UserProfileRepository, ProfileBindingPort):
+    """Persist exactly one current snapshot for each account or anonymous scope."""
 
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -142,12 +143,64 @@ class SqlAlchemyUserProfileRepository(UserProfileRepository):
         logger.info("user_profile_write_complete operation=save_current revision=%d", snapshot.revision)
         return snapshot
 
+    def bind_anonymous_to_account(self, scope: ProfileScope, account_id: AccountId) -> ProfileBindingOutcome:
+        """Transfer an active anonymous row without merging it into an account row."""
+
+        if scope.account_id is not None:
+            logger.warning("user_profile_binding_rejected outcome=non_anonymous_scope")
+            return ProfileBindingOutcome.NO_ANONYMOUS_PROFILE
+        anonymous = self._session.scalar(
+            select(UserProfileModel)
+            .where(
+                UserProfileModel.account_id.is_(None),
+                UserProfileModel.session_key_hash == scope.session_key_hash,
+            )
+            .with_for_update()
+        )
+        account_profile = self._session.scalar(
+            select(UserProfileModel)
+            .where(UserProfileModel.account_id == account_id)
+            .with_for_update()
+        )
+        now = _now()
+        if account_profile is not None and _utc(account_profile.expires_at) > now:
+            logger.info("user_profile_binding_complete outcome=account_profile_kept")
+            return ProfileBindingOutcome.ACCOUNT_PROFILE_KEPT
+        if anonymous is None or _utc(anonymous.expires_at) <= now:
+            logger.info("user_profile_binding_complete outcome=no_anonymous_profile")
+            return ProfileBindingOutcome.NO_ANONYMOUS_PROFILE
+        try:
+            if account_profile is not None:
+                self._session.delete(account_profile)
+                self._session.flush()
+            anonymous.account_id = account_id
+            anonymous.session_key_hash = None
+            self._session.commit()
+        except IntegrityError:
+            self._session.rollback()
+            logger.info("user_profile_binding_complete outcome=account_profile_kept")
+            return ProfileBindingOutcome.ACCOUNT_PROFILE_KEPT
+        except SQLAlchemyError:
+            self._session.rollback()
+            logger.error("user_profile_binding_failed outcome=storage_error")
+            raise
+        logger.info("user_profile_binding_complete outcome=bound")
+        return ProfileBindingOutcome.BOUND
+
     @property
     def _dialect(self) -> str:
         return self._session.get_bind().dialect.name
 
     def _find(self, scope: ProfileScope) -> UserProfileModel | None:
-        return self._session.scalar(select(UserProfileModel).where(UserProfileModel.session_key_hash == scope.session_key_hash))
+        statement = select(UserProfileModel)
+        if scope.account_id is not None:
+            statement = statement.where(UserProfileModel.account_id == scope.account_id)
+        else:
+            statement = statement.where(
+                UserProfileModel.account_id.is_(None),
+                UserProfileModel.session_key_hash == scope.session_key_hash,
+            )
+        return self._session.scalar(statement)
 
     def _active_model(self, scope: ProfileScope) -> UserProfileModel | None:
         model = self._find(scope)
@@ -166,7 +219,8 @@ class SqlAlchemyUserProfileRepository(UserProfileRepository):
     ) -> dict[str, object]:
         return {
             "profile_id": profile_id or "profile:" + uuid4().hex,
-            "session_key_hash": scope.session_key_hash,
+            "session_key_hash": scope.session_key_hash if scope.account_id is None else None,
+            "account_id": scope.account_id,
             "profile_json": profile.model_dump(mode="json"),
             "revision": revision,
             "created_at": _utc(created_at),

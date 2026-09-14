@@ -6,6 +6,7 @@ from .programs import EducationalProgramModel, ProgramModel
 from .proftest import UserProfileModel
 from .universities import DirectionModel, EducationLevelModel, UniversityModel
 from .events import EventDepartmentLinkModel, EventModel, EventProgramLinkModel, EventUniversityLinkModel, VenueDepartmentLinkModel, VenueModel, VenueProgramLinkModel, VenueUniversityLinkModel
+from .auth import AccountModel, AuthSessionModel
 
 __all__ = [
     "AssessmentTypeModel",
@@ -37,4 +38,6 @@ __all__ = [
     "VenueDepartmentLinkModel",
     "VenueProgramLinkModel",
     "VenueUniversityLinkModel",
+    "AccountModel",
+    "AuthSessionModel",
 ]

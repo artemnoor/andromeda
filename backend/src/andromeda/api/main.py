@@ -22,6 +22,7 @@ from andromeda.api.routes.events import router as events_router
 from andromeda.api.routes.campus import router as campus_router
 from andromeda.api.routes.personal_route import router as personal_route_router
 from andromeda.api.routes.admin_ops import router as admin_ops_router
+from andromeda.api.routes.auth import router as auth_router
 from andromeda.shared.contracts.errors import AndromedaError, ErrorCode, ErrorResponse, details_from_validation
 from andromeda.infrastructure.config.settings import Settings
 from andromeda.infrastructure.database.base import create_engine_for_url
@@ -46,7 +47,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         title="Andromeda Educational Program Comparison API",
         version="1.0.0",
         description="Strict source-backed contracts for comparing BMSTU educational programmes.",
-        responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}, 422: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+        responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}, 422: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
     )
     app.state.settings = settings
     app.state.engine = create_engine_for_url(settings.database_url, **settings.engine_options)
@@ -65,8 +66,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
         request.state.correlation_id = correlation_id
         response = await call_next(request)
         profile_cookie_header = getattr(request.state, "profile_cookie_header", None)
-        if isinstance(profile_cookie_header, str):
-            response.headers["set-cookie"] = profile_cookie_header
+        if isinstance(profile_cookie_header, str) and profile_cookie_header not in response.headers.getlist("set-cookie"):
+            response.headers.append("set-cookie", profile_cookie_header)
         response.headers["X-Correlation-Id"] = correlation_id
         for header, value in SECURITY_HEADERS.items():
             response.headers[header] = value
@@ -78,7 +79,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     @app.exception_handler(AndromedaError)
     async def andromeda_error_handler(request: Request, exc: AndromedaError) -> JSONResponse:
         del request
-        status = 404 if exc.code is ErrorCode.NOT_FOUND else 409 if exc.code is ErrorCode.CONFLICT else 400 if exc.code in (ErrorCode.VALIDATION_ERROR, ErrorCode.CONTRACT_ERROR, ErrorCode.SOURCE_CONTRACT_ERROR) else 500
+        status = 401 if exc.code is ErrorCode.UNAUTHORIZED else 404 if exc.code is ErrorCode.NOT_FOUND else 409 if exc.code is ErrorCode.CONFLICT else 400 if exc.code in (ErrorCode.VALIDATION_ERROR, ErrorCode.CONTRACT_ERROR, ErrorCode.SOURCE_CONTRACT_ERROR) else 500
         return JSONResponse(status_code=status, content=exc.response().model_dump(mode="json", by_alias=True))
 
     @app.exception_handler(RequestValidationError)
@@ -118,6 +119,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(campus_router)
     app.include_router(personal_route_router)
     app.include_router(admin_ops_router)
+    app.include_router(auth_router)
     return app
 
 

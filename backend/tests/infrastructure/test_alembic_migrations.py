@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 
 BACKEND_ROOT = Path(__file__).parents[2]
@@ -41,6 +42,35 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(tmp_path: 
         assert "point_type" in venue_columns
         unique_names = {constraint["name"] for constraint in inspector.get_unique_constraints("curriculum_items")}
         assert "uq_curriculum_item_identity" in unique_names
+    finally:
+        engine.dispose()
+
+
+def test_auth_downgrade_refuses_account_owned_profile(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'auth-downgrade.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    config = _alembic_config(database_url)
+    command.upgrade(config, "head")
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO user_profiles (profile_id, session_key_hash, account_id, profile_json, revision, created_at, updated_at, expires_at) "
+                    "VALUES (:profile_id, NULL, :account_id, :profile_json, 1, :created_at, :updated_at, :expires_at)"
+                ),
+                {
+                    "profile_id": "profile:" + "a" * 32,
+                    "account_id": "account:" + "b" * 32,
+                    "profile_json": "{}",
+                    "created_at": "2026-01-01 00:00:00",
+                    "updated_at": "2026-01-01 00:00:00",
+                    "expires_at": "2027-01-01 00:00:00",
+                },
+            )
+        with pytest.raises(RuntimeError, match="account-owned profiles"):
+            command.downgrade(config, "-1")
     finally:
         engine.dispose()
 

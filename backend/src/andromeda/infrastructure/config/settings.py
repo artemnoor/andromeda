@@ -9,12 +9,16 @@ import logging
 
 
 DEFAULT_DATABASE_URL = "sqlite:///./data/tracer.db"
-DEFAULT_FRONTEND_ORIGIN = "http://localhost:5173"
+DEFAULT_FRONTEND_ORIGIN = "http://localhost:5173,http://127.0.0.1:5173"
 DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_ENVIRONMENT = "test"
 DEFAULT_PROFILE_COOKIE_NAME = "andromeda_profile_session"
 DEFAULT_PROFILE_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 DEFAULT_PROFILE_TTL_SECONDS = 60 * 60 * 24 * 30
+DEFAULT_AUTH_COOKIE_NAME = "andromeda_auth_session"
+DEFAULT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
+DEFAULT_AUTH_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30
+DEFAULT_AUTH_PASSWORD_MIN_LENGTH = 12
 VALID_ENVIRONMENTS = frozenset(("test", "development", "staging"))
 VALID_SAMESITE_VALUES = frozenset(("lax", "strict", "none"))
 
@@ -36,6 +40,12 @@ class Settings:
     profile_cookie_secure: bool = False
     profile_cookie_samesite: str = "lax"
     profile_ttl_seconds: int = DEFAULT_PROFILE_TTL_SECONDS
+    auth_cookie_name: str = DEFAULT_AUTH_COOKIE_NAME
+    auth_cookie_max_age: int = DEFAULT_AUTH_COOKIE_MAX_AGE
+    auth_cookie_secure: bool = False
+    auth_cookie_samesite: str = "lax"
+    auth_session_ttl_seconds: int = DEFAULT_AUTH_SESSION_TTL_SECONDS
+    auth_password_min_length: int = DEFAULT_AUTH_PASSWORD_MIN_LENGTH
     ops_api_key: str | None = None
 
     @classmethod
@@ -59,11 +69,18 @@ class Settings:
             profile_cookie_name=os.environ.get("ANDROMEDA_PROFILE_COOKIE_NAME", DEFAULT_PROFILE_COOKIE_NAME),
             profile_cookie_max_age=_positive_int_from_environment("ANDROMEDA_PROFILE_COOKIE_MAX_AGE", DEFAULT_PROFILE_COOKIE_MAX_AGE),
             profile_cookie_secure=_bool_from_environment("ANDROMEDA_PROFILE_COOKIE_SECURE", environment == "staging"),
-            profile_cookie_samesite=_samesite_from_environment(),
+            profile_cookie_samesite=_samesite_from_environment("ANDROMEDA_PROFILE_COOKIE_SAMESITE"),
             profile_ttl_seconds=_positive_int_from_environment("ANDROMEDA_PROFILE_TTL_SECONDS", DEFAULT_PROFILE_TTL_SECONDS),
+            auth_cookie_name=os.environ.get("ANDROMEDA_AUTH_COOKIE_NAME", DEFAULT_AUTH_COOKIE_NAME),
+            auth_cookie_max_age=_positive_int_from_environment("ANDROMEDA_AUTH_COOKIE_MAX_AGE", DEFAULT_AUTH_COOKIE_MAX_AGE),
+            auth_cookie_secure=_bool_from_environment("ANDROMEDA_AUTH_COOKIE_SECURE", environment == "staging"),
+            auth_cookie_samesite=_samesite_from_environment("ANDROMEDA_AUTH_COOKIE_SAMESITE"),
+            auth_session_ttl_seconds=_positive_int_from_environment("ANDROMEDA_AUTH_SESSION_TTL_SECONDS", DEFAULT_AUTH_SESSION_TTL_SECONDS),
+            auth_password_min_length=_positive_int_from_environment("ANDROMEDA_AUTH_PASSWORD_MIN_LENGTH", DEFAULT_AUTH_PASSWORD_MIN_LENGTH),
             ops_api_key=_optional_secret_from_environment("ANDROMEDA_OPS_API_KEY"),
         )
-        _validate_profile_cookie_settings(settings)
+        _validate_cookie_settings(settings.profile_cookie_name, settings.profile_cookie_samesite, settings.profile_cookie_secure, "ANDROMEDA_PROFILE_COOKIE_NAME")
+        _validate_cookie_settings(settings.auth_cookie_name, settings.auth_cookie_samesite, settings.auth_cookie_secure, "ANDROMEDA_AUTH_COOKIE_NAME")
         logger.debug(
             "settings_loaded environment=%s dialect=%s database_target=%s log_level=%s profile_cookie_secure=%s profile_cookie_samesite=%s profile_ttl_seconds=%d",
             settings.environment,
@@ -118,10 +135,10 @@ def _bool_from_environment(name: str, default: bool) -> bool:
     raise ValueError(f"{name} must be a boolean")
 
 
-def _samesite_from_environment() -> str:
-    value = os.environ.get("ANDROMEDA_PROFILE_COOKIE_SAMESITE", "lax").strip().lower()
+def _samesite_from_environment(name: str) -> str:
+    value = os.environ.get(name, "lax").strip().lower()
     if value not in VALID_SAMESITE_VALUES:
-        raise ValueError("ANDROMEDA_PROFILE_COOKIE_SAMESITE must be one of: lax, strict, none")
+        raise ValueError(f"{name} must be one of: lax, strict, none")
     return value
 
 
@@ -133,11 +150,11 @@ def _optional_secret_from_environment(name: str) -> str | None:
     return normalized or None
 
 
-def _validate_profile_cookie_settings(settings: Settings) -> None:
-    if re.fullmatch(r"[A-Za-z0-9_-]{1,64}", settings.profile_cookie_name) is None:
-        raise ValueError("ANDROMEDA_PROFILE_COOKIE_NAME must contain only safe cookie name characters")
-    if settings.profile_cookie_samesite == "none" and not settings.profile_cookie_secure:
-        raise ValueError("ANDROMEDA_PROFILE_COOKIE_SECURE must be true when SameSite=None")
+def _validate_cookie_settings(name: str, samesite: str, secure: bool, env_name: str) -> None:
+    if re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name) is None:
+        raise ValueError(f"{env_name} must contain only safe cookie name characters")
+    if samesite == "none" and not secure:
+        raise ValueError(f"{env_name.removesuffix('_NAME')}_SECURE must be true when SameSite=None")
 
 
 def database_dialect(database_url: str) -> str:

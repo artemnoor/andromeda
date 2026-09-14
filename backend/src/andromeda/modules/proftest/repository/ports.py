@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Protocol
 
 from andromeda.modules.curricula.contracts.public import Curriculum
 from andromeda.modules.disciplines.contracts.public import Discipline
 from andromeda.modules.programs.contracts.public import Program
-from andromeda.shared.contracts.ids import DisciplineId, ProgramId
+from andromeda.shared.contracts.ids import AccountId, DisciplineId, ProgramId
 
 from ..domain.entities import UserProfile
 from ..domain.profile import ProfileScope, UserProfileSnapshot
@@ -47,4 +48,16 @@ class UserProfileRepository(CurrentUserProfileReader, Protocol):
     def save_current(self, scope: ProfileScope, profile: UserProfile, *, expires_at: datetime) -> UserProfileSnapshot: ...
 
 
-__all__ = ["CurrentUserProfileReader", "ProftestCatalogReader", "UserProfileRepository"]
+class ProfileBindingPort(Protocol):
+    """Transfer an anonymous profile to one account without field-level merge."""
+
+    def bind_anonymous_to_account(self, scope: ProfileScope, account_id: AccountId) -> ProfileBindingOutcome: ...
+
+
+class ProfileBindingOutcome(str, Enum):
+    BOUND = "bound"
+    ACCOUNT_PROFILE_KEPT = "account_profile_kept"
+    NO_ANONYMOUS_PROFILE = "no_anonymous_profile"
+
+
+__all__ = ["CurrentUserProfileReader", "ProfileBindingOutcome", "ProfileBindingPort", "ProftestCatalogReader", "UserProfileRepository"]

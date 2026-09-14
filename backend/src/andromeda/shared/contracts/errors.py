@@ -9,6 +9,7 @@ from .base import ContractModel
 
 class ErrorCode(StrEnum):
     VALIDATION_ERROR = "VALIDATION_ERROR"
+    UNAUTHORIZED = "UNAUTHORIZED"
     NOT_FOUND = "NOT_FOUND"
     CONFLICT = "CONFLICT"
     SOURCE_CONTRACT_ERROR = "SOURCE_CONTRACT_ERROR"
@@ -58,6 +59,11 @@ class ConflictError(AndromedaError):
 class ValidationError(AndromedaError):
     def __init__(self, message: str, details: Sequence[ErrorDetail] = ()) -> None:
         super().__init__(ErrorCode.VALIDATION_ERROR, message, details)
+
+
+class UnauthorizedError(AndromedaError):
+    def __init__(self, message: str = "Authentication required", details: Sequence[ErrorDetail] = ()) -> None:
+        super().__init__(ErrorCode.UNAUTHORIZED, message, details)
 
 
 def details_from_validation(errors: Sequence[Mapping[str, object]]) -> tuple[ErrorDetail, ...]:
