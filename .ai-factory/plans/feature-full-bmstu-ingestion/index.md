@@ -42,7 +42,7 @@
 - [x] [Phase 5: taxonomy coverage](phase-5-taxonomy.md)
 - [x] [Phase 6: repository and runners](phase-6-persistence-runners.md)
 - [x] [Phase 7: tests and documentation](phase-7-tests-docs.md)
-- [ ] [Phase 8: verification, commit and CI](phase-8-verification.md)
+- [x] [Phase 8: verification, commit and CI](phase-8-verification.md)
 
 ## Plan Integrity
 
@@ -59,3 +59,4 @@ The plan was manually re-checked because the repository does not expose the `aif
 - Official live run: 53 catalog cards, 53 details, 152 profiles, 133 unique public plan URLs, 134 curricula, 14,910 canonical items, 1,492 admission offerings, 18 source gaps, 319 captured snapshots, 0 live events and 0 live campus points.
 - SQLite repeat run: canonical IDs unique, 0 invalid area-weight sums, second repeat had 0 inserts and 0 removals; migrations at `0009_auth_profile_binding`.
 - Quality: full backend `296 passed, 6 skipped, 3 warnings`; `python -m mypy` passes for 313 source files; focused ingestion/contracts `43 passed`; PostgreSQL-only local smoke is explicitly skipped because no DSN is configured.
+- CI: run `34872246737` is green across backend, frontend, fullstack, proftest and PostgreSQL integration/browser jobs; the generated client was synchronized in follow-up commit `91373a4` after the first run exposed contract drift.

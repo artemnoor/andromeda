@@ -25,4 +25,4 @@ Final handoff lists counts from the actual full ingestion run, source gaps, taxo
 - [x] Repeat/idempotence and DB invariants: unique canonical IDs, valid discipline weights, no orphan curriculum rows, latest run `0 inserts / 0 removals / 17,699 unchanged`; Alembic at `0009_auth_profile_binding (head)`.
 - [x] PostgreSQL integration tests: `4 skipped` because no local DSN is configured; the CI workflow provisions PostgreSQL.
 - [x] Staged review: `git diff --cached --check` passed, staged paths are limited to the BMSTU ingestion/contracts/repository/tests/docs/AIF scope, and live target hardcode scan is clean. The requested `aif-*` executables are unavailable in this environment; their rules/verify/review gates were run manually and documented.
-- [ ] Push and GitHub Actions status check.
+- [x] Push and GitHub Actions status check: run `34872246737` is green for all jobs; no merge was performed.
