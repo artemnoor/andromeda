@@ -22,7 +22,6 @@ from andromeda.infrastructure.config import Settings, redact_database_url
 from andromeda.infrastructure.database import create_engine_for_url
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 
-DEFAULT_PROGRAM_CODES = ("09.03.01-02", "09.03.01-12")
 logger = logging.getLogger("tracer.runner")
 _CONFIGURED_LOG_LEVEL = logging.INFO
 
@@ -36,6 +35,9 @@ class TracerRunResult:
     source_hashes: tuple[str, ...]
     event_count: int
     campus_point_count: int = 0
+    direction_count: int = 0
+    study_plan_count: int = 0
+    source_gap_count: int = 0
 
 
 def configure_logging(log_level: str) -> None:
@@ -60,7 +62,7 @@ def selected_program_codes(program_codes: Sequence[str] | None, program_ids: Seq
         raise ValueError("use --program-code or --program-id, not both")
     if program_ids:
         return tuple(value.removeprefix("program:") for value in program_ids)
-    return tuple(program_codes) if program_codes else DEFAULT_PROGRAM_CODES
+    return tuple(program_codes) if program_codes else ()
 
 
 def run_ingest(
@@ -77,7 +79,7 @@ def run_ingest(
         database_path = Path(database_url.removeprefix("sqlite:///"))
         database_path.parent.mkdir(parents=True, exist_ok=True)
 
-    logger.info("ingest_start mode=%s programs=%s database_target=%s", mode, ",".join(program_codes), redact_database_url(database_url))
+    logger.info("ingest_start mode=%s programs=%s database_target=%s", mode, ",".join(program_codes) if program_codes else "catalog-discovery", redact_database_url(database_url))
     engine = create_engine_for_url(database_url)
     try:
         migration_config = Config(str(BACKEND_ROOT / "alembic.ini"))
@@ -93,7 +95,7 @@ def run_ingest(
                 fixture_dir=fixture_dir,
                 event_fixture_dir=event_fixture_dir or DEFAULT_EVENT_FIXTURE_DIR,
                 campus_fixture_dir=campus_fixture_dir or DEFAULT_CAMPUS_FIXTURE_DIR,
-                program_codes=program_codes,
+                program_codes=program_codes or None,
             )
         finally:
             source.close()
@@ -107,6 +109,9 @@ def run_ingest(
             source_hashes=tuple(source.content_sha256 for source in normalized.sources),
             event_count=len(normalized.events),
             campus_point_count=len(normalized.campus_points),
+            direction_count=len(normalized.directions or (normalized.direction,)),
+            study_plan_count=len(normalized.curricula),
+            source_gap_count=len(normalized.source_gaps),
         )
         logger.info(
             "ingest_complete run_id=%s programs=%d curriculum_items=%d sources=%d events=%d campus_points=%d",
@@ -131,6 +136,9 @@ def result_payload(result: TracerRunResult, database_url: str) -> dict[str, obje
         "sourceHashes": list(result.source_hashes),
         "eventCount": result.event_count,
         "campusPointCount": result.campus_point_count,
+        "directionCount": result.direction_count,
+        "studyPlanCount": result.study_plan_count,
+        "sourceGapCount": result.source_gap_count,
         "databaseTarget": redact_database_url(database_url),
         "api": {
             "docs": "/docs",
@@ -138,7 +146,7 @@ def result_payload(result: TracerRunResult, database_url: str) -> dict[str, obje
             "program": "/programs/{id}",
             "curriculum": "/programs/{id}/curriculum",
             "admissions": "/programs/{id}/admissions",
-            "compare": "/compare?programIds=program:09.03.01-02,program:09.03.01-12",
+            "compare": "/compare?programIds={programIdA},{programIdB}",
             "events": "/events",
             "campusPoints": "/campus/points",
             "campusRecommendations": "/campus/recommendations",

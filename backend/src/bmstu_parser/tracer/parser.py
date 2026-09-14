@@ -14,9 +14,12 @@ from ..adapters.bmstu import _study_plan_records
 from ..contracts.errors import ContractError, ErrorCode, ErrorDetail, details_from_validation
 from ..contracts.constraints import http_url
 from ..contracts.raw import (
+    JsonObject,
     RawCurriculumRow,
     RawDirectionRecord,
     RawProgramRecord,
+    RawSourceSnapshot,
+    RawSourceGap,
     RawTracerBundle,
     RawUniversityRecord,
     SourceLocator,
@@ -24,8 +27,16 @@ from ..contracts.raw import (
 from ..models import FetchedResource, SourceDefinition
 from ..html import parse_page
 from ..contracts.domain import NormalizedTracerSnapshot
-from .source import CapturedSources, TARGET_DIRECTION_CODE, TARGET_PROGRAM_CODES, TracerSource, _json_object
+from .source import CapturedSources, TracerSource, _detail_data, _json_object
+
+
+# The committed legacy fixture contains one HTML detail page with two
+# documents and several profiles intentionally left outside that fixture's
+# scope. Live adapter calls use the API detail source and always pass None so
+# this compatibility value cannot constrain catalog discovery.
+LEGACY_FIXTURE_PROGRAM_CODES = ("09.03.01-02", "09.03.01-12")
 from .normalizer import normalize_bundle
+from .identity import canonicalize_program_records, direction_codes
 
 logger = logging.getLogger("tracer.parser")
 
@@ -34,7 +45,7 @@ def parse_sources(
     source: TracerSource,
     mode: str = "fixture",
     fixture_dir: Path | None = None,
-    program_codes: tuple[str, ...] = TARGET_PROGRAM_CODES,
+    program_codes: tuple[str, ...] | None = None,
 ) -> tuple[RawTracerBundle, NormalizedTracerSnapshot]:
     captured = source.capture(mode=mode, fixture_dir=fixture_dir)
     try:
@@ -58,23 +69,65 @@ def parse_sources(
     return raw_bundle, normalized
 
 
-def parse_captured(captured: CapturedSources, program_codes: tuple[str, ...] = TARGET_PROGRAM_CODES) -> RawTracerBundle:
+def parse_captured(captured: CapturedSources, program_codes: tuple[str, ...] | None = None) -> RawTracerBundle:
     university = _parse_university(captured.first("bmstu_common"))
-    direction, programs = _parse_detail(captured.first("bmstu_major_detail"), program_codes)
-    if direction.code != TARGET_DIRECTION_CODE:
-        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "Unexpected direction code in S06 detail")
-    rows: list[RawCurriculumRow] = []
-    for code in program_codes:
-        document = _document_for_program(captured, code)
-        rows.extend(_parse_curriculum(document, code))
-    if set(program.code for program in programs) != set(program_codes):
+    detail_snapshots = captured.by_kind("bmstu_major_detail")
+    if not detail_snapshots:
+        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU catalog has no detail snapshots")
+    if program_codes is None and all("api.www.bmstu.ru/majors/" not in str(snapshot.requested_url) for snapshot in detail_snapshots):
+        program_codes = LEGACY_FIXTURE_PROGRAM_CODES
+    directions: list[RawDirectionRecord] = []
+    programs: list[RawProgramRecord] = []
+    for detail_snapshot in detail_snapshots:
+        direction, detail_programs = _parse_detail(detail_snapshot, program_codes)
+        directions.append(direction)
+        programs.extend(detail_programs)
+    if not programs:
+        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU details contain no selected programs")
+    programs = list(canonicalize_program_records(programs))
+    normalized_directions = _direction_aliases(directions)
+    if not normalized_directions:
+        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU details contain no valid direction codes")
+    selected_codes = set(program_codes) if program_codes is not None else None
+    if selected_codes is not None and {program.code for program in programs} != selected_codes:
         raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "Selected programs are incomplete")
+    rows: list[RawCurriculumRow] = []
+    gaps: list[RawSourceGap] = []
+    dynamic_discovery = len(detail_snapshots) > 1
+    for program in programs:
+        documents = _documents_for_program(captured, program)
+        if not documents:
+            metadata = _metadata_for_program(captured, program)
+            if not metadata and not dynamic_discovery:
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Could not select curriculum document for {program.code}")
+            gaps.append(_curriculum_gap(program, "published study plan has no downloadable document"))
+            continue
+        duplicate_hashes = [snapshot.content_sha256 for snapshot in documents]
+        if len(duplicate_hashes) != len(set(duplicate_hashes)):
+            if not dynamic_discovery:
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Could not select curriculum document for {program.code}")
+            gaps.append(_curriculum_gap(program, "duplicate study-plan source snapshot"))
+            continue
+        try:
+            program_rows = []
+            for document in documents:
+                program_rows.extend(_parse_curriculum(document, program.code, program.source_code or program.code))
+            rows.extend(program_rows)
+            if not program_rows:
+                gaps.append(_curriculum_gap(program, "study-plan document produced no curriculum rows"))
+        except ContractError:
+            if not dynamic_discovery:
+                raise
+            gaps.append(_curriculum_gap(program, "study-plan document could not be parsed"))
+    direction = normalized_directions[0]
     return RawTracerBundle(
         snapshots=captured.snapshots,
         university=university,
         direction=direction,
         programs=tuple(programs),
         curriculum_rows=tuple(rows),
+        directions=tuple(normalized_directions),
+        source_gaps=tuple(gaps),
     )
 
 
@@ -105,15 +158,10 @@ def _parse_university(snapshot: object) -> RawUniversityRecord:
     )
 
 
-def _parse_detail(snapshot: object, program_codes: tuple[str, ...]) -> tuple[RawDirectionRecord, list[RawProgramRecord]]:
-    from ..contracts.raw import RawSourceSnapshot, JsonObject
+def _parse_detail(snapshot: object, program_codes: tuple[str, ...] | None) -> tuple[RawDirectionRecord, list[RawProgramRecord]]:
+    from ..contracts.raw import RawSourceSnapshot
     typed = cast(RawSourceSnapshot, snapshot)
-    soup = BeautifulSoup(typed.body, "html.parser")
-    script = soup.find("script", id="__NEXT_DATA__")
-    if script is None or not script.string:
-        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "S06 detail page has no __NEXT_DATA__")
-    root: JsonObject = _json_object(script.string.encode("utf-8"))
-    data = _next_details(root)
+    data = _detail_data_from_body(typed.body)
     additional = _obj(data.get("additional"))
     direction_code = _text(additional.get("code"))
     direction_name = _text(additional.get("name"))
@@ -132,10 +180,13 @@ def _parse_detail(snapshot: object, program_codes: tuple[str, ...]) -> tuple[Raw
         educational = _obj(chair.get("educationalProgram"))
         for program_value in _list(educational.get("items")):
             program = _obj(program_value)
-            code = _canonical_code(_text(program.get("code")))
+            source_code = _text(program.get("code"))
+            code = _canonical_code(source_code)
             name = _text(program.get("name"))
             plan = _text(program.get("plan"))
-            if code not in program_codes:
+            if not source_code or not code:
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "S06 detail contains a program without a code")
+            if program_codes is not None and code not in program_codes:
                 continue
             if not name or not plan:
                 raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Target program {code} is missing name or plan")
@@ -149,17 +200,16 @@ def _parse_detail(snapshot: object, program_codes: tuple[str, ...]) -> tuple[Raw
                     study_plan_url=http_url(plan),
                     source_url=typed.requested_url,
                     locator=SourceLocator(source_url=typed.requested_url),
+                    source_code=source_code,
                 )
             )
-    if len(records) != len(program_codes):
+    if program_codes is not None and len(records) != len(program_codes):
         raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "S06 detail did not contain exactly the selected programs")
     return direction, records
 
 
-def _parse_curriculum(snapshot: object, program_code: str) -> list[RawCurriculumRow]:
-    from ..contracts.raw import RawSourceSnapshot
-
-    typed = cast(RawSourceSnapshot, snapshot)
+def _parse_curriculum(snapshot: RawSourceSnapshot, program_code: str, source_program_code: str) -> list[RawCurriculumRow]:
+    typed = snapshot
     source_definition = SourceDefinition(id="S06", name="BMSTU curriculum", url=str(typed.requested_url))
     resource = FetchedResource(
         requested_url=str(typed.requested_url),
@@ -189,7 +239,7 @@ def _parse_curriculum(snapshot: object, program_code: str) -> list[RawCurriculum
             raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Curriculum row for {program_code} is incomplete")
         result.append(
             RawCurriculumRow(
-                program_code=_object_text(record.get("program_profile_code")) or program_code,
+                program_code=program_code,
                 discipline=discipline,
                 semester=semester,
                 hours=hours,
@@ -199,6 +249,7 @@ def _parse_curriculum(snapshot: object, program_code: str) -> list[RawCurriculum
                 source_position=semester and (_object_int(record.get("row_no")) or None),
                 source_url=typed.requested_url,
                 locator=SourceLocator(source_url=typed.requested_url, row=_object_int(record.get("row_no"))),
+                source_program_code=source_program_code,
             )
         )
     if not result:
@@ -207,15 +258,57 @@ def _parse_curriculum(snapshot: object, program_code: str) -> list[RawCurriculum
     return result
 
 
-def _document_for_program(captured: CapturedSources, code: str) -> object:
-    matches = tuple(snapshot for snapshot in captured.by_kind("bmstu_curriculum_document") if code in str(snapshot.requested_url) or code in str(snapshot.final_url) or _contains_plan_name(snapshot.body, code))
-    if len(matches) == 1:
-        return matches[0]
-    documents = captured.by_kind("bmstu_curriculum_document")
-    if len(documents) == len(TARGET_PROGRAM_CODES):
-        index = TARGET_PROGRAM_CODES.index(code)
-        return documents[index]
-    raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Could not select curriculum document for {code}")
+def _documents_for_program(captured: CapturedSources, program: RawProgramRecord) -> tuple[RawSourceSnapshot, ...]:
+    plan_url = str(program.study_plan_url)
+    matches = tuple(
+        snapshot
+        for snapshot in captured.by_kind("bmstu_curriculum_document")
+        if str(snapshot.requested_url) == plan_url
+    )
+    return matches
+
+
+def _metadata_for_program(captured: CapturedSources, program: RawProgramRecord) -> tuple[RawSourceSnapshot, ...]:
+    plan_url = str(program.study_plan_url)
+    return tuple(snapshot for snapshot in captured.by_kind("bmstu_curriculum_metadata") if str(snapshot.requested_url) == plan_url)
+
+
+def _curriculum_gap(program: RawProgramRecord, reason: str) -> RawSourceGap:
+    from hashlib import sha256
+
+    key = f"program|{program.code}|{program.study_plan_url}|{reason}"
+    return RawSourceGap(
+        id=f"source-gap:{sha256(key.encode('utf-8')).hexdigest()[:24]}",
+        entity_type="program",
+        entity_key=f"program:{program.code}",
+        reason=reason,
+        source_url=program.study_plan_url,
+        locator=program.locator,
+    )
+
+
+def _direction_aliases(values: list[RawDirectionRecord]) -> list[RawDirectionRecord]:
+    result: list[RawDirectionRecord] = []
+    seen: set[str] = set()
+    for value in values:
+        for code in direction_codes(value.code):
+            if code in seen:
+                continue
+            seen.add(code)
+            result.append(value.model_copy(update={"code": code}))
+    return result
+
+
+def _detail_data_from_body(body: bytes) -> JsonObject:
+    try:
+        root: JsonObject = _json_object(body)
+    except ContractError:
+        soup = BeautifulSoup(body, "html.parser")
+        script = soup.find("script", id="__NEXT_DATA__")
+        if script is None or not script.string:
+            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "S06 detail has neither JSON nor __NEXT_DATA__")
+        root = _json_object(script.string.encode("utf-8"))
+    return _detail_data(root)
 
 
 def _contains_plan_name(body: bytes, code: str) -> bool:
@@ -263,7 +356,7 @@ def _city(address: str | None) -> str | None:
     return match.group(1).strip() if match else None
 
 
-def _education_year(data: dict[str, object]) -> int:
+def _education_year(data: Mapping[str, object]) -> int:
     text = _text(data.get("description")) or ""
     match = re.search(r"20\d{2}", text)
     return int(match.group(0)) if match else 2026

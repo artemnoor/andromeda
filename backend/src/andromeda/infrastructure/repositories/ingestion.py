@@ -296,15 +296,17 @@ class SqlAlchemyIngestionRepository:
     @staticmethod
     def _insert_raw_records(session: Session, raw: RawTracerBundle) -> None:
         hashes_by_url = {str(snapshot.requested_url): snapshot.content_sha256 for snapshot in raw.snapshots}
+        raw_directions = raw.directions or (raw.direction,)
         records: list[tuple[str, str, str]] = [
             ("University", raw.university.model_dump_json(), str(raw.university.locator.source_url)),
-            ("Direction", raw.direction.model_dump_json(), str(raw.direction.locator.source_url)),
         ]
+        records.extend(("Direction", direction.model_dump_json(), str(direction.locator.source_url)) for direction in raw_directions)
         records.extend(("Program", program.model_dump_json(), str(program.source_url)) for program in raw.programs)
         records.extend(("CurriculumRow", row.model_dump_json(), str(row.source_url)) for row in raw.curriculum_rows)
         records.extend(("Admission", admission.model_dump_json(), str(admission.source_url)) for admission in raw.admissions)
         records.extend(("Event", event.model_dump_json(), str(event.source_url)) for event in raw.events)
         records.extend(("CampusPoint", point.model_dump_json(), str(point.source_url)) for point in raw.campus_points)
+        records.extend(("SourceGap", gap.model_dump_json(), str(gap.locator.source_url)) for gap in raw.source_gaps)
         for index, (record_type, payload, source_url) in enumerate(records):
             snapshot_hash = hashes_by_url.get(source_url)
             if snapshot_hash is None:
@@ -339,21 +341,23 @@ class SqlAlchemyIngestionRepository:
             )
         )
         session.flush()
-        stats.record(
-            cls._upsert(
-                session,
-                DirectionModel,
-                canonical.direction.id,
-                {
-                    "id": canonical.direction.id,
-                    "university_id": canonical.direction.university_id,
-                    "code": canonical.direction.code,
-                    "name": canonical.direction.name,
-                    "education_level": canonical.direction.education_level.value,
-                },
-                immutable_fields=("university_id", "code"),
+        directions = canonical.directions or (canonical.direction,)
+        for direction in directions:
+            stats.record(
+                cls._upsert(
+                    session,
+                    DirectionModel,
+                    direction.id,
+                    {
+                        "id": direction.id,
+                        "university_id": direction.university_id,
+                        "code": direction.code,
+                        "name": direction.name,
+                        "education_level": direction.education_level.value,
+                    },
+                    immutable_fields=("university_id", "code"),
+                )
             )
-        )
         session.flush()
         for program in canonical.programs:
             stats.record(

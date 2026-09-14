@@ -31,16 +31,16 @@ from ..normalizers.codes import normalize_code
 logger = logging.getLogger("andromeda.ingestion.bmstu.parser.admissions")
 
 
-def parse_detail_admissions(snapshot: RawSourceSnapshot, program_codes: Sequence[str]) -> tuple[RawAdmissionRecord, ...]:
+def parse_detail_admissions(snapshot: RawSourceSnapshot, program_codes: Sequence[str] | None = None) -> tuple[RawAdmissionRecord, ...]:
     root = _read_next_data(snapshot.body)
-    data = _object(_object(_object(_object(root, "props"), "initialState"), "bachelorMajorsDetails"), "data")
+    data = _detail_data(root)
     additional = _object(data, "additional")
     direction_code = _text(additional.get("code"))
     if not direction_code:
         raise ValueError("BMSTU detail admission payload has no direction code")
 
-    selected = tuple(normalize_code(code) for code in program_codes)
     profiles = _profiles(data)
+    selected = tuple(normalize_code(code) for code in program_codes) if program_codes is not None else tuple(normalize_code(code) for code, _ in profiles if code)
     profile_by_code = {normalize_code(code): name for code, name in profiles if code}
     missing = tuple(code for code in selected if code not in profile_by_code)
     if missing:
@@ -242,6 +242,12 @@ def _current_year(data: Mapping[str, object], snapshot: RawSourceSnapshot) -> in
 
 
 def _read_next_data(body: bytes) -> Mapping[str, object]:
+    try:
+        value = json.loads(body.decode("utf-8-sig"))
+        if isinstance(value, Mapping):
+            return value
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        pass
     soup = BeautifulSoup(body, "html.parser")
     script = soup.find("script", id="__NEXT_DATA__")
     if script is None or not script.string:
@@ -250,6 +256,15 @@ def _read_next_data(body: bytes) -> Mapping[str, object]:
     if not isinstance(value, Mapping):
         raise ValueError("BMSTU detail __NEXT_DATA__ is not an object")
     return value
+
+
+def _detail_data(root: Mapping[str, object]) -> dict[str, object]:
+    if _object(root, "additional") or _object(root, "chairs"):
+        return dict(root)
+    direct = _object(root, "data")
+    if _object(direct, "additional") or _object(direct, "chairs"):
+        return direct
+    return _object(_object(_object(_object(root, "props"), "initialState"), "bachelorMajorsDetails"), "data")
 
 
 def _object(value: Mapping[str, object], key: str) -> dict[str, object]:

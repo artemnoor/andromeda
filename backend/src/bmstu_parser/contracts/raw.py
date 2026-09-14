@@ -47,6 +47,15 @@ class RawDirectionRecord(RawBase):
     locator: SourceLocator
 
 
+class RawSourceGap(RawBase):
+    id: str
+    entity_type: str
+    entity_key: str
+    reason: str
+    source_url: HttpUrl
+    locator: SourceLocator
+
+
 class RawProgramRecord(RawBase):
     code: str
     name: str
@@ -56,6 +65,7 @@ class RawProgramRecord(RawBase):
     study_plan_url: HttpUrl
     source_url: HttpUrl
     locator: SourceLocator
+    source_code: str | None = None
 
 
 class RawCurriculumRow(RawBase):
@@ -69,6 +79,7 @@ class RawCurriculumRow(RawBase):
     source_position: int | None = Field(default=None, ge=1)
     source_url: HttpUrl
     locator: SourceLocator
+    source_program_code: str | None = None
 
 
 class RawTracerBundle(RawBase):
@@ -76,4 +87,6 @@ class RawTracerBundle(RawBase):
     university: RawUniversityRecord
     direction: RawDirectionRecord
     programs: tuple[RawProgramRecord, ...] = Field(min_length=1)
-    curriculum_rows: tuple[RawCurriculumRow, ...] = Field(min_length=1)
+    curriculum_rows: tuple[RawCurriculumRow, ...] = ()
+    directions: tuple[RawDirectionRecord, ...] = ()
+    source_gaps: tuple[RawSourceGap, ...] = ()

@@ -33,6 +33,8 @@ from run_tracer_bullet import (  # noqa: E402
     selected_program_codes,
 )
 
+DEMO_FIXTURE_PROGRAM_CODES = ("09.03.01-02", "09.03.01-12")
+
 logger = logging.getLogger("tracer.demo")
 
 
@@ -349,7 +351,7 @@ def _stop_process(process: Popen[bytes], label: str) -> None:
 
 
 def run_demo(args: argparse.Namespace) -> TracerRunResult:
-    program_codes = selected_program_codes(args.program_codes, args.program_ids)
+    program_codes = selected_program_codes(args.program_codes, args.program_ids) or DEMO_FIXTURE_PROGRAM_CODES
     database_url = resolve_database_url(args.database_url)
     fixture_dir = args.fixture_dir if args.fixture_dir.is_absolute() else (REPO_ROOT / args.fixture_dir).resolve()
     configured_event_fixture_dir = getattr(args, "event_fixture_dir", DEFAULT_EVENT_FIXTURE_DIR)

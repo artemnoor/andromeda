@@ -1622,7 +1622,7 @@ export interface components {
          * SourceKind
          * @enum {string}
          */
-        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_events" | "bmstu_campus_points";
+        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_curriculum_metadata" | "bmstu_events" | "bmstu_campus_points";
         /**
          * StudyForm
          * @enum {string}

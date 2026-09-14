@@ -46,6 +46,17 @@ class RawDirectionRecord(ContractModel):
     locator: SourceLocator
 
 
+class RawSourceGap(ContractModel):
+    """Published source fact that could not be projected into a domain row."""
+
+    id: str = Field(min_length=1, max_length=384)
+    entity_type: str = Field(min_length=1, max_length=64)
+    entity_key: str = Field(min_length=1, max_length=256)
+    reason: str = Field(min_length=1, max_length=512)
+    source_url: HttpUrl
+    locator: SourceLocator
+
+
 class RawProgramRecord(ContractModel):
     code: str = Field(min_length=1)
     name: str = Field(min_length=1)
@@ -55,6 +66,7 @@ class RawProgramRecord(ContractModel):
     study_plan_url: HttpUrl
     source_url: HttpUrl
     locator: SourceLocator
+    source_code: str | None = Field(default=None, min_length=1, max_length=256)
 
 
 class RawCurriculumRow(ContractModel):
@@ -68,6 +80,7 @@ class RawCurriculumRow(ContractModel):
     source_position: int | None = Field(default=None, strict=True, ge=1, le=10_000)
     source_url: HttpUrl
     locator: SourceLocator
+    source_program_code: str | None = Field(default=None, min_length=1, max_length=256)
 
 
 class RawAdmissionExamRequirement(ContractModel):
@@ -114,6 +127,7 @@ class RawAdmissionRecord(ContractModel):
     source_kind: str = Field(min_length=1, max_length=256)
     source_url: HttpUrl
     locator: SourceLocator
+    source_program_code: str | None = Field(default=None, min_length=1, max_length=256)
 
 
 class RawVenueRecord(ContractModel):
@@ -168,7 +182,9 @@ class RawTracerBundle(ContractModel):
     university: RawUniversityRecord
     direction: RawDirectionRecord
     programs: tuple[RawProgramRecord, ...] = Field(min_length=1)
-    curriculum_rows: tuple[RawCurriculumRow, ...] = Field(min_length=1)
+    curriculum_rows: tuple[RawCurriculumRow, ...] = ()
+    directions: tuple[RawDirectionRecord, ...] = ()
+    source_gaps: tuple[RawSourceGap, ...] = ()
     admissions: tuple[RawAdmissionRecord, ...] = ()
     events: tuple[RawEventRecord, ...] = ()
     campus_points: tuple[RawCampusPointRecord, ...] = ()

@@ -60,6 +60,13 @@ def normalize_events(
         for code in record.program_codes:
             normalized_code = normalize_code(code)
             if normalized_code not in known_codes:
+                if known_program_codes is not None:
+                    logger.warning(
+                        "[FIX:events-subset] event_program_ignored source_key=%s code=%s reason=outside_selected_program_scope",
+                        record.external_key,
+                        code,
+                    )
+                    continue
                 logger.error(
                     "[FIX:events-subset] event_program_rejected source_key=%s code=%s reason=unknown_program",
                     record.external_key,
