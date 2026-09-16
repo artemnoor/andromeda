@@ -22,7 +22,7 @@ jobs:
         run: |
           pdftotext -layout backend/tests/fixtures/tracer/raw/curriculum.pdf "$RUNNER_TEMP/bmstu-curriculum.txt"
           grep -q "ПЛАН УЧЕБНОГО ПРОЦЕССА" "$RUNNER_TEMP/bmstu-curriculum.txt"
-      - run: python -m pip install -e "backend[dev]"
+      - run: python -m pip install -e "backend[dev,browser]"
       - name: Run backend tests
         run: python -m pytest -q
         working-directory: backend
@@ -209,7 +209,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m pip install -e "backend[dev]"
+      - run: python -m pip install -e "backend[dev,browser]"
       - name: Run production proftest and admission-fit checks
         run: python -m pytest -q backend/tests/modules/proftest backend/tests/modules/admission_fit backend/tests/api/test_proftest_api.py backend/tests/api/test_proftest_contract.py backend/tests/api/test_proftest_profile_api.py backend/tests/api/test_proftest_profile_contract.py backend/tests/api/test_admission_fit_api.py backend/tests/api/test_admission_fit_contract.py backend/tests/integration/test_proftest_catalog.py backend/tests/integration/test_proftest_vertical_slice.py backend/tests/integration/test_user_profile_persistence.py backend/tests/integration/test_admission_fit_vertical_slice.py
       - name: Run auth module and API checks
