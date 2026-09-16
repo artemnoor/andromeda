@@ -5,7 +5,7 @@ services:
     environment:
       ANDROMEDA_ENV: test
       BMSTU_DATABASE_URL: sqlite:////app/data/tracer.db
-      VITE_FRONTEND_ORIGIN: http://localhost
+      FRONTEND_ORIGIN: http://localhost
       LOG_LEVEL: INFO
       BMSTU_DB_POOL_SIZE: 1
       BMSTU_DB_MAX_OVERFLOW: 0

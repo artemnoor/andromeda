@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from bmstu_parser.api.main import create_app
+from andromeda.api.main import create_app
 
 from conftest import PROGRAM_A, PROGRAM_B
 
@@ -27,6 +27,6 @@ def test_compare_rejects_invalid_query_with_error_contract(ingested_db: tuple[st
     assert response.status_code == 422
     assert response.json() == {
         "code": "VALIDATION_ERROR",
-        "message": "programIds must contain exactly two distinct valid program ids",
-        "details": [{"path": "programIds", "message": "expected two distinct ProgramId values", "type": "value_error"}],
+        "message": "Request validation failed",
+        "details": [{"path": "query", "message": "Value error, programIds must contain exactly two distinct program ids", "type": "value_error"}],
     }

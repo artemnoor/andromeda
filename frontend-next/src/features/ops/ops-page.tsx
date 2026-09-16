@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, Loading, ErrorState, Stat, SectionTitle, Tag } from "@/components/shared";
-import { getIngestionRunsApi, getIngestionRunApi, retryIngestionApi } from "@/lib/api";
+import { getIngestionRuns, getIngestionRun, retryIngestion } from "@/lib/api";
 import { INGESTION_STATUS_LABELS } from "@/lib/labels";
 import { formatDateTime } from "@/lib/format";
 import type { IngestionRunSummary, IngestionRunDetail } from "@/lib/types";
@@ -39,7 +39,7 @@ export function OpsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await getIngestionRunsApi({ status: status === "all" ? undefined : (status as never) }, key);
+      const res = await getIngestionRuns({ status: status === "all" ? undefined : (status as never) }, key);
       setRuns(res.items);
     } catch {
       setError("Ops API недоступен или неверный ключ (возвращает 404 для защиты поверхности).");
@@ -54,7 +54,7 @@ export function OpsPage() {
 
   const openDetail = async (id: string) => {
     try {
-      const res = await getIngestionRunApi(id, opsKey || "demo-key");
+      const res = await getIngestionRun(id, opsKey || "demo-key");
       setDetail(res.run);
     } catch {
       setError("Не удалось загрузить детали run.");
@@ -64,7 +64,7 @@ export function OpsPage() {
   const retry = async () => {
     setRetrying(true);
     try {
-      const res = await retryIngestionApi({ source: "bmstu_fixture" }, opsKey || "demo-key");
+      const res = await retryIngestion({ source: "bmstu_fixture" }, opsKey || "demo-key");
       setDetail(res.run);
       await loadRuns(opsKey || "demo-key");
     } finally {

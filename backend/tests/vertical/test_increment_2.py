@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from bmstu_parser.api.main import create_app
+from andromeda.api.main import create_app
 
 from conftest import PROGRAM_A, PROGRAM_B
 

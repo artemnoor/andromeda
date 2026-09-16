@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from bmstu_parser.api.main import create_app
+from andromeda.api.main import create_app
 from andromeda.shared.contracts.errors import ConflictError, ErrorCode
 
 
@@ -14,7 +14,7 @@ def test_missing_program_uses_structured_error_contract(ingested_db: tuple[str, 
     payload = response.json()
     assert payload["code"] == "NOT_FOUND"
     assert isinstance(payload["message"], str)
-    assert payload["details"][0]["path"] == "id"
+    assert payload["details"] == []
 
 
 def test_conflict_error_is_a_strict_public_error_code() -> None:

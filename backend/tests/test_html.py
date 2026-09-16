@@ -1,4 +1,4 @@
-from bmstu_parser.html import extract_links, extract_tables, parse_number, parse_page
+from andromeda.ingestion.universities.bmstu.html import extract_links, extract_tables, parse_number, parse_page
 
 
 def test_extracts_table_links_and_numbers() -> None:
@@ -15,4 +15,3 @@ def test_extracts_table_links_and_numbers() -> None:
     assert page.tables[0]["rows"][0]["Код"] == "09.03.04"
     assert parse_number(page.tables[0]["rows"][0]["Цена, руб."]) == 699000
     assert extract_links(page.soup, "https://example.test/cost")[0]["url"] == "https://example.test/docs/rules.pdf"
-

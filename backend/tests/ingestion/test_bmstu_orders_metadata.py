@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from bmstu_parser.tracer.source import AdmissionOrderManifestEntry
+from andromeda.ingestion.universities.bmstu.capture import AdmissionOrderManifestEntry
 from andromeda.ingestion.universities.bmstu.source_metadata import (
     BmstuOrderCampus,
     BmstuOrderCompetition,

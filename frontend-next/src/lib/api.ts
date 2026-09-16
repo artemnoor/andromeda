@@ -52,7 +52,9 @@ type ApiProgram = paths["/programs/{id}"]["get"]["responses"][200]["content"]["a
 type ApiCurriculum = paths["/programs/{id}/curriculum"]["get"]["responses"][200]["content"]["application/json"];
 type ApiAdmissions = paths["/programs/{id}/admissions"]["get"]["responses"][200]["content"]["application/json"];
 type ApiAdmissionFit = paths["/programs/{id}/admission-fit"]["post"]["responses"][200]["content"]["application/json"];
+type ApiAdmissionFitRequest = NonNullable<paths["/programs/{id}/admission-fit"]["post"]["requestBody"]>["content"]["application/json"];
 type ApiComparison = paths["/compare"]["get"]["responses"][200]["content"]["application/json"];
+type ApiDisciplineAreas = paths["/discipline-areas"]["get"]["responses"][200]["content"]["application/json"];
 type ApiQuestions = paths["/proftest/questions"]["get"]["responses"][200]["content"]["application/json"];
 type ApiPreview = paths["/proftest/preview"]["post"]["responses"][200]["content"]["application/json"];
 type ApiResults = paths["/proftest/results"]["post"]["responses"][200]["content"]["application/json"];
@@ -62,6 +64,12 @@ type ApiProftestSessionPatch = NonNullable<paths["/proftest/sessions/current"]["
 type ApiProftestSessionNext = NonNullable<paths["/proftest/sessions/current/next"]["post"]["requestBody"]>["content"]["application/json"];
 type ApiProftestAnalytics = NonNullable<paths["/proftest/analytics"]["post"]["requestBody"]>["content"]["application/json"];
 type ApiProfile = paths["/proftest/profile"]["get"]["responses"][200]["content"]["application/json"];
+type ApiCreateProfileRequest = NonNullable<paths["/proftest/profile"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiCreateProfile = paths["/proftest/profile"]["post"]["responses"][201]["content"]["application/json"];
+type ApiUpdateProfileRequest = NonNullable<paths["/proftest/profile"]["put"]["requestBody"]>["content"]["application/json"];
+type ApiUpdateProfile = paths["/proftest/profile"]["put"]["responses"][200]["content"]["application/json"];
+type ApiRecommendationRequest = NonNullable<paths["/recommendations"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiRecommendationResponse = paths["/recommendations"]["post"]["responses"][200]["content"]["application/json"];
 type ApiRecommendations = paths["/recommendations/current"]["get"]["responses"][200]["content"]["application/json"];
 type ApiEvents = paths["/events"]["get"]["responses"][200]["content"]["application/json"];
 type ApiEvent = paths["/events/{id}"]["get"]["responses"][200]["content"]["application/json"];
@@ -73,6 +81,10 @@ type ApiRuns = paths["/ops/ingestion/runs"]["get"]["responses"][200]["content"][
 type ApiRun = paths["/ops/ingestion/runs/{id}"]["get"]["responses"][200]["content"]["application/json"];
 type ApiRetry = paths["/ops/ingestion/runs/retry"]["post"]["responses"][200]["content"]["application/json"];
 type ApiSession = paths["/auth/session"]["get"]["responses"][200]["content"]["application/json"];
+type ApiRegisterRequest = NonNullable<paths["/auth/register"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiLoginRequest = NonNullable<paths["/auth/login"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiEventsQuery = NonNullable<paths["/events"]["get"]["parameters"]["query"]>;
+type ApiCampusPointEventsQuery = NonNullable<paths["/campus/points/{id}/events"]["get"]["parameters"]["query"]>;
 
 const CONFIGURED_API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api").replace(/\/$/, "");
 const DEBUG_API_REQUESTS = process.env.NEXT_PUBLIC_DEBUG_API === "1";
@@ -92,10 +104,26 @@ function getApiBaseUrl(): string {
   }
 }
 
-export class ApiRequestError extends Error {
-  constructor(public readonly status: number, message: string) {
-    super(message);
-    this.name = "ApiRequestError";
+type ApiErrorDetail = components["schemas"]["ErrorDetail"];
+type ApiErrorPayload = components["schemas"]["ErrorResponse"];
+
+function isErrorResponse(value: unknown): value is ApiErrorPayload {
+  if (value === null || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.code === "string" && typeof candidate.message === "string" && Array.isArray(candidate.details);
+}
+
+export class ApiError extends Error {
+  constructor(public readonly status: number, public readonly payload: ApiErrorPayload) {
+    super(payload.message);
+    this.name = "ApiError";
+  }
+}
+
+export class ApiTimeoutError extends Error {
+  constructor(public readonly path: string, public readonly timeoutMs: number) {
+    super(`API request timed out after ${timeoutMs}ms`);
+    this.name = "ApiTimeoutError";
   }
 }
 
@@ -108,7 +136,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
   const apiBaseUrl = getApiBaseUrl();
 
   if (DEBUG_API_REQUESTS) {
-    console.debug("[FIX:catalog-api] request", { path, apiBaseUrl });
+    console.debug("[FIX:catalog-api] request", { path });
   }
 
   try {
@@ -130,10 +158,10 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
       payload = text;
     }
     if (!response.ok) {
-      const message = typeof payload === "object" && payload !== null && "message" in payload
-        ? String((payload as { message: unknown }).message)
-        : `API request failed with ${response.status}`;
-      throw new ApiRequestError(response.status, message);
+      const errorPayload: ApiErrorPayload = isErrorResponse(payload)
+        ? payload
+        : { code: "INTERNAL_ERROR", message: `API request failed with ${response.status}`, details: [] as ApiErrorDetail[] };
+      throw new ApiError(response.status, errorPayload);
     }
     return payload as T;
   } catch (error) {
@@ -142,6 +170,9 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
         path,
         message: error instanceof Error ? error.message : "unknown error",
       });
+    }
+    if (error instanceof DOMException ? error.name === "AbortError" : error instanceof Error && error.name === "AbortError") {
+      if (!init.signal?.aborted) throw new ApiTimeoutError(path, API_REQUEST_TIMEOUT_MS);
     }
     throw error;
   } finally {
@@ -521,7 +552,7 @@ export function getProgram(id: string): Promise<ProgramResponse> {
   return requestJson<ApiProgram>(`/programs/${encodeURIComponent(id)}`).then((raw) => ({ program: mapProgram(raw.program) }));
 }
 
-export function getCurriculumApi(id: string): Promise<CurriculumResponse> {
+export function getCurriculum(id: string): Promise<CurriculumResponse> {
   return requestJson<ApiCurriculum>(`/programs/${encodeURIComponent(id)}/curriculum`).then(mapCurriculum);
 }
 
@@ -530,9 +561,10 @@ export function getProgramAdmissions(id: string): Promise<ProgramAdmissionsRespo
 }
 
 export function calculateAdmissionFit(id: string, request: AdmissionFitRequest): Promise<AdmissionFitResponse> {
+  const payload = request as ApiAdmissionFitRequest;
   return requestJson<ApiAdmissionFit>(`/programs/${encodeURIComponent(id)}/admission-fit`, {
     method: "POST",
-    body: JSON.stringify(request),
+    body: JSON.stringify(payload),
   }).then(mapAdmissionFit);
 }
 
@@ -543,7 +575,7 @@ export function comparePrograms(programIds: readonly [string, string], options: 
 }
 
 export function getDisciplineAreas(): Promise<{ items: DisciplineArea[] }> {
-  return requestJson<{ items: any[] }>("/discipline-areas").then((raw) => ({
+  return requestJson<ApiDisciplineAreas>("/discipline-areas").then((raw) => ({
     items: raw.items.map((item) => ({ code: item.code, name: item.name, description: item.description, weight: "1" })),
   }));
 }
@@ -552,7 +584,7 @@ export function getProftestQuestions(): Promise<QuestionnaireResponse> {
   return requestJson<ApiQuestions>("/proftest/questions");
 }
 
-export function previewProftestApi(request: ProftestSubmissionRequest): Promise<ProftestPreviewResponse> {
+export function previewProftest(request: ProftestSubmissionRequest): Promise<ProftestPreviewResponse> {
   return requestJson<ApiPreview>("/proftest/preview", { method: "POST", body: JSON.stringify(request) }).then((raw: any) => ({
     profile: mapProfile(raw.profile),
     adaptiveDecision: {
@@ -568,7 +600,7 @@ export function previewProftestApi(request: ProftestSubmissionRequest): Promise<
   }));
 }
 
-export function getProftestResultsApi(request: ProftestSubmissionRequest): Promise<ProftestResultsResponse> {
+export function getProftestResults(request: ProftestSubmissionRequest): Promise<ProftestResultsResponse> {
   return requestJson<ApiResults>("/proftest/results", { method: "POST", body: JSON.stringify(request) }).then(mapRecommendations);
 }
 
@@ -602,6 +634,23 @@ export function getCurrentProfile(): Promise<UserProfileSnapshot> {
   return requestJson<ApiProfile>("/proftest/profile").then(mapProfileSnapshot);
 }
 
+export type CreateProfileRequest = ApiCreateProfileRequest;
+export type UpdateProfileRequest = ApiUpdateProfileRequest;
+export type RecommendationRequest = ApiRecommendationRequest;
+export type CurrentProfileResponse = UserProfileSnapshot;
+
+export function createCurrentProfile(request: CreateProfileRequest): Promise<CurrentProfileResponse> {
+  return requestJson<ApiCreateProfile>("/proftest/profile", { method: "POST", body: JSON.stringify(request) }).then(mapProfileSnapshot);
+}
+
+export function updateCurrentProfile(request: UpdateProfileRequest): Promise<CurrentProfileResponse> {
+  return requestJson<ApiUpdateProfile>("/proftest/profile", { method: "PUT", body: JSON.stringify(request) }).then(mapProfileSnapshot);
+}
+
+export function getRecommendations(request: RecommendationRequest): Promise<RecommendationsResponse> {
+  return requestJson<ApiRecommendationResponse>("/recommendations", { method: "POST", body: JSON.stringify(request) }).then(mapRecommendations);
+}
+
 export function getCurrentRecommendations(limit = 10): Promise<RecommendationsResponse> {
   return requestJson<ApiRecommendations>(`/recommendations/current?limit=${encodeURIComponent(String(limit))}`).then(mapRecommendations);
 }
@@ -618,7 +667,7 @@ export type EventQuery = {
   limit?: number;
 };
 
-function queryString(options: Record<string, string | number | boolean | undefined>): string {
+function queryString(options: Record<string, string | number | boolean | null | undefined>): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(options)) if (value !== undefined) params.set(key, String(value));
   const encoded = params.toString();
@@ -629,24 +678,26 @@ export function getEvents(options: EventQuery = {}): Promise<EventListResponse> 
   return requestJson<ApiEvents>(`/events${queryString(options)}`).then((raw) => ({ items: raw.items.map(mapEvent), total: raw.total }));
 }
 
-export function getEventApi(id: string): Promise<EventDetailResponse> {
+export function getEvent(id: string): Promise<EventDetailResponse> {
   return requestJson<ApiEvent>(`/events/${encodeURIComponent(id)}`).then((raw) => ({ event: mapEvent(raw.event) }));
 }
 
-export function getCampusPointApi(id: string): Promise<CampusPointDetailResponse> {
+export function getCampusPoint(id: string): Promise<CampusPointDetailResponse> {
   return requestJson<ApiPoint>(`/campus/points/${encodeURIComponent(id)}`).then((raw) => ({ point: mapPoint(raw) }));
 }
 
-export function getCampusPointEventsApi(id: string): Promise<CampusPointEventsResponse> {
-  return requestJson<ApiPointEvents>(`/campus/points/${encodeURIComponent(id)}/events`).then((raw) => ({
+export type CampusPointEventsQuery = ApiCampusPointEventsQuery;
+
+export function getCampusPointEvents(id: string, options: CampusPointEventsQuery = {}): Promise<CampusPointEventsResponse> {
+  return requestJson<ApiPointEvents>(`/campus/points/${encodeURIComponent(id)}/events${queryString(options)}`).then((raw) => ({
     pointId: raw.pointId,
     items: raw.items.map(mapEvent),
     total: raw.total,
   }));
 }
 
-export function getCampusRecommendations(): Promise<CampusRecommendationsResponse> {
-  return requestJson<ApiCampusRecommendations>("/campus/recommendations").then((raw) => ({
+export function getCampusRecommendations(limit = 10): Promise<CampusRecommendationsResponse> {
+  return requestJson<ApiCampusRecommendations>(`/campus/recommendations?limit=${encodeURIComponent(String(limit))}`).then((raw) => ({
     recommendedProgramIds: raw.recommendedProgramIds,
     recommendations: raw.recommendations.map(mapRecommendation),
     points: raw.points.map(mapPoint),
@@ -655,23 +706,26 @@ export function getCampusRecommendations(): Promise<CampusRecommendationsRespons
   }));
 }
 
-export function getPersonalRouteApi(): Promise<PersonalRouteResponse> {
-  return requestJson<ApiRoute>("/personal-route").then(mapRoute);
+export function getPersonalRoute(limit = 10): Promise<PersonalRouteResponse> {
+  return requestJson<ApiRoute>(`/personal-route?limit=${encodeURIComponent(String(limit))}`).then(mapRoute);
 }
 
-export function getAuthSessionApi(): Promise<AuthSession> {
+export function getAuthSession(): Promise<AuthSession> {
   return requestJson<ApiSession>("/auth/session").then(mapSession);
 }
 
-export function registerAccountApi(email: string, password: string): Promise<AuthSession> {
-  return requestJson<ApiSession>("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) }).then(mapSession);
+export type RegisterRequest = ApiRegisterRequest;
+export type LoginRequest = ApiLoginRequest;
+
+export function registerAccount(request: RegisterRequest): Promise<AuthSession> {
+  return requestJson<ApiSession>("/auth/register", { method: "POST", body: JSON.stringify(request) }).then(mapSession);
 }
 
-export function loginAccountApi(email: string, password: string): Promise<AuthSession> {
-  return requestJson<ApiSession>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }).then(mapSession);
+export function loginAccount(request: LoginRequest): Promise<AuthSession> {
+  return requestJson<ApiSession>("/auth/login", { method: "POST", body: JSON.stringify(request) }).then(mapSession);
 }
 
-export function logoutAccountApi(): Promise<AuthSession> {
+export function logoutAccount(): Promise<AuthSession> {
   return requestJson<ApiSession>("/auth/logout", { method: "POST" }).then(mapSession);
 }
 
@@ -679,18 +733,18 @@ function opsHeaders(opsKey: string): HeadersInit {
   return { "X-Andromeda-Ops-Key": opsKey };
 }
 
-export function getIngestionRunsApi(options: { status?: IngestionRunStatus; limit?: number } = {}, opsKey: string): Promise<IngestionRunListResponse> {
+export function getIngestionRuns(options: { status?: IngestionRunStatus; limit?: number } = {}, opsKey: string): Promise<IngestionRunListResponse> {
   return requestJson<ApiRuns>(`/ops/ingestion/runs${queryString(options)}`, { headers: opsHeaders(opsKey) }).then((raw) => ({
     items: raw.items.map(mapRunSummary),
     total: raw.total,
   }));
 }
 
-export function getIngestionRunApi(id: string, opsKey: string): Promise<IngestionRunDetailResponse> {
+export function getIngestionRun(id: string, opsKey: string): Promise<IngestionRunDetailResponse> {
   return requestJson<ApiRun>(`/ops/ingestion/runs/${encodeURIComponent(id)}`, { headers: opsHeaders(opsKey) }).then((raw) => ({ run: mapRun(raw.run) }));
 }
 
-export function retryIngestionApi(request: IngestionRetryRequest, opsKey: string): Promise<IngestionRunDetailResponse> {
+export function retryIngestion(request: IngestionRetryRequest, opsKey: string): Promise<IngestionRunDetailResponse> {
   return requestJson<ApiRetry>("/ops/ingestion/runs/retry", {
     method: "POST",
     headers: opsHeaders(opsKey),

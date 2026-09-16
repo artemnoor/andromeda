@@ -15,11 +15,13 @@ export function CatalogPage({
   programs,
   loading,
   error,
+  onRetry,
   navigate,
 }: {
   programs: ProgramSummary[];
   loading: boolean;
   error: string | null;
+  onRetry?: () => void;
   navigate: (route: Route) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -45,10 +47,10 @@ export function CatalogPage({
   }, [programs, query, direction, year]);
 
   if (loading) return <Loading label="Загружаем каталог программ…" />;
-  if (error) return <ErrorState title="Каталог недоступен" message={error} />;
+  if (error) return <ErrorState title="Каталог недоступен" message={error} onRetry={onRetry} />;
 
   return (
-    <div>
+    <div data-testid="catalog-page">
       <PageHeader
         eyebrow="Каталог"
         title="Образовательные программы МГТУ"

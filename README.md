@@ -11,7 +11,7 @@ python -m pip install -e "backend[dev]"
 python backend/scripts/run_tracer_demo.py --mode fixture --check
 ```
 
-После запуска API доступен на `http://127.0.0.1:8000/docs`, UI — на `http://127.0.0.1:5173/`. Для ручной работы уберите `--check`.
+После запуска API доступен на `http://127.0.0.1:8000/docs`, UI — на `http://127.0.0.1:3000/`. Для ручной работы уберите `--check`.
 
 Для обычной dev-работы используйте PostgreSQL: инструкции находятся в [руководстве PostgreSQL](docs/postgresql.md). SQLite остаётся быстрым test fallback.
 
@@ -32,9 +32,10 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 В UI выберите «Профиль содержания». Flow получает вопросы и результаты только через API: `GET /proftest/questions`, `POST /proftest/preview` и `POST /proftest/results`. Финальный результат сохраняется в Andromeda по anonymous HttpOnly cookie; после reload UI использует `GET /proftest/profile` и `GET /recommendations/current`. Готовый профиль также можно передать в `POST /recommendations`. После изменения API обновите frontend-контракт:
 
 ```powershell
-python backend/scripts/export_openapi.py --out frontend/openapi.json
-cd frontend
+python backend/scripts/export_openapi.py --out frontend-next/openapi.json
+cd frontend-next
 npm run generate-api
+npm run check-api-drift
 ```
 
 `Content Fit` рассчитывается детерминированно по реальным часам/ЗЕТ и долям предметных областей. В recommendation response `Workload readiness` и `Career Fit` пока имеют статус `not_available`; отдельный `Admission Fit` запускается на странице программы и не влияет на Content Fit или ranking рекомендаций.
@@ -46,7 +47,7 @@ npm run generate-api
 ## Пример
 
 ```text
-GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&semester=1
+GET /compare?programIds=<program-id-a>,<program-id-b>&scope=semester&semester=1
 ```
 
 Ответ содержит rows со статусами `both`, `different`, `only_a`, `only_b`, а также totals и blocks.

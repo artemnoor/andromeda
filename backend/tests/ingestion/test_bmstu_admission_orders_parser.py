@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from bmstu_parser.tracer.source import AdmissionOrderManifestEntry
+from andromeda.ingestion.universities.bmstu.capture import AdmissionOrderManifestEntry
 from andromeda.ingestion.universities.bmstu.parser import admission_orders
 from andromeda.ingestion.universities.bmstu.source_metadata import (
     BmstuOrderCompetition,

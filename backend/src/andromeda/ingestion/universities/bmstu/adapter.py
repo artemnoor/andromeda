@@ -5,15 +5,6 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Sequence
 
-from bmstu_parser.contracts.raw import RawProgramRecord as LegacyRawProgramRecord
-from bmstu_parser.contracts.raw import RawSourceSnapshot as LegacyRawSourceSnapshot
-from bmstu_parser.tracer.normalizer import normalize_bundle as normalize_legacy_bundle
-from bmstu_parser.tracer.parser import parse_captured as parse_legacy_captured
-from bmstu_parser.tracer.source import CapturedSources as LegacyCapturedSources
-from bmstu_parser.tracer.source import TracerSource as LegacyTracerSource
-from bmstu_parser.tracer.source import _detail_plan_records, parse_orders_manifest
-from bmstu_parser.tracer.identity import direction_codes as extract_direction_codes
-
 from ...contracts.normalized import CanonicalSnapshot
 from ...contracts.raw import RawAdmissionPassingScore, RawAdmissionRecord, RawProgramRecord, RawSourceGap, RawTracerBundle, SourceLocator
 from ...contracts.source import CapturedSources, RawSourceSnapshot
@@ -30,6 +21,10 @@ from .parser.admissions import parse_detail_admissions
 from .parser.admission_orders import iter_pdf_pages, parse_admission_order_document
 from .parser.campus import load_campus_fixture, parse_campus_points
 from .parser.events import load_event_fixture, parse_events
+from .parser.tracer import parse_captured
+from .capture import BmstuSource, _detail_plan_records, parse_orders_manifest
+from .identity import direction_codes as extract_direction_codes, map_source_program_code
+from .normalizers.canonical import normalize_bundle
 from .source_metadata import classify_order_document
 
 
@@ -40,15 +35,10 @@ normalize_logger = logging.getLogger("andromeda.ingestion.bmstu.normalize")
 
 
 class BmstuUniversityAdapter:
-    """Typed BMSTU boundary around the existing source/parser implementation.
-
-    The legacy parser is used as a compatibility engine during migration. Its
-    output is immediately revalidated into ingestion-owned raw and canonical
-    DTOs, so no legacy model escapes this adapter.
-    """
+    """Typed BMSTU boundary for source capture, parsing, and normalization."""
 
     def __init__(self, fetcher: object | None = None) -> None:
-        self._source = LegacyTracerSource(fetcher=fetcher)  # type: ignore[arg-type]
+        self._source = BmstuSource(fetcher=fetcher)  # type: ignore[arg-type]
         self._classifier = RuleBasedDisciplineClassifier(BMSTU_DISCIPLINE_AREA_OVERRIDES)
 
     def close(self) -> None:
@@ -62,15 +52,12 @@ class BmstuUniversityAdapter:
         campus_fixture_dir: Path | None = None,
     ) -> CapturedSources:
         fetch_logger.debug("stage=capture mode=%s", mode)
-        legacy_captured = self._source.capture(mode=mode, fixture_dir=fixture_dir or DEFAULT_FIXTURE_DIR)
-        snapshots = tuple(RawSourceSnapshot.model_validate(snapshot.model_dump()) for snapshot in legacy_captured.snapshots)
+        captured = self._source.capture(mode=mode, fixture_dir=fixture_dir or DEFAULT_FIXTURE_DIR)
+        snapshots = captured.snapshots
         if mode == "fixture":
             event_snapshot = load_event_fixture(event_fixture_dir or DEFAULT_EVENT_FIXTURE_DIR)
             campus_snapshot = load_campus_fixture(campus_fixture_dir or DEFAULT_CAMPUS_FIXTURE_DIR)
-            snapshots += (
-                RawSourceSnapshot.model_validate(event_snapshot.model_dump()),
-                RawSourceSnapshot.model_validate(campus_snapshot.model_dump()),
-            )
+            snapshots += (event_snapshot, campus_snapshot)
         result = CapturedSources(snapshots=snapshots)
         fetch_logger.info(
             "stage=capture_complete mode=%s snapshots=%d event_source=%s campus_source=%s",
@@ -88,16 +75,17 @@ class BmstuUniversityAdapter:
     ) -> tuple[RawTracerBundle, CanonicalSnapshot]:
         selected = select_program_codes(tuple(program_codes)) if program_codes is not None else _fixture_documented_codes(captured)
         campus_source_kind = "bmstu_campus_points"
-        legacy_snapshots = tuple(
-            LegacyRawSourceSnapshot.model_validate(snapshot.model_dump())
+        parser_snapshots = tuple(
+            snapshot
             for snapshot in captured.snapshots
             if snapshot.source_kind != campus_source_kind
         )
-        legacy_captured = LegacyCapturedSources(snapshots=legacy_snapshots)
-        select_logger.debug("stage=selected source_snapshots=%d programs=%s", len(legacy_snapshots), len(selected) if selected is not None else "discovery")
-        parse_logger.debug("stage=parse source_snapshots=%d programs=%s", len(legacy_snapshots), len(selected) if selected is not None else "discovery")
-        legacy_raw = parse_legacy_captured(legacy_captured, program_codes=selected)
-        raw = RawTracerBundle.model_validate({**legacy_raw.model_dump(), "snapshots": captured.snapshots})
+        parser_captured = CapturedSources(snapshots=parser_snapshots)
+        select_logger.debug("stage=selected source_snapshots=%d programs=%s", len(parser_snapshots), len(selected) if selected is not None else "discovery")
+        parse_logger.debug("stage=parse source_snapshots=%d programs=%s", len(parser_snapshots), len(selected) if selected is not None else "discovery")
+        raw = parse_captured(parser_captured, program_codes=selected).model_copy(
+            update={"snapshots": captured.snapshots}
+        )
         admission_records = tuple(
             record
             for detail_snapshot in captured.by_kind("bmstu_major_detail")
@@ -124,9 +112,8 @@ class BmstuUniversityAdapter:
                 "campus_points": campus_records,
             }
         )
-        legacy_canonical = normalize_legacy_bundle(legacy_raw)
-        canonical = CanonicalSnapshot.model_validate(legacy_canonical.model_dump())
-        if campus_snapshots:
+        canonical = normalize_bundle(raw)
+        if campus_snapshots and not any(source.kind is SourceKind.BMSTU_CAMPUS_POINTS for source in canonical.sources):
             campus_snapshot = campus_snapshots[0]
             canonical = canonical.model_copy(
                 update={
@@ -248,9 +235,6 @@ class BmstuUniversityAdapter:
 
 
 def _canonicalize_admission_code(record: RawAdmissionRecord, programs: Sequence[RawProgramRecord]) -> RawAdmissionRecord:
-    from bmstu_parser.tracer.identity import map_source_program_code
-    from typing import cast
-
     source_code = record.program_code
     source_name = record.program_name
     source_directions = extract_direction_codes(source_code)
@@ -260,7 +244,7 @@ def _canonicalize_admission_code(record: RawAdmissionRecord, programs: Sequence[
         else map_source_program_code(
             source_code,
             source_name,
-            cast(Sequence[LegacyRawProgramRecord], programs),
+            programs,
         )
     )
     return record.model_copy(update={"program_code": canonical, "source_program_code": source_code})

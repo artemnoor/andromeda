@@ -22,7 +22,7 @@ from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawTracerBundle
 from andromeda.ingestion.universities.bmstu.parser.admission_orders import iter_pdf_pages
 from andromeda.ingestion.universities.bmstu.source_metadata import classify_order_document
-from bmstu_parser.tracer.source import parse_orders_manifest
+from andromeda.ingestion.universities.bmstu.capture import parse_orders_manifest
 from andromeda.infrastructure.config import Settings, redact_database_url
 from andromeda.infrastructure.database import create_engine_for_url
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
@@ -89,7 +89,7 @@ def run_ingest(
     event_fixture_dir: Path | None = None,
     campus_fixture_dir: Path | None = None,
     database_url: str,
-    program_codes: Sequence[str],
+    program_codes: Sequence[str] | None,
 ) -> TracerRunResult:
     """Run source capture, contract parsing, migration, and domain ingestion once."""
     if database_url.startswith("sqlite:///") and ":memory:" not in database_url:
@@ -200,7 +200,7 @@ def result_payload(result: TracerRunResult, database_url: str) -> dict[str, obje
             "campusPoints": "/campus/points",
             "campusRecommendations": "/campus/recommendations",
         },
-        "frontend": "http://localhost:5173/",
+        "frontend": "http://localhost:3000/",
     }
 
 

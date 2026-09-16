@@ -9,7 +9,7 @@ import logging
 
 
 DEFAULT_DATABASE_URL = "sqlite:///./data/tracer.db"
-DEFAULT_FRONTEND_ORIGIN = "http://localhost:5173,http://127.0.0.1:5173"
+DEFAULT_FRONTEND_ORIGIN = "http://localhost:3000,http://127.0.0.1:3000"
 DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_ENVIRONMENT = "test"
 DEFAULT_PROFILE_COOKIE_NAME = "andromeda_profile_session"
@@ -59,7 +59,7 @@ class Settings:
 
         settings = cls(
             database_url=selected_database_url,
-            frontend_origin=os.environ.get("VITE_FRONTEND_ORIGIN", DEFAULT_FRONTEND_ORIGIN),
+            frontend_origin=os.environ.get("FRONTEND_ORIGIN", DEFAULT_FRONTEND_ORIGIN),
             log_level=os.environ.get("LOG_LEVEL", DEFAULT_LOG_LEVEL).upper(),
             environment=environment,
             pool_size=_int_from_environment("BMSTU_DB_POOL_SIZE", 5),

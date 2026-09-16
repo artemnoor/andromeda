@@ -1,4 +1,4 @@
-from bmstu_parser.pdf import extract_admission_year, iter_order_rows, iter_registered_rows
+from andromeda.ingestion.universities.bmstu.pdf import extract_admission_year, iter_order_rows, iter_registered_rows
 
 
 def test_parses_enrollment_text_rows() -> None:

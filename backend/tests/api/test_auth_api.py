@@ -62,7 +62,7 @@ def test_login_error_is_generic_and_duplicate_registration_is_conflict(tmp_path:
     trusted_origin = client.post(
         "/auth/register",
         json={"email": "student@example.com", "password": "a-secure-password"},
-        headers={"Origin": "http://127.0.0.1:5173"},
+        headers={"Origin": "http://127.0.0.1:3000"},
     )
     assert trusted_origin.status_code == 201, trusted_origin.text
 

@@ -10,7 +10,7 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 
-from bmstu_parser.tracer.source import DEFAULT_FIXTURE_DIR, TracerSource, write_fixture
+from andromeda.ingestion.universities.bmstu.capture import DEFAULT_FIXTURE_DIR, BmstuSource, write_fixture
 
 
 def main() -> int:
@@ -21,7 +21,7 @@ def main() -> int:
     logging.basicConfig(level=getattr(logging, args.log_level), format="%(levelname)s %(name)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
-    source = TracerSource()
+    source = BmstuSource()
     try:
         captured = source.capture(mode="live")
         write_fixture(captured, args.out)

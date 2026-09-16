@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from bmstu_parser.api.main import create_app
+from andromeda.api.main import create_app
 
 
 def test_compare_contract_exposes_both_programs(ingested_db: tuple[str, object, object]) -> None:

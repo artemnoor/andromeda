@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, Loading, ErrorState, Stat, ProvenanceChip, Tag, SectionTitle } from "@/components/shared";
-import { getProgram, getCurriculumApi, getProgramAdmissions, calculateAdmissionFit } from "@/lib/api";
+import { getProgram, getCurriculum, getProgramAdmissions, calculateAdmissionFit } from "@/lib/api";
 import {
   directionLabel,
   studyFormLabel,
@@ -40,7 +40,7 @@ export function ProgramPage({ id, navigate }: { id: string; navigate: (route: Ro
     let active = true;
     setLoading(true);
     setError(null);
-    Promise.all([getProgram(id), getCurriculumApi(id), getProgramAdmissions(id)])
+    Promise.all([getProgram(id), getCurriculum(id), getProgramAdmissions(id)])
       .then(([p, c, a]) => {
         if (!active) return;
         setProgram(p);
@@ -60,7 +60,7 @@ export function ProgramPage({ id, navigate }: { id: string; navigate: (route: Ro
 
   const p = program.program;
   return (
-    <div>
+    <div data-testid="program-page">
       <button
         onClick={() => navigate({ view: "catalog" })}
         className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition hover:text-primary"
@@ -128,7 +128,7 @@ export function ProgramPage({ id, navigate }: { id: string; navigate: (route: Ro
 
 function CurriculumTab({ curriculum }: { curriculum: CurriculumResponse }) {
   return (
-    <Card>
+    <Card data-testid="curriculum-table">
       <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
         <div>
           <h2 className="font-serif text-xl font-semibold">Учебный план {curriculum.educationYear}</h2>
@@ -182,7 +182,7 @@ function CurriculumTab({ curriculum }: { curriculum: CurriculumResponse }) {
 
 function AdmissionsTab({ admissions }: { admissions: ProgramAdmissionsResponse }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="admissions-section">
       {admissions.offerings.map((o) => (
         <Card key={o.id}>
           <CardHeader className="pb-3">

@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Sequence
 
-from bmstu_parser.pdf import extract_admission_year
-from bmstu_parser.tracer.source import AdmissionOrderManifestEntry, parse_orders_manifest
+from .capture import AdmissionOrderManifestEntry, parse_orders_manifest
+from .pdf import extract_admission_year
 
 
 class BmstuOrderDocumentKind(StrEnum):

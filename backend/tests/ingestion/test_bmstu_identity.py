@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from bmstu_parser.contracts.raw import RawProgramRecord, SourceLocator
-from bmstu_parser.tracer.identity import (
+from andromeda.ingestion.contracts.raw import RawProgramRecord, SourceLocator
+from andromeda.ingestion.universities.bmstu.identity import (
     canonicalize_program_records,
     direction_codes,
     map_source_program_code,

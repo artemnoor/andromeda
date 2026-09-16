@@ -4,6 +4,25 @@
 
 Проект остаётся modular monolith: один backend, одна инфраструктура и явные границы предметных модулей. Микросервисы, Kafka, CQRS и отдельный deployment-модуль в текущий scope не входят.
 
+## Canonical runtime surfaces
+
+В репозитории действует одна ownership-схема. Backend runtime, canonical
+contracts, repositories, migrations и BMSTU ingestion принадлежат
+`backend/src/andromeda`. BMSTU-specific
+capture/parser helpers после миграции находятся внутри
+`andromeda/ingestion/universities/bmstu`.
+
+Единственным production web runtime является `frontend-next`. Он собирается в
+Next standalone и запускается deployment-описаниями из `deploy/yc`; API
+доступен через same-origin `/api` в production и через явно заданный
+`NEXT_PUBLIC_API_BASE_URL` в local demo. Исторический exploratory Spike
+retired и не является runtime/package частью проекта.
+
+OpenAPI экспортируется backend script и генерирует единственный client в
+`frontend-next`. Production proftest находится в
+`andromeda.modules.proftest`; история retired Spike описана только в
+`docs/archive/proftest-spike.md`.
+
 ## Поток данных
 
 ```text

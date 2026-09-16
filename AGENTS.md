@@ -27,4 +27,4 @@
 
 Andromeda — modular monolith. Сначала используй существующие `contracts.public`, typed Protocol ports и repositories; новый модуль/интеграция требуют отдельного обоснования. Subject modules не знают об ORM, FastAPI или university-specific parser. После изменений обязательно оставь runnable evidence для следующего агента.
 
-Эти инструкции задают repository-wide workflow и safety rules. Архитектурные правила ниже применяются к core Andromeda; отдельный `proftest-spike` сохраняет собственный boundary и не должен незаметно становиться частью core modules.
+Эти инструкции задают repository-wide workflow и safety rules. Архитектурные правила ниже применяются к core Andromeda; бывший `proftest-spike` retired и описан только в архивной non-executable заметке, поэтому не должен возвращаться как отдельный runtime.

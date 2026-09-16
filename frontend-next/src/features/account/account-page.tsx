@@ -5,7 +5,7 @@ import { UserRound, LogOut, Sparkles, Route as RouteIcon, Mail, Calendar } from 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Loading, ProfileRequired, Stat, SectionTitle, ScoreBadge, Tag } from "@/components/shared";
-import { getAuthSessionApi, getCurrentProfile, getCurrentRecommendations, getPersonalRouteApi, logoutAccountApi } from "@/lib/api";
+import { getAuthSession, getCurrentProfile, getCurrentRecommendations, getPersonalRoute, logoutAccount } from "@/lib/api";
 import { formatPercent, formatDate } from "@/lib/format";
 import type { AuthSession, UserProfileSnapshot, RecommendationsResponse, PersonalRouteResponse } from "@/lib/types";
 import type { Route as RouteType } from "@/lib/router";
@@ -19,7 +19,7 @@ export function AccountPage({ navigate }: { navigate: (route: RouteType) => void
 
   const load = () => {
     setLoading(true);
-    Promise.all([getAuthSessionApi(), getCurrentProfile().catch(() => null), getCurrentRecommendations(5).catch(() => null), getPersonalRouteApi().catch(() => null)])
+    Promise.all([getAuthSession(), getCurrentProfile().catch(() => null), getCurrentRecommendations(5).catch(() => null), getPersonalRoute(5).catch(() => null)])
       .then(([s, p, r, rt]) => {
         setSession(s);
         setProfile(p);
@@ -35,7 +35,7 @@ export function AccountPage({ navigate }: { navigate: (route: RouteType) => void
 
   if (!session.authenticated) {
     return (
-      <div>
+      <div data-testid="account-page">
         <PageHeader eyebrow="Кабинет" title="Личный кабинет" />
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
@@ -59,13 +59,13 @@ export function AccountPage({ navigate }: { navigate: (route: RouteType) => void
 
   const acc = session.account!;
   return (
-    <div>
+    <div data-testid="account-page">
       <PageHeader
         eyebrow="Кабинет"
         title={`Привет, ${acc.displayName ?? acc.email}`}
         description="Сводка вашего профиля, рекомендаций и личного маршрута."
         actions={
-          <Button variant="outline" size="sm" className="gap-1" onClick={async () => { await logoutAccountApi(); load(); }}>
+          <Button variant="outline" size="sm" className="gap-1" onClick={async () => { await logoutAccount(); load(); }}>
             <LogOut className="h-4 w-4" /> Выйти
           </Button>
         }

@@ -11,6 +11,7 @@ from ...shared.contracts.ids import UniversityId
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
+JsonObject: TypeAlias = dict[str, JsonValue]
 
 
 class RawSourceSnapshot(ContractModel):

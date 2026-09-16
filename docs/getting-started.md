@@ -13,7 +13,7 @@
 
 ```powershell
 python -m pip install -e "backend[dev]"
-cd frontend
+cd frontend-next
 npm ci
 npx playwright install chromium
 cd ..
@@ -27,11 +27,11 @@ cd ..
 python backend/scripts/run_tracer_demo.py --mode fixture --check
 ```
 
-Команда прогоняет captured BMSTU sources через ingestion, Alembic, SQLite, FastAPI и Vite, затем проверяет compare и admissions endpoints. Для ручного просмотра используйте ту же команду без `--check`.
+Команда прогоняет captured BMSTU sources через ingestion, Alembic, SQLite, FastAPI и canonical Next app, затем проверяет catalog, compare и admissions endpoints. Для ручного просмотра используйте ту же команду без `--check`.
 
 ## Проверка результата
 
-- UI: `http://127.0.0.1:5173/`;
+- UI: `http://127.0.0.1:3000/`;
 - Swagger: `http://127.0.0.1:8000/docs`;
 - OpenAPI: `http://127.0.0.1:8000/openapi.json`.
 
@@ -39,9 +39,9 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 
 Чтобы вручную проверить persistence профиля:
 
-1. Откройте «Профиль содержания» и пройдите 6 вопросов и adaptive step до TOP программ.
+1. Откройте «Профиль содержания» и пройдите вопросы до TOP программ.
 2. Обновите страницу. При сохранённой anonymous cookie появится пометка «Профиль восстановлен из Andromeda», а карточки рекомендаций загрузятся через API.
-3. Для проверки server source of truth удалите только LocalStorage key `andromeda:proftest:v1` в DevTools и обновите страницу ещё раз. Незавершённый draft, напротив, должен восстанавливаться локально и не заменяться старым completed profile.
+3. Для проверки server source of truth удалите локальный draft профтеста в DevTools и обновите страницу ещё раз. Незавершённый draft, напротив, должен восстанавливаться локально и не заменяться старым completed profile.
 4. Технические endpoints доступны в Swagger: `GET /proftest/profile`, `POST /proftest/profile`, `PUT /proftest/profile` и `GET /recommendations/current?limit=10`.
 
 Для live-источников:
@@ -63,7 +63,7 @@ python -m alembic upgrade head
 python backend/scripts/run_tracer_bullet.py --mode fixture --database-url $env:BMSTU_DATABASE_URL
 ```
 
-После ingestion запустите API и frontend отдельными процессами либо через demo runner с тем же `--database-url`. Для staging используйте `.env.staging.example`, профиль `staging`, порт `5433` и базу `andromeda_staging`. Подробности, refresh и troubleshooting — в [руководстве PostgreSQL](postgresql.md).
+После ingestion запустите API и `frontend-next` отдельными процессами либо через demo runner с тем же `--database-url`. Для staging используйте `.env.staging.example`, профиль `staging`, порт `5433` и базу `andromeda_staging`. Подробности, refresh и troubleshooting — в [руководстве PostgreSQL](postgresql.md).
 
 ## See Also
 
