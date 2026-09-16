@@ -1,7 +1,8 @@
 import type { components } from "../../api/generated";
+import type { ProftestSessionAnswerRequest, ProftestSessionResponse } from "../../api/client";
 
 export type ProftestScreen = "intro" | "base" | "adaptive" | "loading" | "results" | "detail" | "error" | "empty";
-type Answer = components["schemas"]["ProftestAnswerRequest"];
+type Answer = { questionId: string; optionIds: string[]; intensity?: number };
 type AdaptiveAnswer = components["schemas"]["ProftestAdaptiveAnswerRequest"];
 type Results = components["schemas"]["ProftestResultsResponse"];
 
@@ -11,12 +12,16 @@ export interface ProftestDraft {
   currentQuestion: number;
   adaptiveAnswer: AdaptiveAnswer | null;
   results: Results | null;
+  session: ProftestSessionResponse | null;
+  sessionQuestionId: string | null;
+  sessionAnswers: Record<string, ProftestSessionAnswerRequest>;
+  sessionQuestions: Record<string, components["schemas"]["QuestionResponse"]>;
 }
 
 const STORAGE_KEY = "andromeda:proftest:v1";
 
 export function emptyDraft(): ProftestDraft {
-  return { screen: "intro", answers: {}, currentQuestion: 0, adaptiveAnswer: null, results: null };
+  return { screen: "intro", answers: {}, currentQuestion: 0, adaptiveAnswer: null, results: null, session: null, sessionQuestionId: null, sessionAnswers: {}, sessionQuestions: {} };
 }
 
 export function setAnswer(draft: ProftestDraft, questionId: string, optionIds: readonly string[], intensity?: number): ProftestDraft {
@@ -39,7 +44,7 @@ export function setIntensity(draft: ProftestDraft, questionId: string, intensity
 }
 
 export function toRequest(draft: ProftestDraft): components["schemas"]["ProftestSubmissionRequest"] {
-  return { answers: Object.values(draft.answers), adaptiveAnswers: draft.adaptiveAnswer ? [draft.adaptiveAnswer] : [] };
+  return { answers: Object.values(draft.answers) as components["schemas"]["ProftestAnswerRequest"][], adaptiveAnswers: draft.adaptiveAnswer ? [draft.adaptiveAnswer] : [] };
 }
 
 export function saveDraft(draft: ProftestDraft): void {
@@ -52,7 +57,7 @@ export function loadDraft(): ProftestDraft {
   try {
     const value: unknown = JSON.parse(raw);
     if (!isDraft(value)) throw new Error("invalid draft");
-    return value;
+    return { ...emptyDraft(), ...value, sessionQuestionId: value.sessionQuestionId ?? null, sessionAnswers: value.sessionAnswers ?? {}, sessionQuestions: value.sessionQuestions ?? {} };
   } catch {
     console.warn("[proftest] restored_state_invalid");
     localStorage.removeItem(STORAGE_KEY);
@@ -65,13 +70,13 @@ export function clearDraft(): void {
 }
 
 export function hasInProgressDraft(draft: ProftestDraft): boolean {
-  return draft.screen === "base" || draft.screen === "adaptive" || draft.screen === "loading";
+  return draft.screen === "base" || draft.screen === "adaptive" || draft.screen === "loading" || draft.session?.status === "draft";
 }
 
 function isDraft(value: unknown): value is ProftestDraft {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ProftestDraft>;
-  return typeof candidate.screen === "string" && ["intro", "base", "adaptive", "loading", "results", "detail", "error", "empty"].includes(candidate.screen) && typeof candidate.currentQuestion === "number" && Number.isInteger(candidate.currentQuestion) && candidate.currentQuestion >= 0 && !!candidate.answers && typeof candidate.answers === "object" && (candidate.adaptiveAnswer === null || candidate.adaptiveAnswer === undefined || typeof candidate.adaptiveAnswer === "object") && (candidate.results === null || candidate.results === undefined || typeof candidate.results === "object");
+  return typeof candidate.screen === "string" && ["intro", "base", "adaptive", "loading", "results", "detail", "error", "empty"].includes(candidate.screen) && typeof candidate.currentQuestion === "number" && Number.isInteger(candidate.currentQuestion) && candidate.currentQuestion >= 0 && !!candidate.answers && typeof candidate.answers === "object" && (candidate.adaptiveAnswer === null || candidate.adaptiveAnswer === undefined || typeof candidate.adaptiveAnswer === "object") && (candidate.results === null || candidate.results === undefined || typeof candidate.results === "object") && (candidate.session === null || candidate.session === undefined || typeof candidate.session === "object") && (candidate.sessionQuestionId === undefined || candidate.sessionQuestionId === null || typeof candidate.sessionQuestionId === "string") && (candidate.sessionAnswers === undefined || typeof candidate.sessionAnswers === "object") && (candidate.sessionQuestions === undefined || typeof candidate.sessionQuestions === "object");
 }
 
 export { STORAGE_KEY };

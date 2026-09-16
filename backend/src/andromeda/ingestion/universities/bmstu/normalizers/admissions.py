@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Sequence
+from decimal import Decimal
 from typing import TypeVar
 
 from andromeda.modules.admissions.contracts.public import (
+    AdmissionCompetitionType,
     AdmissionOffering,
     AdmissionProvenance,
     AdmissionScope,
@@ -15,6 +17,7 @@ from andromeda.modules.admissions.contracts.public import (
     ProgramAdmissions,
     Quota,
     PassingScore,
+    PassingScoreStatus,
     TuitionCost,
 )
 from andromeda.modules.programs.contracts.public import Program
@@ -24,8 +27,10 @@ from ....contracts.raw import RawAdmissionRecord, RawSourceSnapshot
 from ..identity import resolve_programs
 from ..mappings.admissions import (
     normalize_currency,
+    normalize_competition_type,
     normalize_funding,
     normalize_passing_score,
+    normalize_passing_status,
     normalize_quota,
     normalize_study_form,
 )
@@ -111,7 +116,13 @@ def _offering(record: RawAdmissionRecord, program_id: str, provenance: Admission
             for item in record.quotas
         ),
         passing_scores=tuple(
-            PassingScore(score_type=normalize_passing_score(item.score_type), score=item.score, provenance=child_provenance)
+            PassingScore(
+                score_type=normalize_passing_score(item.score_type),
+                competition_type=normalize_competition_type(item.competition_type, score=item.score),
+                status=normalize_passing_status(item.status, score=item.score),
+                score=item.score,
+                provenance=child_provenance,
+            )
             for item in record.passing_scores
         ),
         tuition=tuple(
@@ -136,9 +147,9 @@ def _merge(left: AdmissionOffering, right: AdmissionOffering) -> AdmissionOfferi
             "places": left.places if left.places is not None else right.places,
             "exams": _unique_children((*left.exams, *right.exams), lambda item: (item.subject, item.source_name)),
             "quotas": _unique_children((*left.quotas, *right.quotas), lambda item: (item.quota_type, item.source_name)),
-            "passing_scores": _unique_children((*left.passing_scores, *right.passing_scores), lambda item: item.score_type),
+            "passing_scores": _merge_passing_scores(left.passing_scores, right.passing_scores),
             "tuition": _unique_children((*left.tuition, *right.tuition), lambda item: (item.amount, item.is_discounted, item.study_form)),
-            "provenance": _unique_children((*left.provenance, *right.provenance), lambda item: (item.source_kind, item.content_sha256, item.locator)),
+            "provenance": _merge_provenance(left.provenance, right.provenance),
         }
     )
 
@@ -152,6 +163,44 @@ def _unique_children(values: tuple[_Child, ...], key: Callable[[_Child], object]
             seen.add(marker)
             result.append(value)
     return tuple(result)
+
+
+def _merge_passing_scores(left: tuple[PassingScore, ...], right: tuple[PassingScore, ...]) -> tuple[PassingScore, ...]:
+    grouped: dict[tuple[object, object, object], list[PassingScore]] = {}
+    for value in (*left, *right):
+        key = (value.score_type, value.competition_type, value.status)
+        grouped.setdefault(key, []).append(value)
+    result: list[PassingScore] = []
+    for group_key in sorted(grouped, key=lambda item: tuple(str(part) for part in item)):
+        candidates = grouped[group_key]
+        order_candidates = tuple(item for item in candidates if _is_order_provenance(item))
+        selected = order_candidates or tuple(candidates)
+        if selected[0].status.value == "numeric":
+            result.append(min(selected, key=_numeric_passing_sort_key))
+        else:
+            result.append(min(selected, key=_passing_provenance_sort_key))
+    return tuple(result)
+
+
+def _merge_provenance(left: tuple[AdmissionProvenance, ...], right: tuple[AdmissionProvenance, ...]) -> tuple[AdmissionProvenance, ...]:
+    values = _unique_children(
+        (*left, *right),
+        lambda item: (item.source_kind, item.content_sha256, item.locator, str(item.source_url)),
+    )
+    return tuple(sorted(values, key=lambda item: (item.content_sha256, item.locator or "", item.source_kind, str(item.source_url))))
+
+
+def _is_order_provenance(value: PassingScore) -> bool:
+    return value.provenance.source_kind == "bmstu_admission_orders_document"
+
+
+def _numeric_passing_sort_key(value: PassingScore) -> tuple[Decimal, str, str, str]:
+    assert value.score is not None
+    return (value.score, value.provenance.content_sha256, value.provenance.locator or "", str(value.provenance.source_url))
+
+
+def _passing_provenance_sort_key(value: PassingScore) -> tuple[str, str, str]:
+    return (value.provenance.content_sha256, value.provenance.locator or "", str(value.provenance.source_url))
 
 
 def _locator(record: RawAdmissionRecord) -> str | None:

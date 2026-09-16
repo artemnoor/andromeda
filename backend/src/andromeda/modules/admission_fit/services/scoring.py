@@ -8,10 +8,12 @@ import logging
 
 from andromeda.modules.admissions.contracts.public import (
     AdmissionOffering,
+    AdmissionCompetitionType,
     AdmissionProvenance,
     ExamRequirement,
     FundingType,
     PassingScore,
+    PassingScoreStatus,
     PassingScoreType,
 )
 from andromeda.shared.contracts.ids import ProgramId
@@ -160,7 +162,16 @@ class AdmissionFitScoringService:
 
     @staticmethod
     def _select_passing_score(offering: AdmissionOffering) -> PassingScore | None:
-        if not offering.passing_scores:
+        eligible = tuple(
+            item
+            for item in offering.passing_scores
+            if item.status is PassingScoreStatus.NUMERIC
+            and item.competition_type is AdmissionCompetitionType.GENERAL
+            and item.score is not None
+        )
+        if not eligible:
+            if offering.passing_scores:
+                logger.debug("passing_score_unavailable_reason=bvi_or_quota_only")
             return None
         preferred: PassingScoreType | None = None
         if offering.funding_type is FundingType.BUDGET:
@@ -168,13 +179,13 @@ class AdmissionFitScoringService:
         elif offering.funding_type is FundingType.PAID:
             preferred = PassingScoreType.PAID
         if preferred is not None:
-            exact = next((item for item in offering.passing_scores if item.score_type is preferred), None)
+            exact = next((item for item in eligible if item.score_type is preferred), None)
             if exact is not None:
                 return exact
         return next(
             (
                 item
-                for item in offering.passing_scores
+                for item in eligible
                 if item.score_type in (PassingScoreType.AVERAGE, PassingScoreType.OTHER)
             ),
             None,
@@ -182,7 +193,7 @@ class AdmissionFitScoringService:
 
     @staticmethod
     def _passing_metric(evaluations: tuple[_ExamEvaluation, ...], passing_score: PassingScore | None) -> _Metric:
-        if passing_score is None:
+        if passing_score is None or passing_score.score is None:
             return _Metric(value=None, status=AdmissionFitMetricStatus.NOT_AVAILABLE)
         matched_scores = tuple(item.applicant_score for item in evaluations if item.applicant_score is not None)
         if not matched_scores:
@@ -330,7 +341,7 @@ class AdmissionFitScoringService:
                     provenance=(),
                 )
             )
-        elif passing.value is not None:
+        elif passing.value is not None and passing_score.score is not None:
             provenance = (passing_score.provenance,)
             total = sum((item.applicant_score for item in evaluations if item.applicant_score is not None), ZERO)
             if total >= passing_score.score:

@@ -1213,15 +1213,6 @@ def _numeric_values(value: str) -> list[int | float]:
     return [parse_number(item) for item in re.findall(r"-?\d+(?:[.,]\d+)?", value)]
 
 
-def _clean_plan_group(value: Any) -> str | None:
-    text = clean_text(value)
-    if not text:
-        return None
-    text = re.split(r"\s+(?=-?\d+(?:[.,]\d+)?(?:\s|$))", text, maxsplit=1)[0]
-    text = re.sub(r"^\s*Б\d\s+", "", text)
-    return text.strip(" —–-") or None
-
-
 def _study_plan_semester_summary(lines: list[str]) -> list[dict[str, Any]]:
     marker = next((index for index, line in enumerate(lines) if "IV. РАСПРЕДЕЛЕНИЕ ПО СЕМЕСТРАМ" in line), None)
     if marker is None:
@@ -1371,7 +1362,6 @@ def _study_plan_records(
     semester_weeks = sections[0][3]
     number_re = re.compile(r"-?\d+(?:[.,]\d+)?")
     records: list[dict[str, Any]] = []
-    current_group: str | None = None
     summary_semesters = _study_plan_semester_summary(lines)
     overall_totals = _study_plan_overall_totals(lines, semester_starts[0])
     summary_record = {
@@ -1419,10 +1409,6 @@ def _study_plan_records(
                 continue
             row_match = re.match(r"^\s*(\d+)\s+", line)
             if not row_match:
-                if any(token in _normalized_text(stripped) for token in ("часть", "дисциплин", "практика", "аттестация", "факультатив", "б1", "б2", "б3")):
-                    group = _clean_plan_group(stripped)
-                    if group and "разделов, дисциплин" not in _normalized_text(group):
-                        current_group = group
                 continue
 
             # Locate the seven total-workload values by their numeric pattern,
@@ -1454,7 +1440,7 @@ def _study_plan_records(
                 total_values = values
                 break
 
-            # Some elective rows intentionally leave total ZET blank. Preserve
+            # Some rows intentionally leave total ZET blank. Preserve
             # their remaining total columns instead of dropping the discipline.
             if not total_values:
                 fallback = matches[-6:]
@@ -1537,7 +1523,6 @@ def _study_plan_records(
                 "form": form,
                 "duration": plan_header.get("duration") or context.get("duration"),
                 "discipline": name,
-                "subject_group": current_group,
                 "row_no": row_no,
                 "study_plan_url": context.get("study_plan_url") or context.get("document_url"),
                 "download_url": context.get("download_url") or resource.final_url,

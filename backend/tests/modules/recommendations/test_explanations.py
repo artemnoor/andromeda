@@ -9,7 +9,7 @@ from .factories import fingerprint, profile
 
 
 def test_explanations_reference_area_and_distinctive_evidence() -> None:
-    evidence = CurriculumEvidence(source_name="Алгоритмы", normalized_name="алгоритмы", hours=60, subject_group="major", workload=Decimal("60"), area_weights=(DisciplineAreaWeight(area=DisciplineAreaCode.COMPUTER_SCIENCE_DATA, weight=Decimal("1")),))
+    evidence = CurriculumEvidence(source_name="Алгоритмы", normalized_name="алгоритмы", hours=60, workload=Decimal("60"), area_weights=(DisciplineAreaWeight(area=DisciplineAreaCode.COMPUTER_SCIENCE_DATA, weight=Decimal("1")),))
     value = fingerprint()
     value = value.model_copy(update={
         "evidence": (evidence,),

@@ -54,8 +54,8 @@ export function deriveUnifiedMvpStages(model: UnifiedReadModel): readonly Unifie
         : "available";
 
   return [
-    { id: "catalog", title: "Найти программу", description: "Открой каталог программ и начни с подходящего направления.", href: "#program", status: "available" },
-    { id: "compare", title: "Сравнить варианты", description: "Сопоставь две программы по учебному плану и ключевым блокам.", href: "#compare", status: "available" },
+    { id: "catalog", title: "Найти программу", description: "Открой каталог программ и начни с подходящего направления.", href: "#catalog", status: "available" },
+    { id: "compare", title: "Сравнить варианты", description: "Сопоставь две программы по дисциплинам и нагрузке учебного плана.", href: "#compare", status: "available" },
     { id: "profile", title: "Пройти профтест", description: "Сохрани профиль интересов, чтобы получить персональные рекомендации.", href: "#proftest", status: model.profile.status === "ready" ? "ready" : model.profile.status },
     { id: "recommendations", title: "Посмотреть рекомендации", description: "Результаты и объяснения рекомендаций находятся в профтесте.", href: "#proftest", status: recommendationStatus },
     { id: "program", title: "Изучить рекомендованную программу", description: "Перейди к карточке первой доступной рекомендации.", href: programHref, status: programStatus },

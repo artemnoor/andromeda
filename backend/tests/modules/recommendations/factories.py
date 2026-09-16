@@ -32,8 +32,6 @@ def fingerprint(
         total_workload=Decimal("100"),
         area_hours={area: share * 100 for area, share in areas.items()},
         area_share=areas,
-        subject_group_hours={"major": Decimal("100")},
-        subject_group_share={"major": Decimal("1")},
         semester_distribution={"1": Decimal("1")},
         activity_signals=activities or {ActivityCode.SOFTWARE_CREATION: Decimal("1")},
     )
@@ -56,8 +54,6 @@ def fingerprint_from_areas(
         total_workload=Decimal("100"),
         area_hours={area: share * 100 for area, share in normalized.items()},
         area_share=normalized,
-        subject_group_hours={"major": Decimal("100")},
-        subject_group_share={"major": Decimal("1")},
         semester_distribution={"1": Decimal("1")},
         activity_signals=activities,
     )

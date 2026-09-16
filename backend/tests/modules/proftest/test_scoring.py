@@ -12,7 +12,7 @@ def _fingerprint(code: str, computer_share: str, physics_share: str) -> ProgramF
     return ProgramFingerprint(
         program_id=f"program:09.03.01-{code}", program_code=f"09.03.01-{code}", program_name=code, basis="hours", total_hours=100, total_credits=Decimal("10"), total_workload=Decimal("100"),
         area_hours={DisciplineAreaCode.COMPUTER_SCIENCE_DATA: Decimal(computer_share) * 100, DisciplineAreaCode.PHYSICS_ASTRONOMY: Decimal(physics_share) * 100},
-        area_share={DisciplineAreaCode.COMPUTER_SCIENCE_DATA: Decimal(computer_share), DisciplineAreaCode.PHYSICS_ASTRONOMY: Decimal(physics_share)}, subject_group_hours={"base": Decimal("100")}, subject_group_share={"base": Decimal("1")}, semester_distribution={"1": Decimal("1")}, activity_signals={ActivityCode.SOFTWARE_CREATION: Decimal("1")},
+        area_share={DisciplineAreaCode.COMPUTER_SCIENCE_DATA: Decimal(computer_share), DisciplineAreaCode.PHYSICS_ASTRONOMY: Decimal(physics_share)}, semester_distribution={"1": Decimal("1")}, activity_signals={ActivityCode.SOFTWARE_CREATION: Decimal("1")},
     )
 
 

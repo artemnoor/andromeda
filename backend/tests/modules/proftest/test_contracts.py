@@ -56,7 +56,6 @@ def test_evidence_requires_area_weights_to_sum_to_one() -> None:
             source_name="Математика",
             normalized_name="математика",
             hours=100,
-            subject_group="Основная часть",
             workload=Decimal("100"),
             area_weights=(DisciplineAreaWeight(area=DisciplineAreaCode.MATHEMATICS_STATISTICS, weight=Decimal("0.4")),),
         )

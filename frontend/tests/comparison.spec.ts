@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("user can select programmes and compare a semester", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#compare");
   await expect(page.getByTestId("program-a")).toBeVisible();
   await page.getByTestId("comparison-scope").selectOption("semester");
   await page.getByTestId("comparison-semester").selectOption("1");

@@ -63,7 +63,6 @@ class Recommendation(ContractModel):
     reasons: tuple[MatchReason, ...] = ()
     anti_fit_reasons: tuple[MatchReason, ...] = ()
     area_share: dict[DisciplineAreaCode, Decimal] = Field(default_factory=dict)
-    subject_group_share: dict[str, Decimal] = Field(default_factory=dict)
     semester_distribution: dict[str, Decimal] = Field(default_factory=dict)
     distinctive_subjects: tuple[str, ...] = ()
     workload_readiness: OptionalMetric = Field(default_factory=OptionalMetric)
@@ -79,7 +78,6 @@ class Recommendation(ContractModel):
             content_fit=score.content_fit,
             score=score,
             area_share=fingerprint.area_share,
-            subject_group_share=fingerprint.subject_group_share,
             semester_distribution=fingerprint.semester_distribution,
             distinctive_subjects=tuple(subject.source_name for subject in fingerprint.distinctive_subjects),
         )

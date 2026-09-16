@@ -212,7 +212,6 @@ def _insert_domain(session: Session, normalized: NormalizedTracerSnapshot) -> No
                 "semester_identity": _semester_identity(item.semester),
                 "hours": item.hours,
                 "credits": item.credits,
-                "subject_group": item.subject_group,
                 "source_position": item.source_position,
             })
             for assessment in item.assessment_types or ():

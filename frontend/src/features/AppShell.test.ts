@@ -4,11 +4,15 @@ import { hashForFeature, parseFeatureHash } from "./AppShell";
 
 describe("AppShell hash navigation", () => {
   it("opens the unified flow and preserves existing feature hashes", () => {
+    expect(parseFeatureHash("#catalog")).toEqual({ feature: "catalog" });
     expect(parseFeatureHash("#flow")).toEqual({ feature: "flow" });
     expect(parseFeatureHash("#compare")).toEqual({ feature: "compare" });
     expect(parseFeatureHash("#events")).toEqual({ feature: "events" });
+    expect(parseFeatureHash("#event/event%3Abmstu%3Aopen-day")).toEqual({ feature: "event", eventId: "event:bmstu:open-day" });
     expect(parseFeatureHash("#personal-route")).toEqual({ feature: "personal-route" });
     expect(parseFeatureHash("#proftest")).toEqual({ feature: "proftest" });
+    expect(parseFeatureHash("#recommendations")).toEqual({ feature: "recommendations" });
+    expect(parseFeatureHash("#account")).toEqual({ feature: "account" });
     expect(parseFeatureHash("#ops")).toEqual({ feature: "ops" });
   });
 

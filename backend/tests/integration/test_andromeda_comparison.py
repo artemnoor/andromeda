@@ -27,4 +27,5 @@ def test_full_backend_vertical_slice_compares_all_and_selected_semester(tmp_path
     assert all_response.status_code == semester_response.status_code == 200
     assert len(all_response.json()["rows"]) > len(semester_response.json()["rows"])
     assert all("hoursDelta" in row and "creditsDelta" in row for row in all_response.json()["rows"])
-    assert all_response.json()["blocks"]
+    assert "blocks" not in all_response.json()
+    assert all("subjectGroup" not in row for row in all_response.json()["rows"])

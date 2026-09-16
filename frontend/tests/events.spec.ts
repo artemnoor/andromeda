@@ -11,20 +11,12 @@ async function completeProfile(page: Page): Promise<void> {
   await expect(page.getByTestId("proftest-start")).toBeVisible();
   await page.getByTestId("proftest-start").click();
 
-  for (let index = 0; index < 6; index += 1) {
-    await expect(page.getByTestId("proftest-progress")).toContainText(`${index + 1} / 6`);
+  for (let index = 0; index < 38; index += 1) {
+    const questionOrResults = page.getByTestId("session-question").or(page.getByTestId("proftest-results"));
+    await expect(questionOrResults).toBeVisible();
+    if (await page.getByTestId("proftest-results").isVisible()) break;
     await page.locator(".choice-card").first().click();
-    await page.getByTestId("proftest-next").click();
-  }
-
-  await page.waitForSelector("[data-testid='adaptive-submit'], [data-testid='adaptive-skipped-continue'], [data-testid='proftest-results']", { state: "visible" });
-  const adaptive = page.locator("[data-testid='adaptive-submit']");
-  if (await adaptive.isVisible().catch(() => false)) {
-    await page.locator("[data-adaptive-option]").first().click();
-    await adaptive.click();
-  } else {
-    const skipped = page.getByTestId("adaptive-skipped-continue");
-    if (await skipped.isVisible().catch(() => false)) await skipped.click();
+    await page.getByTestId("session-next").click();
   }
   await expect(page.getByTestId("proftest-results")).toBeVisible();
 }

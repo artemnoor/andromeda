@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from hashlib import sha256
 from pathlib import Path
 from typing import Sequence
 
@@ -10,10 +11,11 @@ from bmstu_parser.tracer.normalizer import normalize_bundle as normalize_legacy_
 from bmstu_parser.tracer.parser import parse_captured as parse_legacy_captured
 from bmstu_parser.tracer.source import CapturedSources as LegacyCapturedSources
 from bmstu_parser.tracer.source import TracerSource as LegacyTracerSource
-from bmstu_parser.tracer.source import _detail_plan_records
+from bmstu_parser.tracer.source import _detail_plan_records, parse_orders_manifest
+from bmstu_parser.tracer.identity import direction_codes as extract_direction_codes
 
 from ...contracts.normalized import CanonicalSnapshot
-from ...contracts.raw import RawAdmissionRecord, RawProgramRecord, RawTracerBundle
+from ...contracts.raw import RawAdmissionPassingScore, RawAdmissionRecord, RawProgramRecord, RawSourceGap, RawTracerBundle, SourceLocator
 from ...contracts.source import CapturedSources, RawSourceSnapshot
 from ....modules.disciplines.contracts.public import Discipline
 from ....shared.contracts.enums import SourceKind
@@ -25,8 +27,10 @@ from .normalizers.admissions import normalize_admissions
 from .normalizers.campus import normalize_campus_points
 from .normalizers.events import normalize_events
 from .parser.admissions import parse_detail_admissions
+from .parser.admission_orders import iter_pdf_pages, parse_admission_order_document
 from .parser.campus import load_campus_fixture, parse_campus_points
 from .parser.events import load_event_fixture, parse_events
+from .source_metadata import classify_order_document
 
 
 fetch_logger = logging.getLogger("andromeda.ingestion.bmstu.fetch")
@@ -99,7 +103,11 @@ class BmstuUniversityAdapter:
             for detail_snapshot in captured.by_kind("bmstu_major_detail")
             for record in parse_detail_admissions(detail_snapshot, selected)
         )
-        admission_records = tuple(_canonicalize_admission_code(record, raw.programs) for record in admission_records)
+        order_records, order_gaps = _parse_order_admissions(captured, raw.programs)
+        admission_records = tuple(
+            _canonicalize_admission_code(record, raw.programs)
+            for record in (*admission_records, *order_records)
+        )
         event_snapshots = captured.by_kind("bmstu_events")
         if len(event_snapshots) > 1:
             raise ValueError("expected at most one BMSTU event source snapshot")
@@ -108,7 +116,14 @@ class BmstuUniversityAdapter:
         if len(campus_snapshots) > 1:
             raise ValueError("expected at most one BMSTU campus source snapshot")
         campus_records = parse_campus_points(campus_snapshots[0]) if campus_snapshots else ()
-        raw = raw.model_copy(update={"admissions": admission_records, "events": event_records, "campus_points": campus_records})
+        raw = raw.model_copy(
+            update={
+                "admissions": admission_records,
+                "source_gaps": (*raw.source_gaps, *order_gaps),
+                "events": event_records,
+                "campus_points": campus_records,
+            }
+        )
         legacy_canonical = normalize_legacy_bundle(legacy_raw)
         canonical = CanonicalSnapshot.model_validate(legacy_canonical.model_dump())
         if campus_snapshots:
@@ -126,6 +141,41 @@ class BmstuUniversityAdapter:
                     )
                 }
             )
+        order_source_snapshots = (
+            *captured.by_kind("bmstu_admission_orders_index"),
+            *captured.by_kind("bmstu_admission_orders_document"),
+        )
+        if order_source_snapshots:
+            existing_sources = {
+                (str(source.kind), str(source.url), source.content_sha256)
+                for source in canonical.sources
+            }
+            missing_order_sources = tuple(
+                snapshot
+                for snapshot in order_source_snapshots
+                if (
+                    snapshot.source_kind,
+                    str(snapshot.requested_url),
+                    snapshot.content_sha256,
+                )
+                not in existing_sources
+            )
+            canonical = canonical.model_copy(
+                update={
+                    "sources": (
+                        *canonical.sources,
+                        *(
+                            SourceAttribution(
+                                kind=SourceKind(snapshot.source_kind),
+                                url=snapshot.requested_url,
+                                captured_at=snapshot.captured_at,
+                                content_sha256=snapshot.content_sha256,
+                            )
+                            for snapshot in missing_order_sources
+                        ),
+                    )
+                }
+            )
         classified_disciplines = tuple(
             Discipline.model_validate(
                 {
@@ -139,6 +189,7 @@ class BmstuUniversityAdapter:
             {
                 **canonical.model_dump(),
                 "disciplines": classified_disciplines,
+                "source_gaps": raw.source_gaps,
                 "admissions": normalize_admissions(
                     raw.admissions,
                     programs=canonical.programs,
@@ -169,6 +220,14 @@ class BmstuUniversityAdapter:
         )
         normalize_logger.info("stage=events_complete events=%d", len(canonical.events))
         normalize_logger.info("stage=campus_complete points=%d", len(canonical.campus_points))
+        normalize_logger.info(
+            "stage=orders_complete documents=%d records=%d gaps=%d numeric=%d bvi=%d",
+            len(captured.by_kind("bmstu_admission_orders_document")),
+            len(order_records),
+            len(order_gaps),
+            sum(1 for record in order_records for score in record.passing_scores if score.status == "numeric"),
+            sum(1 for record in order_records for score in record.passing_scores if score.status == "bvi"),
+        )
         return raw, canonical
 
     def parse_sources(
@@ -194,12 +253,158 @@ def _canonicalize_admission_code(record: RawAdmissionRecord, programs: Sequence[
 
     source_code = record.program_code
     source_name = record.program_name
-    canonical = map_source_program_code(
-        source_code,
-        source_name,
-        cast(Sequence[LegacyRawProgramRecord], programs),
+    source_directions = extract_direction_codes(source_code)
+    canonical = (
+        source_directions[0]
+        if record.scope == "direction" and len(source_directions) == 1
+        else map_source_program_code(
+            source_code,
+            source_name,
+            cast(Sequence[LegacyRawProgramRecord], programs),
+        )
     )
     return record.model_copy(update={"program_code": canonical, "source_program_code": source_code})
+
+
+def _parse_order_admissions(
+    captured: CapturedSources,
+    programs: Sequence[RawProgramRecord],
+) -> tuple[tuple[RawAdmissionRecord, ...], tuple[RawSourceGap, ...]]:
+    order_snapshots = captured.by_kind("bmstu_admission_orders_document")
+    if not order_snapshots:
+        return (), ()
+    manifest_snapshots = captured.by_kind("bmstu_admission_orders_index")
+    if len(manifest_snapshots) != 1:
+        raise ValueError("BMSTU order documents require exactly one orders manifest snapshot")
+    entries = parse_orders_manifest(manifest_snapshots[0].body, str(manifest_snapshots[0].requested_url))
+    entries_by_url = {entry.requested_url: entry for entry in entries}
+    direction_codes = tuple(
+        sorted(
+            {
+                direction
+                for program in programs
+                for direction in (
+                    extract_direction_codes(program.direction_code)
+                    or (_canonical_code(program.direction_code) or _canonical_code(program.code) or program.code,)
+                )
+            }
+        )
+    )
+    records: list[RawAdmissionRecord] = []
+    gaps: list[RawSourceGap] = []
+    for snapshot in order_snapshots:
+        requested_url = str(snapshot.requested_url)
+        entry = entries_by_url.get(requested_url)
+        if entry is None:
+            gaps.append(_order_gap(snapshot, "manifest_entry_missing", None, None))
+            continue
+        pages = iter_pdf_pages(snapshot.body)
+        metadata = classify_order_document(entry, pages)
+        if not metadata.supported_catalog:
+            select_logger.info(
+                "[FIX:source-gap] orders_document_unsupported url=%s kind=%s",
+                requested_url,
+                metadata.document_kind.value,
+            )
+            gaps.append(_order_gap(snapshot, "unsupported_document_kind", metadata, None))
+            continue
+        if metadata.admission_year is None:
+            select_logger.warning("[FIX:source-gap] orders_document_missing_year url=%s", requested_url)
+            gaps.append(_order_gap(snapshot, "admission_year_unknown", metadata, None))
+            continue
+        result = parse_admission_order_document(snapshot.body, metadata)
+        if result.failed:
+            gaps.append(_order_gap(snapshot, "order_document_parse_failed", metadata, None))
+            continue
+        for warning in result.warnings:
+            if warning.startswith("competition_heading_unknown"):
+                gaps.append(_order_gap(snapshot, warning, metadata, None))
+        present_directions = {observation.direction_code for observation in result.observations}
+        for direction_code in direction_codes:
+            if direction_code not in present_directions:
+                gaps.append(_order_gap(snapshot, "direction_section_not_published", metadata, direction_code))
+        unknown_directions = sorted(present_directions - set(direction_codes))
+        for unknown_direction in unknown_directions:
+            gaps.append(_order_gap(snapshot, "order_direction_not_in_catalog", metadata, unknown_direction))
+        for observation in result.observations:
+            if observation.direction_code not in direction_codes:
+                continue
+            locator = SourceLocator(
+                source_url=snapshot.requested_url,
+                page=observation.page,
+                row=observation.row,
+                field=f"competition={observation.competition_type.value};status={observation.status}",
+            )
+            score = RawAdmissionPassingScore(
+                score_type=observation.score_type,
+                competition_type=observation.competition_type.value,
+                status=observation.status,
+                score=observation.score,
+            )
+            stable = "|".join(
+                (
+                    observation.direction_code,
+                    str(observation.admission_year),
+                    observation.funding_type,
+                    observation.competition_type.value,
+                    observation.status,
+                    str(observation.score),
+                )
+            )
+            records.append(
+                RawAdmissionRecord(
+                    id=f"admission-order:{sha256(stable.encode('utf-8')).hexdigest()}",
+                    program_code=observation.direction_code,
+                    admission_year=observation.admission_year,
+                    study_form=observation.study_form,
+                    funding_type=observation.funding_type,
+                    scope="direction",
+                    passing_scores=(score,),
+                    source_kind="bmstu_admission_orders_document",
+                    source_url=snapshot.requested_url,
+                    locator=locator,
+                    source_program_code=observation.direction_code,
+                )
+            )
+    parse_logger.info(
+        "orders_projection_complete documents=%d records=%d gaps=%d directions=%d",
+        len(order_snapshots),
+        len(records),
+        len(gaps),
+        len(direction_codes),
+    )
+    return tuple(records), tuple(gaps)
+
+
+def _order_gap(
+    snapshot: RawSourceSnapshot,
+    reason: str,
+    metadata: object | None,
+    direction_code: str | None,
+) -> RawSourceGap:
+    year = getattr(metadata, "admission_year", None)
+    funding = getattr(getattr(metadata, "funding", None), "value", "unknown")
+    stage = getattr(getattr(metadata, "stage", None), "value", "unknown")
+    key = "|".join((str(snapshot.requested_url), str(year or "unknown"), direction_code or "document", funding, stage, reason))
+    field = f"funding={funding};stage={stage}"
+    gap = RawSourceGap(
+        id=f"source-gap:bmstu-admission-order:{sha256(key.encode('utf-8')).hexdigest()}",
+        entity_type="admission_order",
+        entity_key=f"{direction_code or 'document'}:{year or 'unknown'}:{funding}:{stage}",
+        reason=reason[:512],
+        source_url=snapshot.requested_url,
+        locator=SourceLocator(source_url=snapshot.requested_url, field=field),
+    )
+    parse_logger.warning(
+        "orders_source_gap reason=%s direction=%s year=%s funding=%s stage=%s source_url=%s",
+        gap.reason,
+        direction_code or "document",
+        year or "unknown",
+        funding,
+        stage,
+        snapshot.requested_url,
+    )
+    return gap
 
 
 def _fixture_documented_codes(captured: CapturedSources) -> tuple[str, ...] | None:

@@ -6,20 +6,12 @@ async function completeProftest(page: Page): Promise<void> {
   await expect(page.getByTestId("proftest-start")).toBeVisible();
   await page.getByTestId("proftest-start").click();
 
-  for (let index = 0; index < 6; index += 1) {
-    await expect(page.getByTestId("proftest-progress")).toContainText(`${index + 1} / 6`);
+  for (let index = 0; index < 38; index += 1) {
+    const questionOrResults = page.getByTestId("session-question").or(page.getByTestId("proftest-results"));
+    await expect(questionOrResults).toBeVisible();
+    if (await page.getByTestId("proftest-results").isVisible()) break;
     await page.locator(".choice-card").first().click();
-    await page.getByTestId("proftest-next").click();
-  }
-
-  await page.waitForSelector("[data-testid='adaptive-submit'], [data-testid='adaptive-skipped-continue'], [data-testid='proftest-results']", { state: "visible" });
-  const adaptive = page.locator("[data-testid='adaptive-submit']");
-  if (await adaptive.isVisible().catch(() => false)) {
-    await page.locator("[data-adaptive-option]").first().click();
-    await adaptive.click();
-  } else {
-    const skipped = page.getByTestId("adaptive-skipped-continue");
-    if (await skipped.isVisible().catch(() => false)) await skipped.click();
+    await page.getByTestId("session-next").click();
   }
   await expect(page.getByTestId("proftest-results")).toBeVisible();
   await expect(page.locator("[data-testid='result-card']").first()).toBeVisible();
@@ -37,9 +29,10 @@ test("restores the current question after reload", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("nav-proftest").click();
   await page.getByTestId("proftest-start").click();
+  await expect(page.getByTestId("session-question")).toBeVisible();
   await page.locator(".choice-card").first().click();
   await page.reload();
-  await expect(page.getByTestId("proftest-progress")).toHaveText("1 / 6");
+  await expect(page.getByTestId("session-question")).toBeVisible();
   await expect(page.locator(".choice-card.selected")).toHaveCount(1);
 });
 
@@ -62,5 +55,27 @@ test.describe("mobile proftest", () => {
     await completeProftest(page);
     await expect(page.getByTestId("proftest-detail-card")).toBeVisible();
     await expect(page.locator(".app-nav")).toBeVisible();
+  });
+});
+
+test.describe("compact and keyboard proftest", () => {
+  test.use({ viewport: { width: 360, height: 800 } });
+
+  test("supports keyboard answers and reduced-motion layout at the minimum width", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/#proftest");
+    await page.getByTestId("proftest-start").click();
+    await expect(page.getByTestId("session-question")).toBeVisible();
+
+    const firstOption = page.locator(".choice-card").first();
+    await firstOption.focus();
+    await page.keyboard.press("Enter");
+    await expect(firstOption).toHaveAttribute("aria-pressed", "true");
+
+    const next = page.getByTestId("session-next");
+    await next.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("session-question")).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 });

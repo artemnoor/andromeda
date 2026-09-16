@@ -40,7 +40,6 @@ class FingerprintBuilder:
             logger.warning("fingerprint_zero_workload program_id=%s", _safe_id(program.id))
 
         area_workload: dict[DisciplineAreaCode, Decimal] = defaultdict(lambda: ZERO)
-        group_workload: dict[str, Decimal] = defaultdict(lambda: ZERO)
         semester_workload: dict[str, Decimal] = defaultdict(lambda: ZERO)
         evidence: list[CurriculumEvidence] = []
         for item in curriculum.items:
@@ -55,8 +54,6 @@ class FingerprintBuilder:
                 raise ValueError(f"discipline area weights must sum to one: {discipline.id}")
             for weight in area_weights:
                 area_workload[weight.area] += item_workload * weight.weight
-            group_key = item.subject_group or "unassigned"
-            group_workload[group_key] += item_workload
             semester_key = str(item.semester) if item.semester is not None else "unassigned"
             semester_workload[semester_key] += item_workload
             evidence.append(
@@ -66,7 +63,6 @@ class FingerprintBuilder:
                     hours=item.hours,
                     credits=item.credits,
                     semester=item.semester,
-                    subject_group=group_key,
                     assessment_types=item.assessment_types,
                     workload=item_workload,
                     area_weights=area_weights,
@@ -74,7 +70,6 @@ class FingerprintBuilder:
             )
 
         area_share = _shares(area_workload, total_workload)
-        group_share = _shares(group_workload, total_workload)
         semester_share = _shares(semester_workload, total_workload)
         activity_signals = _activity_signals(area_share)
         fingerprint = ProgramFingerprint(
@@ -87,8 +82,6 @@ class FingerprintBuilder:
             total_workload=total_workload,
             area_hours=dict(sorted(area_workload.items(), key=lambda entry: entry[0].value)),
             area_share=dict(sorted(area_share.items(), key=lambda entry: entry[0].value)),
-            subject_group_hours=dict(sorted(group_workload.items())),
-            subject_group_share=dict(sorted(group_share.items())),
             semester_distribution=dict(sorted(semester_share.items())),
             activity_signals=dict(sorted(activity_signals.items(), key=lambda entry: entry[0].value)),
             evidence=tuple(evidence),

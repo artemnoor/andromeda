@@ -37,6 +37,28 @@ POST /proftest/results
   → GET /proftest/profile | GET /recommendations/current
 ```
 
+Адаптивный flow v2 сохраняет состояние до завершения и не меняет владельца
+ranking:
+
+```text
+POST /proftest/sessions
+  → ProftestSessionService
+  → versioned questionnaire + ProfileBuilder
+  → ProftestAnswerSessionRepository
+  → proftest_answer_sessions (owner, answers, cursor, revision, expiry)
+  → next question / AdaptiveQuestionSelector
+  → complete → UserProfileRepository + recommendations
+```
+
+`ProftestSessionService` владеет переходами `draft → completed|expired` и
+проверкой branch/question IDs. `AdaptiveQuestionSelector` получает только
+typed `ProgramFingerprint` reads через `ProftestCatalogService`; matching и
+ranking остаются внутри `RecommendationService`. Поэтому session API не
+знает о SQLAlchemy, BMSTU parser или frontend mechanics. При изменении
+раннего ответа adaptive answers инвалидируются через
+`stale_question_ids`, а source gap/insufficient spread возвращается как
+явная причина остановки, без выдуманных workload-сигналов.
+
 Anonymous identity — это случайный HttpOnly cookie, а в domain/infrastructure boundary передаётся только typed `ProfileScope` с SHA-256 hash. `UserProfile` не содержит storage metadata; revision и timestamps находятся в `UserProfileSnapshot`. Admission Fit остаётся отдельным score и не влияет на Content Fit.
 
 Auth identity follows the same boundary: `modules/auth` publishes typed `Account` and application ports; infrastructure stores Argon2 password hashes and opaque session-token hashes in `accounts`/`auth_sessions`. The API alone reads the raw HttpOnly cookie. `ProfileScope` may carry a canonical `AccountId` in addition to the anonymous session hash, so the existing proftest/recommendations/personal-route flows restore account-owned profiles without adding `account_id` to `UserProfile`. Binding is explicit and non-merging: account profile wins when both owners have a profile, while the anonymous row remains isolated.
@@ -117,6 +139,15 @@ BMSTU URL, catalog pagination, detail/API shape, public study-plan resolver, PDF
 `BMSTU_DATABASE_URL` — единый target для FastAPI, Alembic и ingestion runner. `SqlAlchemy*Repository` и `SqlAlchemyIngestionRepository` — infrastructure adapters; модули видят только public contracts и repository ports. Поэтому PostgreSQL не меняет comparison/proftest/recommendations и не требует переписывать их scoring или fingerprint logic.
 
 `user_profiles` хранит только сериализованный public `UserProfile` и nullable future `account_id`; raw session token, answers и ORM objects не являются публичными контрактами. LocalStorage во frontend используется только для незавершённого draft. Completed profile восстанавливается через API и cookie.
+
+`proftest_answer_sessions` хранит versioned answer state в server-side JSON вместе с
+cursor, revision, status, owner key и expiry. `proftest_analytics_events`
+хранит только allow-listed bounded telemetry с уникальным event ID и
+retention. Anonymous owner представлен SHA-256 hash HttpOnly profile cookie;
+account owner — canonical account ID. Partial unique index не допускает две
+активные draft-сессии для одного owner, а completion обновляет session и
+`user_profiles` в одной транзакции. Browser localStorage — лишь ускоренный
+кэш draft и не источник истины.
 
 `ANDROMEDA_ENV=development` и `ANDROMEDA_ENV=staging` fail fast с non-PostgreSQL URL. `ANDROMEDA_ENV=test` сохраняет SQLite для быстрых тестов. Raw source snapshots остаются immutable provenance, а canonical domain projection обновляется атомарной ingestion sync-транзакцией.
 

@@ -23,6 +23,8 @@ class SourceKind(StrEnum):
     BMSTU_MAJOR_DETAIL = "bmstu_major_detail"
     BMSTU_CURRICULUM_DOCUMENT = "bmstu_curriculum_document"
     BMSTU_CURRICULUM_METADATA = "bmstu_curriculum_metadata"
+    BMSTU_ADMISSION_ORDERS_INDEX = "bmstu_admission_orders_index"
+    BMSTU_ADMISSION_ORDERS_DOCUMENT = "bmstu_admission_orders_document"
     BMSTU_EVENTS = "bmstu_events"
     BMSTU_CAMPUS_POINTS = "bmstu_campus_points"
 

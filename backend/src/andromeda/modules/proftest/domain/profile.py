@@ -40,6 +40,18 @@ class ProfileScope(ContractModel):
     session_key_hash: SourceHash
     account_id: AccountId | None = None
 
+    @property
+    def owner_key(self) -> str:
+        """Return a stable storage key without exposing the raw cookie token."""
+
+        if self.account_id is not None:
+            return self.account_id
+        return f"anonymous:{self.session_key_hash}"
+
+    @property
+    def owner_kind(self) -> str:
+        return "account" if self.account_id is not None else "anonymous"
+
 
 class UserProfileSnapshot(ContractModel):
     """Current persisted profile plus storage metadata.

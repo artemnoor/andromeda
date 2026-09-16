@@ -30,6 +30,35 @@ python -m pytest -q tests/integration/test_postgresql_smoke.py tests/integration
 
 Без PostgreSQL DSN smoke-тест явно `skipped`; CI передаёт disposable PostgreSQL URL.
 
+Для order-derived minima используйте focused набор:
+
+```powershell
+cd backend
+python -m pytest -q tests/ingestion/test_bmstu_source_capture.py tests/ingestion/test_bmstu_orders_metadata.py tests/ingestion/test_bmstu_admission_orders_parser.py tests/ingestion/test_bmstu_admissions_normalizer.py tests/ingestion/test_bmstu_admissions_parser.py
+python -m pytest -q tests/infrastructure/test_admissions_repository.py tests/infrastructure/test_alembic_migrations.py tests/api/test_andromeda_api.py
+```
+
+Проверяется migration `0010_admission_passing_route`, backfill старых numeric rows, route/BVI round-trip, deterministic minimum/provenance, API JSON и отсутствие `null балла` во frontend. OpenAPI обновляется перед drift gate:
+
+```powershell
+python backend/scripts/export_openapi.py --out frontend/openapi.json
+cd frontend
+$env:OPENAPI_FILE = "openapi.json"
+npm run generate-api
+npm run check-api-drift
+npm run test:unit
+npm run build
+```
+
+Повторяемый SQLite smoke полного runner:
+
+```powershell
+python backend/scripts/run_tracer_bullet.py --mode fixture --database-url sqlite:///backend/data/bmstu-admission-ci.db --log-level INFO
+python backend/scripts/run_tracer_bullet.py --mode fixture --database-url sqlite:///backend/data/bmstu-admission-ci.db --log-level INFO
+```
+
+На live smoke runner динамически читает только официальный [orders manifest](https://priem.bmstu.ru/lists/orders.json) и сохраняет source gaps вместо нулевых или выдуманных баллов. В CI live сеть не требуется: используются sanitized source excerpts и injected fetchers.
+
 Admin/Ops data-quality slice проверяется отдельным bounded read-only набором:
 
 ```powershell
@@ -70,6 +99,45 @@ python backend/scripts/run_tracer_demo.py --mode fixture
 Recommendation tests дополнительно проверяют strict contracts и module boundary, неизменность детерминированного ranking, tie-break по коду, монотонный anti-interest penalty, evidence-backed explanations, пять synthetic personas, empty catalog и DB → catalog adapter → service → API путь.
 
 Persistence-проверки включают strict `ProfileScope`/`UserProfileSnapshot`, anonymous cookie isolation, revision conflict, migration `0005_user_profiles`, repository transaction, SQLite migration → BMSTU ingestion → `POST /proftest/results` → `GET /proftest/profile` → `GET /recommendations/current` и PostgreSQL smoke. Auth-проверки дополнительно покрывают Argon2 hash, opaque/revocable sessions, cookie flags, trusted Origin, anonymous → account transfer, account-profile-wins conflict и cross-account isolation. Профиль не смешивается с Admission Fit и Content Fit ranking.
+
+Session-driven adaptive proftest имеет focused backend gate:
+
+```powershell
+python -m pytest -q tests/api/test_proftest_sessions_api.py tests/modules/proftest
+python -m mypy src/andromeda/modules/proftest src/andromeda/api
+```
+
+Он покрывает version-pinned вопросы, пять-plus component mechanics,
+uncertain/skipped answers, deterministic adaptive selection и stop reasons,
+stale revision conflicts, early-answer invalidation, guest ownership,
+completed session resume, atomic profile persistence, analytics replay,
+bounded payload validation и expiry. Полный browser gate запускается через
+fixture demo на отдельном порту, если стандартный локальный frontend занят:
+
+```powershell
+$env:VITE_FRONTEND_ORIGIN = "http://127.0.0.1:5174,http://localhost:5174"
+python backend/scripts/run_tracer_demo.py --mode fixture --api-port 8010 --frontend-port 5174
+cd frontend
+$env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:5174"
+npx playwright test --workers=1
+```
+
+Browser scenarios проверяют desktop/mobile completion, reload resume,
+completed-result recovery, auth/guest menu, V1 journeys и существующие
+catalog/comparison/admissions/events/recommendations/route contracts. В
+двухпрограммном fixture adaptive selector может завершиться с
+`insufficient_candidate_spread`; это явный source-backed gap, а не
+синтетический adaptive вопрос.
+
+Последний локальный full gate после добавления session API и adaptive TestShell:
+backend — `332 passed, 6 skipped, 3 warnings`; Vite unit — `42 passed`, Vite
+build и OpenAPI drift — green; frontend-next lint/build — green; Playwright —
+`50 passed, 4 skipped` в desktop/mobile проектах, включая keyboard smoke на
+viewport 360px. Шесть backend skips — PostgreSQL integration cases без
+`ANDROMEDA_POSTGRES_TEST_URL`; CI job `postgresql-integration` поднимает
+PostgreSQL 16 и выполняет их с миграциями. Для `frontend-next` отдельный
+Playwright suite пока не заведён, поэтому локально проверены его lint/build,
+а browser contract проверен Vite shell через тот же session API.
 
 Для focused запуска:
 

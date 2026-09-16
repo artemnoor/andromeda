@@ -2,7 +2,7 @@ import { comparePrograms, type CompareResponse } from "../../api/client";
 import type { components } from "../../api/generated";
 import { ApiError } from "../../api/errors";
 import { renderProgramSelectors, type CompareSelection } from "../programs/ProgramSelectors";
-import { renderAreaBreakdowns, renderBlockSummary, renderCompareTable } from "./CompareTable";
+import { renderAreaBreakdowns, renderCompareTable } from "./CompareTable";
 import { renderEmpty, renderError, renderLoading } from "./CompareStates";
 
 type Program = components["schemas"]["ProgramSummaryResponse"];
@@ -49,7 +49,7 @@ async function loadComparison(root: HTMLElement, selection: CompareSelection): P
 }
 
 function renderComparison(root: HTMLElement, response: CompareResponse): void {
-  root.innerHTML = `<section class="compare-head"><div><span class="label">Программа A</span><strong>${escapeHtml(response.programA.code)}</strong><span>${escapeHtml(response.programA.name)}</span></div><div><span class="label">Программа B</span><strong>${escapeHtml(response.programB.code)}</strong><span>${escapeHtml(response.programB.name)}</span></div></section><section class="summary-grid"><article class="card"><span class="label">Итого A</span><strong>${response.totalsA.hours} ч · ${response.totalsA.credits} ЗЕТ</strong></article><article class="card"><span class="label">Итого B</span><strong>${response.totalsB.hours} ч · ${response.totalsB.credits} ЗЕТ</strong></article></section><section class="section-heading"><div><p class="eyebrow">Andromeda taxonomy</p><h2>Вектор содержания</h2></div><span class="count">Доля рассчитана по часам учебного плана</span></section>${renderAreaBreakdowns(response)}<section class="section-heading"><div><p class="eyebrow">По предметным блокам</p><h2>Структура нагрузки</h2></div><span class="count">${response.rows.length} позиций</span></section><div class="block-grid">${renderBlockSummary(response)}</div><section class="section-heading"><div><p class="eyebrow">Детали</p><h2>Сопоставление дисциплин</h2></div></section>${renderCompareTable(response)}`;
+  root.innerHTML = `<section class="compare-head"><div><span class="label">Программа A</span><strong>${escapeHtml(response.programA.code)}</strong><span>${escapeHtml(response.programA.name)}</span></div><div><span class="label">Программа B</span><strong>${escapeHtml(response.programB.code)}</strong><span>${escapeHtml(response.programB.name)}</span></div></section><section class="summary-grid"><article class="card"><span class="label">Итого A</span><strong>${response.totalsA.hours} ч · ${response.totalsA.credits} ЗЕТ</strong></article><article class="card"><span class="label">Итого B</span><strong>${response.totalsB.hours} ч · ${response.totalsB.credits} ЗЕТ</strong></article></section><section class="section-heading"><div><p class="eyebrow">Andromeda taxonomy</p><h2>Вектор содержания</h2></div><span class="count">Доля рассчитана по часам учебного плана</span></section>${renderAreaBreakdowns(response)}<section class="section-heading"><div><p class="eyebrow">Детали</p><h2>Сопоставление дисциплин</h2></div><span class="count">${response.rows.length} позиций</span></section>${renderCompareTable(response)}`;
 }
 
 function escapeHtml(value: string): string {

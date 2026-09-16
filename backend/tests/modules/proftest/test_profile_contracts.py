@@ -17,6 +17,12 @@ def test_profile_scope_accepts_only_a_sha256_session_reference() -> None:
     scope = ProfileScope(session_key_hash="a" * 64)
 
     assert scope.session_key_hash == "a" * 64
+    assert scope.owner_key == "anonymous:" + "a" * 64
+    assert scope.owner_kind == "anonymous"
+
+    account_scope = ProfileScope(session_key_hash="a" * 64, account_id="account:" + "b" * 32)
+    assert account_scope.owner_key == "account:" + "b" * 32
+    assert account_scope.owner_kind == "account"
 
     with pytest.raises(ValidationError):
         ProfileScope(session_key_hash="raw-cookie-token")

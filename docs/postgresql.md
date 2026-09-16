@@ -54,6 +54,8 @@ python backend/scripts/run_tracer_bullet.py --mode live --database-url $env:BMST
 
 Повторный ingest того же source snapshot идемпотентен. Новые данные добавляются, изменяемые поля canonical projection обновляются, устаревшие позиции затронутого curriculum удаляются атомарно, raw history сохраняется. Identity conflict или source contract error откатывает всю транзакцию.
 
+После `0010_admission_passing_route` старые passing-score rows backfill-ятся как `competition_type=general`, `status=numeric`; BVI хранится с `score=NULL`. Повторный live sync не меняет `AdmissionOffering.id`, не создаёт duplicate route/status children и атомарно удаляет устаревшие children только после полной валидной projection.
+
 ## Troubleshooting
 
 - `requires a PostgreSQL BMSTU_DATABASE_URL` — задан `ANDROMEDA_ENV=development|staging`, но URL не PostgreSQL.

@@ -30,8 +30,6 @@ def content_fingerprint() -> ProgramFingerprint:
         total_workload=Decimal("100"),
         area_hours={DisciplineAreaCode.COMPUTER_SCIENCE_DATA: Decimal("100")},
         area_share={DisciplineAreaCode.COMPUTER_SCIENCE_DATA: Decimal("1")},
-        subject_group_hours={"major": Decimal("100")},
-        subject_group_share={"major": Decimal("1")},
         semester_distribution={"1": Decimal("1")},
         activity_signals={ActivityCode.SOFTWARE_CREATION: Decimal("1")},
     )

@@ -64,7 +64,6 @@ def comparison_response(result: ComparisonResult) -> ComparisonResponse:
             ),
             "totals_a": result.totals_a.model_dump(),
             "totals_b": result.totals_b.model_dump(),
-            "blocks": tuple(block.model_dump() for block in result.blocks),
             "area_breakdown_a": tuple(area_summary_response(item.area, item.share) for item in result.area_breakdown_a),
             "area_breakdown_b": tuple(area_summary_response(item.area, item.share) for item in result.area_breakdown_b),
         }

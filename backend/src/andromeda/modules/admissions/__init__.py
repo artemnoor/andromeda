@@ -2,10 +2,12 @@
 
 from .contracts.public import (
     AdmissionOffering,
+    AdmissionCompetitionType,
     AdmissionProvenance,
     ExamRequirement,
     FundingType,
     PassingScore,
+    PassingScoreStatus,
     PassingScoreType,
     ProgramAdmissions,
     Quota,
@@ -17,6 +19,7 @@ from .repository.ports import AdmissionReader, AdmissionRepository, AdmissionWri
 
 __all__ = [
     "AdmissionOffering",
+    "AdmissionCompetitionType",
     "AdmissionProvenance",
     "AdmissionReader",
     "AdmissionRepository",
@@ -24,6 +27,7 @@ __all__ = [
     "ExamRequirement",
     "FundingType",
     "PassingScore",
+    "PassingScoreStatus",
     "PassingScoreType",
     "ProgramAdmissions",
     "Quota",

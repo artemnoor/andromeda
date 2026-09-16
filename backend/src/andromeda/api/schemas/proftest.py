@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+import json
 from typing import Annotated, Literal
 
-from pydantic import BeforeValidator, Field
+from pydantic import BeforeValidator, Field, model_validator
 
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
-from andromeda.modules.proftest.contracts.public import ActivityCode, AdaptiveAnswer, AdaptiveSelection, AdaptiveStatus, Answer, AnswerSet, AntiInterest, Confidence, MatchReason, MatchScore, ProftestPreview, ProftestResults, Question, Questionnaire, QuestionBlock, Recommendation, ReasonKind, UserProfile, UserProfileSnapshot
+from andromeda.modules.proftest.contracts.public import ActivityCode, AdaptiveAnswer, AdaptiveSelection, AdaptiveStatus, AnalyticsEventType, Answer, AnswerSet, AnswerStatus, AntiInterest, Confidence, MatchReason, MatchScore, ProftestAnalyticsEvent, ProftestPreview, ProftestResults, ProftestSessionView, Question, Questionnaire, QuestionBlock, QuestionComponentType, Recommendation, ReasonKind, SessionAnswer, SessionProgress, SessionStatus, UserProfile, UserProfileSnapshot
 
 from .common import ApiModel
 
@@ -25,7 +26,17 @@ def _decimal_from_json(value: object) -> object:
     return value
 
 
+def _datetime_from_json(value: object) -> object:
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return value
+    return value
+
+
 JsonDecimal = Annotated[Decimal, BeforeValidator(_decimal_from_json), Field(strict=True, ge=0, le=1, max_digits=5, decimal_places=4)]
+JsonDateTime = Annotated[datetime, BeforeValidator(_datetime_from_json)]
 
 
 def _discipline_area_from_json(value: object) -> DisciplineAreaCode:
@@ -50,11 +61,12 @@ JsonActivityCode = Annotated[ActivityCode, BeforeValidator(_activity_code_from_j
 
 class ProftestAnswerRequest(ApiModel):
     question_id: str = Field(alias="questionId", min_length=1, max_length=256)
-    option_ids: list[str] = Field(alias="optionIds", min_length=1, max_length=6)
+    option_ids: list[str] = Field(alias="optionIds", default_factory=list, max_length=6)
     intensity: JsonDecimal | None = None
+    status: AnswerStatus = AnswerStatus.ANSWERED
 
     def to_contract(self) -> Answer:
-        return Answer(question_id=self.question_id, option_ids=tuple(self.option_ids), intensity=self.intensity)
+        return Answer(question_id=self.question_id, option_ids=tuple(self.option_ids), intensity=self.intensity, status=self.status)
 
 
 class ProftestAdaptiveAnswerRequest(ApiModel):
@@ -74,6 +86,59 @@ class ProftestSubmissionRequest(ApiModel):
         return AnswerSet(answers=tuple(answer.to_contract() for answer in self.answers), adaptive_answers=tuple(answer.to_contract() for answer in self.adaptive_answers))
 
 
+class ProftestSessionAnswerRequest(ApiModel):
+    question_id: str = Field(alias="questionId", min_length=1, max_length=256)
+    option_ids: list[str] = Field(alias="optionIds", default_factory=list, max_length=6)
+    intensity: JsonDecimal | None = None
+    status: AnswerStatus = AnswerStatus.ANSWERED
+    dimension: str | None = Field(default=None, min_length=3, max_length=128)
+
+    def to_contract(self) -> SessionAnswer:
+        return SessionAnswer(question_id=self.question_id, option_ids=tuple(self.option_ids), intensity=self.intensity, status=self.status, dimension=self.dimension)
+
+
+class ProftestSessionPatchRequest(ApiModel):
+    expected_revision: int = Field(alias="expectedRevision", strict=True, ge=1)
+    answers: list[ProftestSessionAnswerRequest] = Field(min_length=1, max_length=6)
+
+
+class ProftestSessionNextRequest(ProftestSessionAnswerRequest):
+    expected_revision: int = Field(alias="expectedRevision", strict=True, ge=1)
+
+
+class ProftestAnalyticsEventRequest(ApiModel):
+    event_id: str = Field(alias="eventId", pattern=r"^proftest-event:[0-9a-f]{32}$")
+    session_id: str | None = Field(default=None, alias="sessionId", pattern=r"^proftest-session:[0-9a-f]{32}$")
+    question_set_version: str = Field(alias="questionSetVersion", min_length=1, max_length=128)
+    event_type: AnalyticsEventType = Field(alias="eventType")
+    payload: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=16)
+    occurred_at: JsonDateTime = Field(alias="occurredAt")
+
+    @model_validator(mode="after")
+    def validate_payload(self) -> "ProftestAnalyticsEventRequest":
+        allowed_keys = {"stage", "questionId", "component", "device", "durationMs", "uncertainty", "adaptiveCount", "changed", "top3Changed", "reason"}
+        if set(self.payload) - allowed_keys:
+            raise ValueError("analytics payload contains unsupported fields")
+        if len(json.dumps(self.payload, ensure_ascii=False, separators=(",", ":"))) > 2048:
+            raise ValueError("analytics payload is too large")
+        device = self.payload.get("device")
+        if device is not None and device not in {"mobile", "desktop", "unknown"}:
+            raise ValueError("analytics device must be coarse")
+        if any(isinstance(value, str) and len(value) > 128 for value in self.payload.values()):
+            raise ValueError("analytics payload text is too long")
+        return self
+
+    def to_contract(self) -> ProftestAnalyticsEvent:
+        from datetime import timedelta, timezone
+
+        occurred_at = self.occurred_at if self.occurred_at.tzinfo is not None else self.occurred_at.replace(tzinfo=timezone.utc)
+        return ProftestAnalyticsEvent(event_id=self.event_id, session_id=self.session_id, question_set_version=self.question_set_version, event_type=self.event_type, payload=self.payload, occurred_at=occurred_at, expires_at=occurred_at + timedelta(days=180))
+
+
+class ProftestAnalyticsBatchRequest(ApiModel):
+    events: list[ProftestAnalyticsEventRequest] = Field(min_length=1, max_length=50)
+
+
 class QuestionOptionResponse(ApiModel):
     id: str
     label: str
@@ -88,10 +153,18 @@ class QuestionResponse(ApiModel):
     adaptive: bool
     multi_select: bool
     max_selected: int
+    stage: str | None = None
+    component_type: QuestionComponentType = QuestionComponentType.SINGLE_CHOICE
+    order: int = 0
+    helper_text: str | None = None
+    declared_dimensions: tuple[str, ...] = ()
+    allow_uncertain: bool = False
+    allow_skip: bool = False
 
 
 class QuestionnaireResponse(ApiModel):
     version: Literal[1]
+    question_set_version: str = "proftest-v2"
     questions: tuple[QuestionResponse, ...]
 
 
@@ -122,6 +195,12 @@ class UserProfileResponse(ApiModel):
     negative_weights: dict[JsonDisciplineAreaCode, JsonDecimal]
     confidence: ConfidenceResponse
     adaptive_answers: list[AdaptiveAnswerResponse]
+    decision_context: list[str] = Field(default_factory=list)
+    hard_filters: list[str] = Field(default_factory=list)
+    format_preferences: list[str] = Field(default_factory=list)
+    load_tolerance: JsonDecimal | None = None
+    confidence_by_dimension: dict[str, JsonDecimal] = Field(default_factory=dict)
+    consistency_flags: list[str] = Field(default_factory=list)
 
 
 class UserProfileCreateRequest(ApiModel):
@@ -162,6 +241,10 @@ class AdaptiveSelectionResponse(ApiModel):
     candidate_count: int
     top_candidate_count: int
     dimensions: tuple[AdaptiveDimensionResponse, ...]
+    asked_question_ids: tuple[str, ...] = ()
+    uncertain_dimensions: tuple[str, ...] = ()
+    adaptive_count: int = 0
+    stop_reason: str | None = None
 
 
 class PreviewCandidateResponse(ApiModel):
@@ -216,7 +299,6 @@ class RecommendationResponse(ApiModel):
     reasons: tuple[ReasonResponse, ...]
     anti_fit_reasons: tuple[ReasonResponse, ...]
     area_share: dict[DisciplineAreaCode, Decimal]
-    subject_group_share: dict[str, Decimal]
     semester_distribution: dict[str, Decimal]
     distinctive_subjects: tuple[str, ...]
     workload_readiness: OptionalMetricResponse
@@ -229,8 +311,35 @@ class ProftestResultsResponse(ApiModel):
     recommendations: tuple[RecommendationResponse, ...]
 
 
+class SessionProgressResponse(ApiModel):
+    stage: str
+    stage_index: int
+    stage_count: int
+    answer_count: int
+    min_remaining: int
+    max_remaining: int
+
+
+class ProftestSessionResponse(ApiModel):
+    session_id: str
+    question_set_version: str
+    status: SessionStatus
+    cursor: int
+    interaction_count: int
+    revision: int
+    current_question: QuestionResponse | None = None
+    stale_question_ids: tuple[str, ...] = ()
+    progress: SessionProgressResponse
+    adaptive: AdaptiveSelectionResponse | None = None
+    results: ProftestResultsResponse | None = None
+
+
+class ProftestAnalyticsAcceptedResponse(ApiModel):
+    accepted: int
+
+
 def questionnaire_response(questionnaire: Questionnaire) -> QuestionnaireResponse:
-    return QuestionnaireResponse(version=questionnaire.version, questions=tuple(_question_response(question) for question in questionnaire.questions))
+    return QuestionnaireResponse(version=questionnaire.version, question_set_version=questionnaire.question_set_version, questions=tuple(_question_response(question) for question in questionnaire.questions))
 
 
 def preview_response(preview: ProftestPreview) -> ProftestPreviewResponse:
@@ -246,8 +355,24 @@ def results_response(results: ProftestResults) -> ProftestResultsResponse:
     return ProftestResultsResponse(profile=profile_response(results.profile), recommendations=tuple(recommendation_response(recommendation) for recommendation in results.recommendations))
 
 
+def session_response(view: ProftestSessionView) -> ProftestSessionResponse:
+    return ProftestSessionResponse(
+        session_id=view.session.session_id,
+        question_set_version=view.session.question_set_version,
+        status=view.session.status,
+        cursor=view.session.cursor,
+        interaction_count=view.session.interaction_count,
+        revision=view.session.revision,
+        current_question=_question_response(view.current_question) if view.current_question is not None else None,
+        stale_question_ids=view.session.stale_question_ids,
+        progress=SessionProgressResponse.model_validate(view.progress.model_dump()),
+        adaptive=AdaptiveSelectionResponse.model_validate(view.adaptive.model_dump()) if view.adaptive is not None else None,
+        results=results_response(view.results) if view.results is not None else None,
+    )
+
+
 def _question_response(question: Question) -> QuestionResponse:
-    return QuestionResponse(id=question.id, block=question.block, prompt=question.prompt, options=tuple(QuestionOptionResponse(id=option.id, label=option.label) for option in question.options), required=question.required, adaptive=question.adaptive, multi_select=question.multi_select, max_selected=question.max_selected)
+    return QuestionResponse(id=question.id, block=question.block, prompt=question.prompt, options=tuple(QuestionOptionResponse(id=option.id, label=option.label) for option in question.options), required=question.required, adaptive=question.adaptive, multi_select=question.multi_select, max_selected=question.max_selected, stage=question.stage.value if question.stage is not None else None, component_type=question.component_type, order=question.order, helper_text=question.helper_text, declared_dimensions=question.declared_dimensions, allow_uncertain=question.allow_uncertain, allow_skip=question.allow_skip)
 
 
 def profile_response(profile: UserProfile) -> UserProfileResponse:
@@ -261,6 +386,12 @@ def profile_response(profile: UserProfile) -> UserProfileResponse:
         negative_weights=profile.negative_weights,
         confidence=ConfidenceResponse.model_validate(profile.confidence.model_dump()),
         adaptive_answers=[AdaptiveAnswerResponse.model_validate(answer.model_dump()) for answer in profile.adaptive_answers],
+        decision_context=list(profile.decision_context),
+        hard_filters=list(profile.hard_filters),
+        format_preferences=list(profile.format_preferences),
+        load_tolerance=profile.load_tolerance,
+        confidence_by_dimension=profile.confidence_by_dimension,
+        consistency_flags=list(profile.consistency_flags),
     )
 
 
@@ -286,6 +417,12 @@ def profile_contract(profile: UserProfileResponse) -> UserProfile:
         },
         confidence=Confidence(**profile.confidence.model_dump()),
         adaptive_answers=tuple(AdaptiveAnswer(**answer.model_dump()) for answer in profile.adaptive_answers),
+        decision_context=tuple(profile.decision_context),
+        hard_filters=tuple(profile.hard_filters),
+        format_preferences=tuple(profile.format_preferences),
+        load_tolerance=profile.load_tolerance,
+        confidence_by_dimension=profile.confidence_by_dimension,
+        consistency_flags=tuple(profile.consistency_flags),
     )
 
 
@@ -310,7 +447,6 @@ def recommendation_response(recommendation: Recommendation) -> RecommendationRes
         reasons=tuple(_reason_response(reason) for reason in recommendation.reasons),
         anti_fit_reasons=tuple(_reason_response(reason) for reason in recommendation.anti_fit_reasons),
         area_share=recommendation.area_share,
-        subject_group_share=recommendation.subject_group_share,
         semester_distribution=recommendation.semester_distribution,
         distinctive_subjects=recommendation.distinctive_subjects,
         workload_readiness=OptionalMetricResponse.model_validate(recommendation.workload_readiness.model_dump()),
@@ -328,10 +464,17 @@ _recommendation_response = recommendation_response
 
 
 __all__ = [
+    "ProftestAnalyticsBatchRequest",
+    "ProftestAnalyticsAcceptedResponse",
     "ProftestSubmissionRequest",
+    "ProftestSessionAnswerRequest",
+    "ProftestSessionNextRequest",
+    "ProftestSessionPatchRequest",
+    "ProftestSessionResponse",
     "ProftestPreviewResponse",
     "ProftestResultsResponse",
     "QuestionnaireResponse",
+    "SessionProgressResponse",
     "UserProfileCreateRequest",
     "UserProfileResponse",
     "UserProfileSnapshotResponse",
@@ -339,6 +482,7 @@ __all__ = [
     "questionnaire_response",
     "preview_response",
     "results_response",
+    "session_response",
     "profile_contract",
     "profile_response",
     "snapshot_response",

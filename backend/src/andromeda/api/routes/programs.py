@@ -59,7 +59,6 @@ def get_curriculum(
                 hours=item.hours,
                 credits=item.credits,
                 assessment_types=item.assessment_types,
-                subject_group=item.subject_group,
                 source_position=item.source_position,
             )
         )

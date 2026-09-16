@@ -84,7 +84,6 @@ def build_curriculum_response(session: Session, raw_program_id: str) -> Curricul
             hours=item.hours,
             credits=item.credits,
             assessment_types=_assessment_types(assessments),
-            subject_group=item.subject_group,
             source_position=item.source_position,
         )
         for item, discipline, assessments in get_curriculum_items(session, curriculum.id)

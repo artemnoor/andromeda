@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createCurrentProfile, getAuthSession, getCurrentProfile, getCurrentRecommendations, getEvents, getIngestionRun, getIngestionRuns, getPersonalRoute, loginAccount, logoutAccount, registerAccount, retryIngestion, updateCurrentProfile, type CreateProfileRequest, type UpdateProfileRequest } from "./client";
+import { API_REQUEST_TIMEOUT_MS, createCurrentProfile, getAuthSession, getCampusPoint, getCampusPointEvents, getCurrentProfile, getCurrentRecommendations, getEvents, getIngestionRun, getIngestionRuns, getPersonalRoute, loginAccount, logoutAccount, registerAccount, retryIngestion, updateCurrentProfile, type CreateProfileRequest, type UpdateProfileRequest } from "./client";
 
 const originalFetch = globalThis.fetch;
 const profile: CreateProfileRequest["profile"] = {
@@ -17,6 +17,7 @@ const profile: CreateProfileRequest["profile"] = {
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -60,6 +61,19 @@ describe("typed API client", () => {
     expect(debug).not.toHaveBeenCalledWith(expect.stringContaining("profile"));
   });
 
+  it("turns a stalled API request into a retryable timeout", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn<typeof fetch>((_input, init) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("The operation was aborted", "AbortError")), { once: true });
+    }));
+    globalThis.fetch = fetchMock;
+
+    const request = getCurrentRecommendations();
+    const assertion = expect(request).rejects.toMatchObject({ name: "ApiTimeoutError", path: "/recommendations/current?limit=10", timeoutMs: API_REQUEST_TIMEOUT_MS });
+    await vi.advanceTimersByTimeAsync(API_REQUEST_TIMEOUT_MS);
+    await assertion;
+  });
+
   it("sends create and optimistic-update payloads without losing the revision", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({}), { status: 200 }));
     globalThis.fetch = fetchMock;
@@ -92,6 +106,17 @@ describe("typed API client", () => {
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/personal-route?limit=4");
     expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ credentials: "include" }));
+  });
+
+  it("keeps event venue reads on the existing campus API contract", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({}), { status: 200 }));
+    globalThis.fetch = fetchMock;
+
+    await getCampusPoint("venue:bmstu:main-building");
+    await getCampusPointEvents("venue:bmstu:main-building", { limit: 5, recommended: true });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/campus/points/venue%3Abmstu%3Amain-building");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/campus/points/venue%3Abmstu%3Amain-building/events?recommended=true&limit=5");
   });
 
   it("keeps the operator key in the request header and calls bounded retry", async () => {

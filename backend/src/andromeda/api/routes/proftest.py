@@ -3,12 +3,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from andromeda.api.dependencies.profile_session import get_profile_scope
-from andromeda.api.dependencies.services import get_proftest_service
+from andromeda.api.dependencies.services import get_proftest_service, get_proftest_session_service
 from andromeda.api.dependencies.services import get_profile_persistence_service
-from andromeda.api.schemas.proftest import ProftestPreviewResponse, ProftestResultsResponse, ProftestSubmissionRequest, QuestionnaireResponse, UserProfileCreateRequest, UserProfileSnapshotResponse, UserProfileUpdateRequest, preview_response, questionnaire_response, results_response, snapshot_response
+from andromeda.api.schemas.proftest import ProftestAnalyticsAcceptedResponse, ProftestAnalyticsBatchRequest, ProftestPreviewResponse, ProftestResultsResponse, ProftestSessionResponse, ProftestSessionPatchRequest, ProftestSessionNextRequest, ProftestSubmissionRequest, QuestionnaireResponse, UserProfileCreateRequest, UserProfileSnapshotResponse, UserProfileUpdateRequest, preview_response, questionnaire_response, results_response, session_response, snapshot_response
 from andromeda.modules.proftest.contracts.public import ProfileScope
 from andromeda.modules.proftest.services.profile_persistence import UserProfilePersistenceService
 from andromeda.modules.proftest.services.proftest import ProftestService
+from andromeda.modules.proftest.services.session import ProftestSessionService
 
 
 router = APIRouter(prefix="/proftest", tags=["proftest"])
@@ -31,6 +32,59 @@ def results(
     service: ProftestService = Depends(get_proftest_service),
 ) -> ProftestResultsResponse:
     return results_response(service.results(request.to_contract(), profile_scope=scope))
+
+
+@router.post("/sessions", response_model=ProftestSessionResponse)
+def start_session(
+    scope: ProfileScope = Depends(get_profile_scope),
+    service: ProftestSessionService = Depends(get_proftest_session_service),
+) -> ProftestSessionResponse:
+    return session_response(service.start(scope))
+
+
+@router.get("/sessions/current", response_model=ProftestSessionResponse)
+def current_session(
+    scope: ProfileScope = Depends(get_profile_scope),
+    service: ProftestSessionService = Depends(get_proftest_session_service),
+) -> ProftestSessionResponse:
+    return session_response(service.current(scope))
+
+
+@router.patch("/sessions/current", response_model=ProftestSessionResponse)
+def save_session(
+    request: ProftestSessionPatchRequest,
+    scope: ProfileScope = Depends(get_profile_scope),
+    service: ProftestSessionService = Depends(get_proftest_session_service),
+) -> ProftestSessionResponse:
+    answers = tuple(item.to_contract() for item in request.answers)
+    return session_response(service.save(scope, answers, expected_revision=request.expected_revision))
+
+
+@router.post("/sessions/current/next", response_model=ProftestSessionResponse)
+def next_session(
+    request: ProftestSessionNextRequest,
+    scope: ProfileScope = Depends(get_profile_scope),
+    service: ProftestSessionService = Depends(get_proftest_session_service),
+) -> ProftestSessionResponse:
+    return session_response(service.next(scope, request.to_contract(), expected_revision=request.expected_revision))
+
+
+@router.post("/sessions/current/complete", response_model=ProftestSessionResponse)
+def complete_session(
+    scope: ProfileScope = Depends(get_profile_scope),
+    service: ProftestSessionService = Depends(get_proftest_session_service),
+) -> ProftestSessionResponse:
+    return session_response(service.complete(scope))
+
+
+@router.post("/analytics", response_model=ProftestAnalyticsAcceptedResponse)
+def analytics(
+    request: ProftestAnalyticsBatchRequest,
+    scope: ProfileScope = Depends(get_profile_scope),
+    service: ProftestSessionService = Depends(get_proftest_session_service),
+) -> ProftestAnalyticsAcceptedResponse:
+    events = tuple(item.to_contract() for item in request.events)
+    return ProftestAnalyticsAcceptedResponse(accepted=service.append_analytics(scope, events))
 
 
 @router.get("/profile", response_model=UserProfileSnapshotResponse)

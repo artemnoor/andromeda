@@ -76,7 +76,6 @@ class RawCurriculumRow(ContractModel):
     hours: int = Field(strict=True, ge=0, le=2_000)
     credits: str | float | int | None = None
     assessment: str | None = None
-    subject_group: str | None = None
     source_position: int | None = Field(default=None, strict=True, ge=1, le=10_000)
     source_url: HttpUrl
     locator: SourceLocator
@@ -99,7 +98,26 @@ class RawAdmissionQuota(ContractModel):
 
 class RawAdmissionPassingScore(ContractModel):
     score_type: str = Field(min_length=1, max_length=64)
-    score: Decimal = Field(strict=True, ge=0, le=400, max_digits=6, decimal_places=2)
+    competition_type: str = Field(default="general", min_length=1, max_length=64)
+    status: str = Field(default="numeric", min_length=1, max_length=32)
+    score: Decimal | None = Field(default=None, strict=True, ge=0, le=400, max_digits=6, decimal_places=2)
+
+    @model_validator(mode="after")
+    def validate_score_status(self) -> Self:
+        if self.status == "numeric" and self.score is None:
+            raise ValueError("numeric admission passing score must contain score")
+        if self.status == "bvi" and self.score is not None:
+            raise ValueError("BVI admission passing score must not contain score")
+        if self.status not in {"numeric", "bvi"}:
+            raise ValueError("unsupported admission passing score status")
+        if self.status == "bvi" and self.competition_type not in {
+            "bvi",
+            "special_quota",
+            "separate_quota",
+            "targeted",
+        }:
+            raise ValueError("BVI admission passing score must use a BVI or quota competition type")
+        return self
 
 
 class RawAdmissionTuition(ContractModel):

@@ -97,7 +97,6 @@ def _workloads(session: Session, curriculum_id: str) -> dict[tuple[str, int | No
                 hours=item.hours,
                 credits=item.credits,
                 assessment_types=_assessment_types(assessment_ids),
-                subject_group=item.subject_group,
             ),
         )
     return result

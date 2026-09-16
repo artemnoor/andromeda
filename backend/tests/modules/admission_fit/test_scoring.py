@@ -3,6 +3,12 @@ from __future__ import annotations
 from decimal import Decimal
 
 from andromeda.modules.admission_fit.contracts.public import AdmissionFitMetricStatus, AdmissionFitStatus
+from andromeda.modules.admissions.contracts.public import (
+    AdmissionCompetitionType,
+    PassingScore,
+    PassingScoreStatus,
+    PassingScoreType,
+)
 from andromeda.modules.admission_fit.services.scoring import AdmissionFitScoringService
 
 from .conftest import applicant, offering
@@ -90,3 +96,30 @@ def test_choice_exam_is_not_made_mandatory_without_a_choice_group() -> None:
 
     assert result.breakdown.data_completeness.value == Decimal("100.00")
     assert result.status is AdmissionFitStatus.REALISTIC
+
+
+def test_admission_fit_ignores_quota_and_bvi_passing_scores() -> None:
+    source = offering()
+    provenance = source.passing_scores[0].provenance
+    quota = PassingScore(
+        score_type=PassingScoreType.BUDGET,
+        competition_type=AdmissionCompetitionType.TARGETED,
+        score=Decimal("195"),
+        provenance=provenance,
+    )
+    bvi = PassingScore(
+        score_type=PassingScoreType.BUDGET,
+        competition_type=AdmissionCompetitionType.BVI,
+        status=PassingScoreStatus.BVI,
+        score=None,
+        provenance=provenance,
+    )
+    quota_only = source.model_copy(update={"passing_scores": (quota,)})
+    mixed = source.model_copy(update={"passing_scores": (quota, bvi)})
+    applicant_profile = applicant(("Математика", "90"), ("Русский язык", "90"), ("Физика", "90"))
+
+    for candidate in (quota_only, mixed):
+        result = AdmissionFitScoringService().score("program:09.03.01-02", candidate, applicant_profile)
+        assert result.breakdown.passing_readiness.status is AdmissionFitMetricStatus.NOT_AVAILABLE
+        assert result.breakdown.passing_readiness.value is None
+        assert any("проходного" in gap.message for gap in result.data_gaps)
