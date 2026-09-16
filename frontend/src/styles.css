@@ -180,13 +180,25 @@ code { display: inline-block; max-width: 100%; overflow-wrap: anywhere; border-r
 .compare-controls button { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 700; }
 .area-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 34px; }
 .area-card { padding: 18px 20px; }
-.area-card ul, .area-list, .compact-list { margin: 16px 0 0; padding: 0; list-style: none; }
-.area-card li { margin-bottom: 13px; }
-.area-card li > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.area-card li > div span { color: var(--ink-soft); font-size: 13px; }
-.area-card li > div strong { font-size: 14px; }
-.area-bar, .area-list li i, .recommendation-meter { display: block; overflow: hidden; height: 7px; margin-top: 7px; border-radius: 99px; background: #e0e9e1; }
-.area-bar i, .area-list li b, .recommendation-meter i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.area-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.area-card-heading > div { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
+.area-card-heading .label { color: var(--accent); }
+.area-card-heading code { max-width: 100%; overflow-wrap: anywhere; color: var(--ink-muted); background: transparent; padding: 0; font-size: 11px; }
+.area-card-badge { flex: 0 0 auto; padding: 5px 8px; border-radius: 999px; background: var(--surface-soft); color: var(--ink-muted); font-size: 10px; font-weight: 700; }
+.area-pie-layout { display: flex; align-items: center; flex-direction: column; gap: 20px; margin-top: 20px; }
+.area-pie { display: grid; width: min(230px, 72vw); aspect-ratio: 1; place-items: center; border: 8px solid var(--surface); border-radius: 50%; box-shadow: 0 10px 22px rgba(29, 58, 40, .12), inset 0 0 0 1px rgba(29, 58, 40, .12); }
+.area-pie-center { display: flex; width: 44%; aspect-ratio: 1; align-items: center; justify-content: center; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); box-shadow: 0 2px 8px rgba(29, 58, 40, .08); text-align: center; }
+.area-pie-center strong { color: var(--ink); font-size: 24px; line-height: 1; font-variant-numeric: tabular-nums; }
+.area-pie-center span { max-width: 64px; color: var(--ink-muted); font-size: 10px; line-height: 1.2; }
+.area-legend { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 16px 0 0; border-top: 1px solid var(--line); list-style: none; }
+.area-legend li { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; margin: 0; }
+.area-legend-name { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 12px; }
+.area-legend-name > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.area-legend-swatch { display: block; width: 10px; height: 10px; flex: 0 0 auto; border-radius: 3px; box-shadow: 0 0 0 1px rgba(29, 58, 40, .14); }
+.area-legend li > strong { flex: 0 0 auto; color: var(--ink); font-size: 12px; font-variant-numeric: tabular-nums; }
+.area-list, .compact-list { margin: 16px 0 0; padding: 0; list-style: none; }
+.area-list li i, .recommendation-meter { display: block; overflow: hidden; height: 7px; margin-top: 7px; border-radius: 99px; background: #e0e9e1; }
+.area-list li b, .recommendation-meter i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
 .block-card { display: flex; min-width: 0; flex-direction: column; gap: 7px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-soft); }
 .block-card strong { font-size: 20px; }
 .block-card span:last-child, small { color: var(--ink-muted); font-size: 13px; line-height: 1.45; }
@@ -520,6 +532,7 @@ td span { color: var(--ink-muted); font-size: 13px; line-height: 1.6; }
   .hero-actions .text-link { justify-content: center; }
   .section-heading, .detail-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
   .identity-grid, .compare-head, .summary-grid, .area-grid, .detail-grids, .reason-columns, .admission-fit-form-grid, .admission-fit-metrics, .event-detail-facts, .personal-route-event-details { grid-template-columns: 1fr; }
+  .area-legend { grid-template-columns: 1fr; }
   .catalog-toolbar, .compare-controls, .events-filters { grid-template-columns: 1fr; }
   .catalog-reset, .events-recommended-toggle { grid-column: auto; }
   .catalog-reset { justify-self: stretch; }

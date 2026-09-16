@@ -8,6 +8,11 @@ test("user can select programmes and compare a semester", async ({ page }) => {
   await page.getByTestId("compare-submit").click();
   await expect(page.getByTestId("comparison-table")).toBeVisible();
   await expect(page.getByTestId("area-breakdown")).toBeVisible();
+  await expect(page.getByTestId("area-pie-a")).toBeVisible();
+  await expect(page.getByTestId("area-pie-b")).toBeVisible();
+  await expect(page.locator("[data-testid='area-pie-a'] .area-pie")).toHaveAttribute("aria-label", /Круговая диаграмма/);
+  await expect(page.locator("[data-testid='area-pie-a'] .area-legend-swatch").first()).toBeVisible();
+  await expect(page.locator("[data-testid='area-pie-b'] .area-legend-swatch").first()).toBeVisible();
   await expect(page.getByText("Вектор содержания")).toBeVisible();
   await expect(page.getByText("Сопоставление дисциплин")).toBeVisible();
   await expect(page.locator(".status").first()).toBeVisible();

@@ -198,7 +198,44 @@ type AreaComparisonRow = {
   name: string;
   shareA: number;
   shareB: number;
+  color: string;
 };
+
+const AREA_COLORS: Record<string, string> = {
+  mathematics_statistics: "#c2410c",
+  computer_science_data: "#0f766e",
+  physics_astronomy: "#2563eb",
+  chemistry_materials: "#a16207",
+  biology_biotechnology: "#16a34a",
+  earth_environment: "#0891b2",
+  engineering_technology: "#7c3aed",
+  architecture_construction: "#be185d",
+  agriculture_veterinary: "#65a30d",
+  medicine_health: "#dc2626",
+  psychology_cognitive: "#db2777",
+  society_social_sciences: "#0369a1",
+  economics_finance: "#92400e",
+  business_management: "#9333ea",
+  law_policy_public_administration: "#b91c1c",
+  languages_linguistics_literature: "#0e7490",
+  history_philosophy_humanities: "#57534e",
+  art_design_media: "#e11d48",
+  education_pedagogy: "#4f46e5",
+  sport_tourism_hospitality: "#ea580c",
+  safety_defense_transport: "#334155",
+  universal_interdisciplinary: "#64748b",
+};
+
+const FALLBACK_AREA_COLORS = ["#7c3aed", "#0f766e", "#c2410c", "#2563eb", "#be185d"];
+
+function areaColor(code: string): string {
+  const explicitColor = AREA_COLORS[code];
+  if (explicitColor) return explicitColor;
+
+  let hash = 0;
+  for (const character of code) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return FALLBACK_AREA_COLORS[hash % FALLBACK_AREA_COLORS.length] ?? "#64748b";
+}
 
 function areaShare(value: string | number | null | undefined): number {
   const parsed = typeof value === "number" ? value : Number(value ?? 0);
@@ -212,18 +249,20 @@ function mergeAreaBreakdowns(
   const merged = new Map<string, AreaComparisonRow>();
 
   for (const item of areaBreakdownA ?? []) {
-    const current = merged.get(item.code) ?? { code: item.code, name: item.name, shareA: 0, shareB: 0 };
+    const current = merged.get(item.code) ?? { code: item.code, name: item.name, shareA: 0, shareB: 0, color: areaColor(item.code) };
     merged.set(item.code, { ...current, name: current.name || item.name, shareA: areaShare(item.share) });
   }
   for (const item of areaBreakdownB ?? []) {
-    const current = merged.get(item.code) ?? { code: item.code, name: item.name, shareA: 0, shareB: 0 };
+    const current = merged.get(item.code) ?? { code: item.code, name: item.name, shareA: 0, shareB: 0, color: areaColor(item.code) };
     merged.set(item.code, { ...current, name: current.name || item.name, shareB: areaShare(item.share) });
   }
 
-  return [...merged.values()].sort((left, right) => {
-    const totalDelta = right.shareA + right.shareB - left.shareA - left.shareB;
-    return totalDelta || left.name.localeCompare(right.name, "ru");
-  });
+  return [...merged.values()]
+    .sort((left, right) => {
+      const totalDelta = right.shareA + right.shareB - left.shareA - left.shareB;
+      return totalDelta || left.name.localeCompare(right.name, "ru");
+    })
+    .map((row) => ({ ...row, color: areaColor(row.code) }));
 }
 
 function AreaComparisonChart({ data }: { data: ComparisonResponse }) {
@@ -236,18 +275,8 @@ function AreaComparisonChart({ data }: { data: ComparisonResponse }) {
           Содержание по категориям
         </SectionTitle>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Доля учебной нагрузки, распределённая по 22 областям taxonomy. Каждая строка показывает одну и ту же категорию для обеих программ.
+          Доля учебной нагрузки, распределённая по 22 областям taxonomy. Один и тот же цвет обозначает одну и ту же категорию в обеих программах.
         </p>
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground" aria-label="Легенда диаграммы">
-          <span className="inline-flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" />
-            <span><strong className="text-foreground">A</strong> · {data.programA.code}</span>
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-secondary" aria-hidden="true" />
-            <span><strong className="text-foreground">B</strong> · {data.programB.code}</span>
-          </span>
-        </div>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
@@ -255,23 +284,9 @@ function AreaComparisonChart({ data }: { data: ComparisonResponse }) {
             Для выбранного среза нет распределения по категориям.
           </p>
         ) : (
-          <div className="space-y-4" role="list" aria-label="Сравнение категорий дисциплин">
-            {rows.map((row) => (
-              <div
-                key={row.code}
-                role="listitem"
-                className="grid gap-2 rounded-xl border border-border/60 bg-background/40 p-3 sm:grid-cols-[minmax(12rem,0.9fr)_minmax(14rem,2fr)] sm:items-center"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground" title={row.name}>{row.name}</p>
-                  <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{row.code}</p>
-                </div>
-                <div className="space-y-2">
-                  <AreaBar label="A" name={row.name} value={row.shareA} tone="primary" />
-                  <AreaBar label="B" name={row.name} value={row.shareB} tone="secondary" />
-                </div>
-              </div>
-            ))}
+          <div className="grid gap-4 md:grid-cols-2" data-testid="area-breakdown" aria-label="Сравнение категорий дисциплин">
+            <AreaPieCard label="A" programCode={data.programA.code} rows={rows} shareKey="shareA" />
+            <AreaPieCard label="B" programCode={data.programB.code} rows={rows} shareKey="shareB" />
           </div>
         )}
       </CardContent>
@@ -279,27 +294,67 @@ function AreaComparisonChart({ data }: { data: ComparisonResponse }) {
   );
 }
 
-function AreaBar({ label, name, value, tone }: { label: "A" | "B"; name: string; value: number; tone: "primary" | "secondary" }) {
-  const percent = value * 100;
+function pieGradient(rows: readonly AreaComparisonRow[], shareKey: "shareA" | "shareB"): string {
+  const total = rows.reduce((sum, row) => sum + row[shareKey], 0);
+  if (total <= 0) return "conic-gradient(#e7e5e4 0 100%)";
+
+  let cursor = 0;
+  const segments = rows.flatMap((row) => {
+    const value = row[shareKey];
+    if (value <= 0) return [];
+    const start = (cursor / total) * 100;
+    cursor += value;
+    const end = (cursor / total) * 100;
+    return [`${row.color} ${start.toFixed(4)}% ${end.toFixed(4)}%`];
+  });
+  return `conic-gradient(${segments.join(", ")})`;
+}
+
+function AreaPieCard({
+  label,
+  programCode,
+  rows,
+  shareKey,
+}: {
+  label: "A" | "B";
+  programCode: string;
+  rows: readonly AreaComparisonRow[];
+  shareKey: "shareA" | "shareB";
+}) {
+  const total = rows.reduce((sum, row) => sum + row[shareKey], 0);
+
   return (
-    <div className="flex items-center gap-2">
-      <span className={`w-4 text-center text-[10px] font-bold ${tone === "primary" ? "text-primary" : "text-secondary"}`}>{label}</span>
-      <div
-        className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted"
-        role="progressbar"
-        aria-label={`Программа ${label}, ${name}`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Number(percent.toFixed(2))}
-        aria-valuetext={formatShare(value)}
-      >
-        <div
-          className={`h-full rounded-full transition-[width] duration-500 ${tone === "primary" ? "bg-primary" : "bg-secondary"}`}
-          style={{ width: `${percent}%` }}
-        />
+    <article className="rounded-xl border border-border/60 bg-background/40 p-4" data-testid={`area-pie-${label.toLowerCase()}`}>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Программа {label}</p>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">{programCode}</p>
+        </div>
+        <span className="rounded-full bg-accent px-2 py-1 text-[10px] font-medium text-accent-foreground">по часам</span>
       </div>
-      <span className="w-12 text-right text-xs font-mono tabular-nums text-muted-foreground">{formatShare(value)}</span>
-    </div>
+      <div className="flex flex-col items-center gap-5">
+        <div
+          className="relative grid aspect-square w-[min(17rem,72vw)] place-items-center rounded-full p-2 shadow-sm ring-1 ring-border/70"
+          style={{ background: pieGradient(rows, shareKey) }}
+          role="img"
+          aria-label={`Круговая диаграмма содержания программы ${label}`}
+        >
+          <div className="grid aspect-square w-[44%] place-items-center rounded-full bg-card px-2 text-center shadow-inner ring-1 ring-border/60">
+            <strong className="font-serif text-2xl font-semibold tabular-nums text-foreground">{total > 0 ? formatShare(total) : "—"}</strong>
+            <span className="text-[10px] leading-tight text-muted-foreground">учебной нагрузки</span>
+          </div>
+        </div>
+        <ul className="grid w-full gap-1.5 border-t border-border/60 pt-4 sm:grid-cols-2" aria-label={`Легенда программы ${label}`}>
+          {rows.map((row) => (
+            <li key={row.code} className="flex min-w-0 items-center gap-2 text-xs">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-[3px] ring-1 ring-black/10" style={{ backgroundColor: row.color }} aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-muted-foreground" title={row.name}>{row.name}</span>
+              <strong className="shrink-0 font-mono text-[11px] tabular-nums text-foreground">{formatShare(row[shareKey])}</strong>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </article>
   );
 }
 
