@@ -63,7 +63,7 @@ BMSTU detail API + official orders manifest/PDFs
 ## API contract
 
 ```text
-GET /programs/program:09.03.01-02/admissions
+GET /programs/<program-id>/admissions
 ```
 
 Ответ содержит:
@@ -105,7 +105,7 @@ python backend/scripts/run_tracer_bullet.py --mode live --database-url $env:BMST
 ## Manual browser check
 
 1. Запустите `python backend/scripts/run_tracer_demo.py --mode fixture`.
-2. Откройте `http://127.0.0.1:5173/` и выберите «Программа».
+2. Откройте `http://127.0.0.1:3000/` и выберите «Программа».
 3. Проверьте карточки 2026 budget/paid, `318`/`230` мест, ЕГЭ minimum `46`, стоимость `529000 ₽`, исторические проходные баллы и route labels/BVI, если order fixture подключён.
 4. Переключите вторую программу в select и убедитесь, что hash, карточка и данные обновились.
 5. Уменьшите viewport до ~390 px: select, карточки, ссылки источников и текст не должны выходить за экран или накладываться.

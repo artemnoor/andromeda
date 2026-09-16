@@ -53,7 +53,7 @@ export function ComparePage({
   }, [aId, bId, scope, semester]);
 
   return (
-    <div>
+    <div data-testid="compare-page">
       <PageHeader
         eyebrow="Сравнение"
         title="Сравнение программ"
@@ -63,19 +63,19 @@ export function ComparePage({
       <Card className="mb-6">
         <CardContent className="flex flex-col gap-4 p-4 lg:flex-row lg:items-end">
           <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_auto_1fr]">
-            <ProgramSelect label="Программа A" value={aId} onChange={setAId} programs={programs} exclude={bId} />
+            <ProgramSelect label="Программа A" value={aId} onChange={setAId} programs={programs} exclude={bId} testId="program-a" />
             <div className="hidden items-center justify-center lg:flex">
               <ArrowLeftRight className="h-5 w-5 text-muted-foreground" />
             </div>
-            <ProgramSelect label="Программа B" value={bId} onChange={setBId} programs={programs} exclude={aId} />
+            <ProgramSelect label="Программа B" value={bId} onChange={setBId} programs={programs} exclude={aId} testId="program-b" />
           </div>
           <div className="flex items-end gap-3">
             <div>
               <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Режим</p>
               <Tabs value={scope} onValueChange={(v) => setScope(v as "all" | "semester")}>
                 <TabsList>
-                  <TabsTrigger value="all">Весь план</TabsTrigger>
-                  <TabsTrigger value="semester">Семестр</TabsTrigger>
+                  <TabsTrigger value="all" data-testid="comparison-scope-all">Весь план</TabsTrigger>
+                  <TabsTrigger value="semester" data-testid="comparison-scope-semester">Семестр</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -83,7 +83,7 @@ export function ComparePage({
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Семестр</p>
                 <Select value={String(semester)} onValueChange={(v) => setSemester(Number(v))}>
-                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-24" data-testid="comparison-semester"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
                       <SelectItem key={s} value={String(s)}>{s}</SelectItem>
@@ -109,18 +109,20 @@ function ProgramSelect({
   onChange,
   programs,
   exclude,
+  testId,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   programs: ProgramSummary[];
   exclude: string;
+  testId: string;
 }) {
   return (
     <div>
       <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectTrigger data-testid={testId}><SelectValue /></SelectTrigger>
         <SelectContent>
           {programs.filter((p) => p.id !== exclude).map((p) => (
             <SelectItem key={p.id} value={p.id}>
@@ -157,7 +159,7 @@ function CompareResult({ data, navigate }: { data: ComparisonResponse; navigate:
           <SectionTitle hint={`${data.rows.length} строк`}>Дисциплины</SectionTitle>
         </CardHeader>
         <CardContent>
-          <div className="max-h-[28rem] overflow-y-auto warm-scroll rounded-xl border border-border/70">
+          <div className="max-h-[28rem] overflow-y-auto warm-scroll rounded-xl border border-border/70" data-testid="comparison-table">
             <Table>
               <TableHeader className="sticky top-0">
                 <TableRow className="bg-muted/70">

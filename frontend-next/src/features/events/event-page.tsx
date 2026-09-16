@@ -5,7 +5,7 @@ import { ArrowLeft, MapPin, CalendarDays, ExternalLink, Building2 } from "lucide
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Loading, ErrorState, Tag, SectionTitle, ProvenanceChip } from "@/components/shared";
-import { getEventApi, getCampusPointApi, getCampusPointEventsApi } from "@/lib/api";
+import { getEvent, getCampusPoint, getCampusPointEvents } from "@/lib/api";
 import { eventKindLabel, eventFormatLabel } from "@/lib/labels";
 import { formatDateTime } from "@/lib/format";
 import type { EventItem, CampusPoint } from "@/lib/types";
@@ -22,14 +22,14 @@ export function EventPage({ id, navigate }: { id: string; navigate: (route: Rout
     let active = true;
     setLoading(true);
     setError(null);
-    getEventApi(id)
+    getEvent(id)
       .then(async ({ event: ev }) => {
         if (!active) return;
         setEvent(ev);
         if (ev.venue?.id) {
           const [p, pe] = await Promise.all([
-            getCampusPointApi(ev.venue.id),
-            getCampusPointEventsApi(ev.venue.id),
+            getCampusPoint(ev.venue.id),
+            getCampusPointEvents(ev.venue.id),
           ]);
           if (!active) return;
           setPoint(p.point);

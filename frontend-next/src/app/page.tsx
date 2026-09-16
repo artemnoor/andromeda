@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useRouter } from "@/lib/router";
 import { getPrograms } from "@/lib/api";
@@ -23,17 +23,23 @@ export default function Page() {
   const [programsLoading, setProgramsLoading] = useState(true);
   const [programsError, setProgramsError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadPrograms = useCallback(() => {
+    setProgramsLoading(true);
+    setProgramsError(null);
     getPrograms()
       .then((res) => setPrograms(res.items))
       .catch(() => setProgramsError("Не удалось загрузить каталог программ из API."))
       .finally(() => setProgramsLoading(false));
   }, []);
 
+  useEffect(() => {
+    void loadPrograms();
+  }, [loadPrograms]);
+
   return (
     <AppShell route={route} navigate={navigate}>
       {route.view === "catalog" && (
-        <CatalogPage programs={programs} loading={programsLoading} error={programsError} navigate={navigate} />
+        <CatalogPage programs={programs} loading={programsLoading} error={programsError} onRetry={loadPrograms} navigate={navigate} />
       )}
       {route.view === "program" && (
         <ProgramPage id={route.id ?? programs[0]?.id ?? ""} navigate={navigate} />

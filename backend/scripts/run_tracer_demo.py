@@ -20,7 +20,7 @@ from urllib.request import HTTPCookieProcessor, Request, build_opener, urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = REPO_ROOT / "backend"
-FRONTEND_ROOT = REPO_ROOT / "frontend"
+FRONTEND_ROOT = REPO_ROOT / "frontend-next"
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -32,8 +32,6 @@ from run_tracer_bullet import (  # noqa: E402
     run_ingest,
     selected_program_codes,
 )
-
-DEMO_FIXTURE_PROGRAM_CODES = ("09.03.01-02", "09.03.01-12")
 
 logger = logging.getLogger("tracer.demo")
 
@@ -74,7 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--program-id", action="append", dest="program_ids")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--api-port", type=int, default=8000)
-    parser.add_argument("--frontend-port", type=int, default=5173)
+    parser.add_argument("--frontend-port", type=int, default=3000)
     parser.add_argument("--timeout", type=float, default=45.0)
     parser.add_argument("--check", action="store_true", help="verify readiness and exit instead of keeping servers alive")
     parser.add_argument("--log-level", choices=("DEBUG", "INFO", "WARNING", "ERROR"), default="INFO")
@@ -114,6 +112,23 @@ def _json_object(body: bytes, label: str) -> dict[str, object]:
     if not isinstance(value, dict):
         raise DemoError(f"{label} did not return a JSON object")
     return value
+
+
+def discover_program_codes(api_base_url: str) -> tuple[str, ...]:
+    """Read verification candidates from the ingested catalog, never from constants."""
+    payload = _json_object(_http_get(f"{api_base_url}/programs"), "program catalog endpoint")
+    items = payload.get("items")
+    if not isinstance(items, list):
+        raise DemoError("program catalog response does not contain an item list")
+    codes = tuple(
+        item["code"]
+        for item in items
+        if isinstance(item, dict) and isinstance(item.get("code"), str) and item["code"]
+    )
+    if len(codes) < 2:
+        raise DemoError("program catalog contains fewer than two programs for comparison")
+    logger.info("stage_verified name=catalog programs=%d", len(codes))
+    return codes
 
 
 def verify_compare(api_base_url: str, program_codes: Sequence[str]) -> None:
@@ -215,7 +230,7 @@ def verify_events(api_base_url: str, expected_event_count: int = 5) -> None:
     logger.info("stage_verified name=events_recommended count=%d recommendation_count=%d", len(recommended_items), len(recommended_ids))
 
 
-def verify_campus_data(api_base_url: str, expected_point_count: int = 5) -> None:
+def verify_campus_data(api_base_url: str, expected_point_count: int = 5, program_id: str | None = None) -> None:
     """Verify the external-consumer campus contract without exercising map UI."""
     logger.info("stage_start name=campus_data")
     body = _http_get(f"{api_base_url}/campus/points?limit=100")
@@ -236,9 +251,26 @@ def verify_campus_data(api_base_url: str, expected_point_count: int = 5) -> None
             raise DemoError("campus response has missing campus provenance")
     logger.info("stage_verified name=campus_points count=%d", len(items))
 
-    point_id = "venue:bmstu:main-campus"
+    point_id = next(
+        (
+            item["id"]
+            for item in items
+            if isinstance(item, dict)
+            and isinstance(item.get("id"), str)
+            and isinstance(item.get("eventCount"), int)
+            and item["eventCount"] > 0
+        ),
+        None,
+    )
+    if point_id is None:
+        point_id = next(
+            (item["id"] for item in items if isinstance(item, dict) and isinstance(item.get("id"), str)),
+            None,
+        )
+    if point_id is None:
+        raise DemoError("campus response contains no point ID")
     detail = _json_object(_http_get(f"{api_base_url}/campus/points/{quote(point_id, safe='')}"), "campus point detail endpoint")
-    if detail.get("id") != point_id or not isinstance(detail.get("universities"), list):
+    if detail.get("id") != point_id or not isinstance(detail.get("universityIds"), list):
         raise DemoError("campus point detail is missing card references")
     point_events = _json_object(
         _http_get(f"{api_base_url}/campus/points/{quote(point_id, safe='')}/events"),
@@ -249,17 +281,13 @@ def verify_campus_data(api_base_url: str, expected_point_count: int = 5) -> None
         raise DemoError("campus point events response is empty")
     logger.info("stage_verified name=campus_point_detail point_id=%s events=%d", point_id, len(point_event_items))
 
-    program_query = urlencode({"programId": "program:09.03.01-02", "limit": 100})
-    program_payload = _json_object(_http_get(f"{api_base_url}/campus/points?{program_query}"), "campus program filter endpoint")
-    program_items = program_payload.get("items")
-    if not isinstance(program_items, list) or not program_items:
-        raise DemoError("campus program filter returned no points")
-    department_query = urlencode({"departmentId": "department:bmstu:iu7", "limit": 100})
-    department_payload = _json_object(_http_get(f"{api_base_url}/campus/points?{department_query}"), "campus department filter endpoint")
-    department_items = department_payload.get("items")
-    if not isinstance(department_items, list) or not department_items:
-        raise DemoError("campus department filter returned no points")
-    logger.info("stage_verified name=campus_filters program_count=%d department_count=%d", len(program_items), len(department_items))
+    if program_id is not None:
+        program_query = urlencode({"programId": program_id, "limit": 100})
+        program_payload = _json_object(_http_get(f"{api_base_url}/campus/points?{program_query}"), "campus program filter endpoint")
+        program_items = program_payload.get("items")
+        if not isinstance(program_items, list) or not program_items:
+            raise DemoError("campus program filter returned no points")
+        logger.info("stage_verified name=campus_filters program_count=%d", len(program_items))
 
     opener = build_opener(HTTPCookieProcessor(CookieJar()))
     request = Request(
@@ -351,7 +379,7 @@ def _stop_process(process: Popen[bytes], label: str) -> None:
 
 
 def run_demo(args: argparse.Namespace) -> TracerRunResult:
-    program_codes = selected_program_codes(args.program_codes, args.program_ids) or DEMO_FIXTURE_PROGRAM_CODES
+    program_codes = selected_program_codes(args.program_codes, args.program_ids)
     database_url = resolve_database_url(args.database_url)
     fixture_dir = args.fixture_dir if args.fixture_dir.is_absolute() else (REPO_ROOT / args.fixture_dir).resolve()
     configured_event_fixture_dir = getattr(args, "event_fixture_dir", DEFAULT_EVENT_FIXTURE_DIR)
@@ -364,7 +392,7 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
         event_fixture_dir=event_fixture_dir,
         campus_fixture_dir=campus_fixture_dir,
         database_url=database_url,
-        program_codes=program_codes,
+        program_codes=program_codes or None,
     )
     logger.info(
         "stage_complete name=database run_id=%s items=%d events=%d campus_points=%d",
@@ -381,7 +409,17 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
     )
     api_base_url = f"http://{args.host}:{args.api_port}"
     frontend_url = f"http://{args.host}:{args.frontend_port}/"
-    child_env["VITE_API_PROXY_TARGET"] = api_base_url
+    frontend_origins = dict.fromkeys(
+        (
+            f"http://{args.host}:{args.frontend_port}",
+            f"http://127.0.0.1:{args.frontend_port}",
+            f"http://localhost:{args.frontend_port}",
+        )
+    )
+    child_env["FRONTEND_ORIGIN"] = ",".join(frontend_origins)
+    child_env["NEXT_PUBLIC_API_BASE_URL"] = api_base_url
+    child_env["NEXT_PUBLIC_DEBUG_API"] = "0"
+    child_env["NEXT_TELEMETRY_DISABLED"] = "1"
     api_process: Popen[bytes] | None = None
     frontend_process: Popen[bytes] | None = None
     try:
@@ -393,17 +431,19 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
         )
         frontend_executable = "npm.cmd" if os.name == "nt" else "npm"
         frontend_process = _start_process(
-            [frontend_executable, "run", "dev", "--", "--host", args.host, "--port", str(args.frontend_port)],
+            [frontend_executable, "run", "dev", "--", "--hostname", args.host, "--port", str(args.frontend_port)],
             FRONTEND_ROOT,
             child_env,
             "frontend",
         )
         wait_for_http(f"{api_base_url}/openapi.json", api_process, args.timeout, "api")
         wait_for_http(frontend_url, frontend_process, args.timeout, "frontend")
-        verify_compare(api_base_url, program_codes)
-        verify_admissions(api_base_url, program_codes)
+        discovered_codes = discover_program_codes(api_base_url)
+        verification_codes = program_codes or discovered_codes[:2]
+        verify_compare(api_base_url, verification_codes)
+        verify_admissions(api_base_url, verification_codes)
         verify_events(api_base_url, result.event_count)
-        verify_campus_data(api_base_url, result.campus_point_count)
+        verify_campus_data(api_base_url, result.campus_point_count, program_id=f"program:{verification_codes[0]}")
         if not args.check:
             logger.info("demo_ready api=%s frontend=%s; press Ctrl-C to stop", api_base_url, frontend_url)
             while True:

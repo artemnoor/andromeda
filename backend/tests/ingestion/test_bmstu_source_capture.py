@@ -4,15 +4,15 @@ import json
 from datetime import datetime, timezone
 from urllib.parse import parse_qs, unquote, urlparse
 
-from bmstu_parser.contracts.errors import ContractError
-from bmstu_parser.models import FetchedResource
-from bmstu_parser.tracer.source import (
+from andromeda.ingestion.universities.bmstu.capture import (
+    BmstuSource,
+    FetchedResource,
     ORDERS_MANIFEST_URL,
-    TracerSource,
     parse_orders_manifest,
     _is_supported_download_url,
     _is_supported_public_plan_url,
 )
+from andromeda.shared.contracts.errors import ContractError
 
 
 class _FakeFetcher:
@@ -96,7 +96,7 @@ class _FakeFetcher:
 
 
 def test_live_capture_discovers_details_and_public_plan_variants() -> None:
-    source = TracerSource(fetcher=_FakeFetcher())
+    source = BmstuSource(fetcher=_FakeFetcher())
     try:
         captured = source.capture(mode="live")
     finally:

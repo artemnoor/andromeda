@@ -10,7 +10,7 @@ from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionR
 from andromeda.ingestion.universities.bmstu import BmstuUniversityAdapter
 
 
-def test_bmstu_parser_db_repository_service_api_admission_fit_slice(tmp_path: Path) -> None:
+def test_andromeda_db_repository_service_api_admission_fit_slice(tmp_path: Path) -> None:
     adapter = BmstuUniversityAdapter()
     try:
         raw, canonical = adapter.parse_sources(fixture_dir=Path(__file__).parents[1] / "fixtures" / "tracer" / "raw")

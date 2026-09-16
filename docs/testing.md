@@ -38,11 +38,11 @@ python -m pytest -q tests/ingestion/test_bmstu_source_capture.py tests/ingestion
 python -m pytest -q tests/infrastructure/test_admissions_repository.py tests/infrastructure/test_alembic_migrations.py tests/api/test_andromeda_api.py
 ```
 
-Проверяется migration `0010_admission_passing_route`, backfill старых numeric rows, route/BVI round-trip, deterministic minimum/provenance, API JSON и отсутствие `null балла` во frontend. OpenAPI обновляется перед drift gate:
+Проверяется migration `0010_admission_passing_route`, backfill старых numeric rows, route/BVI round-trip, deterministic minimum/provenance, API JSON и отсутствие `null балла` в UI. OpenAPI обновляется перед drift gate:
 
 ```powershell
-python backend/scripts/export_openapi.py --out frontend/openapi.json
-cd frontend
+python backend/scripts/export_openapi.py --out frontend-next/openapi.json
+cd frontend-next
 $env:OPENAPI_FILE = "openapi.json"
 npm run generate-api
 npm run check-api-drift
@@ -79,10 +79,10 @@ python -m pytest -q tests/modules/personal_route tests/api/test_personal_route_a
 
 Набор проверяет deterministic plan ordering, current-profile isolation, recommendation-to-event filtering, canonical event/venue/point links, online events without a point, fixed-clock behavior for past events и отсутствие map/storage dependencies. PostgreSQL job повторяет fixture → repository → profile → personal plan flow.
 
-## Frontend
+## Canonical Next frontend
 
 ```powershell
-cd frontend
+cd frontend-next
 npm run build
 $env:OPENAPI_FILE="openapi.json"
 npm run check-api-drift
@@ -115,10 +115,9 @@ bounded payload validation и expiry. Полный browser gate запускае
 fixture demo на отдельном порту, если стандартный локальный frontend занят:
 
 ```powershell
-$env:VITE_FRONTEND_ORIGIN = "http://127.0.0.1:5174,http://localhost:5174"
-python backend/scripts/run_tracer_demo.py --mode fixture --api-port 8010 --frontend-port 5174
-cd frontend
-$env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:5174"
+$env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:3001"
+python backend/scripts/run_tracer_demo.py --mode fixture --api-port 8010 --frontend-port 3001
+cd frontend-next
 npx playwright test --workers=1
 ```
 
@@ -129,15 +128,12 @@ catalog/comparison/admissions/events/recommendations/route contracts. В
 `insufficient_candidate_spread`; это явный source-backed gap, а не
 синтетический adaptive вопрос.
 
-Последний локальный full gate после добавления session API и adaptive TestShell:
-backend — `332 passed, 6 skipped, 3 warnings`; Vite unit — `42 passed`, Vite
-build и OpenAPI drift — green; frontend-next lint/build — green; Playwright —
-`50 passed, 4 skipped` в desktop/mobile проектах, включая keyboard smoke на
-viewport 360px. Шесть backend skips — PostgreSQL integration cases без
-`ANDROMEDA_POSTGRES_TEST_URL`; CI job `postgresql-integration` поднимает
-PostgreSQL 16 и выполняет их с миграциями. Для `frontend-next` отдельный
-Playwright suite пока не заведён, поэтому локально проверены его lint/build,
-а browser contract проверен Vite shell через тот же session API.
+Локальный gate canonical Next включает backend pytest/mypy, Next unit, lint,
+build, OpenAPI drift и Playwright на desktop/mobile проектах. В текущем
+сценарии Next browser suite содержит 6 desktop и 6 mobile проверок; шесть
+backend PostgreSQL cases без `ANDROMEDA_POSTGRES_TEST_URL` явно skipped
+локально, а CI job `postgresql-integration` поднимает PostgreSQL 16 и
+выполняет их с миграциями.
 
 Для focused запуска:
 
@@ -145,11 +141,12 @@ Playwright suite пока не заведён, поэтому локально �
 python -m pytest -q tests/api/test_auth_api.py tests/api/test_proftest_profile_api.py tests/integration/test_user_profile_persistence.py tests/infrastructure/test_user_profile_repository.py
 ```
 
-Frontend unit-тесты проверяют Admission Fit loading/empty/error/success states и структуру отправляемого payload. Browser E2E прогоняется на Chromium desktop и mobile project.
+Next unit-тесты проверяют API mapping/error/timeout contracts, а browser E2E
+прогоняется на Chromium desktop и mobile projects.
 
 ## CI
 
-GitHub Actions запускает backend tests/mypy, recommendation и Admission Fit module/API integration gates, экспорт OpenAPI и drift gate, frontend build, fixture smoke и Chromium E2E. Отдельный `postgresql-integration` job поднимает disposable PostgreSQL 16 service, применяет Alembic к пустой базе, прогоняет BMSTU fixture → API → frontend и выполняет PostgreSQL-backed browser scenario. Poppler и браузер устанавливаются в CI jobs.
+GitHub Actions запускает backend tests/mypy, canonical Next contract/unit/lint/build gates, fixture smoke и Chromium E2E. Отдельный `postgresql-integration` job поднимает disposable PostgreSQL 16 service, применяет Alembic к пустой базе, прогоняет BMSTU fixture → API → `frontend-next` и выполняет PostgreSQL-backed browser scenario. Poppler и браузер устанавливаются в CI jobs.
 
 Для локального PostgreSQL запуска используйте [руководство PostgreSQL](postgresql.md). Без test DSN PostgreSQL-only tests явно помечаются skipped; CI обязан передавать `ANDROMEDA_POSTGRES_TEST_URL`.
 

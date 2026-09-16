@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { getAuthSessionApi, registerAccountApi, loginAccountApi, logoutAccountApi } from "@/lib/api";
+import { getAuthSession, registerAccount, loginAccount, logoutAccount } from "@/lib/api";
 import type { AuthSession } from "@/lib/types";
 import type { View } from "@/lib/router";
 
@@ -37,7 +37,9 @@ export function AuthPanel({ onNavigate }: { onNavigate: (view: View) => void }) 
 
   useEffect(() => {
     let active = true;
-    getAuthSessionApi().then((s) => active && setSession(s));
+    getAuthSession()
+      .then((s) => active && setSession(s))
+      .catch(() => active && setSession({ authenticated: false, account: null }));
     return () => {
       active = false;
     };
@@ -55,10 +57,11 @@ export function AuthPanel({ onNavigate }: { onNavigate: (view: View) => void }) 
     }
     setBusy(true);
     try {
-      const next = tab === "register" ? await registerAccountApi(email, password) : await loginAccountApi(email, password);
+      const next = tab === "register" ? await registerAccount({ email, password }) : await loginAccount({ email, password });
       setSession(next);
       setOpen(false);
       setPassword("");
+      onNavigate("account");
     } catch {
       setError("Не удалось выполнить запрос. Попробуйте ещё раз.");
     } finally {
@@ -69,7 +72,7 @@ export function AuthPanel({ onNavigate }: { onNavigate: (view: View) => void }) 
   const logout = async () => {
     setBusy(true);
     try {
-      const next = await logoutAccountApi();
+      const next = await logoutAccount();
       setSession(next);
     } finally {
       setBusy(false);
@@ -78,17 +81,20 @@ export function AuthPanel({ onNavigate }: { onNavigate: (view: View) => void }) 
 
   if (!session) {
     return (
-      <Button variant="outline" size="sm" disabled className="gap-2">
-        <Loader2 className="h-4 w-4 animate-spin" />
-      </Button>
+      <div data-testid="auth-panel">
+        <Button variant="outline" size="sm" disabled className="gap-2" aria-label="Профиль">
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </Button>
+      </div>
     );
   }
 
   if (session.authenticated && session.account) {
     return (
-      <DropdownMenu>
+      <div data-testid="auth-panel">
+        <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2 rounded-full">
+          <Button variant="outline" size="sm" className="gap-2 rounded-full" data-testid="profile-menu-trigger">
             <span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground">
               <UserRound className="h-3.5 w-3.5" />
             </span>
@@ -96,24 +102,25 @@ export function AuthPanel({ onNavigate }: { onNavigate: (view: View) => void }) 
             <ChevronDown className="h-3.5 w-3.5 opacity-60" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="truncate">{session.account.email}</DropdownMenuLabel>
+        <DropdownMenuContent align="end" className="w-56" data-testid="profile-menu-panel">
+          <DropdownMenuLabel className="truncate" data-testid="auth-account">{session.account.email}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => onNavigate("account")}>
             <UserRound className="mr-2 h-4 w-4" /> Личный кабинет
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={logout} disabled={busy}>
+          <DropdownMenuItem onClick={logout} disabled={busy} data-testid="auth-logout">
             <LogOut className="mr-2 h-4 w-4" /> Выйти
           </DropdownMenuItem>
         </DropdownMenuContent>
-      </DropdownMenu>
+        </DropdownMenu>
+      </div>
     );
   }
 
   return (
-    <>
-      <Button size="sm" className="gap-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setOpen(true)}>
-        <LogIn className="h-4 w-4" /> Войти
+    <div data-testid="auth-panel">
+      <Button data-testid="profile-menu-trigger" size="sm" className="gap-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setOpen(true)}>
+        <UserRound className="h-4 w-4" /> Войти
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
@@ -126,43 +133,43 @@ export function AuthPanel({ onNavigate }: { onNavigate: (view: View) => void }) 
           </DialogHeader>
           <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register")}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Войти</TabsTrigger>
-              <TabsTrigger value="register">Создать аккаунт</TabsTrigger>
+              <TabsTrigger value="login" data-testid="auth-login-trigger">Войти</TabsTrigger>
+              <TabsTrigger value="register" data-testid="auth-register-trigger">Создать аккаунт</TabsTrigger>
             </TabsList>
             <TabsContent value="login" className="space-y-3 pt-2">
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+                <Input id="email" data-testid="auth-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pwd">Пароль</Label>
-                <Input id="pwd" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input id="pwd" data-testid="auth-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
             </TabsContent>
             <TabsContent value="register" className="space-y-3 pt-2">
               <div className="space-y-1.5">
                 <Label htmlFor="email2">Email</Label>
-                <Input id="email2" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+                <Input id="email2" data-testid="auth-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pwd2">Пароль (минимум 12 символов)</Label>
-                <Input id="pwd2" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input id="pwd2" data-testid="auth-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
             </TabsContent>
           </Tabs>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="outline" data-testid="auth-guest" onClick={() => setOpen(false)}>
               Продолжить как гость
             </Button>
-            <Button onClick={submit} disabled={busy} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button data-testid="auth-submit" onClick={submit} disabled={busy} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               {tab === "login" ? "Войти" : "Зарегистрироваться"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
 

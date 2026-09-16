@@ -27,17 +27,18 @@ class FakeProcess:
 
 
 def test_demo_wires_ingest_api_frontend_and_compare(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    result = TracerRunResult("run-1", ("program:09.03.01-02", "program:09.03.01-12"), 2, 4, ("a" * 64, "b" * 64), 5)
+    result = TracerRunResult("run-1", ("program:test-a", "program:test-b"), 2, 4, ("a" * 64, "b" * 64), 5)
     commands: list[tuple[str, ...]] = []
     processes: list[FakeProcess] = []
 
     monkeypatch.setattr(run_tracer_demo, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(run_tracer_demo, "run_ingest", lambda **_: result)
     monkeypatch.setattr(run_tracer_demo, "wait_for_http", lambda *args: None)
+    monkeypatch.setattr(run_tracer_demo, "discover_program_codes", lambda *_args: ("test-a", "test-b"))
     monkeypatch.setattr(run_tracer_demo, "verify_compare", lambda *args: None)
     monkeypatch.setattr(run_tracer_demo, "verify_admissions", lambda *args: None)
     monkeypatch.setattr(run_tracer_demo, "verify_events", lambda *args: None)
-    monkeypatch.setattr(run_tracer_demo, "verify_campus_data", lambda *args: None)
+    monkeypatch.setattr(run_tracer_demo, "verify_campus_data", lambda *args, **kwargs: None)
 
     def fake_start(command: list[str], cwd: Path, env: dict[str, str], label: str) -> FakeProcess:
         commands.append(tuple(command))
@@ -56,7 +57,7 @@ def test_demo_wires_ingest_api_frontend_and_compare(monkeypatch: pytest.MonkeyPa
         program_ids=None,
         host="127.0.0.1",
         api_port=8000,
-        frontend_port=5173,
+        frontend_port=3000,
         timeout=1.0,
         check=True,
     )

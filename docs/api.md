@@ -2,7 +2,7 @@
 
 # API
 
-FastAPI-приложение `andromeda.api.main` публикует OpenAPI на `/openapi.json`. Frontend использует только эти HTTP endpoints; `frontend/src/api/generated.ts` создаётся из спецификации.
+FastAPI-приложение `andromeda.api.main` публикует OpenAPI на `/openapi.json`. Единственный web-клиент `frontend-next` использует только эти HTTP endpoints; `frontend-next/src/lib/generated.ts` создаётся из спецификации.
 
 ## Программы
 
@@ -20,8 +20,8 @@ FastAPI-приложение `andromeda.api.main` публикует OpenAPI н�
 ## Сравнение
 
 ```text
-GET /compare?programIds=program:09.03.01-02,program:09.03.01-12
-GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&semester=1
+GET /compare?programIds=<program-id-a>,<program-id-b>
+GET /compare?programIds=<program-id-a>,<program-id-b>&scope=semester&semester=1
 ```
 
 `ComparisonResponse` содержит `programA`, `programB`, `scope`, `rows`, `totalsA`, `totalsB` и `areaBreakdownA`/`areaBreakdownB`. Последние показывают агрегированный вектор содержания программы в выбранной области и режиме. Строка хранит `a`, `b`, статус и `hoursDelta`/`creditsDelta`; у дисциплин сохраняются исходные названия, семестры, формы контроля и area weights. Категории учебного плана не являются частью canonical contract.
@@ -67,8 +67,8 @@ Auth cookie не читается frontend JavaScript и имеет `Path=/`, `H
 После изменения API frontend-контракт регенерируется из OpenAPI:
 
 ```powershell
-python backend/scripts/export_openapi.py --out frontend/openapi.json
-cd frontend
+python backend/scripts/export_openapi.py --out frontend-next/openapi.json
+cd frontend-next
 npm run generate-api
 npm run check-api-drift
 ```
@@ -115,10 +115,10 @@ rows имеют уникальный `eventId` и expiry 180 дней. Infrastru
 uncertainty, changed answers, top-3 changes, adaptive count и median response
 time), но не публикует профили или сырые ответы.
 
-Оба frontend-клиента генерируются из одного `frontend/openapi.json`:
-`frontend/src/api/generated.ts` и `frontend-next/src/lib/generated.ts`. При
-изменении session schema сначала экспортируйте OpenAPI, затем выполните
-generation и drift check из раздела выше.
+Единственный frontend-клиент генерируется из `frontend-next/openapi.json` в
+`frontend-next/src/lib/generated.ts`. При изменении session schema сначала
+экспортируйте OpenAPI, затем выполните generation и drift check из раздела
+выше.
 
 ## Recommendations
 
@@ -174,13 +174,13 @@ Request содержит `profile` и `limit` (`1..20`). Профиль — то
       "position": 1,
       "kind": "explore_program",
       "reason": "Начните с программы с самым высоким Content Fit",
-      "programIds": ["program:09.03.01-02"]
+      "programIds": ["<program-id>"]
     },
     {
       "position": 3,
       "kind": "attend_event",
       "reason": "Событие связано с рекомендованной программой",
-      "programIds": ["program:09.03.01-02"],
+      "programIds": ["<program-id>"],
       "eventId": "event:bmstu:dod-2026",
       "venueId": "venue:bmstu:main-campus",
       "startsAt": "2026-10-17T08:00:00Z"
@@ -189,7 +189,7 @@ Request содержит `profile` и `limit` (`1..20`). Профиль — то
 }
 ```
 
-Frontend client генерирует `PersonalRouteResponse` из `/openapi.json`; для UI используется только логический план, без маршрутизации по карте.
+`frontend-next` генерирует `PersonalRouteResponse` из `/openapi.json`; для UI используется только логический план, без маршрутизации по карте.
 
 `POST /proftest/results` сохраняет только финальный `UserProfile` (без `AnswerSet` и cookie token). До login/register профиль принадлежит anonymous scope. При register/login активный anonymous profile переносится к account, если account profile ещё отсутствует. Если существуют оба, account profile wins, anonymous row остаётся отдельной и не merge-ится. Account-owned row больше не доступен по anonymous cookie; новый authenticated session восстанавливает его по canonical account ID. Если профиля нет или его TTL истёк, API возвращает `NOT_FOUND`; устаревший `expectedRevision` и duplicate create возвращают `CONFLICT`. Session keys и auth tokens в БД представлены только hash-значениями.
 
@@ -206,7 +206,7 @@ Endpoint принимает баллы абитуриента и явный `off
 ```json
 {
   "version": 1,
-  "offeringId": "admission-offering:program:09.03.01-02:2026:unknown:budget:direction",
+  "offeringId": "<offering-id-from-admissions>",
   "applicant": {
     "version": 1,
     "scores": [

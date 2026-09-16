@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from andromeda.ingestion.universities.bmstu.parser.catalog import select_catalog_programs
-from bmstu_parser.tracer.source import _catalog_page
+from andromeda.ingestion.universities.bmstu.capture import _catalog_page
 
 
 def test_catalog_parser_accepts_paginated_api_shape_and_preserves_all_cards() -> None:

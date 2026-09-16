@@ -5,7 +5,7 @@ import { Workflow, Compass, Sparkles, Route, ArrowRight, CheckCircle2 } from "lu
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Loading, ErrorState, ScoreBadge, Tag, SectionTitle } from "@/components/shared";
-import { getCurrentProfile, getCurrentRecommendations, getPersonalRouteApi } from "@/lib/api";
+import { getCurrentProfile, getCurrentRecommendations, getPersonalRoute } from "@/lib/api";
 import { formatPercent } from "@/lib/format";
 import type { UserProfileSnapshot, RecommendationsResponse, PersonalRouteResponse } from "@/lib/types";
 import type { Route as RouteType } from "@/lib/router";
@@ -30,7 +30,7 @@ export function UnifiedFlowPage({ navigate }: { navigate: (route: RouteType) => 
         setProfile(prof);
         setRecs(r);
       } else if (p === "route") {
-        const [prof, r, rt] = await Promise.all([getCurrentProfile(), getCurrentRecommendations(10), getPersonalRouteApi()]);
+        const [prof, r, rt] = await Promise.all([getCurrentProfile(), getCurrentRecommendations(10), getPersonalRoute(10)]);
         setProfile(prof);
         setRecs(r);
         setRoute(rt);

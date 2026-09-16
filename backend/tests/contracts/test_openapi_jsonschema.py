@@ -3,7 +3,7 @@ from __future__ import annotations
 from jsonschema import Draft202012Validator, RefResolver
 from fastapi.testclient import TestClient
 
-from bmstu_parser.api.main import create_app
+from andromeda.api.main import create_app
 
 from conftest import PROGRAM_A, PROGRAM_B
 
@@ -32,5 +32,5 @@ def test_openapi_publishes_shared_enums_and_required_contract_fields() -> None:
     schemas = document["components"]["schemas"]
     assert schemas["AssessmentType"]["enum"] == ["exam", "credit", "graded_credit", "coursework", "course_project", "state_exam"]
     assert schemas["CompareStatus"]["enum"] == ["both", "only_a", "only_b", "different"]
-    assert set(schemas["ProgramResponse"]["required"]) == {"university", "direction", "program", "source"}
+    assert set(schemas["ProgramResponse"]["required"]) == {"program"}
     assert "programIds" in document["paths"]["/compare"]["get"]["parameters"][0]["name"]

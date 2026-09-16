@@ -23,7 +23,7 @@ python backend/scripts/run_tracer_bullet.py --mode fixture --database-url $env:B
 python backend/scripts/run_tracer_demo.py --mode fixture --database-url $env:BMSTU_DATABASE_URL
 ```
 
-Откройте `http://127.0.0.1:8000/docs` и `http://127.0.0.1:5173/`. Demo runner использует тот же URL для migration, parser, API и frontend.
+Откройте `http://127.0.0.1:8000/docs` и `http://127.0.0.1:3000/`. Demo runner использует тот же URL для migration, ingestion, API и `frontend-next`.
 
 ## Staging
 

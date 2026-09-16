@@ -30,7 +30,7 @@ export function AppShell({
   const secondary = NAV_ITEMS.filter((i) => ["flow", "ops"].includes(i.view));
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col" data-testid="app-shell">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-3 md:px-6">
           <button
@@ -60,6 +60,7 @@ export function AppShell({
                   key={item.view}
                   onClick={() => navigate({ view: item.view })}
                   aria-current={active ? "page" : undefined}
+                  data-testid={`nav-${item.view}`}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition",
                     active
@@ -84,6 +85,7 @@ export function AppShell({
                     key={item.view}
                     onClick={() => navigate({ view: item.view })}
                     aria-current={active ? "page" : undefined}
+                    data-testid={`secondary-nav-${item.view}`}
                     title={item.label}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium transition",
@@ -110,6 +112,7 @@ export function AppShell({
               <button
                 key={item.view}
                   onClick={() => navigate({ view: item.view })}
+                data-testid={`mobile-nav-${item.view}`}
                 className={cn(
                   "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition",
                   active

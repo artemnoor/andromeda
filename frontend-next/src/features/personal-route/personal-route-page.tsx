@@ -5,7 +5,7 @@ import { Route, Compass, GitCompare, CalendarDays, ArrowRight, MapPin } from "lu
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Loading, ErrorState, ProfileRequired, EmptyState, ScoreBadge, Tag } from "@/components/shared";
-import { getPersonalRouteApi } from "@/lib/api";
+import { getPersonalRoute } from "@/lib/api";
 import { STEP_KIND_LABELS, ROUTE_STATUS_LABELS } from "@/lib/labels";
 import { formatDateTime } from "@/lib/format";
 import type { PersonalRouteResponse } from "@/lib/types";
@@ -23,7 +23,7 @@ export function PersonalRoutePage({ navigate }: { navigate: (route: RouteType) =
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    getPersonalRouteApi()
+    getPersonalRoute()
       .then(setData)
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
