@@ -12,6 +12,12 @@ from andromeda.infrastructure.database import Base, create_engine_for_url
 from andromeda.infrastructure.database.models import AdmissionOfferingModel
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 from andromeda.ingestion.universities.bmstu import BmstuUniversityAdapter
+from andromeda.modules.admissions.contracts.public import (
+    AdmissionCompetitionType,
+    PassingScore,
+    PassingScoreStatus,
+    PassingScoreType,
+)
 
 
 def _client(tmp_path: Path) -> TestClient:
@@ -84,6 +90,56 @@ def test_program_admissions_unknown_program_uses_not_found_contract(tmp_path: Pa
 
     assert response.status_code == 404
     assert response.json()["code"] == "NOT_FOUND"
+
+
+def test_program_admissions_exposes_route_aware_numeric_and_bvi_scores(tmp_path: Path) -> None:
+    fixture_dir = Path(__file__).parents[1] / "fixtures" / "tracer" / "raw"
+    adapter = BmstuUniversityAdapter()
+    try:
+        raw, canonical = adapter.parse_sources(fixture_dir=fixture_dir)
+    finally:
+        adapter.close()
+
+    envelope = next(item for item in canonical.admissions if item.program_id == "program:09.03.01-02")
+    offering = next(item for item in envelope.offerings if item.admission_year == 2026 and item.funding_type.value == "budget")
+    source = offering.provenance[0]
+    updated_offering = offering.model_copy(
+        update={
+            "passing_scores": (
+                PassingScore(
+                    score_type=PassingScoreType.BUDGET,
+                    competition_type=AdmissionCompetitionType.TARGETED,
+                    score=Decimal("195"),
+                    provenance=source,
+                ),
+                PassingScore(
+                    score_type=PassingScoreType.BUDGET,
+                    competition_type=AdmissionCompetitionType.SEPARATE_QUOTA,
+                    status=PassingScoreStatus.BVI,
+                    score=None,
+                    provenance=source,
+                ),
+            )
+        }
+    )
+    updated_envelope = envelope.model_copy(update={"offerings": (updated_offering, *[item for item in envelope.offerings if item.id != offering.id])})
+    updated_canonical = canonical.model_copy(
+        update={
+            "admissions": (updated_envelope, *[item for item in canonical.admissions if item.program_id != envelope.program_id]),
+        }
+    )
+    database_url = f"sqlite:///{(tmp_path / 'route-aware-api.db').as_posix()}"
+    engine = create_engine_for_url(database_url)
+    Base.metadata.create_all(engine)
+    SqlAlchemyIngestionRepository(engine).ingest(raw, updated_canonical)
+    payload = TestClient(create_app(database_url)).get("/programs/program:09.03.01-02/admissions").json()
+
+    current = next(item for item in payload["offerings"] if item["id"] == offering.id)
+    assert {(item["competitionType"], item["status"], item["score"]) for item in current["passingScores"]} == {
+        ("targeted", "numeric", "195.00"),
+        ("separate_quota", "bvi", None),
+    }
+    engine.dispose()
 
 
 def test_program_admissions_without_source_is_a_stable_empty_response(tmp_path: Path) -> None:

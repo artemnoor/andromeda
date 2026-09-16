@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+pipeline_runs/
+tests/
+data/*
+!data/
+!data/tracer.db
+.env
+.env.*
+!.env.example

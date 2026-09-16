@@ -24,6 +24,15 @@ const scoreLabels: Record<Offering["passingScores"][number]["scoreType"], string
   other: "Проходной балл",
 };
 
+const competitionLabels: Record<string, string> = {
+  general: "Общий конкурс",
+  special_quota: "Особая квота",
+  separate_quota: "Отдельная квота",
+  targeted: "Целевая квота",
+  bvi: "БВИ",
+  other: "Другой конкурс",
+};
+
 const quotaLabels: Record<Offering["quotas"][number]["quotaType"], string> = {
   special: "Особая квота",
   separate: "Отдельная квота",
@@ -48,16 +57,28 @@ export function renderAdmissions(root: HTMLElement, response: ProgramAdmissionsR
     renderAdmissionsEmpty(root);
     return;
   }
-  root.innerHTML = `<section class="admissions-section" aria-labelledby="admissions-title"><div class="section-heading"><div><p class="eyebrow">Официальные данные МГТУ</p><h2 id="admissions-title">Поступление</h2></div><span class="count">${response.offerings.length} записей</span></div><p class="muted admissions-intro">Данные привязаны к канонической программе и показаны с указанием года и источника. Пустые поля означают, что показатель не опубликован в доступном источнике.</p><div class="admissions-grid">${response.offerings.map(renderOffering).join("")}</div></section>`;
+  root.innerHTML = `<section class="admissions-section" aria-labelledby="admissions-title"><div class="section-heading"><div><p class="eyebrow">Официальные данные МГТУ</p><h2 id="admissions-title">Поступление</h2></div><span class="count">${response.offerings.length} записей</span></div><p class="muted admissions-intro">Данные привязаны к канонической программе и показаны с указанием года и источника. Числовой минимум — наименьшая сумма баллов среди опубликованных зачисленных и включает индивидуальные достижения; это не гарантия будущего проходного балла. Экзаменационные минимумы ниже — отдельные требования допуска.</p><div class="admissions-grid">${response.offerings.map(renderOffering).join("")}</div></section>`;
 }
 
 function renderOffering(offering: Offering): string {
   const title = [String(offering.admissionYear), offering.fundingType ? fundingLabels[offering.fundingType] : "", offering.studyForm ? formLabels[offering.studyForm] : ""].filter(Boolean).join(" · ");
-  const scoreRows = offering.passingScores.map((score) => `<li><span>${scoreLabels[score.scoreType]}</span><strong>${formatDecimal(score.score)} балла</strong></li>`).join("");
+  const scoreRows = offering.passingScores.map(renderPassingScore).join("");
   const examRows = offering.exams.map((exam) => `<li><span>${escapeHtml(exam.subject)}${exam.isChoice ? " · на выбор" : ""}</span><strong>${exam.minimumScore === null || exam.minimumScore === undefined ? "—" : `${formatDecimal(exam.minimumScore)} мин.`}</strong></li>`).join("");
   const quotaRows = offering.quotas.map((quota) => `<li><span>${quotaLabels[quota.quotaType]}</span><strong>${quota.places} мест</strong></li>`).join("");
   const tuitionRows = offering.tuition.map((tuition) => `<li><span>${tuition.isDiscounted ? "Со скидкой" : "Стоимость"}${tuition.period ? ` · ${escapeHtml(tuition.period)}` : ""}</span><strong>${formatMoney(tuition.amount, tuition.currency)}</strong></li>`).join("");
   return `<article class="admission-card"><div class="admission-card-head"><div><span class="label">${offering.scope === "direction" ? "По направлению" : "По программе"}</span><h3>${escapeHtml(title)}</h3></div>${offering.places === null || offering.places === undefined ? "" : `<div class="admission-places"><strong>${offering.places}</strong><span>мест</span></div>`}</div>${scoreRows ? `<div class="admission-group"><h4>Проходные баллы</h4><ul>${scoreRows}</ul></div>` : ""}${examRows ? `<div class="admission-group"><h4>ЕГЭ и минимумы</h4><ul>${examRows}</ul></div>` : ""}${quotaRows ? `<div class="admission-group"><h4>Квоты</h4><ul>${quotaRows}</ul></div>` : ""}${tuitionRows ? `<div class="admission-group"><h4>Стоимость обучения</h4><ul>${tuitionRows}</ul></div>` : ""}<p class="admission-source">Источник: <a href="${escapeAttribute(offering.provenance[0]?.sourceUrl ?? "#")}" target="_blank" rel="noreferrer">${escapeHtml(offering.provenance[0]?.sourceName ?? offering.provenance[0]?.sourceKind ?? "официальный источник")}</a></p></article>`;
+}
+
+function renderPassingScore(score: Offering["passingScores"][number]): string {
+  const route = competitionLabels[score.competitionType ?? "other"] ?? "Другой конкурс";
+  const kind = scoreLabels[score.scoreType] ?? "Проходной балл";
+  if (score.status === "bvi") {
+    return `<li><span>${escapeHtml(route)} · ${escapeHtml(kind)}</span><strong>БВИ (без вступительных испытаний)</strong></li>`;
+  }
+  if (score.score === null || score.score === undefined) {
+    return `<li><span>${escapeHtml(route)} · ${escapeHtml(kind)}</span><strong>Не опубликован</strong></li>`;
+  }
+  return `<li><span>${escapeHtml(route)} · ${escapeHtml(kind)}</span><strong>Минимум зачисленных: ${formatDecimal(score.score)} баллов</strong></li>`;
 }
 
 function formatDecimal(value: string): string {

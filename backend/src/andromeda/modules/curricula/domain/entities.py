@@ -8,7 +8,7 @@ from pydantic import Field, HttpUrl, model_validator
 
 from ....shared.contracts.base import ContractModel
 from ....shared.contracts.enums import AssessmentType
-from ....shared.contracts.ids import Credits, CurriculumId, CurriculumItemId, DisciplineId, EducationYear, HourCount, ProgramId, Semester, ShortText, SourcePosition
+from ....shared.contracts.ids import Credits, CurriculumId, CurriculumItemId, DisciplineId, EducationYear, HourCount, ProgramId, Semester, SourcePosition
 
 
 logger = logging.getLogger("andromeda.contracts.validation")
@@ -22,7 +22,6 @@ class CurriculumItem(ContractModel):
     hours: HourCount
     credits: Credits | None = None
     assessment_types: tuple[AssessmentType, ...] | None = None
-    subject_group: ShortText | None = None
     source_position: SourcePosition | None = None
 
     @model_validator(mode="after")

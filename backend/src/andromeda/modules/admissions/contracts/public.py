@@ -50,6 +50,20 @@ class PassingScoreType(StrEnum):
     OTHER = "other"
 
 
+class AdmissionCompetitionType(StrEnum):
+    GENERAL = "general"
+    SPECIAL_QUOTA = "special_quota"
+    SEPARATE_QUOTA = "separate_quota"
+    TARGETED = "targeted"
+    BVI = "bvi"
+    OTHER = "other"
+
+
+class PassingScoreStatus(StrEnum):
+    NUMERIC = "numeric"
+    BVI = "bvi"
+
+
 class AdmissionProvenance(ContractModel):
     source_kind: ShortText
     source_url: HttpUrl
@@ -77,8 +91,26 @@ class Quota(ContractModel):
 
 class PassingScore(ContractModel):
     score_type: PassingScoreType
-    score: Decimal = Field(strict=True, ge=ZERO, le=Decimal("400"), max_digits=6, decimal_places=2)
+    competition_type: AdmissionCompetitionType = AdmissionCompetitionType.GENERAL
+    status: PassingScoreStatus = PassingScoreStatus.NUMERIC
+    score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal("400"), max_digits=6, decimal_places=2)
     provenance: AdmissionProvenance
+
+    @model_validator(mode="after")
+    def validate_status(self) -> Self:
+        if self.status is PassingScoreStatus.NUMERIC and self.score is None:
+            raise ValueError("numeric passing score must contain score")
+        if self.status is PassingScoreStatus.BVI:
+            if self.score is not None:
+                raise ValueError("BVI passing score must not contain score")
+            if self.competition_type not in {
+                AdmissionCompetitionType.BVI,
+                AdmissionCompetitionType.SPECIAL_QUOTA,
+                AdmissionCompetitionType.SEPARATE_QUOTA,
+                AdmissionCompetitionType.TARGETED,
+            }:
+                raise ValueError("BVI passing score must use a BVI or quota competition type")
+        return self
 
 
 class TuitionCost(ContractModel):
@@ -134,11 +166,13 @@ class ProgramAdmissions(ContractModel):
 
 __all__ = [
     "AdmissionOffering",
+    "AdmissionCompetitionType",
     "AdmissionProvenance",
     "AdmissionScope",
     "ExamRequirement",
     "FundingType",
     "PassingScore",
+    "PassingScoreStatus",
     "ProgramAdmissions",
     "Quota",
     "PassingScoreType",

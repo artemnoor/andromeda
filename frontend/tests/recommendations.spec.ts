@@ -4,18 +4,12 @@ async function completeTest(page: Page): Promise<void> {
   await page.goto("/#proftest");
   await expect(page.getByTestId("proftest-start")).toBeVisible();
   await page.getByTestId("proftest-start").click();
-  for (let index = 0; index < 6; index += 1) {
-    await expect(page.getByTestId("proftest-progress")).toContainText(`${index + 1} / 6`);
+  for (let index = 0; index < 38; index += 1) {
+    const questionOrResults = page.getByTestId("session-question").or(page.getByTestId("proftest-results"));
+    await expect(questionOrResults).toBeVisible();
+    if (await page.getByTestId("proftest-results").isVisible()) break;
     await page.locator(".choice-card").first().click();
-    await page.getByTestId("proftest-next").click();
-  }
-  await page.waitForSelector("[data-testid='adaptive-submit'], [data-testid='adaptive-skipped-continue']", { state: "visible" });
-  const adaptive = page.locator("[data-testid='adaptive-submit']");
-  if (await adaptive.isVisible().catch(() => false)) {
-    await page.locator("[data-adaptive-option]").first().click();
-    await adaptive.click();
-  } else {
-    await page.getByTestId("adaptive-skipped-continue").click();
+    await page.getByTestId("session-next").click();
   }
   await expect(page.getByTestId("proftest-results")).toBeVisible();
 }
@@ -28,7 +22,6 @@ test.describe("recommendation vertical slice", () => {
     await page.locator("[data-result-detail='0']").click();
     await expect(page.getByTestId("proftest-detail-card")).toBeVisible();
     await expect(page.getByText("Почему подходит")).toBeVisible();
-    await expect(page.getByText("Блоки дисциплин")).toBeVisible();
     await expect(page.getByText("Семестры")).toBeVisible();
     await expect(page.getByText(/Workload readiness/)).toBeVisible();
   });

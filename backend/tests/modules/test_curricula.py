@@ -14,7 +14,6 @@ def test_curriculum_contract_preserves_source_name_and_decimal_credits() -> None
         semester=1,
         hours=144,
         credits=Decimal("4.00"),
-        subject_group="Обязательная часть",
     )
     curriculum = Curriculum(
         id="curriculum:09.03.01-02-2026",

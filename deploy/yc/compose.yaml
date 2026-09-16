@@ -1,0 +1,37 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    restart: unless-stopped
+    environment:
+      ANDROMEDA_ENV: test
+      BMSTU_DATABASE_URL: sqlite:////app/data/tracer.db
+      VITE_FRONTEND_ORIGIN: http://localhost
+      LOG_LEVEL: INFO
+      BMSTU_DB_POOL_SIZE: 1
+      BMSTU_DB_MAX_OVERFLOW: 0
+    volumes:
+      - andromeda_data:/app/data
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  andromeda_data:
+  caddy_data:
+  caddy_config:

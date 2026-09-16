@@ -194,7 +194,6 @@ def _merge_records(entries: list[tuple[Path, dict[str, Any]]], filename: str) ->
                     "hours": item.get("hours") or item.get("total_hours"),
                     "credits": item.get("credits") or item.get("zet"),
                     "assessment_type": item.get("assessment_type") or item.get("control"),
-                    "subject_group": item.get("subject_group") or item.get("discipline_group"),
                 },
                 ensure_ascii=False,
                 sort_keys=True,
@@ -204,6 +203,8 @@ def _merge_records(entries: list[tuple[Path, dict[str, Any]]], filename: str) ->
                 continue
             seen.add(key)
             item = dict(item)
+            item.pop("subject_group", None)
+            item.pop("discipline_group", None)
             if item.get("record_type") == "ProgramProfile":
                 # Profile disciplines were removed from the focused contract;
                 # do not carry them forward from an older snapshot.

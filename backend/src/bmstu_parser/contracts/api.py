@@ -98,7 +98,6 @@ class CurriculumItemResponse(ApiBase):
     hours: HourCount
     credits: Credits | None = None
     assessment_types: tuple[AssessmentType, ...] | None = None
-    subject_group: ShortText | None = None
     source_position: SourcePosition | None = None
 
 
@@ -114,7 +113,6 @@ class WorkloadResponse(ApiBase):
     hours: HourCount
     credits: Credits | None = None
     assessment_types: tuple[AssessmentType, ...] | None = None
-    subject_group: ShortText | None = None
 
 
 class CompareRowResponse(ApiBase):

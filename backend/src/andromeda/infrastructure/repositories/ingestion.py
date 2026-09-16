@@ -455,7 +455,6 @@ class SqlAlchemyIngestionRepository:
                             "semester_identity": _semester_identity(item.semester),
                             "hours": item.hours,
                             "credits": item.credits,
-                            "subject_group": item.subject_group,
                             "source_position": item.source_position,
                         },
                         immutable_fields=("curriculum_id", "discipline_id", "semester", "semester_identity"),

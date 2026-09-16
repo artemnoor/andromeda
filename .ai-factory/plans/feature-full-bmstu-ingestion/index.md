@@ -9,6 +9,7 @@
 ## Research Context
 
 - Research bundle: [bmstu-full-catalog-ingestion](../../research/bmstu-full-catalog-ingestion/INDEX.md).
+- Source: `../../research/bmstu-full-catalog-ingestion/RESEARCH.md` (Active Summary, Updated: 2026-09-14).
 - Official API crawl baseline: 53 catalog cards, 53 details, 152 profiles, 133 unique plan URLs.
 - Official linked plan metadata includes direct Yandex files, Yandex directories and `clck` short links; unavailable resources are source gaps.
 - Existing fixture/demo keeps two profiles and fixture event/campus contracts; full live path must discover profiles without a hardcoded list.
@@ -57,6 +58,6 @@ The plan was manually re-checked because the repository does not expose the `aif
 ## Implementation evidence
 
 - Official live run: 53 catalog cards, 53 details, 152 profiles, 133 unique public plan URLs, 134 curricula, 14,910 canonical items, 1,492 admission offerings, 18 source gaps, 319 captured snapshots, 0 live events and 0 live campus points.
-- SQLite repeat run: canonical IDs unique, 0 invalid area-weight sums, second repeat had 0 inserts and 0 removals; migrations at `0009_auth_profile_binding`.
-- Quality: full backend `296 passed, 6 skipped, 3 warnings`; `python -m mypy` passes for 313 source files; focused ingestion/contracts `43 passed`; PostgreSQL-only local smoke is explicitly skipped because no DSN is configured.
-- CI: run `34872246737` is green across backend, frontend, fullstack, proftest and PostgreSQL integration/browser jobs; the generated client was synchronized in follow-up commit `91373a4` after the first run exposed contract drift.
+- SQLite repeat run: canonical IDs unique, 0 invalid area-weight sums, second repeat had 0 inserts and 0 removals; the current checkout is at migration `0012_neutral_curriculum_items`.
+- Quality: current backend `340 passed, 6 skipped, 3 warnings`; `python -m mypy` passes for 320 source files; the current fixture smoke reports 212 curriculum items, 2 study plans, 0 source gaps and 101 unique disciplines. PostgreSQL-only local smoke is explicitly skipped because no DSN is configured.
+- CI: run `34872246737` is green across backend, frontend, fullstack, proftest and PostgreSQL integration/browser jobs for pushed full-ingestion commit `b68bacb`; later uncommitted working-tree changes are not covered by that run and are not yet merge-ready as a combined state. The generated client was synchronized in follow-up commit `91373a4` after the first run exposed contract drift.

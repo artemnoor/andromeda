@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections import defaultdict
+from collections.abc import Iterable, Mapping
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -33,6 +36,68 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
                 CurriculumItemModel.source_name,
             )
         ).scalars().all()
+        return self._to_curriculum(
+            model,
+            items,
+            {item.id: tuple(self._session.execute(select(CurriculumItemAssessmentModel).where(CurriculumItemAssessmentModel.curriculum_item_id == item.id)).scalars().all()) for item in items},
+        )
+
+    def list_for_programs(self, program_ids: tuple[ProgramId, ...]) -> dict[ProgramId, Curriculum]:
+        """Load latest curricula, items, and assessments with bounded queries."""
+
+        if not program_ids:
+            return {}
+        models = self._session.execute(
+            select(CurriculumModel)
+            .where(CurriculumModel.program_id.in_(program_ids))
+            .order_by(CurriculumModel.program_id, CurriculumModel.education_year.desc(), CurriculumModel.id)
+        ).scalars().all()
+        latest_by_program: dict[ProgramId, CurriculumModel] = {}
+        for model in models:
+            latest_by_program.setdefault(model.program_id, model)
+        if not latest_by_program:
+            return {}
+
+        curriculum_ids = tuple(model.id for model in latest_by_program.values())
+        items = self._session.execute(
+            select(CurriculumItemModel)
+            .where(CurriculumItemModel.curriculum_id.in_(curriculum_ids))
+            .order_by(
+                CurriculumItemModel.curriculum_id,
+                CurriculumItemModel.semester.is_(None),
+                CurriculumItemModel.semester,
+                CurriculumItemModel.source_position.is_(None),
+                CurriculumItemModel.source_position,
+                CurriculumItemModel.source_name,
+            )
+        ).scalars().all()
+        item_ids = tuple(item.id for item in items)
+        assessment_rows = self._session.execute(
+            select(CurriculumItemAssessmentModel)
+            .where(CurriculumItemAssessmentModel.curriculum_item_id.in_(item_ids))
+        ).scalars().all() if item_ids else []
+        assessments_by_item: dict[str, list[CurriculumItemAssessmentModel]] = defaultdict(list)
+        for row in assessment_rows:
+            assessments_by_item[row.curriculum_item_id].append(row)
+        items_by_curriculum: dict[str, list[CurriculumItemModel]] = defaultdict(list)
+        for item in items:
+            items_by_curriculum[item.curriculum_id].append(item)
+
+        return {
+            program_id: self._to_curriculum(
+                model,
+                items_by_curriculum[model.id],
+                assessments_by_item,
+            )
+            for program_id, model in latest_by_program.items()
+        }
+
+    def _to_curriculum(
+        self,
+        model: CurriculumModel,
+        items: Iterable[CurriculumItemModel],
+        assessments_by_item: Mapping[str, Iterable[CurriculumItemAssessmentModel]],
+    ) -> Curriculum:
         return Curriculum.model_validate(
             {
                 "id": model.id,
@@ -40,7 +105,7 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
                 "education_year": model.education_year,
                 "source_url": model.source_url,
                 "captured_at": model.captured_at,
-                "items": tuple(self._to_item(item) for item in items),
+                "items": tuple(self._to_item(item, assessments_by_item.get(item.id, ())) for item in items),
             }
         )
 
@@ -58,10 +123,15 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
         elif any(getattr(existing, key) != value for key, value in values.items() if key != "id"):
             raise ValueError(f"curriculum identity conflict: {curriculum.id}")
 
-    def _to_item(self, model: CurriculumItemModel) -> CurriculumItem:
-        assessment_rows = self._session.execute(
-            select(CurriculumItemAssessmentModel).where(CurriculumItemAssessmentModel.curriculum_item_id == model.id)
-        ).scalars().all()
+    def _to_item(
+        self,
+        model: CurriculumItemModel,
+        assessment_rows: Iterable[CurriculumItemAssessmentModel] | None = None,
+    ) -> CurriculumItem:
+        if assessment_rows is None:
+            assessment_rows = self._session.execute(
+                select(CurriculumItemAssessmentModel).where(CurriculumItemAssessmentModel.curriculum_item_id == model.id)
+            ).scalars().all()
         try:
             assessments = tuple(AssessmentType(row.assessment_type_id) for row in assessment_rows)
         except ValueError as exc:
@@ -75,7 +145,6 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
                 "hours": model.hours,
                 "credits": model.credits,
                 "assessment_types": assessments or None,
-                "subject_group": model.subject_group,
                 "source_position": model.source_position,
             }
         )

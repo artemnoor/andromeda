@@ -66,7 +66,11 @@ class ProftestService:
 
     def results(self, answer_set: AnswerSet, profile_scope: ProfileScope | None = None) -> ProftestResults:
         questions = self.questionnaire().questions
-        base_profile = self._build_profile(answer_set, questions)
+        # Adaptive answers are validated only after the current question has
+        # been selected from the catalog. Build the base profile from the
+        # stable questionnaire answers first so the profile builder does not
+        # reject a valid adaptive answer as an unknown question.
+        base_profile = self._build_profile(AnswerSet(answers=answer_set.answers), questions)
         fingerprints = self._catalog.list_fingerprints()
         base_ranked = self._rank_all(base_profile, fingerprints)
         selection = self._select_adaptive(base_ranked)

@@ -179,9 +179,6 @@ def _study_plan_program(
 
 def _study_plan_item(record: dict[str, Any], program_by_code: dict[str, dict[str, Any]]) -> dict[str, Any]:
     program = _study_plan_program(record, program_by_code)
-    subject_group = _pick(record, "subject_group", "discipline_group")
-    if subject_group:
-        subject_group = re.split(r"\s+-?\d+(?:[.,]\d+)?(?:\s|$)", _text(subject_group), maxsplit=1)[0].strip() or _text(subject_group)
     return {
         "program_id": program.get("id"),
         "program_code": program.get("code") or _canonical_program_code(_pick(record, "program_profile_code", "program_code", "direction_code", "code")),
@@ -214,7 +211,6 @@ def _study_plan_item(record: dict[str, Any], program_by_code: dict[str, dict[str
         "total_labs": _pick(record, "total_labs", "labs", "laboratory_hours"),
         "total_self_study": _pick(record, "total_self_study", "self_study", "independent_hours"),
         "assessment_type": _pick(record, "assessment_type", "control", "attestation"),
-        "subject_group": subject_group,
         "study_plan_url": _pick(record, "study_plan_url", "source_document_url") or program.get("study_plan_url"),
         "download_url": _pick(record, "download_url"),
     }
@@ -250,7 +246,6 @@ def _study_plans(records: list[dict[str, Any]], tables: list[dict[str, Any]], pr
                 "labs": _field_by_fragment(row, "лаборатор"),
                 "self_study": _field_by_fragment(row, "самостоятель"),
                 "assessment_type": _field_by_fragment(row, "контрол", "аттеста"),
-                "subject_group": _field_by_fragment(row, "групп"),
                 "study_plan_url": _field_by_fragment(row, "ссылк", "документ"),
             }
             item = _study_plan_item(values, program_by_code)
@@ -787,7 +782,7 @@ def build_profile(
             "program": ["name", "profile", "code", "direction_code", "direction_name", "description", "level", "qualification", "direction_id", "department_id", "department_name", "department_code", "department_url", "faculty_id", "faculty_name", "faculty_code", "faculty_url", "place", "form", "duration", "language", "education_year", "program_url", "study_plan_url"],
             "admission": ["year", "direction_code", "program_code", "program_profile_code", "program_id", "program_name", "department_code", "department_name", "budget_places", "paid_places", "budget_special_quota_places", "paid_special_quota_places", "passing_score", "exams", "allowed_combinations", "minimum_scores", "campus", "source_id", "source_priority", "source_url"],
             "tuition": ["program_code", "direction_code", "year", "academic_year", "amount", "currency"],
-            "study_plan": ["program_id", "program_code", "program_profile_code", "direction_code", "direction_name", "faculty", "department", "chair", "qualification", "education_year", "form", "duration", "discipline", "course", "semester", "semester_weeks", "hours", "credits", "audited_hours", "audited_hours_semester", "lectures", "practices", "labs", "self_study", "total_credits", "total_hours", "total_lectures", "total_practices", "total_labs", "total_self_study", "assessment_type", "subject_group", "study_plan_url", "download_url"],
+            "study_plan": ["program_id", "program_code", "program_profile_code", "direction_code", "direction_name", "faculty", "department", "chair", "qualification", "education_year", "form", "duration", "discipline", "course", "semester", "semester_weeks", "hours", "credits", "audited_hours", "audited_hours_semester", "lectures", "practices", "labs", "self_study", "total_credits", "total_hours", "total_lectures", "total_practices", "total_labs", "total_self_study", "assessment_type", "study_plan_url", "download_url"],
             "study_plan_summary": ["program_id", "program_code", "program_profile_code", "direction_code", "direction_name", "faculty", "department", "qualification", "education_year", "form", "duration", "study_plan_url", "download_url", "semester_count", "semester_weeks", "semesters", "overall_academic", "overall_astronomical"],
         },
         "university": university,

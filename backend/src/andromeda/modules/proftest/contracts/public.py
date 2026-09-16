@@ -3,6 +3,7 @@
 from ..domain.entities import (
     ActivityCode,
     AdaptiveAnswer,
+    AnswerStatus,
     Answer,
     AnswerSet,
     AntiInterest,
@@ -12,24 +13,33 @@ from ..domain.entities import (
     ProgramFingerprint,
     Question,
     QuestionBlock,
+    QuestionComponentType,
     QuestionOption,
+    QuestionStage,
     UserProfile,
 )
 from ..domain.profile import ProfileScope, UserProfileSnapshot
-from ..domain.adaptive import AdaptiveDimension, AdaptiveSelection, AdaptiveStatus
+from ..domain.adaptive import AdaptiveDimension, AdaptiveSelection, AdaptiveState, AdaptiveStatus, AdaptiveStopReason
 from ..domain.questions import Questionnaire
+from ..domain.sessions import AnalyticsEventId, AnalyticsEventType, ProftestAnalyticsEvent, ProftestAnswerSession, ProftestSessionView, SessionAnswer, SessionId, SessionProgress, SessionStatus
+from ..domain.capabilities import ProgramSignal, SourceCapability, source_capabilities
 from ..domain.results import MatchReason, MatchScore, MetricStatus, OptionalMetric, PreviewCandidate, ProftestPreview, ProftestResults, ReasonKind, Recommendation, ScoreBreakdown
-from ..repository.ports import CurrentUserProfileReader, ProfileBindingOutcome, ProfileBindingPort
+from ..repository.ports import CurrentUserProfileReader, ProfileBindingOutcome, ProfileBindingPort, ProftestSessionBindingPort
 
 __all__ = [
     "ActivityCode",
     "AdaptiveDimension",
     "AdaptiveAnswer",
     "AdaptiveSelection",
+    "AdaptiveState",
     "AdaptiveStatus",
+    "AdaptiveStopReason",
     "Answer",
+    "AnswerStatus",
     "AnswerSet",
     "AntiInterest",
+    "AnalyticsEventId",
+    "AnalyticsEventType",
     "Confidence",
     "CurriculumEvidence",
     "DistinctiveSubject",
@@ -43,15 +53,28 @@ __all__ = [
     "ProftestResults",
     "Question",
     "QuestionBlock",
+    "QuestionComponentType",
     "QuestionOption",
+    "QuestionStage",
     "Questionnaire",
     "ReasonKind",
     "Recommendation",
     "CurrentUserProfileReader",
     "ProfileBindingOutcome",
     "ProfileBindingPort",
+    "ProftestSessionBindingPort",
     "ProfileScope",
+    "ProftestAnalyticsEvent",
+    "ProftestAnswerSession",
+    "ProftestSessionView",
+    "ProgramSignal",
+    "SourceCapability",
+    "source_capabilities",
     "ScoreBreakdown",
+    "SessionId",
+    "SessionAnswer",
+    "SessionProgress",
+    "SessionStatus",
     "UserProfile",
     "UserProfileSnapshot",
 ]

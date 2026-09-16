@@ -24,7 +24,7 @@ GET /compare?programIds=program:09.03.01-02,program:09.03.01-12
 GET /compare?programIds=program:09.03.01-02,program:09.03.01-12&scope=semester&semester=1
 ```
 
-`ComparisonResponse` содержит `programA`, `programB`, `scope`, `rows`, `totalsA`, `totalsB`, `blocks` и `areaBreakdownA`/`areaBreakdownB`. Последние показывают агрегированный вектор содержания программы в выбранной области и режиме. Строка хранит `a`, `b`, статус и `hoursDelta`/`creditsDelta`; у дисциплин сохраняются исходные названия, семестры, блоки, формы контроля и area weights.
+`ComparisonResponse` содержит `programA`, `programB`, `scope`, `rows`, `totalsA`, `totalsB` и `areaBreakdownA`/`areaBreakdownB`. Последние показывают агрегированный вектор содержания программы в выбранной области и режиме. Строка хранит `a`, `b`, статус и `hoursDelta`/`creditsDelta`; у дисциплин сохраняются исходные названия, семестры, формы контроля и area weights. Категории учебного плана не являются частью canonical contract.
 
 Доли и веса передаются как decimal-строки (`"0.4589"`), чтобы frontend не терял точность JSON number. Frontend types генерируются из OpenAPI, поэтому изменение этих полей проходит через drift gate.
 
@@ -73,6 +73,53 @@ npm run generate-api
 npm run check-api-drift
 ```
 
+## Адаптивная сессия профтеста v2
+
+Новый TestShell использует version-pinned session API и не отправляет legacy
+`adaptiveAnswer`. Сессия принадлежит authenticated account либо anonymous
+HttpOnly profile scope; frontend никогда не передаёт owner ID и хранит в
+`localStorage` только незавершённый draft для быстрого восстановления UI.
+
+| Метод | Endpoint | Request | Response/поведение |
+|---|---|---|---|
+| POST | `/proftest/sessions` | пустой JSON | Создаёт или возобновляет единственный draft владельца; возвращает первый вопрос и `questionSetVersion=proftest-v2`. |
+| GET | `/proftest/sessions/current` | — | Возвращает текущий draft или completed session с результатами; `404` означает, что у владельца нет сессии. |
+| POST | `/proftest/sessions/current/next` | `questionId`, `optionIds`, `status`, optional `intensity`/`dimension`, `expectedRevision` | Валидирует вопрос pinned branch, сохраняет ответ, увеличивает revision и возвращает следующий вопрос либо честный adaptive stop. |
+| PATCH | `/proftest/sessions/current` | `answers[]`, `expectedRevision` | Сохраняет исправление ранее отвеченного вопроса; зависимые adaptive IDs попадают в `staleQuestionIds`, а branch пересчитывается. |
+| POST | `/proftest/sessions/current/complete` | пустой JSON | Проверяет обязательные ответы, атомарно сохраняет `UserProfile` и переводит сессию в `completed`; повторный вызов безопасен. |
+| POST | `/proftest/analytics` | `{events: [...]}` | Принимает только allow-listed telemetry, дедуплицирует `eventId` и применяет retention; raw event read не является public API. |
+
+`ProftestSessionResponse` содержит только public view: `sessionId`,
+`questionSetVersion`, `status` (`draft`/`completed`/`expired`/`abandoned`),
+`cursor`, `interactionCount`, `revision`, `currentQuestion`,
+`staleQuestionIds`, `progress`, optional `adaptive` и optional `results`.
+Вопрос описывает `stage`, `componentType`, option metadata, `required`,
+`allowUncertain`, `allowSkip`, `multiSelect`, лимит выбранных вариантов и
+declared dimensions. Внутренние scoring deltas, owner key, cookie token,
+ORM state и raw source payload в ответ не попадают.
+
+Для `next` сервер принимает статусы `answered`, `uncertain` и `skipped`.
+Проверяются принадлежность ID текущему versioned question set, допустимое
+число option IDs, adaptive dimension и optimistic `expectedRevision`.
+Старый revision получает `409 CONFLICT`; неизвестный вопрос, branch или
+нарушение лимита — typed `422 VALIDATION_ERROR`. Это позволяет безопасно
+повторять запрос после reload и не создавать две активные сессии на одного
+владельца.
+
+Analytics payload ограничен набором `stage`, `questionId`, `component`,
+`device`, `durationMs`, `uncertainty`, `adaptiveCount`, `changed`,
+`top3Changed` и `reason`; строковые значения ограничены, device принимает
+только `mobile`/`desktop`/`unknown`, размер payload ограничен 2 KiB. Event
+rows имеют уникальный `eventId` и expiry 180 дней. Infrastructure repository
+предоставляет deterministic aggregates для operator use (completion rate,
+uncertainty, changed answers, top-3 changes, adaptive count и median response
+time), но не публикует профили или сырые ответы.
+
+Оба frontend-клиента генерируются из одного `frontend/openapi.json`:
+`frontend/src/api/generated.ts` и `frontend-next/src/lib/generated.ts`. При
+изменении session schema сначала экспортируйте OpenAPI, затем выполните
+generation и drift check из раздела выше.
+
 ## Recommendations
 
 | Метод | Endpoint | Назначение |
@@ -80,7 +127,7 @@ npm run check-api-drift
 | POST | `/recommendations` | Ранжирует реальные программы для готового `UserProfile` |
 | GET | `/recommendations/current?limit=10` | Ранжирует программы для current persisted profile |
 
-Request содержит `profile` и `limit` (`1..20`). Профиль — тот же strict public contract, который возвращает proftest. Ответ `RecommendationsResponse` содержит профиль и TOP программ с integer `contentFit`, breakdown (`subjectFit`, `activityFit`, `distinctiveFit`, `antiPenalty`), долями областей и блоков, распределением по семестрам, отличительными дисциплинами и evidence-backed `reasons`/`antiFitReasons`.
+Request содержит `profile` и `limit` (`1..20`). Профиль — тот же strict public contract, который возвращает proftest. Ответ `RecommendationsResponse` содержит профиль и TOP программ с integer `contentFit`, breakdown (`subjectFit`, `activityFit`, `distinctiveFit`, `antiPenalty`), долями областей, распределением по семестрам, отличительными дисциплинами и evidence-backed `reasons`/`antiFitReasons`.
 
 Пример минимального запроса:
 

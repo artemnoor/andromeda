@@ -12,6 +12,7 @@ from andromeda.infrastructure.repositories.admissions import SqlAlchemyAdmission
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepository
 from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
+from andromeda.infrastructure.repositories.proftest_sessions import SqlAlchemyProftestSessionRepository
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
 from andromeda.infrastructure.repositories.universities import SqlAlchemyUniversityRepository
 from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
@@ -96,6 +97,7 @@ class AndromedaContainer:
             self.account_repository(session),
             Argon2PasswordHasher(),
             self.user_profile_repository(session),
+            SqlAlchemyProftestSessionRepository(session),
         )
 
     def recommendation_catalog_reader(self, session: Session) -> CatalogRecommendationRepository:

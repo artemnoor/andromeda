@@ -101,7 +101,9 @@ class AdmissionPassingScoreModel(Base):
     id: Mapped[str] = mapped_column(String(384), primary_key=True)
     offering_id: Mapped[str] = mapped_column(ForeignKey("admission_offerings.id", ondelete="CASCADE"), nullable=False)
     score_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    score: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False)
+    competition_type: Mapped[str] = mapped_column(String(32), nullable=False, default="general")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="numeric")
+    score: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
     source_kind: Mapped[str] = mapped_column(String(256), nullable=False)
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -109,10 +111,27 @@ class AdmissionPassingScoreModel(Base):
     source_locator: Mapped[str | None] = mapped_column(String(256), nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("offering_id", "score_type", name="uq_admission_passing_score_identity"),
+        UniqueConstraint(
+            "offering_id",
+            "competition_type",
+            "status",
+            "score_type",
+            name="uq_admission_passing_score_identity",
+        ),
         Index("ix_admission_passing_scores_offering", "offering_id"),
         CheckConstraint("length(score_type) > 0", name="ck_admission_passing_score_type"),
+        CheckConstraint(
+            "competition_type IN ('general', 'special_quota', 'separate_quota', 'targeted', 'bvi', 'other')",
+            name="ck_admission_passing_score_competition_type",
+        ),
+        CheckConstraint("status IN ('numeric', 'bvi')", name="ck_admission_passing_score_status"),
         CheckConstraint("score >= 0 AND score <= 400", name="ck_admission_passing_score_range"),
+        CheckConstraint(
+            "(status = 'numeric' AND score IS NOT NULL) OR "
+            "(status = 'bvi' AND score IS NULL AND competition_type IN "
+            "('bvi', 'special_quota', 'separate_quota', 'targeted'))",
+            name="ck_admission_passing_score_status_value",
+        ),
         CheckConstraint("length(content_sha256) = 64", name="ck_admission_passing_score_sha256"),
     )
 

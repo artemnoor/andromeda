@@ -75,7 +75,6 @@ class RawCurriculumRow(RawBase):
     hours: int
     credits: str | float | int | None
     assessment: str | None
-    subject_group: str | None
     source_position: int | None = Field(default=None, ge=1)
     source_url: HttpUrl
     locator: SourceLocator

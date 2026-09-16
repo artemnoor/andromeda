@@ -9,9 +9,11 @@ from pydantic import Field, HttpUrl
 
 from andromeda.modules.admissions.contracts.public import (
     AdmissionOffering,
+    AdmissionCompetitionType,
     AdmissionProvenance,
     ExamRequirement,
     PassingScore,
+    PassingScoreStatus,
     ProgramAdmissions,
     Quota,
     TuitionCost,
@@ -49,7 +51,9 @@ class QuotaResponse(ApiModel):
 
 class PassingScoreResponse(ApiModel):
     score_type: PassingScoreType
-    score: Decimal
+    competition_type: AdmissionCompetitionType = AdmissionCompetitionType.GENERAL
+    status: PassingScoreStatus = PassingScoreStatus.NUMERIC
+    score: Decimal | None = None
     provenance: AdmissionProvenanceResponse
 
 
@@ -103,7 +107,13 @@ def _quota(value: Quota) -> QuotaResponse:
 
 
 def _passing(value: PassingScore) -> PassingScoreResponse:
-    return PassingScoreResponse(score_type=value.score_type, score=value.score, provenance=_provenance(value.provenance))
+    return PassingScoreResponse(
+        score_type=value.score_type,
+        competition_type=value.competition_type,
+        status=value.status,
+        score=value.score,
+        provenance=_provenance(value.provenance),
+    )
 
 
 def _tuition(value: TuitionCost) -> TuitionCostResponse:

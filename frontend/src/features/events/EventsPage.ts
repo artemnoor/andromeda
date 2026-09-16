@@ -13,13 +13,13 @@ export function renderEventsPage(root: HTMLElement, programs: readonly Program[]
   const filterRoot = root.querySelector<HTMLElement>("#events-filter-root");
   const resultRoot = root.querySelector<HTMLElement>("#events-result-root");
   if (!filterRoot || !resultRoot) return;
-  let filters: EventsFiltersState = { kind: "", format: "", from: "", to: "", recommended: false };
+  let filters: EventsFiltersState = { kind: "", format: "", from: "", to: "", recommended: false, programId: "" };
   const submit = (next: EventsFiltersState): void => {
     filters = next;
-    renderEventsFilters(filterRoot, filters, submit);
+    renderEventsFilters(filterRoot, filters, submit, programs);
     void loadEvents(resultRoot, filters, programs);
   };
-  renderEventsFilters(filterRoot, filters, submit);
+  renderEventsFilters(filterRoot, filters, submit, programs);
   void loadEvents(resultRoot, filters, programs);
 }
 
@@ -45,6 +45,7 @@ export function toQuery(filters: EventsFiltersState): EventQuery {
   if (filters.from) query.from = localDateIso(filters.from);
   if (filters.to) query.to = localDateIso(filters.to, true);
   if (filters.recommended) query.recommended = true;
+  if (filters.programId) query.programId = filters.programId;
   return query;
 }
 

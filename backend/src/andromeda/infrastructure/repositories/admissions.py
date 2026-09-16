@@ -9,12 +9,14 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from andromeda.modules.admissions.contracts.public import (
+    AdmissionCompetitionType,
     AdmissionOffering,
     AdmissionProvenance,
     AdmissionScope,
     ExamRequirement,
     FundingType,
     PassingScore,
+    PassingScoreStatus,
     PassingScoreType,
     ProgramAdmissions,
     Quota,
@@ -286,9 +288,11 @@ def _quota_values(item: Quota, offering_id: str) -> dict[str, object]:
 
 def _passing_values(item: PassingScore, offering_id: str) -> dict[str, object]:
     return {
-        "id": _child_id("passing", offering_id, item.score_type, item.score),
+        "id": _child_id("passing", offering_id, item.score_type, item.competition_type, item.status, item.score),
         "offering_id": offering_id,
         "score_type": item.score_type.value,
+        "competition_type": item.competition_type.value,
+        "status": item.status.value,
         "score": item.score,
         **_provenance_values(item.provenance),
     }
@@ -324,7 +328,13 @@ def _quota_contract(row: AdmissionQuotaModel) -> Quota:
 
 
 def _passing_contract(row: AdmissionPassingScoreModel) -> PassingScore:
-    return PassingScore(score_type=PassingScoreType(row.score_type), score=row.score, provenance=_row_provenance(row))
+    return PassingScore(
+        score_type=PassingScoreType(row.score_type),
+        competition_type=AdmissionCompetitionType(row.competition_type),
+        status=PassingScoreStatus(row.status),
+        score=row.score,
+        provenance=_row_provenance(row),
+    )
 
 
 def _tuition_contract(row: AdmissionTuitionModel) -> TuitionCost:

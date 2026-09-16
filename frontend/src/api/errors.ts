@@ -36,3 +36,15 @@ export class ApiError extends Error {
     this.payload = payload;
   }
 }
+
+export class ApiTimeoutError extends Error {
+  readonly path: string;
+  readonly timeoutMs: number;
+
+  constructor(path: string, timeoutMs: number) {
+    super(`API request timed out after ${timeoutMs}ms`);
+    this.name = "ApiTimeoutError";
+    this.path = path;
+    this.timeoutMs = timeoutMs;
+  }
+}

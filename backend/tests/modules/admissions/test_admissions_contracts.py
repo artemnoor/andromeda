@@ -7,11 +7,15 @@ import pytest
 from pydantic import ValidationError
 
 from andromeda.modules.admissions.contracts.public import (
+    AdmissionCompetitionType,
     AdmissionOffering,
     AdmissionProvenance,
     AdmissionScope,
     ExamRequirement,
     FundingType,
+    PassingScore,
+    PassingScoreStatus,
+    PassingScoreType,
     ProgramAdmissions,
     StudyForm,
 )
@@ -78,3 +82,44 @@ def test_contract_rejects_extra_fields_and_negative_values() -> None:
             provenance=(source,),
             unexpected=True,
         )
+
+
+def test_passing_score_defaults_preserve_legacy_numeric_payloads() -> None:
+    value = PassingScore(score_type=PassingScoreType.BUDGET, score=Decimal("247"), provenance=provenance())
+
+    assert value.competition_type is AdmissionCompetitionType.GENERAL
+    assert value.status is PassingScoreStatus.NUMERIC
+    assert PassingScore.model_validate_json(value.model_dump_json(), strict=False) == value
+
+
+def test_passing_score_represents_quota_numeric_and_bvi_facts_without_zero_sentinel() -> None:
+    numeric = PassingScore(
+        score_type=PassingScoreType.BUDGET,
+        competition_type=AdmissionCompetitionType.TARGETED,
+        score=Decimal("195"),
+        provenance=provenance(),
+    )
+    bvi = PassingScore(
+        score_type=PassingScoreType.BUDGET,
+        competition_type=AdmissionCompetitionType.SEPARATE_QUOTA,
+        status=PassingScoreStatus.BVI,
+        score=None,
+        provenance=provenance(),
+    )
+
+    assert numeric.score == Decimal("195")
+    assert bvi.score is None
+    assert bvi.status is PassingScoreStatus.BVI
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {"status": PassingScoreStatus.NUMERIC, "score": None},
+        {"status": PassingScoreStatus.BVI, "score": Decimal("0"), "competition_type": AdmissionCompetitionType.BVI},
+        {"status": PassingScoreStatus.BVI, "score": None, "competition_type": AdmissionCompetitionType.GENERAL},
+    ),
+)
+def test_passing_score_rejects_invalid_status_score_combinations(kwargs: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        PassingScore(score_type=PassingScoreType.BUDGET, provenance=provenance(), **kwargs)

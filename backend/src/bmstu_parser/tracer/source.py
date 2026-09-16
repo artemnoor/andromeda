@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 from typing import cast
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -19,7 +19,6 @@ from ..pdf import is_pdf
 from ..contracts.errors import ContractError, ErrorCode, ErrorDetail
 from ..contracts.constraints import http_url
 from ..contracts.raw import JsonObject, JsonValue, RawSourceSnapshot
-
 logger = logging.getLogger("tracer.source.fetch")
 selection_logger = logging.getLogger("tracer.source.select")
 
@@ -27,9 +26,20 @@ S01_URL = "https://bmstu.ru/sveden/common/"
 S06_CATALOG_URL = "https://bmstu.ru/bachelor/majors"
 S06_API_BASE_URL = "https://api.www.bmstu.ru/majors/baccalaureate-and-specialty"
 S06_DETAIL_API_BASE_URL = "https://api.www.bmstu.ru/majors/"
+ORDERS_MANIFEST_URL = "https://priem.bmstu.ru/lists/orders.json"
 PUBLIC_PLAN_HOSTS = frozenset(("disk.yandex.ru", "clck.ru", "clck.su"))
 PUBLIC_DOWNLOAD_HOST_SUFFIXES = (".yandex.ru", ".yandex.net")
 DEFAULT_FIXTURE_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "tracer" / "raw"
+
+
+@dataclass(frozen=True, slots=True)
+class AdmissionOrderManifestEntry:
+    """One validated item from the official ``lists/orders.json`` manifest."""
+
+    title: str
+    requested_url: str
+    enabled: bool = True
+    link: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +71,8 @@ def write_fixture(captured: CapturedSources, fixture_dir: Path) -> None:
             "bmstu_major_catalog": "catalog",
             "bmstu_major_detail": "detail",
             "bmstu_curriculum_document": "curriculum",
+            "bmstu_admission_orders_index": "admission-orders",
+            "bmstu_admission_orders_document": "admission-order",
         }.get(snapshot.source_kind, "source")
         index = used_names.get(base_name, 0)
         used_names[base_name] = index + 1
@@ -151,6 +163,22 @@ class TracerSource:
 
         for plan_url in dict.fromkeys(plan_urls):
             snapshots.extend(self._fetch_public_documents(plan_url))
+        orders_manifest = self._fetch_snapshot("bmstu_admission_orders_index", ORDERS_MANIFEST_URL)
+        snapshots.append(orders_manifest)
+        orders = parse_orders_manifest(orders_manifest.body, ORDERS_MANIFEST_URL)
+        logger.info(
+            "orders_manifest_fetched url=%s documents=%d updated=%s",
+            ORDERS_MANIFEST_URL,
+            len(orders),
+            _orders_updated_at(orders_manifest.body),
+        )
+        for entry in orders:
+            snapshots.append(self._fetch_snapshot("bmstu_admission_orders_document", str(entry.requested_url)))
+        logger.info(
+            "orders_documents_fetched documents=%d urls=%d",
+            len(orders),
+            len({str(entry.requested_url) for entry in orders}),
+        )
         selection_logger.info(
             "catalog_discovered cards=%d details=%d profiles=%d unique_plans=%d",
             len(catalog_items),
@@ -207,7 +235,11 @@ class TracerSource:
 
     def _fetch_snapshot(self, kind: str, url: str) -> RawSourceSnapshot:
         fetch_http = getattr(self.fetcher, "fetch_http", None)
-        resource = fetch_http(url) if fetch_http is not None and ("api.www.bmstu.ru" in url or "cloud-api.yandex.net" in url) else self.fetcher.fetch(url)
+        resource = (
+            fetch_http(url)
+            if fetch_http is not None and _requires_http_fetch(url)
+            else self.fetcher.fetch(url)
+        )
         return self._snapshot(kind, url, resource)
 
     @staticmethod
@@ -307,6 +339,62 @@ def _catalog_page(body: bytes) -> tuple[list[JsonObject], int]:
             raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU catalog response contains a non-object item")
         items.append(item)
     return items, total
+
+
+def parse_orders_manifest(body: bytes, manifest_url: str) -> tuple[AdmissionOrderManifestEntry, ...]:
+    """Parse the public BMSTU orders manifest without selecting filenames."""
+
+    root = _json_object(body)
+    raw_items = root.get("list")
+    if not isinstance(raw_items, list):
+        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU orders manifest list must be an array")
+    result: list[AdmissionOrderManifestEntry] = []
+    seen_urls: set[str] = set()
+    for index, value in enumerate(raw_items):
+        item = _object(value)
+        if item is None:
+            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"BMSTU orders manifest item {index} must be an object")
+        enabled = item.get("enabled", True)
+        if not isinstance(enabled, bool):
+            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"BMSTU orders manifest enabled flag {index} must be boolean")
+        if not enabled:
+            continue
+        title = _text(item.get("title"))
+        raw_href = _text(item.get("href")) or _text(item.get("data"))
+        if not title or not raw_href:
+            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"BMSTU orders manifest item {index} is incomplete")
+        resolved = urljoin(str(manifest_url), raw_href)
+        parsed = urlparse(resolved)
+        if parsed.scheme != "https" or parsed.hostname != "priem.bmstu.ru":
+            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"BMSTU orders manifest item {index} has an unsafe URL")
+        if resolved in seen_urls:
+            raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"BMSTU orders manifest contains duplicate URL: {resolved}")
+        seen_urls.add(resolved)
+        links = item.get("link")
+        link_values = (
+            (links.strip(),)
+            if isinstance(links, str) and links.strip()
+            else tuple(link.strip() for link in links if isinstance(link, str) and link.strip())
+            if isinstance(links, list)
+            else ()
+        )
+        result.append(AdmissionOrderManifestEntry(title=title, requested_url=resolved, link=link_values))
+    if not result:
+        raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU orders manifest has no enabled documents")
+    return tuple(result)
+
+
+def _requires_http_fetch(url: str) -> bool:
+    return "api.www.bmstu.ru" in url or "cloud-api.yandex.net" in url or "priem.bmstu.ru/lists/" in url
+
+
+def _orders_updated_at(body: bytes) -> str:
+    try:
+        root = _json_object(body)
+    except ContractError:
+        return "unknown"
+    value = root.get("updatedAt")
+    return str(value) if isinstance(value, (int, float, str)) else "unknown"
 
 
 def _detail_plan_urls(body: bytes) -> list[str]:

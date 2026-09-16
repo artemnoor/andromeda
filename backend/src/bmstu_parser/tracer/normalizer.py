@@ -108,7 +108,6 @@ def normalize_bundle(raw: RawTracerBundle) -> NormalizedTracerSnapshot:
             hours=row.hours,
             credits=_credits(row.credits, row.locator.field or "credits"),
             assessment_types=assessment_types,
-            subject_group=_nullable_text(row.subject_group),
             source_position=row.source_position,
         )
         _append_curriculum_item(items_by_program[program.code], item)
@@ -250,7 +249,6 @@ def _append_curriculum_item(items: list[CurriculumItem], item: CurriculumItem) -
                 "hours": max(existing.hours, item.hours),
                 "credits": existing.credits if existing.credits is not None else item.credits,
                 "assessment_types": assessment_types,
-                "subject_group": existing.subject_group or item.subject_group,
                 "source_position": min(
                     value for value in (existing.source_position, item.source_position) if value is not None
                 ) if existing.source_position is not None or item.source_position is not None else None,

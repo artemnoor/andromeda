@@ -207,11 +207,13 @@ def _tuition(data: Mapping[str, object]) -> tuple[RawAdmissionTuition, ...]:
             amount = _number(item.get(key))
             if amount is None:
                 continue
+            if not academic_year:
+                logger.warning("[FIX:admission-year] tuition_year_missing; preserving source gap")
             result.append(
                 RawAdmissionTuition(
                     amount=amount,
                     currency=_currency(_text(item.get("currency"))),
-                    academic_year=academic_year or "2026/2027",
+                    academic_year=academic_year or None,
                     period=period,
                     study_form=form,
                     is_discounted=discounted,

@@ -1,5 +1,5 @@
 import type { components, paths } from "./generated";
-import { ApiError, isErrorResponse } from "./errors";
+import { ApiError, ApiTimeoutError, isErrorResponse } from "./errors";
 
 type ProgramResponse = paths["/programs/{id}"]["get"]["responses"][200]["content"]["application/json"];
 type ProgramListResponse = paths["/programs"]["get"]["responses"][200]["content"]["application/json"];
@@ -12,6 +12,11 @@ type QuestionnaireResponse = paths["/proftest/questions"]["get"]["responses"][20
 type ProftestRequest = NonNullable<paths["/proftest/preview"]["post"]["requestBody"]>["content"]["application/json"];
 type ProftestPreviewResponse = paths["/proftest/preview"]["post"]["responses"][200]["content"]["application/json"];
 type ProftestResultsResponse = paths["/proftest/results"]["post"]["responses"][200]["content"]["application/json"];
+export type ProftestSessionResponse = paths["/proftest/sessions"]["post"]["responses"][200]["content"]["application/json"];
+export type ProftestSessionAnswerRequest = components["schemas"]["ProftestSessionAnswerRequest"];
+type ProftestSessionPatchRequest = NonNullable<paths["/proftest/sessions/current"]["patch"]["requestBody"]>["content"]["application/json"];
+type ProftestSessionNextRequest = NonNullable<paths["/proftest/sessions/current/next"]["post"]["requestBody"]>["content"]["application/json"];
+type ProftestAnalyticsBatchRequest = NonNullable<paths["/proftest/analytics"]["post"]["requestBody"]>["content"]["application/json"];
 type CurrentProfileResponse = paths["/proftest/profile"]["get"]["responses"][200]["content"]["application/json"];
 type CreateProfileRequest = NonNullable<paths["/proftest/profile"]["post"]["requestBody"]>["content"]["application/json"];
 type UpdateProfileRequest = NonNullable<paths["/proftest/profile"]["put"]["requestBody"]>["content"]["application/json"];
@@ -20,7 +25,11 @@ type RecommendationsResponse = paths["/recommendations"]["post"]["responses"][20
 type CurrentRecommendationsResponse = paths["/recommendations/current"]["get"]["responses"][200]["content"]["application/json"];
 type EventListResponse = paths["/events"]["get"]["responses"][200]["content"]["application/json"];
 type EventResponse = paths["/events/{id}"]["get"]["responses"][200]["content"]["application/json"];
+type CampusPointResponse = paths["/campus/points/{id}"]["get"]["responses"][200]["content"]["application/json"];
+type CampusPointEventsResponse = paths["/campus/points/{id}/events"]["get"]["responses"][200]["content"]["application/json"];
+type CampusRecommendationsResponse = paths["/campus/recommendations"]["get"]["responses"][200]["content"]["application/json"];
 type EventQuery = NonNullable<paths["/events"]["get"]["parameters"]["query"]>;
+type CampusPointEventsQuery = NonNullable<paths["/campus/points/{id}/events"]["get"]["parameters"]["query"]>;
 type PersonalRouteResponse = paths["/personal-route"]["get"]["responses"][200]["content"]["application/json"];
 type IngestionRunListResponse = paths["/ops/ingestion/runs"]["get"]["responses"][200]["content"]["application/json"];
 type IngestionRunDetailResponse = paths["/ops/ingestion/runs/{id}"]["get"]["responses"][200]["content"]["application/json"];
@@ -34,6 +43,7 @@ type LoginRequest = NonNullable<paths["/auth/login"]["post"]["requestBody"]>["co
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
 const logLevel = (import.meta.env.VITE_LOG_LEVEL as string | undefined) ?? "WARN";
+export const API_REQUEST_TIMEOUT_MS = 45_000;
 
 function debug(message: string): void {
   if (import.meta.env.DEV && logLevel === "DEBUG") console.debug(`[api] ${message}`);
@@ -41,15 +51,28 @@ function debug(message: string): void {
 
 async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   debug(`request_start path=${path}`);
-  const response = await fetch(`${apiBaseUrl}${path}`, { ...init, credentials: "include", headers: { Accept: "application/json", "Content-Type": "application/json", ...init.headers } });
-  const payload: unknown = await response.json();
-  if (!response.ok) {
-    console.warn(`[api] request_failed status=${response.status}`);
-    if (isErrorResponse(payload)) throw new ApiError(response.status, payload);
-    throw new Error(`API request failed with ${response.status}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${apiBaseUrl}${path}`, { ...init, credentials: "include", signal: init.signal ?? controller.signal, headers: { Accept: "application/json", "Content-Type": "application/json", ...init.headers } });
+    const payload: unknown = await response.json();
+    if (!response.ok) {
+      console.warn(`[api] request_failed status=${response.status}`);
+      if (isErrorResponse(payload)) throw new ApiError(response.status, payload);
+      throw new Error(`API request failed with ${response.status}`);
+    }
+    debug(`request_complete path=${path} status=${response.status}`);
+    return payload as T;
+  } catch (error: unknown) {
+    if (isAbortError(error) && !init.signal?.aborted) throw new ApiTimeoutError(path, API_REQUEST_TIMEOUT_MS);
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  debug(`request_complete path=${path} status=${response.status}`);
-  return payload as T;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException ? error.name === "AbortError" : error instanceof Error && error.name === "AbortError";
 }
 
 export function getProgram(id: string): Promise<ProgramResponse> {
@@ -96,6 +119,32 @@ export function getProftestResults(request: ProftestRequest): Promise<ProftestRe
   return requestJson<ProftestResultsResponse>("/proftest/results", { method: "POST", body: JSON.stringify(request) });
 }
 
+export function startProftestSession(): Promise<ProftestSessionResponse> {
+  return requestJson<ProftestSessionResponse>("/proftest/sessions", { method: "POST", body: "{}" });
+}
+
+export function getCurrentProftestSession(): Promise<ProftestSessionResponse> {
+  return requestJson<ProftestSessionResponse>("/proftest/sessions/current");
+}
+
+export function nextProftestSession(answer: ProftestSessionAnswerRequest, expectedRevision: number): Promise<ProftestSessionResponse> {
+  const request: ProftestSessionNextRequest = { ...answer, expectedRevision };
+  return requestJson<ProftestSessionResponse>("/proftest/sessions/current/next", { method: "POST", body: JSON.stringify(request) });
+}
+
+export function saveProftestSession(answers: readonly ProftestSessionAnswerRequest[], expectedRevision: number): Promise<ProftestSessionResponse> {
+  const request: ProftestSessionPatchRequest = { answers: [...answers], expectedRevision };
+  return requestJson<ProftestSessionResponse>("/proftest/sessions/current", { method: "PATCH", body: JSON.stringify(request) });
+}
+
+export function completeProftestSession(): Promise<ProftestSessionResponse> {
+  return requestJson<ProftestSessionResponse>("/proftest/sessions/current/complete", { method: "POST", body: "{}" });
+}
+
+export function sendProftestAnalytics(request: ProftestAnalyticsBatchRequest): Promise<{ accepted: number }> {
+  return requestJson<{ accepted: number }>("/proftest/analytics", { method: "POST", body: JSON.stringify(request) });
+}
+
 export function getCurrentProfile(): Promise<CurrentProfileResponse> {
   return requestJson<CurrentProfileResponse>("/proftest/profile");
 }
@@ -133,6 +182,24 @@ export function getEvents(options: EventQuery = {}): Promise<EventListResponse> 
 
 export function getEvent(id: string): Promise<EventResponse> {
   return requestJson<EventResponse>(`/events/${encodeURIComponent(id)}`);
+}
+
+export function getCampusPoint(id: string): Promise<CampusPointResponse> {
+  return requestJson<CampusPointResponse>(`/campus/points/${encodeURIComponent(id)}`);
+}
+
+export function getCampusPointEvents(id: string, options: CampusPointEventsQuery = {}): Promise<CampusPointEventsResponse> {
+  const params = new URLSearchParams();
+  if (options.from) params.set("from", options.from);
+  if (options.to) params.set("to", options.to);
+  if (options.recommended !== undefined) params.set("recommended", String(options.recommended));
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  const query = params.toString();
+  return requestJson<CampusPointEventsResponse>(`/campus/points/${encodeURIComponent(id)}/events${query ? `?${query}` : ""}`);
+}
+
+export function getCampusRecommendations(limit = 10): Promise<CampusRecommendationsResponse> {
+  return requestJson<CampusRecommendationsResponse>(`/campus/recommendations?limit=${encodeURIComponent(String(limit))}`);
 }
 
 export function getPersonalRoute(limit = 10): Promise<PersonalRouteResponse> {
@@ -176,4 +243,4 @@ export function retryIngestion(request: IngestionRetryRequest, opsKey: string): 
   return requestJson<IngestionRetryResponse>("/ops/ingestion/runs/retry", { method: "POST", headers: opsHeaders(opsKey), body: JSON.stringify(request) });
 }
 
-export type { AdmissionFitRequest, AdmissionFitResponse, AuthSessionResponse, CompareResponse, CreateProfileRequest, CurrentProfileResponse, CurrentRecommendationsResponse, CurriculumResponse, ErrorContract, EventListResponse, EventQuery, EventResponse, IngestionRetryRequest, IngestionRetryResponse, IngestionRunDetailResponse, IngestionRunListResponse, IngestionRunStatus, LoginRequest, PersonalRouteResponse, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse, RegisterRequest, UpdateProfileRequest };
+export type { AdmissionFitRequest, AdmissionFitResponse, AuthSessionResponse, CampusPointEventsQuery, CampusPointEventsResponse, CampusPointResponse, CampusRecommendationsResponse, CompareResponse, CreateProfileRequest, CurrentProfileResponse, CurrentRecommendationsResponse, CurriculumResponse, ErrorContract, EventListResponse, EventQuery, EventResponse, IngestionRetryRequest, IngestionRetryResponse, IngestionRunDetailResponse, IngestionRunListResponse, IngestionRunStatus, LoginRequest, PersonalRouteResponse, ProftestPreviewResponse, ProftestRequest, ProftestResultsResponse, ProgramAdmissionsResponse, ProgramListResponse, ProgramResponse, QuestionnaireResponse, RecommendationRequest, RecommendationsResponse, RegisterRequest, UpdateProfileRequest };

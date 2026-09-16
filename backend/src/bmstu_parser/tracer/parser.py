@@ -196,7 +196,7 @@ def _parse_detail(snapshot: object, program_codes: tuple[str, ...] | None) -> tu
                     name=unescape(name),
                     direction_code=direction_code,
                     education_level="бакалавриат",
-                    education_year=_education_year(data),
+                    education_year=_education_year(data, fallback=typed.captured_at.year),
                     study_plan_url=http_url(plan),
                     source_url=typed.requested_url,
                     locator=SourceLocator(source_url=typed.requested_url),
@@ -245,7 +245,6 @@ def _parse_curriculum(snapshot: RawSourceSnapshot, program_code: str, source_pro
                 hours=hours,
                 credits=credits,
                 assessment=_object_text(record.get("assessment_type")),
-                subject_group=_object_text(record.get("subject_group")),
                 source_position=semester and (_object_int(record.get("row_no")) or None),
                 source_url=typed.requested_url,
                 locator=SourceLocator(source_url=typed.requested_url, row=_object_int(record.get("row_no"))),
@@ -356,10 +355,13 @@ def _city(address: str | None) -> str | None:
     return match.group(1).strip() if match else None
 
 
-def _education_year(data: Mapping[str, object]) -> int:
+def _education_year(data: Mapping[str, object], *, fallback: int) -> int:
     text = _text(data.get("description")) or ""
     match = re.search(r"20\d{2}", text)
-    return int(match.group(0)) if match else 2026
+    if match:
+        return int(match.group(0))
+    logger.warning("[FIX:admission-year] education_year_missing fallback=capture_year:%d", fallback)
+    return fallback
 
 
 def _canonical_code(value: str | None) -> str | None:

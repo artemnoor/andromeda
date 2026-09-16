@@ -4,8 +4,15 @@ import json
 from datetime import datetime, timezone
 from urllib.parse import parse_qs, unquote, urlparse
 
+from bmstu_parser.contracts.errors import ContractError
 from bmstu_parser.models import FetchedResource
-from bmstu_parser.tracer.source import TracerSource, _is_supported_download_url, _is_supported_public_plan_url
+from bmstu_parser.tracer.source import (
+    ORDERS_MANIFEST_URL,
+    TracerSource,
+    parse_orders_manifest,
+    _is_supported_download_url,
+    _is_supported_public_plan_url,
+)
 
 
 class _FakeFetcher:
@@ -24,6 +31,22 @@ class _FakeFetcher:
         return self._resource(url, b"<html>official BMSTU shell</html>", "text/html")
 
     def fetch_http(self, url: str) -> FetchedResource:
+        if url == ORDERS_MANIFEST_URL:
+            body = {
+                "updatedAt": 1788176040000,
+                "updateInterval": 0,
+                "list": [
+                    {"title": "Бакалавриат бюджет квоты", "href": "/lists/upload/orders/budget.pdf"},
+                    {"title": "Бакалавриат платное", "href": "/lists/upload/orders/paid.pdf"},
+                    {"title": "Отключённый документ", "href": "/lists/upload/orders/disabled.pdf", "enabled": False},
+                ],
+            }
+            return self._resource(url, json.dumps(body).encode(), "application/json")
+        if url in {
+            "https://priem.bmstu.ru/lists/upload/orders/budget.pdf",
+            "https://priem.bmstu.ru/lists/upload/orders/paid.pdf",
+        }:
+            return self._resource(url, b"%PDF-1.7 synthetic admission order", "application/pdf")
         if url.startswith("https://api.www.bmstu.ru/majors/baccalaureate-and-specialty?"):
             body = {
                 "data": [
@@ -82,9 +105,17 @@ def test_live_capture_discovers_details_and_public_plan_variants() -> None:
     details = captured.by_kind("bmstu_major_detail")
     metadata = captured.by_kind("bmstu_curriculum_metadata")
     documents = captured.by_kind("bmstu_curriculum_document")
+    order_index = captured.by_kind("bmstu_admission_orders_index")
+    order_documents = captured.by_kind("bmstu_admission_orders_document")
     assert len(details) == 3
     assert len(metadata) == 3
     assert len(documents) == 2
+    assert len(order_index) == 1
+    assert len(order_documents) == 2
+    assert {str(snapshot.requested_url) for snapshot in order_documents} == {
+        "https://priem.bmstu.ru/lists/upload/orders/budget.pdf",
+        "https://priem.bmstu.ru/lists/upload/orders/paid.pdf",
+    }
     assert {str(snapshot.requested_url) for snapshot in details} == {
         "https://api.www.bmstu.ru/majors/direction-one",
         "https://api.www.bmstu.ru/majors/direction-two",
@@ -104,3 +135,35 @@ def test_public_plan_allowlist_is_https_and_official_only() -> None:
     assert _is_supported_download_url("https://s1.storage.yandex.net/file.pdf")
     assert not _is_supported_download_url("http://s1.storage.yandex.net/file.pdf")
     assert not _is_supported_download_url("https://example.com/file.pdf")
+
+
+def test_orders_manifest_accepts_official_href_and_skips_disabled_items() -> None:
+    body = json.dumps(
+        {
+            "list": [
+                {"title": "Budget", "href": "/lists/upload/orders/budget.pdf"},
+                {"title": "Disabled", "href": "/lists/upload/orders/disabled.pdf", "enabled": False},
+            ]
+        }
+    ).encode()
+
+    entries = parse_orders_manifest(body, "https://priem.bmstu.ru/lists/orders.json")
+
+    assert len(entries) == 1
+    assert entries[0].title == "Budget"
+    assert str(entries[0].requested_url) == "https://priem.bmstu.ru/lists/upload/orders/budget.pdf"
+
+
+def test_orders_manifest_rejects_duplicate_or_external_links() -> None:
+    duplicate = json.dumps(
+        {"list": [{"title": "One", "href": "/one.pdf"}, {"title": "Two", "href": "/one.pdf"}]}
+    ).encode()
+    external = json.dumps({"list": [{"title": "External", "href": "https://example.com/order.pdf"}]}).encode()
+
+    for body in (duplicate, external):
+        try:
+            parse_orders_manifest(body, "https://priem.bmstu.ru/lists/orders.json")
+        except ContractError:
+            pass
+        else:
+            raise AssertionError("unsafe orders manifest must be rejected")

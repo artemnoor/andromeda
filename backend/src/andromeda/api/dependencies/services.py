@@ -15,11 +15,12 @@ from andromeda.modules.admissions.services.admissions import AdmissionService
 from andromeda.modules.curricula.repository.ports import CurriculumReader
 from andromeda.modules.disciplines.repository.ports import DisciplineReader
 from andromeda.modules.programs.repository.ports import ProgramReader
-from andromeda.modules.proftest.repository.ports import ProfileBindingPort, ProftestCatalogReader, UserProfileRepository
+from andromeda.modules.proftest.repository.ports import ProfileBindingPort, ProftestAnalyticsWriter, ProftestAnswerSessionRepository, ProftestCatalogReader, ProftestSessionBindingPort, UserProfileRepository
 from andromeda.modules.proftest.contracts.public import CurrentUserProfileReader
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
 from andromeda.modules.proftest.services.profile_persistence import UserProfilePersistenceService
 from andromeda.modules.proftest.services.proftest import ProftestService
+from andromeda.modules.proftest.services.session import ProftestSessionService
 from andromeda.modules.recommendations.services.recommendations import RecommendationService
 from andromeda.modules.recommendations.services.current import CurrentRecommendationService
 from andromeda.modules.events.services.events import EventService
@@ -35,6 +36,7 @@ from andromeda.infrastructure.repositories.admissions import SqlAlchemyAdmission
 from andromeda.infrastructure.repositories.admission_fit import SqlAlchemyAdmissionFitReader
 from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepository
 from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
+from andromeda.infrastructure.repositories.proftest_sessions import SqlAlchemyProftestSessionRepository
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
 from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
 from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
@@ -89,11 +91,12 @@ def get_compare_service(
 
 
 def get_proftest_catalog_reader(
+    session: Session = Depends(get_session),
     programs: ProgramReader = Depends(get_program_reader),
     curricula: CurriculumReader = Depends(get_curriculum_reader),
     disciplines: DisciplineReader = Depends(get_discipline_reader),
 ) -> ProftestCatalogReader:
-    return SqlAlchemyProftestCatalogRepository(programs, curricula, disciplines)
+    return SqlAlchemyProftestCatalogRepository(programs, curricula, disciplines, session=session)
 
 
 def get_proftest_catalog_service(
@@ -110,16 +113,22 @@ def get_profile_binding_port(session: Session = Depends(get_session)) -> Profile
     return SqlAlchemyUserProfileRepository(session)
 
 
+def get_proftest_session_binding_port(session: Session = Depends(get_session)) -> ProftestSessionBindingPort:
+    return SqlAlchemyProftestSessionRepository(session)
+
+
 def get_auth_service(
     request: Request,
     repository: AccountRepository = Depends(get_auth_repository),
     profile_binding: ProfileBindingPort = Depends(get_profile_binding_port),
+    session_binding: ProftestSessionBindingPort = Depends(get_proftest_session_binding_port),
 ) -> AuthenticationService:
     settings = request.app.state.settings
     return AuthenticationService(
         repository,
         Argon2PasswordHasher(),
         profile_binding,
+        session_binding,
         password_min_length=settings.auth_password_min_length,
         session_ttl_seconds=settings.auth_session_ttl_seconds,
     )
@@ -150,6 +159,26 @@ def get_proftest_service(
     profile_persistence: UserProfilePersistenceService = Depends(get_profile_persistence_service),
 ) -> ProftestService:
     return ProftestService(catalog, recommendations=recommendations, profile_persistence=profile_persistence)
+
+
+def get_proftest_session_repository(session: Session = Depends(get_session)) -> SqlAlchemyProftestSessionRepository:
+    return SqlAlchemyProftestSessionRepository(session)
+
+
+def get_proftest_session_service(
+    request: Request,
+    catalog: ProftestCatalogService = Depends(get_proftest_catalog_service),
+    recommendations: RecommendationService = Depends(get_recommendation_service),
+    repository: ProftestAnswerSessionRepository = Depends(get_proftest_session_repository),
+    analytics: ProftestAnalyticsWriter = Depends(get_proftest_session_repository),
+) -> ProftestSessionService:
+    return ProftestSessionService(
+        catalog,
+        recommendations,
+        repository,
+        analytics,
+        ttl_seconds=request.app.state.settings.profile_ttl_seconds,
+    )
 
 
 def get_current_recommendation_service(

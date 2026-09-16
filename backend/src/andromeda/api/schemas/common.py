@@ -69,7 +69,6 @@ class CurriculumItemResponse(ApiModel):
     hours: int
     credits: Decimal | None = None
     assessment_types: tuple[AssessmentType, ...] | None = None
-    subject_group: str | None = None
     source_position: int | None = None
 
 
@@ -87,13 +86,11 @@ class WorkloadResponse(ApiModel):
     hours: int
     credits: Decimal | None = None
     assessment_types: tuple[AssessmentType, ...] | None = None
-    subject_group: str | None = None
 
 
 class ComparisonRowResponse(ApiModel):
     discipline: DisciplineResponse
     semester: int | None = None
-    subject_group: str | None = None
     a: WorkloadResponse | None = None
     b: WorkloadResponse | None = None
     status: CompareStatus
@@ -106,14 +103,6 @@ class ComparisonTotalsResponse(ApiModel):
     credits: Decimal
 
 
-class ComparisonBlockResponse(ApiModel):
-    name: str
-    totals_a: ComparisonTotalsResponse
-    totals_b: ComparisonTotalsResponse
-    hours_delta: int
-    credits_delta: Decimal
-
-
 class ComparisonResponse(ApiModel):
     program_a: ProgramSummaryResponse
     program_b: ProgramSummaryResponse
@@ -122,6 +111,5 @@ class ComparisonResponse(ApiModel):
     rows: tuple[ComparisonRowResponse, ...]
     totals_a: ComparisonTotalsResponse
     totals_b: ComparisonTotalsResponse
-    blocks: tuple[ComparisonBlockResponse, ...]
     area_breakdown_a: tuple[DisciplineAreaSummaryResponse, ...] = ()
     area_breakdown_b: tuple[DisciplineAreaSummaryResponse, ...] = ()

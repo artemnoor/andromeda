@@ -27,7 +27,7 @@ def _discipline(name: str, area: DisciplineAreaCode, weight: str = "1") -> Disci
 def test_builder_uses_hours_and_preserves_canonical_evidence() -> None:
     program = _program("09.03.01-02")
     math = _discipline("Математика", DisciplineAreaCode.MATHEMATICS_STATISTICS)
-    item = CurriculumItem(id=f"curriculum-item:{program.id}:{math.id}:1", discipline_id=math.id, source_name="Математика (углублённо)", semester=1, hours=40, credits=Decimal("4.00"), subject_group="Базовая часть")
+    item = CurriculumItem(id=f"curriculum-item:{program.id}:{math.id}:1", discipline_id=math.id, source_name="Математика (углублённо)", semester=1, hours=40, credits=Decimal("4.00"))
     curriculum = Curriculum(id=f"curriculum:{program.code}-2026", program_id=program.id, education_year=2026, source_url="https://example.com/plan.pdf", captured_at=datetime(2026, 1, 1, tzinfo=timezone.utc), items=(item,))
 
     fingerprint = FingerprintBuilder().build(program, curriculum, {math.id: math})

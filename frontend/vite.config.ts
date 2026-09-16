@@ -11,6 +11,7 @@ export default defineConfig({
       "/proftest": apiProxyTarget,
       "/recommendations": apiProxyTarget,
       "/events": apiProxyTarget,
+      "/campus": apiProxyTarget,
       "/personal-route": apiProxyTarget,
       "/ops": apiProxyTarget,
       "/auth": apiProxyTarget,

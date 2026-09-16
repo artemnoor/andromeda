@@ -11,7 +11,7 @@ from andromeda.modules.proftest.services.ranking import RankingService
 def _fingerprint(code: str, areas: dict[DisciplineAreaCode, Decimal], activities: dict[ActivityCode, Decimal]) -> ProgramFingerprint:
     return ProgramFingerprint(
         program_id=f"program:09.03.01-{code}", program_code=f"09.03.01-{code}", program_name=code, basis="hours", total_hours=100, total_credits=Decimal("10"), total_workload=Decimal("100"),
-        area_hours={area: share * 100 for area, share in areas.items()}, area_share=areas, subject_group_hours={"base": Decimal("100")}, subject_group_share={"base": Decimal("1")}, semester_distribution={"1": Decimal("1")}, activity_signals=activities,
+        area_hours={area: share * 100 for area, share in areas.items()}, area_share=areas, semester_distribution={"1": Decimal("1")}, activity_signals=activities,
     )
 
 

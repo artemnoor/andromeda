@@ -42,7 +42,6 @@ class CurriculumItemModel(Base):
     semester_identity: Mapped[str] = mapped_column(String(16), nullable=False)
     hours: Mapped[int] = mapped_column(Integer, nullable=False)
     credits: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
-    subject_group: Mapped[str | None] = mapped_column(String(256), nullable=True)
     source_position: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     __table_args__ = (
