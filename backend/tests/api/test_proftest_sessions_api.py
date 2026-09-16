@@ -57,6 +57,25 @@ def test_session_next_persists_revision_and_rejects_stale_write(tmp_path: Path) 
     assert stale.json()["code"] == "CONFLICT"
 
 
+def test_session_next_accepts_json_answer_status(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    started = client.post("/proftest/sessions").json()
+    question = started["currentQuestion"]
+
+    response = client.post(
+        "/proftest/sessions/current/next",
+        json={
+            "expectedRevision": started["revision"],
+            "questionId": question["id"],
+            "optionIds": [question["options"][0]["id"]],
+            "status": "answered",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["interactionCount"] == 1
+
+
 def test_session_rejects_option_id_not_declared_by_question(tmp_path: Path) -> None:
     client = _client(tmp_path)
     started = client.post("/proftest/sessions").json()

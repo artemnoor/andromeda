@@ -63,16 +63,25 @@ def _analytics_event_type_from_json(value: object) -> AnalyticsEventType:
     raise TypeError("analytics event type must be a string")
 
 
+def _answer_status_from_json(value: object) -> AnswerStatus:
+    if isinstance(value, AnswerStatus):
+        return value
+    if isinstance(value, str):
+        return AnswerStatus(value)
+    raise TypeError("answer status must be a string")
+
+
 JsonDisciplineAreaCode = Annotated[DisciplineAreaCode, BeforeValidator(_discipline_area_from_json)]
 JsonActivityCode = Annotated[ActivityCode, BeforeValidator(_activity_code_from_json)]
 JsonAnalyticsEventType = Annotated[AnalyticsEventType, BeforeValidator(_analytics_event_type_from_json)]
+JsonAnswerStatus = Annotated[AnswerStatus, BeforeValidator(_answer_status_from_json)]
 
 
 class ProftestAnswerRequest(ApiModel):
     question_id: str = Field(alias="questionId", min_length=1, max_length=256)
     option_ids: list[str] = Field(alias="optionIds", default_factory=list, max_length=6)
     intensity: JsonDecimal | None = None
-    status: AnswerStatus = AnswerStatus.ANSWERED
+    status: JsonAnswerStatus = AnswerStatus.ANSWERED
 
     def to_contract(self) -> Answer:
         return Answer(question_id=self.question_id, option_ids=tuple(self.option_ids), intensity=self.intensity, status=self.status)
@@ -99,7 +108,7 @@ class ProftestSessionAnswerRequest(ApiModel):
     question_id: str = Field(alias="questionId", min_length=1, max_length=256)
     option_ids: list[str] = Field(alias="optionIds", default_factory=list, max_length=6)
     intensity: JsonDecimal | None = None
-    status: AnswerStatus = AnswerStatus.ANSWERED
+    status: JsonAnswerStatus = AnswerStatus.ANSWERED
     dimension: str | None = Field(default=None, min_length=3, max_length=128)
 
     def to_contract(self) -> SessionAnswer:
