@@ -55,8 +55,17 @@ def _activity_code_from_json(value: object) -> ActivityCode:
     raise TypeError("activity code must be a string")
 
 
+def _analytics_event_type_from_json(value: object) -> AnalyticsEventType:
+    if isinstance(value, AnalyticsEventType):
+        return value
+    if isinstance(value, str):
+        return AnalyticsEventType(value)
+    raise TypeError("analytics event type must be a string")
+
+
 JsonDisciplineAreaCode = Annotated[DisciplineAreaCode, BeforeValidator(_discipline_area_from_json)]
 JsonActivityCode = Annotated[ActivityCode, BeforeValidator(_activity_code_from_json)]
+JsonAnalyticsEventType = Annotated[AnalyticsEventType, BeforeValidator(_analytics_event_type_from_json)]
 
 
 class ProftestAnswerRequest(ApiModel):
@@ -110,7 +119,7 @@ class ProftestAnalyticsEventRequest(ApiModel):
     event_id: str = Field(alias="eventId", pattern=r"^proftest-event:[0-9a-f]{32}$")
     session_id: str | None = Field(default=None, alias="sessionId", pattern=r"^proftest-session:[0-9a-f]{32}$")
     question_set_version: str = Field(alias="questionSetVersion", min_length=1, max_length=128)
-    event_type: AnalyticsEventType = Field(alias="eventType")
+    event_type: JsonAnalyticsEventType = Field(alias="eventType")
     payload: dict[str, str | int | float | bool | None] = Field(default_factory=dict, max_length=16)
     occurred_at: JsonDateTime = Field(alias="occurredAt")
 
