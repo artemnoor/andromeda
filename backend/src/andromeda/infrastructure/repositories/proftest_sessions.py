@@ -198,7 +198,8 @@ class SqlAlchemyProftestSessionRepository(ProftestAnswerSessionRepository, Proft
     def append(self, scope: ProfileScope, events: tuple[ProftestAnalyticsEvent, ...]) -> int:
         if not events:
             return 0
-        purged = self._session.execute(delete(ProftestAnalyticsEventModel).where(ProftestAnalyticsEventModel.expires_at <= _now())).rowcount or 0
+        purge_result = self._session.execute(delete(ProftestAnalyticsEventModel).where(ProftestAnalyticsEventModel.expires_at <= _now()))
+        purged = int(getattr(purge_result, "rowcount", 0) or 0)
         if purged:
             logger.info("proftest_analytics_retention_purged count=%d", purged)
         inserted = 0
