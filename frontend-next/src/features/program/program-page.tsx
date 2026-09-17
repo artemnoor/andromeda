@@ -28,6 +28,7 @@ import type {
 } from "@/lib/types";
 import type { Route } from "@/lib/router";
 import { ADMISSION_FIT_LABELS } from "@/lib/labels";
+import { ProgramShortlistActions } from "@/features/decision/program-shortlist-actions";
 
 export function ProgramPage({ id, navigate }: { id: string; navigate: (route: Route) => void }) {
   const [program, setProgram] = useState<ProgramResponse | null>(null);
@@ -88,6 +89,7 @@ export function ProgramPage({ id, navigate }: { id: string; navigate: (route: Ro
             >
               <Layers className="h-4 w-4" /> Сравнить
             </Button>
+            <ProgramShortlistActions programId={p.id} navigate={navigate} compact />
           </>
         }
       />

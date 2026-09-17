@@ -31,6 +31,7 @@ from ..contracts.public import (
     SessionProgress,
     SessionStatus,
     UserProfile,
+    CurrentUserProfileReader,
 )
 from ..domain.questions import Questionnaire
 from ..repository.ports import ProftestAnalyticsWriter, ProftestAnswerSessionRepository
@@ -55,6 +56,7 @@ class ProftestSessionService:
         sessions: ProftestAnswerSessionRepository,
         analytics: ProftestAnalyticsWriter | None = None,
         *,
+        profile_reader: CurrentUserProfileReader | None = None,
         ttl_seconds: int = 60 * 60 * 24 * 30,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
@@ -64,6 +66,7 @@ class ProftestSessionService:
         self._recommendations = recommendations
         self._sessions = sessions
         self._analytics = analytics
+        self._profile_reader = profile_reader
         self._ttl_seconds = ttl_seconds
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._profile_builder = UserProfileBuilder()
@@ -92,7 +95,8 @@ class ProftestSessionService:
         session = self._sessions.get_current(scope)
         if session is None:
             raise NotFoundError("Current proftest session was not found")
-        return self._view(session)
+        profile_revision = self._profile_revision(scope) if session.status is SessionStatus.COMPLETED else None
+        return self._view(session, profile_revision=profile_revision)
 
     def save(self, scope: ProfileScope, answers: tuple[SessionAnswer, ...], *, expected_revision: int) -> ProftestSessionView:
         session = self._require_draft(scope)
@@ -115,14 +119,24 @@ class ProftestSessionService:
         if session.status is SessionStatus.COMPLETED:
             profile = self._profile_builder.build(session.answer_set, questionnaire.questions, self._adaptive_questions(session))
             results = self._results(profile)
-            return ProftestSessionView(session=session, progress=self._progress(session, None, questionnaire), results=results)
+            return ProftestSessionView(
+                session=session,
+                progress=self._progress(session, None, questionnaire),
+                results=results,
+                profile_revision=self._profile_revision(scope),
+            )
         self._validate_required(session.answer_set, questionnaire.questions)
         profile = self._profile_builder.build(session.answer_set, questionnaire.questions, self._adaptive_questions(session))
         results = self._results(profile)
-        completed, _snapshot = self._sessions.complete(scope, session, profile, expires_at=self._expires_at())
+        completed, snapshot = self._sessions.complete(scope, session, profile, expires_at=self._expires_at())
         self._track(scope, completed, AnalyticsEventType.TEST_COMPLETED)
-        logger.info("proftest_session_complete recommendations=%d", len(results.recommendations))
-        return ProftestSessionView(session=completed, progress=self._progress(completed, None, questionnaire), results=results)
+        logger.info("proftest_session_complete recommendations=%d profile_revision=%d", len(results.recommendations), snapshot.revision)
+        return ProftestSessionView(
+            session=completed,
+            progress=self._progress(completed, None, questionnaire),
+            results=results,
+            profile_revision=snapshot.revision,
+        )
 
     def append_analytics(self, scope: ProfileScope, events: tuple[ProftestAnalyticsEvent, ...]) -> int:
         if self._analytics is None:
@@ -237,11 +251,16 @@ class ProftestSessionService:
         logger.debug("proftest_session_answers_applied changed=%d cursor=%d adaptive=%d", changed, updated.cursor, len(updated.answer_set.adaptive_answers))
         return updated
 
-    def _view(self, session: ProftestAnswerSession) -> ProftestSessionView:
+    def _view(self, session: ProftestAnswerSession, *, profile_revision: int | None = None) -> ProftestSessionView:
         questionnaire = self._questionnaire(session)
         if session.status is SessionStatus.COMPLETED:
             profile = self._profile_builder.build(session.answer_set, questionnaire.questions, self._adaptive_questions(session))
-            return ProftestSessionView(session=session, progress=self._progress(session, None, questionnaire), results=self._results(profile))
+            return ProftestSessionView(
+                session=session,
+                progress=self._progress(session, None, questionnaire),
+                results=self._results(profile),
+                profile_revision=profile_revision,
+            )
         if session.cursor < len(questionnaire.questions) or not self._core_is_complete(session, questionnaire.questions):
             core_index = self._next_core_index(session, questionnaire.questions)
             core_question = questionnaire.questions[core_index]
@@ -253,6 +272,12 @@ class ProftestSessionService:
             logger.info("proftest_adaptive_stop reason=%s adaptive_count=%d", selection.stop_reason.value if selection.stop_reason else "unknown", selection.adaptive_count)
         logger.debug("proftest_session_view version=%s cursor=%d core=%d adaptive=%d topics=%d", session.question_set_version, session.cursor, len(questionnaire.questions), len(session.answer_set.adaptive_answers), len(preliminary.topics))
         return ProftestSessionView(session=session, current_question=question, progress=self._progress(session, question, questionnaire), adaptive=selection, preliminary=preliminary)
+
+    def _profile_revision(self, scope: ProfileScope) -> int | None:
+        if self._profile_reader is None:
+            return None
+        snapshot = self._profile_reader.get_current(scope)
+        return snapshot.revision if snapshot is not None else None
 
     def _current_question(self, session: ProftestAnswerSession, core: tuple[Question, ...], selection: AdaptiveSelection) -> Question | None:
         if session.cursor < len(core):

@@ -10,6 +10,7 @@ import { PageHeader, Tag, Loading, ErrorState } from "@/components/shared";
 import { directionLabel } from "@/lib/labels";
 import type { ProgramSummary } from "@/lib/types";
 import type { Route } from "@/lib/router";
+import { ProgramShortlistActions } from "@/features/decision/program-shortlist-actions";
 
 export function CatalogPage({
   programs,
@@ -124,18 +125,21 @@ export function CatalogPage({
                 Направление <span className="font-medium text-foreground">{directionLabel(p.directionId)}</span>
               </p>
             </CardContent>
-            <CardFooter className="flex items-center justify-between gap-2 border-t border-border/60 pt-3">
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <BookOpen className="h-3.5 w-3.5" /> учебный план · поступление
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="gap-1 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
-                onClick={() => navigate({ view: "program", id: p.id })}
-              >
-                Открыть <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-              </Button>
+            <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/60 pt-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <BookOpen className="h-3.5 w-3.5" /> учебный план · поступление
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
+                  onClick={() => navigate({ view: "program", id: p.id })}
+                >
+                  Открыть <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </Button>
+              </div>
+              <ProgramShortlistActions programId={p.id} compact />
             </CardFooter>
           </Card>
         ))}

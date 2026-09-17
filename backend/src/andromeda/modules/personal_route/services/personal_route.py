@@ -22,7 +22,7 @@ logger = logging.getLogger("andromeda.personal_route")
 
 
 class PersonalRouteService:
-    """Assemble a logical plan from current recommendations and source reads."""
+    """Assemble optional support suggestions from current recommendations and source reads."""
 
     def __init__(
         self,
@@ -46,7 +46,7 @@ class PersonalRouteService:
             return PersonalRouteResult(
                 plan=PersonalRoutePlan(
                     status=PersonalRouteStatus.NO_RECOMMENDATIONS,
-                    summary="Пройдите профтест, чтобы получить программы для изучения.",
+                    summary="Дополнительные материалы появятся, когда в системе будут доступны предложения программ.",
                 )
             )
 
@@ -82,9 +82,9 @@ class PersonalRouteService:
         steps.extend(event_steps)
         status = PersonalRouteStatus.READY if event_steps else PersonalRouteStatus.NO_EVENTS
         summary = (
-            "Изучите первую рекомендацию, сравните варианты и посетите связанные события."
+            "Доступны дополнительные материалы по программам и связанные события; порядок действий выбираете вы."
             if event_steps
-            else "Программы для изучения готовы; подходящих будущих событий пока нет."
+            else "По программам есть материалы для изучения; подходящих будущих событий пока нет."
         )
         result = PersonalRouteResult(
             plan=PersonalRoutePlan(
@@ -133,7 +133,7 @@ def _program_steps(recommendations: tuple[Recommendation, ...]) -> list[Personal
             PersonalRouteStep(
                 position=2,
                 kind=PersonalRouteStepKind.COMPARE_PROGRAMS,
-                reason="Сопоставьте две верхние рекомендации по учебным планам.",
+                reason="Если хотите сузить выбор, сравните два варианта по учебным планам.",
                 program_ids=(recommendations[0].program_id, recommendations[1].program_id),
             )
         )
@@ -142,8 +142,8 @@ def _program_steps(recommendations: tuple[Recommendation, ...]) -> list[Personal
 
 def _explore_reason(recommendation: Recommendation) -> str:
     if recommendation.reasons:
-        return f"Начните с программы: {recommendation.reasons[0].text}"
-    return f"Начните с первой программы в подборке Content Fit: {recommendation.program_id}."
+        return f"При желании изучите программу: {recommendation.reasons[0].text}"
+    return f"При желании изучите программу из подборки Content Fit: {recommendation.program_id}."
 
 
 def _event_steps(
@@ -177,7 +177,7 @@ def _event_steps(
             PersonalRouteStep(
                 position=start_position + offset,
                 kind=PersonalRouteStepKind.ATTEND_EVENT,
-                reason="Посетите событие, связанное с рекомендованной программой.",
+                reason="При желании посетите событие, связанное с программой из вашего выбора.",
                 program_ids=linked,
                 event_id=event.id,
                 event=event,

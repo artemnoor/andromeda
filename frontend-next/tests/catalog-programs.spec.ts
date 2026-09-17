@@ -9,7 +9,7 @@ async function openCatalog(page: Page): Promise<void> {
 test("catalog finishes loading and opens a source-backed program", async ({ page }) => {
   await openCatalog(page);
   await expect(page.getByRole("button", { name: "Открыть" }).first()).toBeVisible();
-  await page.getByRole("button", { name: "Открыть" }).first().click();
+  await page.getByRole("button", { name: "Открыть", exact: true }).first().click();
 
   await expect(page.getByTestId("program-page")).toBeVisible();
   await expect(page.getByTestId("curriculum-table")).toBeVisible();

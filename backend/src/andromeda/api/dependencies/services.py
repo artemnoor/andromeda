@@ -7,9 +7,14 @@ from andromeda.api.dependencies.auth_session import get_auth_repository
 from andromeda.infrastructure.security.passwords import Argon2PasswordHasher
 from andromeda.modules.auth.repository.ports import AccountRepository
 from andromeda.modules.auth.services.authentication import AuthenticationService
+from andromeda.modules.decision.repository.ports import DecisionAnalyticsWriter, DecisionBindingPort, DecisionContextRepository
+from andromeda.modules.decision.services.candidates import DecisionCandidatePipeline
+from andromeda.modules.decision.services.analytics import DecisionAnalyticsService
+from andromeda.modules.decision.services.decision import DecisionService
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
 from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
 from andromeda.modules.comparison.services.compare_programs import CompareProgramsService
+from andromeda.modules.comparison.services.compare_summary import ComparisonSummaryService
 from andromeda.modules.admissions.repository.ports import AdmissionReader
 from andromeda.modules.admissions.services.admissions import AdmissionService
 from andromeda.modules.curricula.repository.ports import CurriculumReader
@@ -39,6 +44,9 @@ from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCat
 from andromeda.infrastructure.repositories.proftest_sessions import SqlAlchemyProftestSessionRepository
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
 from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
+from andromeda.infrastructure.repositories.decision import SqlAlchemyDecisionContextRepository
+from andromeda.infrastructure.repositories.decision_analytics import SqlAlchemyDecisionAnalyticsRepository
+from andromeda.infrastructure.repositories.decision_candidates import CatalogDecisionCandidateSource
 from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
 from andromeda.infrastructure.repositories.campus import SqlAlchemyCampusPointRepository
 from andromeda.infrastructure.repositories.admin_ops import SqlAlchemyIngestionRunReader
@@ -90,6 +98,14 @@ def get_compare_service(
     return CompareProgramsService(programs, curricula, disciplines)
 
 
+def get_compare_summary_service(
+    compare_service: CompareProgramsService = Depends(get_compare_service),
+    programs: ProgramReader = Depends(get_program_reader),
+    curricula: CurriculumReader = Depends(get_curriculum_reader),
+) -> ComparisonSummaryService:
+    return ComparisonSummaryService(compare_service, programs, curricula)
+
+
 def get_proftest_catalog_reader(
     session: Session = Depends(get_session),
     programs: ProgramReader = Depends(get_program_reader),
@@ -117,11 +133,22 @@ def get_proftest_session_binding_port(session: Session = Depends(get_session)) -
     return SqlAlchemyProftestSessionRepository(session)
 
 
+def get_decision_context_repository(session: Session = Depends(get_session)) -> DecisionContextRepository:
+    return SqlAlchemyDecisionContextRepository(session)
+
+
+def get_decision_binding_port(
+    repository: DecisionContextRepository = Depends(get_decision_context_repository),
+) -> DecisionBindingPort:
+    return repository
+
+
 def get_auth_service(
     request: Request,
     repository: AccountRepository = Depends(get_auth_repository),
     profile_binding: ProfileBindingPort = Depends(get_profile_binding_port),
     session_binding: ProftestSessionBindingPort = Depends(get_proftest_session_binding_port),
+    decision_binding: DecisionBindingPort = Depends(get_decision_binding_port),
 ) -> AuthenticationService:
     settings = request.app.state.settings
     return AuthenticationService(
@@ -129,6 +156,7 @@ def get_auth_service(
         Argon2PasswordHasher(),
         profile_binding,
         session_binding,
+        decision_binding,
         password_min_length=settings.auth_password_min_length,
         session_ttl_seconds=settings.auth_session_ttl_seconds,
     )
@@ -153,6 +181,49 @@ def get_recommendation_service(
     return RecommendationService(CatalogRecommendationRepository(catalog))
 
 
+def get_decision_candidate_source(
+    programs: ProgramReader = Depends(get_program_reader),
+    catalog: ProftestCatalogService = Depends(get_proftest_catalog_service),
+) -> CatalogDecisionCandidateSource:
+    return CatalogDecisionCandidateSource(programs, CatalogRecommendationRepository(catalog))
+
+
+def get_decision_candidate_pipeline(
+    source: CatalogDecisionCandidateSource = Depends(get_decision_candidate_source),
+    recommendations: RecommendationService = Depends(get_recommendation_service),
+    admission_fit: AdmissionFitService = Depends(get_admission_fit_service),
+) -> DecisionCandidatePipeline:
+    return DecisionCandidatePipeline(source, recommendations, admission_fit)
+
+
+def get_decision_analytics_writer(session: Session = Depends(get_session)) -> DecisionAnalyticsWriter:
+    return SqlAlchemyDecisionAnalyticsRepository(session)
+
+
+def get_decision_analytics_service(
+    writer: DecisionAnalyticsWriter = Depends(get_decision_analytics_writer),
+) -> DecisionAnalyticsService:
+    return DecisionAnalyticsService(writer)
+
+
+def get_decision_service(
+    request: Request,
+    repository: DecisionContextRepository = Depends(get_decision_context_repository),
+    programs: ProgramReader = Depends(get_program_reader),
+    profiles: CurrentUserProfileReader = Depends(get_current_user_profile_reader),
+    candidates: DecisionCandidatePipeline = Depends(get_decision_candidate_pipeline),
+    analytics: DecisionAnalyticsService = Depends(get_decision_analytics_service),
+) -> DecisionService:
+    return DecisionService(
+        repository,
+        programs,
+        profiles,
+        candidates,
+        ttl_seconds=request.app.state.settings.profile_ttl_seconds,
+        analytics=analytics,
+    )
+
+
 def get_proftest_service(
     catalog: ProftestCatalogService = Depends(get_proftest_catalog_service),
     recommendations: RecommendationService = Depends(get_recommendation_service),
@@ -171,12 +242,14 @@ def get_proftest_session_service(
     recommendations: RecommendationService = Depends(get_recommendation_service),
     repository: ProftestAnswerSessionRepository = Depends(get_proftest_session_repository),
     analytics: ProftestAnalyticsWriter = Depends(get_proftest_session_repository),
+    profile_reader: CurrentUserProfileReader = Depends(get_current_user_profile_reader),
 ) -> ProftestSessionService:
     return ProftestSessionService(
         catalog,
         recommendations,
         repository,
         analytics,
+        profile_reader=profile_reader,
         ttl_seconds=request.app.state.settings.profile_ttl_seconds,
     )
 

@@ -669,6 +669,125 @@
         }
       }
     },
+    "/compare/summary": {
+      "get": {
+        "tags": [
+          "comparison"
+        ],
+        "summary": "Compare Summary",
+        "operationId": "compare_summary_compare_summary_get",
+        "parameters": [
+          {
+            "name": "programIds",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Programids"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ComparisonScope",
+              "default": "all"
+            }
+          },
+          {
+            "name": "semester",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 12,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Semester"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/proftest/questions": {
       "get": {
         "tags": [
@@ -3488,6 +3607,1291 @@
           }
         }
       }
+    },
+    "/decision/analytics": {
+      "post": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Append Analytics",
+        "operationId": "append_analytics_decision_analytics_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionAnalyticsEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionAnalyticsAcceptedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decision/context": {
+      "get": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Get Context",
+        "operationId": "get_context_decision_context_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionContextResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decision/suggestions": {
+      "get": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Get Suggestions",
+        "operationId": "get_suggestions_decision_suggestions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionSuggestionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decision/constraints": {
+      "put": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Update Constraints",
+        "operationId": "update_constraints_decision_constraints_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionConstraintsUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decision/considered": {
+      "post": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Mark Considered",
+        "operationId": "mark_considered_decision_considered_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionProgramCommandRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decision/shortlist": {
+      "post": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Add Shortlist",
+        "operationId": "add_shortlist_decision_shortlist_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionShortlistCommandRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decision/shortlist/{program_id}": {
+      "patch": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Set Shortlist Role",
+        "operationId": "set_shortlist_role_decision_shortlist__program_id__patch",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionShortlistRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Remove Shortlist",
+        "operationId": "remove_shortlist_decision_shortlist__program_id__delete",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DecisionRevisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/decision/programs/{program_id}/restore": {
+      "post": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Restore Shortlist",
+        "operationId": "restore_shortlist_decision_programs__program_id__restore_post",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DecisionRevisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/decision/programs/{program_id}/exclude": {
+      "post": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Exclude Program",
+        "operationId": "exclude_program_decision_programs__program_id__exclude_post",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DecisionRevisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Restore Excluded Program",
+        "operationId": "restore_excluded_program_decision_programs__program_id__exclude_delete",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DecisionRevisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/decision/suggestions/{program_id}/accept": {
+      "post": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Accept Suggestion",
+        "operationId": "accept_suggestion_decision_suggestions__program_id__accept_post",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DecisionShortlistRoleRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/decision/suggestions/{program_id}/reject": {
+      "post": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Reject Suggestion",
+        "operationId": "reject_suggestion_decision_suggestions__program_id__reject_post",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DecisionRevisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4814,6 +6218,64 @@
         ],
         "title": "CompareStatus"
       },
+      "ComparisonEvidenceResponse": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "key"
+        ],
+        "title": "ComparisonEvidenceResponse"
+      },
+      "ComparisonProgramOverviewResponse": {
+        "properties": {
+          "program": {
+            "$ref": "#/components/schemas/ProgramSummaryResponse"
+          },
+          "totals": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComparisonTotalsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "areaBreakdown": {
+            "items": {
+              "$ref": "#/components/schemas/DisciplineAreaSummaryResponse"
+            },
+            "type": "array",
+            "title": "Areabreakdown",
+            "default": []
+          },
+          "sourceGaps": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonSourceGapResponse"
+            },
+            "type": "array",
+            "title": "Sourcegaps",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program"
+        ],
+        "title": "ComparisonProgramOverviewResponse"
+      },
       "ComparisonResponse": {
         "properties": {
           "programA": {
@@ -4955,6 +6417,89 @@
           "semester"
         ],
         "title": "ComparisonScope"
+      },
+      "ComparisonSourceGapResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "programIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Programids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "programIds"
+        ],
+        "title": "ComparisonSourceGapResponse"
+      },
+      "ComparisonSummaryResponse": {
+        "properties": {
+          "programs": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonProgramOverviewResponse"
+            },
+            "type": "array",
+            "title": "Programs"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ComparisonScope"
+          },
+          "semester": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semester"
+          },
+          "keyDifferences": {
+            "items": {
+              "$ref": "#/components/schemas/KeyDifferenceResponse"
+            },
+            "type": "array",
+            "title": "Keydifferences",
+            "default": []
+          },
+          "tradeoffs": {
+            "items": {
+              "$ref": "#/components/schemas/TradeoffResponse"
+            },
+            "type": "array",
+            "title": "Tradeoffs",
+            "default": []
+          },
+          "sourceGaps": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonSourceGapResponse"
+            },
+            "type": "array",
+            "title": "Sourcegaps",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programs",
+          "scope"
+        ],
+        "title": "ComparisonSummaryResponse"
       },
       "ComparisonTotalsResponse": {
         "properties": {
@@ -5157,6 +6702,1325 @@
           "items"
         ],
         "title": "CurriculumResponse"
+      },
+      "DecisionAnalyticsAcceptedResponse": {
+        "properties": {
+          "accepted": {
+            "type": "integer",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Accepted"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "accepted"
+        ],
+        "title": "DecisionAnalyticsAcceptedResponse"
+      },
+      "DecisionAnalyticsAction": {
+        "type": "string",
+        "enum": [
+          "view",
+          "start",
+          "complete",
+          "consider",
+          "add",
+          "remove",
+          "restore",
+          "mark_primary",
+          "mark_alternative",
+          "set_constraints",
+          "answer",
+          "show",
+          "accept",
+          "reject",
+          "return"
+        ],
+        "title": "DecisionAnalyticsAction"
+      },
+      "DecisionAnalyticsClientEventType": {
+        "type": "string",
+        "enum": [
+          "decision_session_started",
+          "admission_fit_viewed",
+          "comparison_started",
+          "comparison_completed",
+          "preference_question_answered",
+          "system_suggestion_shown",
+          "shortlist_returned_to"
+        ],
+        "title": "DecisionAnalyticsClientEventType",
+        "description": "Events that an HTTP client may report directly.\n\nMutation facts are server-authoritative and therefore intentionally absent\nfrom this enum.  The subset still covers view and interaction checkpoints."
+      },
+      "DecisionAnalyticsEventRequest": {
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "pattern": "^decision-event:[0-9a-f]{32}$",
+            "title": "Eventid"
+          },
+          "eventType": {
+            "$ref": "#/components/schemas/DecisionAnalyticsClientEventType"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/DecisionAnalyticsPayloadRequest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "eventId",
+          "eventType"
+        ],
+        "title": "DecisionAnalyticsEventRequest"
+      },
+      "DecisionAnalyticsPayloadRequest": {
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionAnalyticsSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionAnalyticsAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionAnalyticsStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "programId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Programid"
+          },
+          "programIds": {
+            "items": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Programids"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShortlistRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 50.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "questionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._:-]{0,127}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionid"
+          },
+          "optionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9._:-]{0,127}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Optionid"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DecisionAnalyticsPayloadRequest",
+        "description": "Camel-case HTTP adapter for the bounded analytics payload."
+      },
+      "DecisionAnalyticsSource": {
+        "type": "string",
+        "enum": [
+          "catalog",
+          "program",
+          "admission",
+          "compare",
+          "decision",
+          "suggestion",
+          "proftest",
+          "system"
+        ],
+        "title": "DecisionAnalyticsSource"
+      },
+      "DecisionAnalyticsStatus": {
+        "type": "string",
+        "enum": [
+          "realistic",
+          "borderline",
+          "unlikely",
+          "insufficient_data",
+          "available",
+          "provided",
+          "cleared",
+          "started",
+          "completed",
+          "unknown"
+        ],
+        "title": "DecisionAnalyticsStatus"
+      },
+      "DecisionApplicantRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "scores": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionApplicantScoreRequest-Input"
+            },
+            "type": "array",
+            "maxItems": 64,
+            "title": "Scores"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DecisionApplicantRequest"
+      },
+      "DecisionApplicantResponse": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version"
+          },
+          "scores": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionApplicantScoreRequest-Output"
+            },
+            "type": "array",
+            "title": "Scores"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "scores"
+        ],
+        "title": "DecisionApplicantResponse"
+      },
+      "DecisionApplicantScoreRequest-Input": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Score",
+            "decimal_places": 2,
+            "ge": "0",
+            "le": "100",
+            "max_digits": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject",
+          "score"
+        ],
+        "title": "DecisionApplicantScoreRequest"
+      },
+      "DecisionApplicantScoreRequest-Output": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "score": {
+            "type": "string",
+            "title": "Score",
+            "decimal_places": 2,
+            "ge": "0",
+            "le": "100",
+            "max_digits": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject",
+          "score"
+        ],
+        "title": "DecisionApplicantScoreRequest"
+      },
+      "DecisionChoiceResponse": {
+        "properties": {
+          "consideredProgramIds": {
+            "items": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+            },
+            "type": "array",
+            "title": "Consideredprogramids"
+          },
+          "shortlistEntries": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionShortlistEntryResponse"
+            },
+            "type": "array",
+            "title": "Shortlistentries"
+          },
+          "excludedProgramIds": {
+            "items": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+            },
+            "type": "array",
+            "title": "Excludedprogramids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "consideredProgramIds",
+          "shortlistEntries",
+          "excludedProgramIds"
+        ],
+        "title": "DecisionChoiceResponse"
+      },
+      "DecisionConstraintsRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "applicant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionApplicantRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "admissionYear": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 2000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admissionyear"
+          },
+          "fundingPreference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundingType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "studyForm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyForm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxTuition": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "decimal_places": 2,
+                "ge": "0",
+                "max_digits": 12
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxtuition"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DecisionConstraintsRequest"
+      },
+      "DecisionConstraintsResponse": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version"
+          },
+          "applicant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionApplicantResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "admissionYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admissionyear"
+          },
+          "fundingPreference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundingType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "studyForm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyForm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxTuition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxtuition"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "DecisionConstraintsResponse"
+      },
+      "DecisionConstraintsUpdateRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "constraints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionConstraintsRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedrevision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "constraints"
+        ],
+        "title": "DecisionConstraintsUpdateRequest"
+      },
+      "DecisionContextResponse": {
+        "properties": {
+          "decisionId": {
+            "type": "string",
+            "title": "Decisionid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DecisionStateResponse"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserProfileResponse-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "profileRevision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profilerevision"
+          },
+          "missingData": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missingdata"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/DecisionMetadataResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decisionId",
+          "state",
+          "missingData",
+          "metadata"
+        ],
+        "title": "DecisionContextResponse"
+      },
+      "DecisionMetadataResponse": {
+        "properties": {
+          "decisionId": {
+            "type": "string",
+            "title": "Decisionid"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updatedat"
+          },
+          "profileRevision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profilerevision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decisionId",
+          "revision",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "DecisionMetadataResponse"
+      },
+      "DecisionMutationResponse": {
+        "properties": {
+          "decisionId": {
+            "type": "string",
+            "title": "Decisionid"
+          },
+          "context": {
+            "$ref": "#/components/schemas/DecisionContextResponse"
+          },
+          "changed": {
+            "type": "boolean",
+            "title": "Changed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decisionId",
+          "context",
+          "changed"
+        ],
+        "title": "DecisionMutationResponse"
+      },
+      "DecisionProgramCommandRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "programId": {
+            "type": "string",
+            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "title": "Programid"
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedrevision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId"
+        ],
+        "title": "DecisionProgramCommandRequest"
+      },
+      "DecisionRefinementOptionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "affectedDimension": {
+            "type": "string",
+            "title": "Affecteddimension"
+          },
+          "effect": {
+            "type": "string",
+            "title": "Effect"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "affectedDimension",
+          "effect"
+        ],
+        "title": "DecisionRefinementOptionResponse"
+      },
+      "DecisionRefinementQuestionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "candidateProgramIds": {
+            "items": {
+              "type": "string",
+              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+            },
+            "type": "array",
+            "title": "Candidateprogramids"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionRefinementOptionResponse"
+            },
+            "type": "array",
+            "title": "Options"
+          },
+          "discriminatingDimensions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Discriminatingdimensions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "prompt",
+          "candidateProgramIds",
+          "options",
+          "discriminatingDimensions"
+        ],
+        "title": "DecisionRefinementQuestionResponse"
+      },
+      "DecisionRevisionRequest": {
+        "properties": {
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedrevision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DecisionRevisionRequest"
+      },
+      "DecisionShortlistCommandRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "programId": {
+            "type": "string",
+            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "title": "Programid"
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedrevision"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ShortlistRole",
+            "default": "primary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId"
+        ],
+        "title": "DecisionShortlistCommandRequest"
+      },
+      "DecisionShortlistEntryResponse": {
+        "properties": {
+          "programId": {
+            "type": "string",
+            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "title": "Programid"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updatedat"
+          },
+          "removedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removedat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId",
+          "role",
+          "state",
+          "origin",
+          "revision",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "DecisionShortlistEntryResponse"
+      },
+      "DecisionShortlistItemResponse": {
+        "properties": {
+          "programId": {
+            "type": "string",
+            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "title": "Programid"
+          },
+          "programCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Programcode"
+          },
+          "programName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Programname"
+          },
+          "partition": {
+            "type": "string",
+            "title": "Partition"
+          },
+          "admissionStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admissionstatus"
+          },
+          "admissionRisk": {
+            "type": "string",
+            "title": "Admissionrisk"
+          },
+          "admissionFit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdmissionFitResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contentFit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MatchScoreResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasons": {
+            "$ref": "#/components/schemas/DecisionSuggestionReasonsResponse"
+          },
+          "sourceGaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcegaps"
+          },
+          "sourceHashes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcehashes"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId",
+          "partition",
+          "admissionRisk",
+          "reasons",
+          "sourceGaps",
+          "sourceHashes",
+          "role",
+          "state"
+        ],
+        "title": "DecisionShortlistItemResponse"
+      },
+      "DecisionShortlistRoleRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "role": {
+            "$ref": "#/components/schemas/ShortlistRole"
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedrevision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "title": "DecisionShortlistRoleRequest"
+      },
+      "DecisionStateResponse": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version"
+          },
+          "admissionConstraints": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionConstraintsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "choice": {
+            "$ref": "#/components/schemas/DecisionChoiceResponse"
+          },
+          "explicitPriorities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Explicitpriorities"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updatedat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "choice",
+          "explicitPriorities",
+          "revision",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "DecisionStateResponse"
+      },
+      "DecisionSuggestionReasonsResponse": {
+        "properties": {
+          "whyIncluded": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Whyincluded"
+          },
+          "whyMayNotFit": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Whymaynotfit"
+          },
+          "admissionRisk": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Admissionrisk"
+          },
+          "contentDifferences": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Contentdifferences"
+          },
+          "missingData": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missingdata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "whyIncluded",
+          "whyMayNotFit",
+          "admissionRisk",
+          "contentDifferences",
+          "missingData"
+        ],
+        "title": "DecisionSuggestionReasonsResponse"
+      },
+      "DecisionSuggestionResponse": {
+        "properties": {
+          "programId": {
+            "type": "string",
+            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "title": "Programid"
+          },
+          "programCode": {
+            "type": "string",
+            "title": "Programcode"
+          },
+          "programName": {
+            "type": "string",
+            "title": "Programname"
+          },
+          "partition": {
+            "type": "string",
+            "title": "Partition"
+          },
+          "admissionStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admissionstatus"
+          },
+          "admissionRisk": {
+            "type": "string",
+            "title": "Admissionrisk"
+          },
+          "admissionFit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdmissionFitResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contentFit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MatchScoreResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasons": {
+            "$ref": "#/components/schemas/DecisionSuggestionReasonsResponse"
+          },
+          "sourceGaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcegaps"
+          },
+          "sourceHashes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcehashes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId",
+          "programCode",
+          "programName",
+          "partition",
+          "admissionRisk",
+          "reasons",
+          "sourceGaps",
+          "sourceHashes"
+        ],
+        "title": "DecisionSuggestionResponse"
+      },
+      "DecisionSuggestionsResponse": {
+        "properties": {
+          "decisionId": {
+            "type": "string",
+            "title": "Decisionid"
+          },
+          "contextRevision": {
+            "type": "integer",
+            "title": "Contextrevision"
+          },
+          "dataCompleteness": {
+            "type": "string",
+            "title": "Datacompleteness"
+          },
+          "activeShortlist": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionShortlistItemResponse"
+            },
+            "type": "array",
+            "title": "Activeshortlist"
+          },
+          "primaryCandidates": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionSuggestionResponse"
+            },
+            "type": "array",
+            "title": "Primarycandidates"
+          },
+          "alternativeCandidates": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionSuggestionResponse"
+            },
+            "type": "array",
+            "title": "Alternativecandidates"
+          },
+          "ineligibleCandidates": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionSuggestionResponse"
+            },
+            "type": "array",
+            "title": "Ineligiblecandidates"
+          },
+          "insufficientDataCandidates": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionSuggestionResponse"
+            },
+            "type": "array",
+            "title": "Insufficientdatacandidates"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionSuggestionResponse"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          },
+          "refinementQuestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionRefinementQuestionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceGaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcegaps"
+          },
+          "missingData": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missingdata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decisionId",
+          "contextRevision",
+          "dataCompleteness",
+          "activeShortlist",
+          "primaryCandidates",
+          "alternativeCandidates",
+          "ineligibleCandidates",
+          "insufficientDataCandidates",
+          "suggestions",
+          "sourceGaps",
+          "missingData"
+        ],
+        "title": "DecisionSuggestionsResponse"
       },
       "DisciplineAreaCatalogResponse": {
         "properties": {
@@ -5990,6 +8854,70 @@
         ],
         "title": "IngestionRunSummaryResponse"
       },
+      "KeyDifferenceResponse": {
+        "properties": {
+          "programAId": {
+            "type": "string",
+            "title": "Programaid"
+          },
+          "programBId": {
+            "type": "string",
+            "title": "Programbid"
+          },
+          "dimension": {
+            "type": "string",
+            "title": "Dimension"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction"
+          },
+          "valueA": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valuea"
+          },
+          "valueB": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valueb"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonEvidenceResponse"
+            },
+            "type": "array",
+            "title": "Evidence",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programAId",
+          "programBId",
+          "dimension",
+          "label",
+          "direction"
+        ],
+        "title": "KeyDifferenceResponse"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -6806,6 +9734,18 @@
                 "type": "null"
               }
             ]
+          },
+          "profileRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profilerevision"
           }
         },
         "additionalProperties": false,
@@ -7458,6 +10398,15 @@
         ],
         "title": "SessionStatus"
       },
+      "ShortlistRole": {
+        "type": "string",
+        "enum": [
+          "primary",
+          "alternative"
+        ],
+        "title": "ShortlistRole",
+        "description": "Explicit role assigned by the user to an active shortlist entry."
+      },
       "SourceKind": {
         "type": "string",
         "enum": [
@@ -7483,6 +10432,43 @@
           "unknown"
         ],
         "title": "StudyForm"
+      },
+      "TradeoffResponse": {
+        "properties": {
+          "programId": {
+            "type": "string",
+            "title": "Programid"
+          },
+          "pairedProgramId": {
+            "type": "string",
+            "title": "Pairedprogramid"
+          },
+          "advantage": {
+            "type": "string",
+            "title": "Advantage"
+          },
+          "consideration": {
+            "type": "string",
+            "title": "Consideration"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonEvidenceResponse"
+            },
+            "type": "array",
+            "title": "Evidence",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId",
+          "pairedProgramId",
+          "advantage",
+          "consideration"
+        ],
+        "title": "TradeoffResponse"
       },
       "TuitionCostResponse": {
         "properties": {

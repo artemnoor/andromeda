@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Route, Compass, GitCompare, CalendarDays, ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight, CalendarDays, Compass, GitCompare, MapPin, Route as RouteIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PageHeader, Loading, ErrorState, ProfileRequired, EmptyState, ScoreBadge, Tag } from "@/components/shared";
-import { getPersonalRoute } from "@/lib/api";
-import { STEP_KIND_LABELS, ROUTE_STATUS_LABELS } from "@/lib/labels";
+import { EmptyState, ErrorState, Loading, PageHeader, ScoreBadge, Tag } from "@/components/shared";
+import { ApiError, getPersonalRoute } from "@/lib/api";
+import { STEP_KIND_LABELS } from "@/lib/labels";
 import { formatDateTime } from "@/lib/format";
 import type { PersonalRouteResponse } from "@/lib/types";
-import type { Route as RouteType } from "@/lib/router";
+import type { Route } from "@/lib/router";
+import { ProgramShortlistActions } from "@/features/decision/program-shortlist-actions";
 
 const STEP_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   explore_program: Compass,
@@ -17,84 +18,90 @@ const STEP_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   attend_event: CalendarDays,
 };
 
-export function PersonalRoutePage({ navigate }: { navigate: (route: RouteType) => void }) {
+/**
+ * Compatibility/support surface. It consumes the legacy read-only endpoint,
+ * but never gates the decision dashboard or mutates the shared shortlist.
+ */
+export function PersonalRoutePage({ navigate }: { navigate: (route: Route) => void }) {
   const [data, setData] = useState<PersonalRouteResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
     getPersonalRoute()
-      .then(setData)
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
+      .then((result) => {
+        if (active) setData(result);
+      })
+      .catch((reason: unknown) => {
+        if (!active) return;
+        if (reason instanceof ApiError && reason.status === 404) setNotFound(true);
+        else setError("Дополнительные материалы временно недоступны.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
   }, []);
 
-  if (loading) return <Loading label="Строим личный маршрут…" />;
-  if (notFound)
-    return (
-      <div>
-        <PageHeader eyebrow="Мой план" title="Личный маршрут" />
-        <ProfileRequired onAction={() => navigate({ view: "proftest" })} />
-      </div>
-    );
-  if (!data) return null;
+  if (loading) return <Loading label="Загружаем дополнительные материалы…" />;
+  if (error) return <ErrorState title="Поддержка выбора недоступна" message={error} />;
+  if (notFound || !data) return <SupportEmptyState navigate={navigate} />;
 
-  if (data.status === "no_recommendations" || data.steps.length === 0)
-    return (
-      <div>
-        <PageHeader eyebrow="Мой план" title="Личный маршрут" />
-        <EmptyState
-          title={ROUTE_STATUS_LABELS[data.status]}
-          message="Пройдите профтест, чтобы получить рекомендации и построить пошаговый план действий."
-          action={<Button onClick={() => navigate({ view: "proftest" })} className="bg-primary text-primary-foreground hover:bg-primary/90">Пройти тест</Button>}
-        />
-      </div>
-    );
+  if (data.status === "no_recommendations" || data.steps.length === 0) {
+    return <SupportEmptyState navigate={navigate} message={data.summary} />;
+  }
 
   return (
-    <div>
+    <div data-testid="personal-route-page" className="space-y-5">
       <PageHeader
-        eyebrow="Мой план"
-        title="Личный маршрут"
-        description={data.summary}
-        actions={<Tag tone="primary">{ROUTE_STATUS_LABELS[data.status]}</Tag>}
+        eyebrow="Поддержка выбора"
+        title="Дополнительные шаги"
+        description={`${data.summary} Это необязательные идеи: порядок решения и shortlist остаются за вами.`}
+        actions={<Tag tone="muted">необязательно</Tag>}
       />
 
-      <div className="relative space-y-4 before:absolute before:left-[19px] before:top-2 before:h-[calc(100%-2rem)] before:w-0.5 before:bg-border/70">
+      <Card className="border-dashed">
+        <CardContent className="p-4 text-sm text-muted-foreground">
+          Материалы ниже собраны из уже доступных предложений, событий и площадок. Открытие этого раздела ничего не добавляет и не убирает в «Мой выбор».
+        </CardContent>
+      </Card>
+
+      <div className="space-y-4" data-testid="personal-route-support-items">
         {data.steps.map((step) => {
-          const Icon = STEP_ICON[step.kind] ?? Route;
+          const Icon = STEP_ICON[step.kind] ?? RouteIcon;
           return (
-            <Card key={step.position} className="relative ml-12">
-              <span className="absolute -left-[3.25rem] top-5 grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                <Icon className="h-5 w-5" />
-              </span>
+            <Card key={step.position} className="relative">
               <CardContent className="p-5">
                 <div className="mb-2 flex items-center gap-2">
+                  <Icon className="h-4 w-4 text-primary" />
                   <span className="text-xs font-bold uppercase tracking-wide text-primary">
-                    Шаг {step.position} · {STEP_KIND_LABELS[step.kind]}
+                    Дополнительно · {STEP_KIND_LABELS[step.kind] ?? "Материал"}
                   </span>
                 </div>
                 <p className="mb-3 text-sm text-muted-foreground">{step.reason}</p>
 
                 {step.recommendation && (
-                  <div className="mb-3 flex items-center gap-3 rounded-lg border border-border/60 bg-card p-3">
+                  <div className="mb-3 flex flex-col gap-3 rounded-lg border border-border/60 bg-card p-3 sm:flex-row sm:items-center">
                     <ScoreBadge value={step.recommendation.contentFit} />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="font-mono text-xs text-primary">{step.recommendation.programCode}</p>
-                      <button onClick={() => navigate({ view: "program", id: step.recommendation!.programId })} className="text-left font-semibold hover:text-primary">
+                      <button type="button" onClick={() => navigate({ view: "program", id: step.recommendation!.programId })} className="text-left font-semibold hover:text-primary">
                         {step.recommendation.programName}
                       </button>
                     </div>
+                    <ProgramShortlistActions programId={step.recommendation.programId} compact />
                   </div>
                 )}
 
                 {step.event && (
                   <div className="mb-3 rounded-lg border border-border/60 bg-card p-3">
-                    <button onClick={() => navigate({ view: "event", id: step.event!.id })} className="text-left font-semibold hover:text-primary">
-                      {step.event!.title}
+                    <button type="button" onClick={() => navigate({ view: "event", id: step.event!.id })} className="text-left font-semibold hover:text-primary">
+                      {step.event.title}
                     </button>
                     <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                      <CalendarDays className="h-3 w-3" /> {formatDateTime(step.event?.startsAt ?? "")}
+                      <CalendarDays className="h-3 w-3" /> {formatDateTime(step.event.startsAt)}
                       {step.venue?.name && <><MapPin className="ml-2 h-3 w-3" /> {step.venue.name}</>}
                     </p>
                   </div>
@@ -102,17 +109,17 @@ export function PersonalRoutePage({ navigate }: { navigate: (route: RouteType) =
 
                 <div className="flex flex-wrap gap-2">
                   {step.kind === "explore_program" && step.programIds[0] && (
-                    <Button size="sm" className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => navigate({ view: "program", id: step.programIds[0] })}>
+                    <Button size="sm" className="gap-1" onClick={() => navigate({ view: "program", id: step.programIds[0] })}>
                       Открыть программу <ArrowRight className="h-4 w-4" />
                     </Button>
                   )}
                   {step.kind === "compare_programs" && (
-                    <Button size="sm" className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => navigate({ view: "compare" })}>
-                      Сравнить <ArrowRight className="h-4 w-4" />
+                    <Button size="sm" className="gap-1" onClick={() => navigate({ view: "compare" })}>
+                      Сравнить варианты <ArrowRight className="h-4 w-4" />
                     </Button>
                   )}
                   {step.kind === "attend_event" && step.event && (
-                    <Button size="sm" variant="outline" onClick={() => step.event && navigate({ view: "event", id: step.event.id })}>
+                    <Button size="sm" variant="outline" onClick={() => navigate({ view: "event", id: step.event!.id })}>
                       Подробнее о событии
                     </Button>
                   )}
@@ -122,6 +129,25 @@ export function PersonalRoutePage({ navigate }: { navigate: (route: RouteType) =
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function SupportEmptyState({ navigate, message }: { navigate: (route: Route) => void; message?: string }) {
+  return (
+    <div data-testid="personal-route-empty">
+      <PageHeader eyebrow="Поддержка выбора" title="Дополнительные шаги" description="Этот раздел необязателен и не заменяет «Мой выбор»." />
+      <EmptyState
+        title="Дополнительных материалов пока нет"
+        message={message ?? "Можно начать с любого сценария — профтест не требуется для каталога, поступления или сравнения."}
+        action={
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button type="button" onClick={() => navigate({ view: "decision" })}>Открыть «Мой выбор»</Button>
+            <Button type="button" variant="outline" onClick={() => navigate({ view: "catalog" })}>Открыть каталог</Button>
+            <Button type="button" variant="outline" onClick={() => navigate({ view: "events" })}>Посмотреть события</Button>
+          </div>
+        }
+      />
     </div>
   );
 }

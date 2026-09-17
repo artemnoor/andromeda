@@ -119,6 +119,10 @@ class ProftestSessionView(ContractModel):
     adaptive: AdaptiveSelection | None = None
     preliminary: PreliminaryProfile | None = None
     results: ProftestResults | None = None
+    # The profile belongs to the existing profile persistence boundary.  This
+    # optional envelope field only tells clients which persisted projection
+    # was produced by completion; it is not a copy of profile preferences.
+    profile_revision: int | None = Field(default=None, strict=True, ge=1)
 
 
 class ProftestAnalyticsEvent(ContractModel):

@@ -8,11 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, Loading, ErrorState, Stat, SectionTitle, Tag } from "@/components/shared";
-import { comparePrograms, getPrograms } from "@/lib/api";
+import { comparePrograms, getComparisonSummary } from "@/lib/api";
 import { directionLabel } from "@/lib/labels";
 import { formatDecimal, formatInt, formatShare } from "@/lib/format";
-import type { AreaBreakdownItem, ComparisonResponse, ProgramSummary } from "@/lib/types";
+import type { AreaBreakdownItem, ComparisonResponse, ComparisonSummaryResponse, ProgramSummary } from "@/lib/types";
 import type { Route } from "@/lib/router";
+import { useDecisionContext } from "@/features/decision/decision-context";
+import { ProgramShortlistActions } from "@/features/decision/program-shortlist-actions";
+import { CompareSummary } from "./compare-summary";
+import { trackDecisionEvent } from "@/lib/analytics";
 
 export function ComparePage({
   programs,
@@ -21,13 +25,18 @@ export function ComparePage({
   programs: ProgramSummary[];
   navigate: (route: Route) => void;
 }) {
+  const { activeShortlist } = useDecisionContext();
   const [aId, setAId] = useState(programs[0]?.id ?? "");
   const [bId, setBId] = useState(programs[1]?.id ?? "");
+  const [cId, setCId] = useState("");
   const [scope, setScope] = useState<"all" | "semester">("all");
   const [semester, setSemester] = useState(3);
   const [data, setData] = useState<ComparisonResponse | null>(null);
+  const [summary, setSummary] = useState<ComparisonSummaryResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   useEffect(() => {
     if (programs.length && !aId) setAId(programs[0].id);
@@ -41,6 +50,11 @@ export function ComparePage({
     try {
       const res = await comparePrograms([a, b], { scope: sc, semester: sc === "semester" ? sem : undefined });
       setData(res);
+      trackDecisionEvent(
+        "comparison_completed",
+        { source: "compare", action: "complete", programIds: [a, b] },
+        { dedupeKey: comparisonEventKey("completed", [a, b], sc, sem) },
+      );
     } catch {
       setError("Не удалось загрузить сравнение.");
     } finally {
@@ -48,9 +62,36 @@ export function ComparePage({
     }
   };
 
+  const runSummary = async (ids: string[], sc: "all" | "semester", sem: number) => {
+    if (ids.length < 2 || new Set(ids).size !== ids.length) return;
+    trackDecisionEvent(
+      "comparison_started",
+      { source: "compare", action: "start", programIds: ids },
+      { dedupeKey: comparisonEventKey("started", ids, sc, sem) },
+    );
+    setSummaryLoading(true);
+    setSummaryError(null);
+    try {
+      setSummary(await getComparisonSummary(ids, { scope: sc, semester: sc === "semester" ? sem : undefined }));
+      trackDecisionEvent(
+        "comparison_completed",
+        { source: "compare", action: "complete", programIds: ids },
+        { dedupeKey: comparisonEventKey("completed", ids, sc, sem) },
+      );
+    } catch {
+      setSummaryError("Не удалось загрузить краткое сравнение. Детальные данные можно открыть отдельно.");
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
   useEffect(() => {
     void run(aId, bId, scope, semester);
   }, [aId, bId, scope, semester]);
+
+  useEffect(() => {
+    void runSummary([aId, bId, ...(cId ? [cId] : [])], scope, semester);
+  }, [aId, bId, cId, scope, semester]);
 
   return (
     <div data-testid="compare-page">
@@ -70,6 +111,17 @@ export function ComparePage({
             <ProgramSelect label="Программа B" value={bId} onChange={setBId} programs={programs} exclude={aId} testId="program-b" />
           </div>
           <div className="flex items-end gap-3">
+            {cId && <ProgramSelect label="Программа C" value={cId} onChange={setCId} programs={programs} exclude={[aId, bId]} testId="program-c" />}
+            <Button type="button" size="sm" variant="outline" onClick={() => {
+              if (cId) {
+                setCId("");
+                return;
+              }
+              const next = programs.find((program) => program.id !== aId && program.id !== bId);
+              if (next) setCId(next.id);
+            }} disabled={!cId && !programs.some((program) => program.id !== aId && program.id !== bId)}>
+              {cId ? "Убрать третью" : "Добавить 3-ю программу"}
+            </Button>
             <div>
               <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Режим</p>
               <Tabs value={scope} onValueChange={(v) => setScope(v as "all" | "semester")}>
@@ -96,11 +148,56 @@ export function ComparePage({
         </CardContent>
       </Card>
 
-      {loading && <Loading label="Сравниваем учебные планы…" />}
+      {activeShortlist.length >= 2 && (
+        <Card className="mb-6 border-primary/20 bg-primary/5">
+          <CardContent className="p-4">
+            <p className="mb-2 text-sm font-medium">Выбрать из моего shortlist</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Программа A</p>
+                <div className="flex flex-wrap gap-2">
+                  {activeShortlist.filter((entry) => entry.programId !== bId).map((entry) => (
+                    <Button key={entry.programId} type="button" size="sm" variant={entry.programId === aId ? "default" : "outline"} onClick={() => setAId(entry.programId)}>
+                      {entry.programId}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Программа B</p>
+                <div className="flex flex-wrap gap-2">
+                  {activeShortlist.filter((entry) => entry.programId !== aId).map((entry) => (
+                    <Button key={entry.programId} type="button" size="sm" variant={entry.programId === bId ? "default" : "outline"} onClick={() => setBId(entry.programId)}>
+                      {entry.programId}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {summaryLoading && <Loading label="Формируем краткое сравнение…" />}
+      {summaryError && <ErrorState title="Краткое сравнение недоступно" message={summaryError} onRetry={() => void runSummary([aId, bId, ...(cId ? [cId] : [])], scope, semester)} />}
+      {summary && !summaryLoading && <CompareSummary data={summary} navigate={navigate} />}
+      {loading && <Loading label="Загружаем доказательства из учебных планов…" />}
       {error && <ErrorState message={error} />}
-      {data && !loading && !error && <CompareResult data={data} navigate={navigate} />}
+      {data && !loading && !error && (
+        <section aria-labelledby="comparison-evidence-title" className="space-y-4">
+          <div>
+            <h2 id="comparison-evidence-title" className="font-serif text-2xl font-semibold">Детальные данные</h2>
+            <p className="text-sm text-muted-foreground">Учебные часы, ЗЕТ, категории, дисциплины и источники — evidence к краткому выводу выше.</p>
+          </div>
+          <CompareResult data={data} navigate={navigate} />
+        </section>
+      )}
     </div>
   );
+}
+
+function comparisonEventKey(kind: "started" | "completed", programIds: readonly string[], scope: "all" | "semester", semester: number): string {
+  return `comparison-${kind}:${programIds.map((id) => id.replaceAll(":", "-")).join("-")}-${scope}-${semester}`;
 }
 
 function ProgramSelect({
@@ -115,16 +212,17 @@ function ProgramSelect({
   value: string;
   onChange: (v: string) => void;
   programs: ProgramSummary[];
-  exclude: string;
+  exclude: string | readonly string[];
   testId: string;
 }) {
+  const excluded = new Set(typeof exclude === "string" ? [exclude] : exclude);
   return (
     <div>
       <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger data-testid={testId}><SelectValue /></SelectTrigger>
         <SelectContent>
-          {programs.filter((p) => p.id !== exclude).map((p) => (
+          {programs.filter((p) => !excluded.has(p.id)).map((p) => (
             <SelectItem key={p.id} value={p.id}>
               {p.code} · {p.name.split("·")[0].trim()}
             </SelectItem>
@@ -372,6 +470,7 @@ function ProgramHeader({ program, tone, navigate }: { program: ProgramSummary; t
           {program.name}
         </button>
         <p className="mt-1 text-xs text-muted-foreground">{directionLabel(program.directionId)} · {program.educationYear}</p>
+        <ProgramShortlistActions programId={program.id} navigate={navigate} compact />
       </CardContent>
     </Card>
   );

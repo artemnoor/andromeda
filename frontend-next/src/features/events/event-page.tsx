@@ -10,6 +10,7 @@ import { eventKindLabel, eventFormatLabel } from "@/lib/labels";
 import { formatDateTime } from "@/lib/format";
 import type { EventItem, CampusPoint } from "@/lib/types";
 import type { Route } from "@/lib/router";
+import { ProgramShortlistActions } from "@/features/decision/program-shortlist-actions";
 
 export function EventPage({ id, navigate }: { id: string; navigate: (route: Route) => void }) {
   const [event, setEvent] = useState<EventItem | null>(null);
@@ -87,12 +88,20 @@ export function EventPage({ id, navigate }: { id: string; navigate: (route: Rout
                 <SectionTitle>Связанные программы</SectionTitle>
                 <div className="flex flex-wrap gap-2">
                   {event.programIds.map((pid) => (
-                    <Button key={pid} variant="outline" size="sm" onClick={() => navigate({ view: "program", id: pid })}>
-                      {pid}
-                    </Button>
+                    <div key={pid} className="rounded-lg border border-border/60 p-2">
+                      <Button variant="outline" size="sm" onClick={() => navigate({ view: "program", id: pid })}>
+                        {pid}
+                      </Button>
+                      <ProgramShortlistActions programId={pid} compact />
+                    </div>
                   ))}
                 </div>
               </div>
+            )}
+            {event.programIds.length === 0 && (
+              <p data-testid="event-source-gap" className="text-sm text-muted-foreground">
+                Официальный источник не указал связь этого события с образовательной программой.
+              </p>
             )}
             <ProvenanceChip prov={event.provenance[0]} />
           </CardContent>

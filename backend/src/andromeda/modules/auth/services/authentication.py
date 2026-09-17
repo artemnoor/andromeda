@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from andromeda.modules.proftest.contracts.public import ProfileScope
 from andromeda.modules.proftest.repository.ports import ProfileBindingPort, ProftestSessionBindingPort
+from andromeda.modules.decision.repository.ports import DecisionBindingPort
 from andromeda.shared.contracts.errors import ConflictError, UnauthorizedError, ValidationError
 from andromeda.shared.contracts.ids import AccountId, SessionTokenHash
 
@@ -28,6 +29,7 @@ class AuthenticationService:
         password_hasher: PasswordHasher,
         profile_binding: ProfileBindingPort,
         session_binding: ProftestSessionBindingPort | None = None,
+        decision_binding: DecisionBindingPort | None = None,
         *,
         password_min_length: int = 12,
         session_ttl_seconds: int = 60 * 60 * 24 * 30,
@@ -37,6 +39,7 @@ class AuthenticationService:
         self._password_hasher = password_hasher
         self._profile_binding = profile_binding
         self._session_binding = session_binding
+        self._decision_binding = decision_binding
         self._password_min_length = password_min_length
         self._session_ttl_seconds = session_ttl_seconds
         self._clock = clock
@@ -89,6 +92,9 @@ class AuthenticationService:
         if self._session_binding is not None:
             session_outcome = self._session_binding.bind_anonymous_session_to_account(profile_scope, account.account_id)
             logger.info("auth_session_binding_complete account_id=%s outcome=%s", account.account_id, session_outcome.value)
+        if self._decision_binding is not None:
+            decision_outcome = self._decision_binding.bind_anonymous_to_account(profile_scope, account.account_id)
+            logger.info("auth_decision_binding_complete account_id=%s outcome=%s", account.account_id, decision_outcome.value)
 
     def _validate_password(self, password: str) -> None:
         if len(password) < self._password_min_length:

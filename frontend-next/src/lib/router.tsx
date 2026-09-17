@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 
 export type View =
+  | "home"
+  | "decision"
   | "catalog"
   | "program"
   | "compare"
   | "proftest"
+  | "admission"
   | "recommendations"
   | "events"
   | "event"
@@ -20,11 +23,11 @@ export type Route = {
   id?: string;
 };
 
-const DEFAULT_ROUTE: Route = { view: "catalog" };
+const DEFAULT_ROUTE: Route = { view: "home" };
 
 function parseSearch(search: string): Route {
   const params = new URLSearchParams(search);
-  const view = (params.get("view") as View | null) ?? "catalog";
+  const view = (params.get("view") as View | null) ?? "home";
   const id = params.get("id") ?? undefined;
   const eventId = params.get("eventId") ?? undefined;
   if (view === "event") return { view, id: eventId };
@@ -67,13 +70,12 @@ export function useRouter(): {
 }
 
 export const NAV_ITEMS: { view: View; label: string; icon: string }[] = [
+  { view: "decision", label: "Мой выбор", icon: "ListChecks" },
   { view: "catalog", label: "Каталог", icon: "Library" },
   { view: "compare", label: "Сравнить", icon: "GitCompare" },
-  { view: "proftest", label: "Профиль", icon: "Compass" },
-  { view: "recommendations", label: "Рекомендации", icon: "Sparkles" },
+  { view: "proftest", label: "Подобрать", icon: "Compass" },
+  { view: "admission", label: "Поступление", icon: "GraduationCap" },
+  { view: "recommendations", label: "Предложения", icon: "Sparkles" },
   { view: "events", label: "События", icon: "CalendarDays" },
-  { view: "personal-route", label: "Мой план", icon: "Route" },
-  { view: "flow", label: "Путь", icon: "Workflow" },
-  { view: "account", label: "Кабинет", icon: "UserRound" },
-  { view: "ops", label: "Ops", icon: "Wrench" },
+  { view: "personal-route", label: "Поддержка", icon: "Route" },
 ];

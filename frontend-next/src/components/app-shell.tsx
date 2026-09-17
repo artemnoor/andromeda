@@ -1,9 +1,12 @@
 "use client";
 
-import { Library, GitCompare, Compass, Sparkles, CalendarDays, Route as RouteIcon, Workflow, UserRound, Wrench } from "lucide-react";
+import { useState } from "react";
+import { Library, GitCompare, Compass, Sparkles, CalendarDays, Route as RouteIcon, Workflow, UserRound, Wrench, ListChecks, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS, type View, type Route, buildHref } from "@/lib/router";
 import { AuthPanel } from "@/components/auth-panel";
+import { ShortlistControl } from "@/components/shortlist-control";
+import { ShortlistDrawer } from "@/features/decision/shortlist-drawer";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Library,
@@ -15,6 +18,8 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Workflow,
   UserRound,
   Wrench,
+  ListChecks,
+  GraduationCap,
 };
 
 export function AppShell({
@@ -26,17 +31,18 @@ export function AppShell({
   navigate: (route: Route) => void;
   children: React.ReactNode;
 }) {
-  const primary = NAV_ITEMS.filter((i) => !["flow", "ops"].includes(i.view));
-  const secondary = NAV_ITEMS.filter((i) => ["flow", "ops"].includes(i.view));
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const primary = NAV_ITEMS.filter((i) => ["decision", "catalog", "compare"].includes(i.view));
+  const secondary = NAV_ITEMS.filter((i) => !["decision", "catalog", "compare"].includes(i.view));
 
   return (
     <div className="flex min-h-screen flex-col" data-testid="app-shell">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-3 md:px-6">
           <button
-            onClick={() => navigate({ view: "catalog" })}
+            onClick={() => navigate({ view: "home" })}
             className="group flex shrink-0 items-center gap-2.5 text-left"
-            aria-label="Andromeda, перейти в каталог"
+            aria-label="Andromeda, перейти на главную"
           >
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary font-serif text-lg font-semibold text-primary-foreground shadow-sm transition group-hover:scale-105">
               A
@@ -100,32 +106,21 @@ export function AppShell({
                 );
               })}
             </nav>
+            <ShortlistControl onOpen={() => setDrawerOpen(true)} />
             <AuthPanel onNavigate={(view: View) => navigate({ view })} />
           </div>
         </div>
 
-        {/* Mobile nav */}
-        <nav aria-label="Разделы (мобильное)" className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden warm-scroll">
-          {NAV_ITEMS.map((item) => {
-            const active = route.view === item.view || (route.view === "event" && item.view === "events");
-            return (
-              <button
-                key={item.view}
-                  onClick={() => navigate({ view: item.view })}
-                data-testid={`mobile-nav-${item.view}`}
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-accent/60 text-muted-foreground hover:text-accent-foreground",
-                )}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+        {/* Mobile nav keeps task-oriented entry points visually primary. */}
+        <nav aria-label="Основные разделы (мобильное)" className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden warm-scroll">
+          {primary.map((item) => <MobileNavButton key={item.view} item={item} route={route} navigate={navigate} primary />)}
+        </nav>
+        <nav aria-label="Дополнительные разделы (мобильное)" className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden warm-scroll">
+          {secondary.map((item) => <MobileNavButton key={item.view} item={item} route={route} navigate={navigate} />)}
         </nav>
       </header>
+
+      <ShortlistDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} navigate={navigate} />
 
       <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-6 md:py-10">
         <div key={`${route.view}-${route.id ?? ""}`} className="animate-float-in">
@@ -142,6 +137,37 @@ export function AppShell({
         </div>
       </footer>
     </div>
+  );
+}
+
+function MobileNavButton({
+  item,
+  route,
+  navigate,
+  primary = false,
+}: {
+  item: (typeof NAV_ITEMS)[number];
+  route: Route;
+  navigate: (route: Route) => void;
+  primary?: boolean;
+}) {
+  const active = route.view === item.view || (route.view === "event" && item.view === "events");
+  return (
+    <button
+      type="button"
+      onClick={() => navigate({ view: item.view })}
+      data-testid={`mobile-nav-${item.view}`}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition",
+        active
+          ? "bg-primary text-primary-foreground"
+          : primary
+            ? "bg-accent/60 text-muted-foreground hover:text-accent-foreground"
+            : "text-muted-foreground/80 hover:bg-accent/50 hover:text-accent-foreground",
+      )}
+    >
+      {item.label}
+    </button>
   );
 }
 

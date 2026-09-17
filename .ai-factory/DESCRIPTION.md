@@ -2,9 +2,9 @@
 
 ## Идентичность и цель
 
-Andromeda — source-backed modular monolith для работы с образовательными программами и университетскими данными. Текущий основной контекст — BMSTU: canonical university/program/discipline data проходит через ingestion и доступен через typed application contracts, FastAPI/OpenAPI и frontend.
+Andromeda — data-driven source-backed modular monolith для поддержки выбора образовательной программы. Текущий основной контекст — BMSTU: canonical university/program/discipline data проходит через ingestion и доступен через typed application contracts, FastAPI/OpenAPI и frontend.
 
-Проект помогает пользователю сравнивать реальные учебные планы, проходить профтест, получать объяснимые рекомендации и просматривать факты поступления. Университетские события и campus spatial data предоставляются как данные для UI и будущих внешних клиентов; сама карта и маршрутизация не входят в текущую систему.
+Проект помогает пользователю собрать persistent shortlist, сравнивать реальные учебные планы, проверять Admission Fit, при желании проходить compact профтест, получать объяснимые suggestions и просматривать source-backed факты поступления. `DecisionContext` хранит explicit пользовательский выбор; события и campus spatial data предоставляются как optional support layer для UI и будущих внешних клиентов; сама карта и маршрутизация не входят в текущую систему.
 
 ## Текущий BMSTU scope
 
@@ -24,12 +24,14 @@ Andromeda — source-backed modular monolith для работы с образо
 - `curricula` — учебные планы и curriculum items.
 - `disciplines` — дисциплины, identity resolution и areas taxonomy.
 - `comparison` — сравнение программ целиком или по семестру.
+- `decision` — owner-bound DecisionContext, shortlist, explicit transitions и orchestration кандидатов; не дублирует subject-module scoring.
 - `proftest` — questionnaire, UserProfile, fingerprint и profile persistence contracts.
 - `recommendations` — Content Fit scoring, ranking и evidence-backed explanations.
 - `admissions` — опубликованные admission offerings, exams, quotas, passing scores, tuition и provenance.
 - `admission_fit` — независимая оценка реалистичности поступления по admissions facts.
 - `events` — typed university event data, filtering и registration metadata.
 - `campus` — typed physical points и map-agnostic point/event read contracts.
+- `personal_route` — совместимый read-only support slice; не является обязательным продолжением и не владеет shortlist.
 
 ## Основные product flows
 
@@ -56,6 +58,13 @@ events + campus points → API contracts
   → event list/cards, filters, point details and future external map module
 ```
 
+```text
+independent catalog / compare / admission / proftest / saved choice entry
+  → DecisionContext (explicit constraints + considered IDs + shortlist)
+  → candidate suggestions (Admission Fit → Content Fit → trade-offs)
+  → explicit user decision, без silent removal
+```
+
 `Content Fit`, `Admission Fit`, `Career Fit` и `Workload Readiness` — разные dimensions. `Admission Fit` не меняет Content Fit или ranking recommendations.
 
 ## Техническая форма
@@ -70,4 +79,4 @@ BMSTU — первый adapter и fixture. Следующий университ
 
 ## Out of scope
 
-Не являются частью текущего Andromeda scope: Personal Route, microservices, Kafka, CQRS, отдельный deployment для модулей, интерактивная 2D/3D-карта, визуальное размещение объектов и маршрутизация/route optimizer.
+Не являются частью текущего Andromeda scope: mandatory Personal Route funnel, microservices, Kafka, CQRS, отдельный deployment для модулей, интерактивная 2D/3D-карта, визуальное размещение объектов и маршрутизация/route optimizer, LLM/ML ranking, отзывы, социальная сеть, новости и новые вузы.

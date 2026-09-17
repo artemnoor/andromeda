@@ -1,30 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UserRound, LogOut, Sparkles, Route as RouteIcon, Mail, Calendar } from "lucide-react";
+import { UserRound, LogOut, Sparkles, Mail } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PageHeader, Loading, ProfileRequired, Stat, SectionTitle, ScoreBadge, Tag } from "@/components/shared";
-import { getAuthSession, getCurrentProfile, getCurrentRecommendations, getPersonalRoute, logoutAccount } from "@/lib/api";
+import { PageHeader, Loading, ProfileRequired, Stat, SectionTitle, Tag } from "@/components/shared";
+import { getAuthSession, getCurrentProfile, logoutAccount } from "@/lib/api";
 import { formatPercent, formatDate } from "@/lib/format";
-import type { AuthSession, UserProfileSnapshot, RecommendationsResponse, PersonalRouteResponse } from "@/lib/types";
+import type { AuthSession, UserProfileSnapshot } from "@/lib/types";
 import type { Route as RouteType } from "@/lib/router";
+import { DecisionPage } from "@/features/decision/decision-page";
 
 export function AccountPage({ navigate }: { navigate: (route: RouteType) => void }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<UserProfileSnapshot | null>(null);
-  const [recs, setRecs] = useState<RecommendationsResponse | null>(null);
-  const [route, setRoute] = useState<PersonalRouteResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
     setLoading(true);
-    Promise.all([getAuthSession(), getCurrentProfile().catch(() => null), getCurrentRecommendations(5).catch(() => null), getPersonalRoute(5).catch(() => null)])
-      .then(([s, p, r, rt]) => {
+    Promise.all([getAuthSession(), getCurrentProfile().catch(() => null)])
+      .then(([s, p]) => {
         setSession(s);
         setProfile(p);
-        setRecs(r);
-        setRoute(rt);
       })
       .finally(() => setLoading(false));
   };
@@ -35,7 +32,7 @@ export function AccountPage({ navigate }: { navigate: (route: RouteType) => void
 
   if (!session.authenticated) {
     return (
-      <div data-testid="account-page">
+      <div data-testid="account-page" className="space-y-6">
         <PageHeader eyebrow="Кабинет" title="Личный кабинет" />
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
@@ -48,11 +45,12 @@ export function AccountPage({ navigate }: { navigate: (route: RouteType) => void
               профиль между устройствами.
             </p>
             <div className="flex gap-2">
-              <Button onClick={() => navigate({ view: "proftest" })} className="bg-primary text-primary-foreground hover:bg-primary/90">Пройти тест</Button>
-              <Button variant="outline" onClick={() => navigate({ view: "recommendations" })}>Рекомендации</Button>
+              <Button onClick={() => navigate({ view: "decision" })} className="bg-primary text-primary-foreground hover:bg-primary/90">Открыть мой выбор</Button>
+              <Button variant="outline" onClick={() => navigate({ view: "proftest" })}>Уточнить предпочтения</Button>
             </div>
           </CardContent>
         </Card>
+        <DecisionPage navigate={navigate} />
       </div>
     );
   }
@@ -63,7 +61,7 @@ export function AccountPage({ navigate }: { navigate: (route: RouteType) => void
       <PageHeader
         eyebrow="Кабинет"
         title={`Привет, ${acc.displayName ?? acc.email}`}
-        description="Сводка вашего профиля, рекомендаций и личного маршрута."
+        description="Аккаунт, профиль предпочтений и сохранённый выбор. События и поддерживающие сценарии доступны отдельно."
         actions={
           <Button variant="outline" size="sm" className="gap-1" onClick={async () => { await logoutAccount(); load(); }}>
             <LogOut className="h-4 w-4" /> Выйти
@@ -110,50 +108,9 @@ export function AccountPage({ navigate }: { navigate: (route: RouteType) => void
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="pb-3"><SectionTitle hint={recs ? `${recs.recommendations.length}` : ""}>Рекомендации</SectionTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {recs && recs.recommendations.length > 0 ? (
-              recs.recommendations.slice(0, 3).map((r) => (
-                <button key={r.programId} onClick={() => navigate({ view: "program", id: r.programId })} className="flex w-full items-center gap-3 rounded-lg border border-border/60 bg-card p-3 text-left transition hover:border-primary/40">
-                  <ScoreBadge value={r.contentFit} />
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs text-primary">{r.programCode}</p>
-                    <p className="truncate text-sm font-medium">{r.programName}</p>
-                  </div>
-                </button>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">Нет рекомендаций. Пройдите тест.</p>
-            )}
-            <Button variant="outline" size="sm" onClick={() => navigate({ view: "recommendations" })}>Все рекомендации</Button>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <SectionTitle hint={route ? route.status : ""}>
-              <span className="flex items-center gap-2"><RouteIcon className="h-5 w-5 text-primary" /> Личный маршрут</span>
-            </SectionTitle>
-          </CardHeader>
-          <CardContent>
-            {route && route.steps.length > 0 ? (
-              <div className="grid gap-2 sm:grid-cols-3">
-                {route.steps.map((s) => (
-                  <div key={s.position} className="rounded-lg border border-border/60 bg-card p-3">
-                    <p className="text-xs font-bold uppercase text-primary">Шаг {s.position}</p>
-                    <p className="mt-1 text-sm text-muted-foreground line-clamp-3">{s.reason}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Маршрут ещё не построен.</p>
-            )}
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate({ view: "personal-route" })}>Открыть маршрут</Button>
-          </CardContent>
-        </Card>
       </div>
+
+      <DecisionPage navigate={navigate} />
     </div>
   );
 }
