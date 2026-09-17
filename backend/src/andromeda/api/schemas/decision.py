@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Literal
+from enum import Enum
+from typing import Annotated, Literal, TypeVar
 
 from pydantic import BeforeValidator, Field, model_validator
 
@@ -66,6 +67,59 @@ JsonTuition = Annotated[
 ]
 
 
+EnumT = TypeVar("EnumT", bound=Enum)
+
+
+def _enum_from_json(enum_type: type[EnumT], value: object) -> EnumT:
+    """Convert JSON enum values before the strict API model validates them."""
+
+    if isinstance(value, enum_type):
+        return value
+    if isinstance(value, str):
+        return enum_type(value)
+    raise TypeError(f"{enum_type.__name__} must be a string")
+
+
+def _funding_type_from_json(value: object) -> FundingType:
+    return _enum_from_json(FundingType, value)
+
+
+def _study_form_from_json(value: object) -> StudyForm:
+    return _enum_from_json(StudyForm, value)
+
+
+def _shortlist_role_from_json(value: object) -> ShortlistRole:
+    return _enum_from_json(ShortlistRole, value)
+
+
+def _analytics_source_from_json(value: object) -> DecisionAnalyticsSource:
+    return _enum_from_json(DecisionAnalyticsSource, value)
+
+
+def _analytics_action_from_json(value: object) -> DecisionAnalyticsAction:
+    return _enum_from_json(DecisionAnalyticsAction, value)
+
+
+def _analytics_status_from_json(value: object) -> DecisionAnalyticsStatus:
+    return _enum_from_json(DecisionAnalyticsStatus, value)
+
+
+def _analytics_client_event_type_from_json(value: object) -> DecisionAnalyticsClientEventType:
+    return _enum_from_json(DecisionAnalyticsClientEventType, value)
+
+
+JsonFundingType = Annotated[FundingType, BeforeValidator(_funding_type_from_json)]
+JsonStudyForm = Annotated[StudyForm, BeforeValidator(_study_form_from_json)]
+JsonShortlistRole = Annotated[ShortlistRole, BeforeValidator(_shortlist_role_from_json)]
+JsonAnalyticsSource = Annotated[DecisionAnalyticsSource, BeforeValidator(_analytics_source_from_json)]
+JsonAnalyticsAction = Annotated[DecisionAnalyticsAction, BeforeValidator(_analytics_action_from_json)]
+JsonAnalyticsStatus = Annotated[DecisionAnalyticsStatus, BeforeValidator(_analytics_status_from_json)]
+JsonAnalyticsClientEventType = Annotated[
+    DecisionAnalyticsClientEventType,
+    BeforeValidator(_analytics_client_event_type_from_json),
+]
+
+
 class DecisionApplicantScoreRequest(ApiModel):
     subject: str = Field(min_length=1, max_length=512)
     score: JsonScore
@@ -86,8 +140,8 @@ class DecisionConstraintsRequest(ApiModel):
     version: Literal[1] = 1
     applicant: DecisionApplicantRequest | None = None
     admission_year: EducationYear | None = None
-    funding_preference: FundingType | None = None
-    study_form: StudyForm | None = None
+    funding_preference: JsonFundingType | None = None
+    study_form: JsonStudyForm | None = None
     max_tuition: JsonTuition | None = None
     location: str | None = Field(default=None, min_length=1, max_length=256)
 
@@ -126,7 +180,7 @@ class DecisionProgramCommandRequest(ApiModel):
 
 
 class DecisionShortlistCommandRequest(DecisionProgramCommandRequest):
-    role: ShortlistRole = ShortlistRole.PRIMARY
+    role: JsonShortlistRole = ShortlistRole.PRIMARY
 
     def to_contract(self) -> ShortlistCommand:
         return ShortlistCommand(
@@ -139,7 +193,7 @@ class DecisionShortlistCommandRequest(DecisionProgramCommandRequest):
 
 class DecisionShortlistRoleRequest(ApiModel):
     version: Literal[1] = 1
-    role: ShortlistRole
+    role: JsonShortlistRole
     expected_revision: int | None = Field(default=None, alias="expectedRevision", strict=True, ge=1)
 
 
@@ -150,12 +204,12 @@ class DecisionRevisionRequest(ApiModel):
 class DecisionAnalyticsPayloadRequest(ApiModel):
     """Camel-case HTTP adapter for the bounded analytics payload."""
 
-    source: DecisionAnalyticsSource | None = None
-    action: DecisionAnalyticsAction | None = None
-    status: DecisionAnalyticsStatus | None = None
+    source: JsonAnalyticsSource | None = None
+    action: JsonAnalyticsAction | None = None
+    status: JsonAnalyticsStatus | None = None
     program_id: ProgramId | None = None
     program_ids: list[ProgramId] = Field(default_factory=list, max_length=3)
-    role: ShortlistRole | None = None
+    role: JsonShortlistRole | None = None
     count: int | None = Field(default=None, strict=True, ge=0, le=50)
     question_id: AnalyticsToken | None = None
     option_id: AnalyticsToken | None = None
@@ -176,7 +230,7 @@ class DecisionAnalyticsPayloadRequest(ApiModel):
 
 class DecisionAnalyticsEventRequest(ApiModel):
     event_id: DecisionAnalyticsEventId
-    event_type: DecisionAnalyticsClientEventType
+    event_type: JsonAnalyticsClientEventType
     payload: DecisionAnalyticsPayloadRequest = Field(default_factory=DecisionAnalyticsPayloadRequest)
 
     @model_validator(mode="after")
