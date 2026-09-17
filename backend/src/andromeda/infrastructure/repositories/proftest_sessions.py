@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from andromeda.modules.proftest.contracts.public import (
     AnalyticsEventType,
     AdaptiveAnswer,
+    AdaptiveState,
     Answer,
     AnswerSet,
     AnswerStatus,
@@ -282,6 +283,7 @@ class SqlAlchemyProftestSessionRepository(ProftestAnswerSessionRepository, Proft
             "state_json": {
                 "answer_set": session.answer_set.model_dump(mode="json"),
                 "adaptive_questions": [question.model_dump(mode="json") for question in session.adaptive_questions],
+                "adaptive_state": session.adaptive_state.model_dump(mode="json") if session.adaptive_state is not None else None,
                 "current_question_id": session.current_question_id,
                 "stale_question_ids": list(session.stale_question_ids),
             },
@@ -300,17 +302,20 @@ class SqlAlchemyProftestSessionRepository(ProftestAnswerSessionRepository, Proft
             current_question_id = state.get("current_question_id")
             stale_question_ids = state.get("stale_question_ids", ())
             raw_adaptive_questions = state.get("adaptive_questions", ())
+            raw_adaptive_state = state.get("adaptive_state")
             adaptive_questions = tuple(
                 Question.model_validate(item, strict=False)
                 for item in raw_adaptive_questions
                 if isinstance(item, dict)
             ) if isinstance(raw_adaptive_questions, (list, tuple)) else ()
+            adaptive_state = AdaptiveState.model_validate(raw_adaptive_state, strict=False) if isinstance(raw_adaptive_state, dict) else None
             return ProftestAnswerSession(
                 session_id=model.session_id,
                 question_set_version=model.question_set_version,
                 status=SessionStatus(model.status),
                 answer_set=_answer_set_from_state(state),
                 adaptive_questions=adaptive_questions,
+                adaptive_state=adaptive_state,
                 cursor=model.cursor,
                 interaction_count=model.interaction_count,
                 current_question_id=current_question_id if isinstance(current_question_id, str) else None,

@@ -235,7 +235,8 @@ export type ProftestSessionResponse = {
   currentQuestion: Question | null;
   staleQuestionIds: string[];
   progress: { stage: string; stageIndex: number; stageCount: number; answerCount: number; minRemaining: number; maxRemaining: number };
-  adaptive: unknown | null;
+  adaptive: components["schemas"]["AdaptiveSelectionResponse"] | null;
+  preliminary: components["schemas"]["PreliminaryProfileResponse"] | null;
   results: ProftestResultsResponse | null;
 };
 export type ProftestAnalyticsEventRequest = components["schemas"]["ProftestAnalyticsEventRequest"];

@@ -21,7 +21,7 @@ from ..domain.entities import (
 from ..domain.profile import ProfileScope, UserProfileSnapshot
 from ..domain.adaptive import AdaptiveDimension, AdaptiveSelection, AdaptiveState, AdaptiveStatus, AdaptiveStopReason
 from ..domain.questions import Questionnaire
-from ..domain.sessions import AnalyticsEventId, AnalyticsEventType, ProftestAnalyticsEvent, ProftestAnswerSession, ProftestSessionView, SessionAnswer, SessionId, SessionProgress, SessionStatus
+from ..domain.sessions import AnalyticsEventId, AnalyticsEventType, PreliminaryProfile, PreliminaryTopic, ProftestAnalyticsEvent, ProftestAnswerSession, ProftestSessionView, SessionAnswer, SessionId, SessionProgress, SessionStatus
 from ..domain.capabilities import ProgramSignal, SourceCapability, source_capabilities
 from ..domain.results import MatchReason, MatchScore, MetricStatus, OptionalMetric, PreviewCandidate, ProftestPreview, ProftestResults, ReasonKind, Recommendation, ScoreBreakdown
 from ..repository.ports import CurrentUserProfileReader, ProfileBindingOutcome, ProfileBindingPort, ProftestSessionBindingPort
@@ -63,6 +63,8 @@ __all__ = [
     "ProfileBindingOutcome",
     "ProfileBindingPort",
     "ProftestSessionBindingPort",
+    "PreliminaryProfile",
+    "PreliminaryTopic",
     "ProfileScope",
     "ProftestAnalyticsEvent",
     "ProftestAnswerSession",

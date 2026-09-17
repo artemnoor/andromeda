@@ -6279,6 +6279,40 @@
         ],
         "title": "PersonalRouteStepResponse"
       },
+      "PreliminaryProfileResponse": {
+        "properties": {
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/PreliminaryTopicResponse"
+            },
+            "type": "array",
+            "title": "Topics",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PreliminaryProfileResponse"
+      },
+      "PreliminaryTopicResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "PreliminaryTopicResponse"
+      },
       "PreviewCandidateResponse": {
         "properties": {
           "programId": {
@@ -6747,6 +6781,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/AdaptiveSelectionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preliminary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreliminaryProfileResponse"
               },
               {
                 "type": "null"

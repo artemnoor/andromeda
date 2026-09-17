@@ -107,7 +107,9 @@ python -m pytest -q tests/api/test_proftest_sessions_api.py tests/modules/profte
 python -m mypy src/andromeda/modules/proftest src/andromeda/api
 ```
 
-Он покрывает version-pinned вопросы, пять-plus component mechanics,
+Он покрывает version-pinned вопросы v3/v2, ровно пять core submissions,
+preliminary topics, 7/8/9-step adaptive personas и cap 4,
+five-plus component mechanics,
 uncertain/skipped answers, deterministic adaptive selection и stop reasons,
 stale revision conflicts, early-answer invalidation, guest ownership,
 completed session resume, atomic profile persistence, analytics replay,

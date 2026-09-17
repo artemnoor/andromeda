@@ -12,7 +12,7 @@ from pydantic import Field, StringConstraints, model_validator
 
 from andromeda.shared.contracts.base import ContractModel
 
-from .adaptive import AdaptiveSelection
+from .adaptive import AdaptiveSelection, AdaptiveState
 from .entities import Answer, AnswerSet, AnswerStatus, Question
 from .results import ProftestResults
 
@@ -71,12 +71,22 @@ class SessionAnswer(ContractModel):
         )
 
 
+class PreliminaryTopic(ContractModel):
+    code: str = Field(min_length=3, max_length=128)
+    label: str = Field(min_length=1, max_length=256)
+
+
+class PreliminaryProfile(ContractModel):
+    topics: tuple[PreliminaryTopic, ...] = Field(default=(), max_length=3)
+
+
 class ProftestAnswerSession(ContractModel):
     session_id: SessionId
     question_set_version: str = Field(min_length=1, max_length=128)
     status: SessionStatus = SessionStatus.DRAFT
     answer_set: AnswerSet = AnswerSet()
     adaptive_questions: tuple[Question, ...] = Field(default=(), max_length=10)
+    adaptive_state: AdaptiveState | None = None
     cursor: int = Field(strict=True, ge=0, le=38)
     interaction_count: int = Field(strict=True, ge=0, le=38)
     current_question_id: str | None = Field(default=None, min_length=1, max_length=256)
@@ -107,6 +117,7 @@ class ProftestSessionView(ContractModel):
     current_question: Question | None = None
     progress: SessionProgress
     adaptive: AdaptiveSelection | None = None
+    preliminary: PreliminaryProfile | None = None
     results: ProftestResults | None = None
 
 
@@ -139,6 +150,8 @@ __all__ = [
     "AnalyticsEventType",
     "ProftestAnalyticsEvent",
     "ProftestAnswerSession",
+    "PreliminaryProfile",
+    "PreliminaryTopic",
     "SessionId",
     "SessionProgress",
     "SessionAnswer",

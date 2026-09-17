@@ -1496,6 +1496,21 @@ export interface components {
             /** Startsat */
             startsAt?: string | null;
         };
+        /** PreliminaryProfileResponse */
+        PreliminaryProfileResponse: {
+            /**
+             * Topics
+             * @default []
+             */
+            topics: components["schemas"]["PreliminaryTopicResponse"][];
+        };
+        /** PreliminaryTopicResponse */
+        PreliminaryTopicResponse: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+        };
         /** PreviewCandidateResponse */
         PreviewCandidateResponse: {
             /** Programid */
@@ -1624,6 +1639,7 @@ export interface components {
             staleQuestionIds: string[];
             progress: components["schemas"]["SessionProgressResponse"];
             adaptive?: components["schemas"]["AdaptiveSelectionResponse"] | null;
+            preliminary?: components["schemas"]["PreliminaryProfileResponse"] | null;
             results?: components["schemas"]["ProftestResultsResponse"] | null;
         };
         /** ProftestSubmissionRequest */

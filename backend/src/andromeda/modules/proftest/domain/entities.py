@@ -97,7 +97,7 @@ class Question(ContractModel):
     id: ShortText
     block: QuestionBlock
     prompt: NonEmptyText
-    options: tuple[QuestionOption, ...] = Field(min_length=2, max_length=6)
+    options: tuple[QuestionOption, ...] = Field(min_length=2, max_length=12)
     stage: QuestionStage | None = None
     component_type: QuestionComponentType = QuestionComponentType.SINGLE_CHOICE
     order: int = Field(default=0, strict=True, ge=0, le=1000)

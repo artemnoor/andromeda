@@ -442,6 +442,7 @@ function mapProftestSession(raw: ApiProftestSession): ProftestSessionResponse {
     staleQuestionIds: raw.staleQuestionIds ?? [],
     progress: raw.progress,
     adaptive: raw.adaptive ?? null,
+    preliminary: raw.preliminary ?? null,
     results: raw.results ? mapRecommendations(raw.results) : null,
   };
 }

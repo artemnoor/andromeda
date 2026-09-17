@@ -22,7 +22,7 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 - SQLAlchemy/Alembic с FK, unique/check constraints и Decimal без float-конверсии.
 - FastAPI/OpenAPI и сгенерированные TypeScript-типы.
 - Выбор программ A/B, scope «всё обучение / семестр», блоки и состояния loading/empty/error.
-- Профиль содержания: сценарные вопросы, anti-interest, adaptive refinement и TOP реальных программ с объяснениями по учебному плану.
+- Профиль содержания: короткое ядро из пяти вопросов, preliminary topic chips, bounded adaptive refinement и TOP реальных программ с объяснениями по учебному плану. Новая session-сессия использует `proftest-v3`; старые pinned `proftest-v2` продолжают читаться.
 - Persistence профиля: completed `UserProfile` хранится по anonymous HttpOnly session cookie и восстанавливается после перезагрузки UI.
 - Recommendation vertical slice: готовый `UserProfile` → детерминированный Content Fit → reasons/anti-reasons по реальному fingerprint.
 - Admissions vertical slice: реальные BMSTU данные поступления по canonical `program_id` — места, ЕГЭ и минимумы, квоты, проходные баллы, стоимость и форма обучения.

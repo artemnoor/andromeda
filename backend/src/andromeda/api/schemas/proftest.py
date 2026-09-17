@@ -338,6 +338,15 @@ class SessionProgressResponse(ApiModel):
     max_remaining: int
 
 
+class PreliminaryTopicResponse(ApiModel):
+    code: str
+    label: str
+
+
+class PreliminaryProfileResponse(ApiModel):
+    topics: tuple[PreliminaryTopicResponse, ...] = ()
+
+
 class ProftestSessionResponse(ApiModel):
     session_id: str
     question_set_version: str
@@ -349,6 +358,7 @@ class ProftestSessionResponse(ApiModel):
     stale_question_ids: tuple[str, ...] = ()
     progress: SessionProgressResponse
     adaptive: AdaptiveSelectionResponse | None = None
+    preliminary: PreliminaryProfileResponse | None = None
     results: ProftestResultsResponse | None = None
 
 
@@ -385,6 +395,7 @@ def session_response(view: ProftestSessionView) -> ProftestSessionResponse:
         stale_question_ids=view.session.stale_question_ids,
         progress=SessionProgressResponse.model_validate(view.progress.model_dump()),
         adaptive=AdaptiveSelectionResponse.model_validate(view.adaptive.model_dump()) if view.adaptive is not None else None,
+        preliminary=PreliminaryProfileResponse.model_validate(view.preliminary.model_dump()) if view.preliminary is not None else None,
         results=results_response(view.results) if view.results is not None else None,
     )
 
