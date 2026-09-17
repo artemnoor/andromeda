@@ -13,7 +13,8 @@ import type { ProftestSessionAnswerRequest, ProftestSessionResponse, Question, P
 import type { Route } from "@/lib/router";
 import { cn } from "@/lib/utils";
 
-const ANSWERS_STORAGE_KEY = "andromeda:proftest:session-answers";
+const QUESTION_SET_VERSION = "proftest-v3";
+const ANSWERS_STORAGE_KEY = `andromeda:proftest:${QUESTION_SET_VERSION}:session-answers`;
 
 export function ProftestPage({ navigate }: { navigate: (route: Route) => void }) {
   const [session, setSession] = useState<ProftestSessionResponse | null>(null);
@@ -55,6 +56,14 @@ export function ProftestPage({ navigate }: { navigate: (route: Route) => void })
   function acceptSession(next: ProftestSessionResponse): void {
     setSession(next);
     setShownQuestionId(null);
+    if (next.questionSetVersion !== QUESTION_SET_VERSION) {
+      setAnswers({});
+    }
+    if (next.staleQuestionIds.length > 0) {
+      const stale = new Set(next.staleQuestionIds);
+      setAnswers((previous) => Object.fromEntries(Object.entries(previous).filter(([id]) => !stale.has(id))));
+      setQuestionHistory((previous) => Object.fromEntries(Object.entries(previous).filter(([id]) => !stale.has(id))));
+    }
     if (next.currentQuestion) setQuestionHistory((previous) => ({ ...previous, [next.currentQuestion!.id]: next.currentQuestion! }));
   }
 
@@ -121,7 +130,9 @@ export function ProftestPage({ navigate }: { navigate: (route: Route) => void })
   if (error && !current && phase !== "intro") return <ErrorState message={error} />;
   if (phase === "intro") return <Intro onStart={start} busy={busy} error={error} />;
   if (phase === "results" && session?.results) return <ResultsView results={session.results} navigate={navigate} onRestart={() => { setSession(null); setAnswers({}); setQuestionHistory({}); setPhase("intro"); }} />;
-  if (!session || !current) return <Loading label="Готовим следующий шаг…" />;
+  if (!session) return <Loading label="Готовим следующий шаг…" />;
+  if (!current && session.preliminary) return <AdaptiveStopped session={session} onComplete={() => void complete()} busy={busy} />;
+  if (!current) return <Loading label="Готовим следующий шаг…" />;
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -132,6 +143,7 @@ export function ProftestPage({ navigate }: { navigate: (route: Route) => void })
         <span className="text-xs tabular-nums text-muted-foreground">осталось {session.progress.minRemaining}–{session.progress.maxRemaining}</span>
       </div>
       </div>
+      {session.preliminary && <PreliminaryBanner topics={session.preliminary.topics} adaptive={session.adaptive} />}
       <QuestionView question={current} answer={answers[current.id]} onChange={(optionIds) => updateAnswer(current, { optionIds, status: "answered" })} onIntensity={(intensity) => updateAnswer(current, { intensity })} onUncertain={() => updateAnswer(current, { optionIds: [], status: "uncertain" })} onSkip={() => updateAnswer(current, { optionIds: [], status: "skipped" })} />
       {error && <p role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
       <div className="mt-6 flex items-center justify-between gap-3">
@@ -146,7 +158,16 @@ export function ProftestPage({ navigate }: { navigate: (route: Route) => void })
 }
 
 function Intro({ onStart, busy, error }: { onStart: () => void; busy: boolean; error: string | null }) {
-  return <div data-testid="proftest-intro"><PageHeader eyebrow="Профтест" title="Профессиональный тест" description="Адаптивный опросник уточнит интересы, рабочий стиль, антипатии и важные компромиссы — затем сопоставит их с реальными учебными планами." /><Card><CardContent className="flex flex-col items-start gap-4 p-6 md:flex-row md:items-center md:justify-between"><div className="space-y-2"><div className="flex flex-wrap gap-2"><Tag tone="primary">24 базовых шага</Tag><Tag tone="muted">8–12 минут</Tag><Tag tone="muted">гостевой режим</Tag></div><p className="max-w-xl text-sm text-muted-foreground">Прогресс сохранится в текущей сессии. Можно начать без аккаунта, вернуться позже или привязать результат после входа.</p></div><Button data-testid="proftest-start" size="lg" disabled={busy} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={onStart}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />} Начать тест</Button></CardContent></Card>{error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}</div>;
+  return <div data-testid="proftest-intro"><PageHeader eyebrow="Профтест" title="Профессиональный тест" description="За несколько минут определим, какие направления тебе ближе по реальному содержанию учебных программ. После короткого ядра тест задаст только полезные уточнения." /><Card><CardContent className="flex flex-col items-start gap-4 p-6 md:flex-row md:items-center md:justify-between"><div className="space-y-2"><div className="flex flex-wrap gap-2"><Tag tone="primary">≈10 вопросов</Tag><Tag tone="muted">3 минуты</Tag><Tag tone="muted">гостевой режим</Tag></div><p className="max-w-xl text-sm text-muted-foreground">Сначала будет 5 сильных вопросов, затем — до 4 адаптивных. Прогресс сохранится в текущей сессии; аккаунт не нужен.</p></div><Button data-testid="proftest-start" size="lg" disabled={busy} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={onStart}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />} Начать тест</Button></CardContent></Card>{error && <p role="alert" className="mt-4 text-sm text-destructive">{error}</p>}</div>;
+}
+
+function PreliminaryBanner({ topics, adaptive }: { topics: { code: string; label: string }[]; adaptive: ProftestSessionResponse["adaptive"] }) {
+  return <Card data-testid="proftest-preliminary" className="mb-6 border-primary/20 bg-primary/[0.03]"><CardContent className="space-y-3 p-4"><div><p className="font-medium">Мы уже видим твой профиль</p><p className="text-sm text-muted-foreground">Осталось уточнить несколько моментов — без лишних вопросов.</p></div><div className="flex flex-wrap gap-2" aria-label="Предварительные направления">{topics.map((topic) => <Tag key={topic.code} tone="primary">{topic.label}</Tag>)}</div>{adaptive?.status === "skipped" && <p className="text-xs text-muted-foreground">Профиль уже достаточно устойчив, можно переходить к результатам.</p>}</CardContent></Card>;
+}
+
+function AdaptiveStopped({ session, onComplete, busy }: { session: ProftestSessionResponse; onComplete: () => void; busy: boolean }) {
+  const reason = session.adaptive?.stopReason === "insufficient_candidates" ? "Для уточнения сейчас недостаточно программ в каталоге." : session.adaptive?.stopReason === "source_gap" ? "В каталоге пока недостаточно данных для дополнительного уточнения." : "Профиль уже достаточно устойчив — дополнительных вопросов не требуется.";
+  return <div data-testid="proftest-adaptive-stopped" className="mx-auto w-full max-w-3xl"><PageHeader eyebrow="Профиль готов" title="Можно посмотреть результат" description={reason} /><Card><CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"><div className="flex flex-wrap gap-2">{session.preliminary?.topics.map((topic) => <Tag key={topic.code} tone="primary">{topic.label}</Tag>)}</div><Button data-testid="proftest-complete" disabled={busy} onClick={onComplete} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Показать результат</Button></CardContent></Card></div>;
 }
 
 function QuestionView({ question, answer, onChange, onIntensity, onUncertain, onSkip }: { question: Question; answer?: ProftestSessionAnswerRequest; onChange: (ids: string[]) => void; onIntensity: (value: number) => void; onUncertain: () => void; onSkip: () => void }) {
@@ -173,6 +194,7 @@ function readAnswers(): Record<string, ProftestSessionAnswerRequest> {
   if (typeof window === "undefined") return {};
   try {
     const parsed: unknown = JSON.parse(window.localStorage.getItem(ANSWERS_STORAGE_KEY) ?? "{}");
-    return parsed && typeof parsed === "object" ? parsed as Record<string, ProftestSessionAnswerRequest> : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter(([key, value]) => key.startsWith("core_") || key.startsWith("adaptive_")) ) as Record<string, ProftestSessionAnswerRequest>;
   } catch { return {}; }
 }

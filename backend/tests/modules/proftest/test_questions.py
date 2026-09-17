@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from andromeda.modules.proftest.domain.entities import QuestionBlock
 from andromeda.modules.proftest.contracts.public import QuestionComponentType
-from andromeda.modules.proftest.services.questionnaire import build_questionnaire, build_session_questionnaire
+from andromeda.modules.proftest.services.questionnaire import (
+    build_questionnaire,
+    build_session_questionnaire,
+    build_session_questionnaire_v2,
+    session_questionnaire,
+)
 
 
 def test_questionnaire_contains_separate_interest_activity_and_anti_interest_blocks() -> None:
@@ -20,21 +25,32 @@ def test_session_questionnaire_is_versioned_deterministic_and_has_mechanics_budg
     second = build_session_questionnaire()
 
     assert first == second
-    assert first.question_set_version == "proftest-v2"
-    assert len(first.questions) == 24
+    assert first.question_set_version == "proftest-v3"
+    assert len(first.questions) == 5
     assert {question.component_type for question in first.questions} >= {
-        QuestionComponentType.CHIP_SELECT,
         QuestionComponentType.PAIR_CHOICE,
         QuestionComponentType.SCENARIO_CHOICE,
-        QuestionComponentType.ANCHORED_SCALE,
         QuestionComponentType.MULTI_CHOICE,
     }
-    scales = 0
-    for question in first.questions:
-        if question.component_type is QuestionComponentType.ANCHORED_SCALE:
-            scales += 1
-            assert scales <= 3
-        else:
-            scales = 0
-        assert question.order >= 1
-        assert question.declared_dimensions
+    assert tuple(question.id for question in first.questions) == (
+        "core_doing",
+        "core_learning",
+        "core_result",
+        "core_task_mode",
+        "core_anti",
+    )
+    assert first.questions[0].max_selected == 3
+    assert first.questions[1].max_selected == 3
+    assert first.questions[4].max_selected == 3
+    assert all(question.order == index for index, question in enumerate(first.questions, start=1))
+    assert all(question.declared_dimensions for question in first.questions)
+    assert all("program:" not in option.id for question in first.questions for option in question.options)
+
+
+def test_published_v2_questionnaire_and_registry_are_preserved() -> None:
+    v2 = build_session_questionnaire_v2()
+
+    assert v2.question_set_version == "proftest-v2"
+    assert len(v2.questions) == 24
+    assert session_questionnaire("proftest-v2") == v2
+    assert session_questionnaire("proftest-v3") == build_session_questionnaire()

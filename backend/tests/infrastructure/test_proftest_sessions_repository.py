@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from andromeda.infrastructure.database import Base, create_engine_for_url
 from andromeda.infrastructure.repositories.proftest_sessions import SqlAlchemyProftestSessionRepository
-from andromeda.modules.proftest.contracts.public import AnalyticsEventType, ProfileScope, ProftestAnalyticsEvent, Question, QuestionBlock
+from andromeda.modules.proftest.contracts.public import AdaptiveState, AnalyticsEventType, ProfileScope, ProftestAnalyticsEvent, Question, QuestionBlock
 
 
 def _event(*, event_type: AnalyticsEventType, payload: dict[str, object], expires_at: datetime) -> ProftestAnalyticsEvent:
@@ -94,9 +94,22 @@ def test_adaptive_question_snapshots_survive_session_round_trip(tmp_path: Path) 
             current_question_id="context_goal",
             expires_at=now + timedelta(days=1),
         )
-        updated = started.model_copy(update={"adaptive_questions": (question,)})
+        updated = started.model_copy(
+            update={
+                "adaptive_questions": (question,),
+                "adaptive_state": AdaptiveState(
+                    candidate_ids=("program:09.03.01-01",),
+                    candidate_count=1,
+                    ranking_snapshots=(("program:09.03.01-01",),),
+                    ranking_score_snapshots=((80,),),
+                    adaptive_count=0,
+                ),
+            }
+        )
         repository.save(scope, updated, expected_revision=started.revision)
         resumed = repository.get_current(scope)
 
     assert resumed is not None
     assert resumed.adaptive_questions == (question,)
+    assert resumed.adaptive_state is not None
+    assert resumed.adaptive_state.ranking_score_snapshots == ((80,),)

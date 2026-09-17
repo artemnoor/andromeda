@@ -6,7 +6,7 @@ from decimal import Decimal
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
 from andromeda.modules.proftest.contracts.public import ActivityCode, AdaptiveAnswer, AdaptiveStatus, AnswerSet, MatchScore, ProgramFingerprint, ProftestAnswerSession, ScoreBreakdown, UserProfile
 from andromeda.modules.proftest.services.adaptive import AdaptiveCandidate, AdaptiveQuestionFactory, AdaptiveQuestionSelector
-from andromeda.modules.proftest.services.questionnaire import build_session_questionnaire
+from andromeda.modules.proftest.services.questionnaire import build_session_questionnaire, build_session_questionnaire_v2
 from andromeda.modules.proftest.services.session import ProftestSessionService
 from andromeda.modules.recommendations.domain.entities import RankedFingerprint
 
@@ -106,8 +106,59 @@ def test_session_rebuilds_ranking_with_adaptive_answers() -> None:
         expires_at=now,
     )
 
-    selection = service._selection(session, build_session_questionnaire().questions)
+    selection = service._selection(session, build_session_questionnaire_v2().questions)
 
     assert recommendations.profiles
     assert recommendations.profiles[-1].confidence_by_dimension[adaptive_question.declared_dimensions[0]] == Decimal("1")
     assert selection.status is AdaptiveStatus.SKIPPED
+
+
+def test_v3_selector_is_eligible_after_core_and_excludes_observed_dimensions() -> None:
+    candidates = (
+        AdaptiveCandidate(_fingerprint("02", "0.8", "0.2"), Decimal("80")),
+        AdaptiveCandidate(_fingerprint("12", "0.2", "0.8"), Decimal("79")),
+    )
+
+    profile = UserProfile(confidence_by_dimension={"subject": Decimal("1"), "activity": Decimal("1")})
+    selector = AdaptiveQuestionSelector(max_adaptive_questions=4)
+
+    ready = selector.select(candidates, profile)
+    observed = selector.select(candidates, profile, asked_dimensions=(ready.dimensions[0].code,))
+
+    assert ready.status is AdaptiveStatus.READY
+    assert observed.status is AdaptiveStatus.SKIPPED
+    assert observed.stop_reason is not None
+
+
+def test_v3_selector_stops_after_two_stable_adaptive_recalculations() -> None:
+    candidates = (
+        AdaptiveCandidate(_fingerprint("02", "0.8", "0.2"), Decimal("80")),
+        AdaptiveCandidate(_fingerprint("12", "0.2", "0.8"), Decimal("79")),
+    )
+    selector = AdaptiveQuestionSelector(max_adaptive_questions=4)
+    ids = tuple(item.fingerprint.program_id for item in candidates)
+
+    stable = selector.select(
+        candidates,
+        adaptive_count=2,
+        ranking_snapshots=(ids, ids),
+        ranking_score_snapshots=((80, 79), (80, 79)),
+    )
+    low_impact = selector.select(
+        candidates,
+        adaptive_count=2,
+        ranking_snapshots=(ids, ids),
+        ranking_score_snapshots=((80, 79), (81, 80)),
+    )
+    too_early = selector.select(
+        candidates,
+        adaptive_count=1,
+        ranking_snapshots=(ids, ids),
+        ranking_score_snapshots=((80, 79), (80, 79)),
+    )
+    capped = selector.select(candidates, adaptive_count=4)
+
+    assert stable.stop_reason.value == "top_three_stable"
+    assert low_impact.stop_reason.value == "low_ranking_impact"
+    assert too_early.status is AdaptiveStatus.READY
+    assert capped.stop_reason.value == "max_questions"

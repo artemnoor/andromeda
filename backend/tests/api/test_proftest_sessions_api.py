@@ -24,7 +24,7 @@ def _client(tmp_path: Path) -> TestClient:
     return TestClient(create_app(database_url))
 
 
-def test_session_start_is_idempotent_and_pins_v2_question_set(tmp_path: Path) -> None:
+def test_session_start_is_idempotent_and_pins_v3_question_set(tmp_path: Path) -> None:
     client = _client(tmp_path)
 
     first = client.post("/proftest/sessions")
@@ -33,8 +33,10 @@ def test_session_start_is_idempotent_and_pins_v2_question_set(tmp_path: Path) ->
     assert first.status_code == 200
     assert second.status_code == 200
     assert first.json()["sessionId"] == second.json()["sessionId"]
-    assert first.json()["questionSetVersion"] == "proftest-v2"
-    assert first.json()["currentQuestion"]["componentType"] == "ChipSelect"
+    assert first.json()["questionSetVersion"] == "proftest-v3"
+    assert first.json()["currentQuestion"]["id"] == "core_doing"
+    assert first.json()["currentQuestion"]["componentType"] == "MultiChoiceCard"
+    assert first.json()["progress"]["maxRemaining"] == 9
 
 
 def test_session_next_persists_revision_and_rejects_stale_write(tmp_path: Path) -> None:
@@ -76,6 +78,25 @@ def test_session_next_accepts_json_answer_status(tmp_path: Path) -> None:
     assert response.json()["interactionCount"] == 1
 
 
+def test_multi_select_options_count_as_one_rendered_submission(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    started = client.post("/proftest/sessions").json()
+    question = started["currentQuestion"]
+
+    response = client.post(
+        "/proftest/sessions/current/next",
+        json={
+            "expectedRevision": started["revision"],
+            "questionId": question["id"],
+            "optionIds": [option["id"] for option in question["options"][:3]],
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["interactionCount"] == 1
+    assert response.json()["cursor"] == 1
+
+
 def test_session_rejects_option_id_not_declared_by_question(tmp_path: Path) -> None:
     client = _client(tmp_path)
     started = client.post("/proftest/sessions").json()
@@ -93,10 +114,10 @@ def test_session_rejects_option_id_not_declared_by_question(tmp_path: Path) -> N
     assert response.json()["code"] == "VALIDATION_ERROR"
 
 
-def test_session_can_complete_full_core_and_resume_completed_result(tmp_path: Path) -> None:
+def test_session_can_complete_compact_flow_and_resume_completed_result(tmp_path: Path) -> None:
     client = _client(tmp_path)
     state = client.post("/proftest/sessions").json()
-    for _ in range(30):
+    for _ in range(9):
         question = state.get("currentQuestion")
         if question is None:
             break
@@ -114,14 +135,40 @@ def test_session_can_complete_full_core_and_resume_completed_result(tmp_path: Pa
     completed = client.post("/proftest/sessions/current/complete")
     resumed = client.get("/proftest/sessions/current")
 
-    assert state["cursor"] == 24
-    assert state["interactionCount"] == 24
+    assert state["cursor"] <= 9
+    assert state["interactionCount"] <= 9
     assert completed.status_code == 200, completed.text
     assert completed.json()["status"] == "completed"
     assert completed.json()["results"]["recommendations"]
     assert resumed.status_code == 200
     assert resumed.json()["status"] == "completed"
     assert resumed.json()["results"]["recommendations"]
+
+
+def test_session_exposes_preliminary_topics_after_five_core_answers(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    state = client.post("/proftest/sessions").json()
+
+    for _ in range(5):
+        question = state["currentQuestion"]
+        assert question["id"].startswith("core_")
+        response = client.post(
+            "/proftest/sessions/current/next",
+            json={
+                "expectedRevision": state["revision"],
+                "questionId": question["id"],
+                "optionIds": [question["options"][0]["id"]],
+            },
+        )
+        assert response.status_code == 200, response.text
+        state = response.json()
+
+    assert state["preliminary"] is not None
+    assert len(state["preliminary"]["topics"]) <= 3
+    assert all(set(topic) == {"code", "label"} for topic in state["preliminary"]["topics"])
+    assert "contentFit" not in state["preliminary"]
+    assert "programId" not in state["preliminary"]
+    assert state["adaptive"] is not None
 
 
 def test_analytics_event_replay_is_deduplicated(tmp_path: Path) -> None:

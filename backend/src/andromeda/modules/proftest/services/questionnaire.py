@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import logging
 
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
 
 from ..contracts.public import ActivityCode, Question, QuestionBlock, QuestionComponentType, QuestionOption, Questionnaire, QuestionStage
+
+
+logger = logging.getLogger("andromeda.proftest.questionnaire")
 
 
 def _option(
@@ -111,10 +115,10 @@ def build_questionnaire() -> Questionnaire:
     )
 
 
-def build_session_questionnaire() -> Questionnaire:
+def build_session_questionnaire_v2() -> Questionnaire:
     """Return the immutable v2 core used by resumable sessions.
 
-    The six-question questionnaire above is intentionally retained as the v1
+    The legacy 24-question questionnaire is intentionally retained as the v2
     compatibility surface for existing API clients. This catalogue contains
     no program IDs and is deterministic; branching is applied by the session
     service using the saved answer state.
@@ -152,7 +156,7 @@ def build_session_questionnaire() -> Questionnaire:
             declared_dimensions=dimensions,
         )
 
-    return Questionnaire.from_questions(
+    questionnaire = Questionnaire.from_questions(
         (
             question("context_goal", QuestionBlock.CONTEXT, QuestionStage.ABOUT, QuestionComponentType.CHIP_SELECT, "Что сейчас важнее всего при выборе программы?", (
                 _option("find_field", "Понять, какая область мне подходит", context=("exploration",)),
@@ -250,6 +254,184 @@ def build_session_questionnaire() -> Questionnaire:
         ),
         question_set_version="proftest-v2",
     )
+    _log_resolved(questionnaire)
+    return questionnaire
 
 
-__all__ = ["build_questionnaire", "build_session_questionnaire"]
+def build_session_questionnaire_v3() -> Questionnaire:
+    """Return the compact five-question core for new resumable sessions.
+
+    The options intentionally carry both subject and activity signals.  The
+    session service can therefore build a useful preliminary profile before
+    asking a bounded adaptive follow-up.
+    """
+
+    def question(
+        question_id: str,
+        block: QuestionBlock,
+        stage: QuestionStage,
+        component: QuestionComponentType,
+        prompt: str,
+        options: tuple[QuestionOption, ...],
+        *,
+        order: int,
+        multi_select: bool = False,
+        max_selected: int = 1,
+        dimensions: tuple[str, ...] = (),
+    ) -> Question:
+        return Question(
+            id=question_id,
+            block=block,
+            stage=stage,
+            component_type=component,
+            order=order,
+            prompt=prompt,
+            options=options,
+            required=True,
+            allow_uncertain=True,
+            allow_skip=False,
+            multi_select=multi_select,
+            max_selected=max_selected,
+            declared_dimensions=dimensions,
+        )
+
+    questionnaire = Questionnaire.from_questions(
+        (
+            question(
+                "core_doing",
+                QuestionBlock.INTERESTS,
+                QuestionStage.INTERESTS,
+                QuestionComponentType.MULTI_CHOICE,
+                "Что из этого тебе действительно было бы интересно делать? Выбери максимум 3.",
+                (
+                    _option("software_systems", "Писать программы и разбираться в системах", subjects=((DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "1"),), activities=((ActivityCode.SOFTWARE_CREATION, "0.7"), (ActivityCode.SYSTEM_DESIGN, "0.3"))),
+                    _option("devices_mechanisms", "Проектировать устройства и механизмы", subjects=((DisciplineAreaCode.ENGINEERING_TECHNOLOGY, "0.6"), (DisciplineAreaCode.PHYSICS_ASTRONOMY, "0.4")), activities=((ActivityCode.PHYSICAL_ENGINEERING, "1"),)),
+                    _option("data_patterns", "Анализировать данные и искать закономерности", subjects=((DisciplineAreaCode.MATHEMATICS_STATISTICS, "0.5"), (DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "0.5")), activities=((ActivityCode.DATA, "0.7"), (ActivityCode.ANALYTICAL, "0.3"))),
+                    _option("physical_processes", "Исследовать физические процессы", subjects=((DisciplineAreaCode.PHYSICS_ASTRONOMY, "0.8"), (DisciplineAreaCode.MATHEMATICS_STATISTICS, "0.2")), activities=((ActivityCode.RESEARCH, "0.8"), (ActivityCode.ANALYTICAL, "0.2"))),
+                    _option("economics_business", "Работать с экономикой и бизнесом", subjects=((DisciplineAreaCode.BUSINESS_MANAGEMENT, "0.6"), (DisciplineAreaCode.ECONOMICS_FINANCE, "0.4")), activities=((ActivityCode.BUSINESS, "1"),)),
+                    _option("people_products", "Создавать продукты для людей", subjects=((DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "0.3"), (DisciplineAreaCode.BUSINESS_MANAGEMENT, "0.3"), (DisciplineAreaCode.PSYCHOLOGY_COGNITIVE, "0.2"), (DisciplineAreaCode.SOCIETY_SOCIAL_SCIENCES, "0.2")), activities=((ActivityCode.CREATIVE, "0.4"), (ActivityCode.COMMUNICATION, "0.3"), (ActivityCode.BUSINESS, "0.3"))),
+                    _option("chemistry_materials", "Работать с химией и материалами", subjects=((DisciplineAreaCode.CHEMISTRY_MATERIALS, "1"),), activities=((ActivityCode.RESEARCH, "1"),)),
+                    _option("dont_know", "Пока не знаю"),
+                ),
+                order=1,
+                multi_select=True,
+                max_selected=3,
+                dimensions=("subject", "activity"),
+            ),
+            question(
+                "core_learning",
+                QuestionBlock.INTERESTS,
+                QuestionStage.INTERESTS,
+                QuestionComponentType.MULTI_CHOICE,
+                "Что тебе интереснее изучать? Выбери до трёх областей.",
+                (
+                    _option("math_logic", "Математику и логику", subjects=((DisciplineAreaCode.MATHEMATICS_STATISTICS, "1"),), activities=((ActivityCode.ANALYTICAL, "1"),)),
+                    _option("computers_data", "Компьютеры и данные", subjects=((DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "1"),), activities=((ActivityCode.SOFTWARE_CREATION, "0.6"), (ActivityCode.DATA, "0.4"))),
+                    _option("physics_devices", "Физику и устройства", subjects=((DisciplineAreaCode.PHYSICS_ASTRONOMY, "0.7"), (DisciplineAreaCode.ENGINEERING_TECHNOLOGY, "0.3")), activities=((ActivityCode.PHYSICAL_ENGINEERING, "1"),)),
+                    _option("chemistry_materials", "Химию и материалы", subjects=((DisciplineAreaCode.CHEMISTRY_MATERIALS, "0.8"), (DisciplineAreaCode.ENGINEERING_TECHNOLOGY, "0.2")), activities=((ActivityCode.RESEARCH, "1"),)),
+                    _option("people_society", "Людей и общество", subjects=((DisciplineAreaCode.PSYCHOLOGY_COGNITIVE, "0.5"), (DisciplineAreaCode.SOCIETY_SOCIAL_SCIENCES, "0.5")), activities=((ActivityCode.COMMUNICATION, "1"),)),
+                    _option("business_economics", "Бизнес и экономику", subjects=((DisciplineAreaCode.BUSINESS_MANAGEMENT, "0.5"), (DisciplineAreaCode.ECONOMICS_FINANCE, "0.5")), activities=((ActivityCode.BUSINESS, "1"),)),
+                    _option("design_languages", "Дизайн, языки и способы объяснять идеи", subjects=((DisciplineAreaCode.ART_DESIGN_MEDIA, "0.6"), (DisciplineAreaCode.LANGUAGES_LINGUISTICS_LITERATURE, "0.4")), activities=((ActivityCode.CREATIVE, "0.7"), (ActivityCode.COMMUNICATION, "0.3"))),
+                    _option("learning_dont_know", "Пока не знаю"),
+                ),
+                order=2,
+                multi_select=True,
+                max_selected=3,
+                dimensions=("subject", "activity"),
+            ),
+            question(
+                "core_result",
+                QuestionBlock.ACTIVITIES,
+                QuestionStage.WORK_STYLE,
+                QuestionComponentType.SCENARIO_CHOICE,
+                "Какой результат работы тебе приятнее увидеть?",
+                (
+                    _option("working_service", "Работающий сервис или цифровой инструмент", subjects=((DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "1"),), activities=((ActivityCode.SOFTWARE_CREATION, "0.8"), (ActivityCode.COMMUNICATION, "0.2"))),
+                    _option("model_data", "Модель, расчёт или найденную закономерность", subjects=((DisciplineAreaCode.MATHEMATICS_STATISTICS, "0.5"), (DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "0.5")), activities=((ActivityCode.DATA, "0.6"), (ActivityCode.ANALYTICAL, "0.4"))),
+                    _option("tested_device", "Проверенное устройство или инженерную систему", subjects=((DisciplineAreaCode.ENGINEERING_TECHNOLOGY, "0.7"), (DisciplineAreaCode.PHYSICS_ASTRONOMY, "0.3")), activities=((ActivityCode.PHYSICAL_ENGINEERING, "0.6"), (ActivityCode.SYSTEM_DESIGN, "0.4"))),
+                    _option("explained_phenomenon", "Объяснение физического явления или подтверждённую гипотезу", subjects=((DisciplineAreaCode.PHYSICS_ASTRONOMY, "0.6"), (DisciplineAreaCode.MATHEMATICS_STATISTICS, "0.4")), activities=((ActivityCode.RESEARCH, "0.7"), (ActivityCode.ANALYTICAL, "0.3"))),
+                    _option("useful_product", "Полезный продукт, понятный людям", subjects=((DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "0.3"), (DisciplineAreaCode.BUSINESS_MANAGEMENT, "0.3"), (DisciplineAreaCode.PSYCHOLOGY_COGNITIVE, "0.2"), (DisciplineAreaCode.ART_DESIGN_MEDIA, "0.2")), activities=((ActivityCode.BUSINESS, "0.4"), (ActivityCode.CREATIVE, "0.3"), (ActivityCode.COMMUNICATION, "0.3"))),
+                ),
+                order=3,
+                dimensions=("subject", "activity"),
+            ),
+            question(
+                "core_task_mode",
+                QuestionBlock.TRADE_OFFS,
+                QuestionStage.TRADE_OFFS,
+                QuestionComponentType.PAIR_CHOICE,
+                "Какой формат задачи тебе ближе — теория, практика или их сочетание?",
+                (
+                    _option("principles_model", "Сначала понять принцип, построить модель и проверить гипотезу", subjects=((DisciplineAreaCode.MATHEMATICS_STATISTICS, "0.5"), (DisciplineAreaCode.PHYSICS_ASTRONOMY, "0.5")), activities=((ActivityCode.ANALYTICAL, "0.6"), (ActivityCode.RESEARCH, "0.4"))),
+                    _option("prototype_test", "Собрать прототип и проверить его в деле", subjects=((DisciplineAreaCode.ENGINEERING_TECHNOLOGY, "0.5"), (DisciplineAreaCode.PHYSICS_ASTRONOMY, "0.2"), (DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "0.3")), activities=((ActivityCode.PHYSICAL_ENGINEERING, "0.5"), (ActivityCode.SOFTWARE_CREATION, "0.3"), (ActivityCode.SYSTEM_DESIGN, "0.2"))),
+                    _option("user_solution", "Решить прикладную задачу для пользователя или команды", subjects=((DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "0.3"), (DisciplineAreaCode.BUSINESS_MANAGEMENT, "0.3"), (DisciplineAreaCode.PSYCHOLOGY_COGNITIVE, "0.2"), (DisciplineAreaCode.SOCIETY_SOCIAL_SCIENCES, "0.2")), activities=((ActivityCode.COMMUNICATION, "0.4"), (ActivityCode.BUSINESS, "0.3"), (ActivityCode.SOFTWARE_CREATION, "0.3"))),
+                    _option("balanced_theory_practice", "Чередовать глубокое понимание и практическую проверку", subjects=((DisciplineAreaCode.MATHEMATICS_STATISTICS, "0.25"), (DisciplineAreaCode.PHYSICS_ASTRONOMY, "0.25"), (DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "0.25"), (DisciplineAreaCode.ENGINEERING_TECHNOLOGY, "0.25")), activities=((ActivityCode.RESEARCH, "0.25"), (ActivityCode.ANALYTICAL, "0.25"), (ActivityCode.SYSTEM_DESIGN, "0.25"), (ActivityCode.SOFTWARE_CREATION, "0.25"))),
+                ),
+                order=4,
+                dimensions=("subject", "activity"),
+            ),
+            question(
+                "core_anti",
+                QuestionBlock.ANTI_INTERESTS,
+                QuestionStage.ANTI_INTERESTS,
+                QuestionComponentType.MULTI_CHOICE,
+                "Что категорически не твоё? Можно выбрать до трёх пунктов.",
+                (
+                    _option("avoid_physics", "Физика и физические системы", anti=((DisciplineAreaCode.PHYSICS_ASTRONOMY, "1"),)),
+                    _option("avoid_chemistry", "Химия и материалы", anti=((DisciplineAreaCode.CHEMISTRY_MATERIALS, "1"),)),
+                    _option("avoid_programming", "Программирование и цифровые системы", anti=((DisciplineAreaCode.COMPUTER_SCIENCE_DATA, "1"),)),
+                    _option("avoid_math", "Большой объём математики", anti=((DisciplineAreaCode.MATHEMATICS_STATISTICS, "1"),)),
+                    _option("avoid_business", "Экономика и управление", anti=((DisciplineAreaCode.ECONOMICS_FINANCE, "0.6"), (DisciplineAreaCode.BUSINESS_MANAGEMENT, "0.4"))),
+                    _option("avoid_people", "Коммуникации и социальные темы", anti=((DisciplineAreaCode.PSYCHOLOGY_COGNITIVE, "0.5"), (DisciplineAreaCode.SOCIETY_SOCIAL_SCIENCES, "0.5"))),
+                    _option("no_exclusions", "Пока ничего не исключаю"),
+                ),
+                order=5,
+                multi_select=True,
+                max_selected=3,
+                dimensions=("anti_interest",),
+            ),
+        ),
+        question_set_version="proftest-v3",
+    )
+    _log_resolved(questionnaire)
+    return questionnaire
+
+
+def build_session_questionnaire() -> Questionnaire:
+    """Return the default immutable questionnaire for new sessions."""
+
+    return build_session_questionnaire_v3()
+
+
+def session_questionnaire(question_set_version: str) -> Questionnaire:
+    """Resolve a persisted session to its immutable questionnaire version."""
+
+    builders = {
+        "proftest-v2": build_session_questionnaire_v2,
+        "proftest-v3": build_session_questionnaire_v3,
+    }
+    builder = builders.get(question_set_version)
+    if builder is None:
+        logger.warning("questionnaire_version_unknown version=%s", question_set_version[:128])
+        raise ValueError(f"Unknown proftest question set: {question_set_version}")
+    logger.info("questionnaire_version_selected version=%s", question_set_version)
+    return builder()
+
+
+def _log_resolved(questionnaire: Questionnaire) -> None:
+    logger.info("questionnaire_version_published version=%s", questionnaire.question_set_version)
+    logger.debug(
+        "questionnaire_resolved version=%s question_count=%d option_count=%d",
+        questionnaire.question_set_version,
+        len(questionnaire.questions),
+        sum(len(question.options) for question in questionnaire.questions),
+    )
+
+
+__all__ = [
+    "build_questionnaire",
+    "build_session_questionnaire",
+    "build_session_questionnaire_v2",
+    "build_session_questionnaire_v3",
+    "session_questionnaire",
+]

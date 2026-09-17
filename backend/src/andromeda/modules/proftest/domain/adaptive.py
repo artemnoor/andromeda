@@ -55,6 +55,7 @@ class AdaptiveState(ContractModel):
     asked_question_ids: tuple[str, ...] = Field(default=(), max_length=10)
     uncertain_dimensions: tuple[str, ...] = Field(default=(), max_length=12)
     ranking_snapshots: tuple[tuple[ProgramId, ...], ...] = Field(default=(), max_length=10)
+    ranking_score_snapshots: tuple[tuple[int, ...], ...] = Field(default=(), max_length=10)
     adaptive_count: int = Field(default=0, strict=True, ge=0, le=10)
     stop_reason: AdaptiveStopReason | None = None
 

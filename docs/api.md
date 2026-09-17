@@ -73,16 +73,18 @@ npm run generate-api
 npm run check-api-drift
 ```
 
-## Адаптивная сессия профтеста v2
+## Адаптивная сессия профтеста v3
 
 Новый TestShell использует version-pinned session API и не отправляет legacy
 `adaptiveAnswer`. Сессия принадлежит authenticated account либо anonymous
 HttpOnly profile scope; frontend никогда не передаёт owner ID и хранит в
 `localStorage` только незавершённый draft для быстрого восстановления UI.
+Новые сессии используют immutable `proftest-v3`; уже сохранённые draft-сессии
+с `proftest-v2` дочитываются своим вопросником и не переинтерпретируются.
 
 | Метод | Endpoint | Request | Response/поведение |
 |---|---|---|---|
-| POST | `/proftest/sessions` | пустой JSON | Создаёт или возобновляет единственный draft владельца; возвращает первый вопрос и `questionSetVersion=proftest-v2`. |
+| POST | `/proftest/sessions` | пустой JSON | Создаёт или возобновляет единственный draft владельца; новая сессия возвращает первый вопрос и `questionSetVersion=proftest-v3`. |
 | GET | `/proftest/sessions/current` | — | Возвращает текущий draft или completed session с результатами; `404` означает, что у владельца нет сессии. |
 | POST | `/proftest/sessions/current/next` | `questionId`, `optionIds`, `status`, optional `intensity`/`dimension`, `expectedRevision` | Валидирует вопрос pinned branch, сохраняет ответ, увеличивает revision и возвращает следующий вопрос либо честный adaptive stop. |
 | PATCH | `/proftest/sessions/current` | `answers[]`, `expectedRevision` | Сохраняет исправление ранее отвеченного вопроса; зависимые adaptive IDs попадают в `staleQuestionIds`, а branch пересчитывается. |
@@ -92,7 +94,11 @@ HttpOnly profile scope; frontend никогда не передаёт owner ID �
 `ProftestSessionResponse` содержит только public view: `sessionId`,
 `questionSetVersion`, `status` (`draft`/`completed`/`expired`/`abandoned`),
 `cursor`, `interactionCount`, `revision`, `currentQuestion`,
-`staleQuestionIds`, `progress`, optional `adaptive` и optional `results`.
+`staleQuestionIds`, `progress`, optional `preliminary`, `adaptive` и optional
+`results`. `preliminary.topics` содержит максимум три `{code, label}` без
+процентов, Content Fit, имён/ID программ и fingerprint data. После пятого
+валидного core-ответа `adaptive` возвращается сразу; если уточнение остановлено,
+он содержит `status=skipped` и `stopReason`, а `currentQuestion=null`.
 Вопрос описывает `stage`, `componentType`, option metadata, `required`,
 `allowUncertain`, `allowSkip`, `multiSelect`, лимит выбранных вариантов и
 declared dimensions. Внутренние scoring deltas, owner key, cookie token,
@@ -119,6 +125,32 @@ time), но не публикует профили или сырые ответ�
 `frontend-next/src/lib/generated.ts`. При изменении session schema сначала
 экспортируйте OpenAPI, затем выполните generation и drift check из раздела
 выше.
+
+### Политика v3
+
+Core состоит ровно из пяти server-owned вопросов: `core_doing`,
+`core_learning`, `core_result`, `core_task_mode`, `core_anti`. Они собирают
+только deterministic subject/activity/anti-interest сигналы для Content Fit;
+цель выбора, опыт, поступление, стоимость, город, формат и нагрузка не
+добавляются в этот flow. Каждый выбранный multi-select option остаётся частью
+одной отправки и не увеличивает `interactionCount` отдельно.
+
+После core сервер ранжирует текущие canonical fingerprints через тот же
+`RecommendationService`, но наружу отдаёт только topic chips. Adaptive branch
+создаёт не более четырёх вопросов v3, исключает уже заданные вопросы и точные
+dimensions, сохраняет bounded ranking history в `state_json` и использует
+детерминированный tie-break. После минимум двух adaptive answers действует
+early stop: неизменный TOP-3 с delta до `0` даёт `top_three_stable`, небольшой
+delta до `3` — `low_ranking_impact`; четвёртый ответ всегда завершает branch.
+Пустой/неполный catalog не маскируется вопросом: возвращается
+`insufficient_candidates` или `source_gap`, после чего completion остаётся
+идемпотентным.
+
+`proftest-v2` сохраняется только для уже pinned sessions и старых clients;
+его защитный budget остаётся широким. Unknown question-set version отклоняется
+typed validation error, а не молча переключается на v3. Optional filtering,
+admission-fit и logistics refinement находятся после результата и не меняют
+Content Fit ranking.
 
 ## Recommendations
 

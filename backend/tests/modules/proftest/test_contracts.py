@@ -14,6 +14,8 @@ from andromeda.modules.proftest.contracts.public import (
     Confidence,
     CurriculumEvidence,
     ProfileScope,
+    PreliminaryProfile,
+    PreliminaryTopic,
     ProgramFingerprint,
     UserProfile,
     UserProfileSnapshot,
@@ -59,3 +61,16 @@ def test_evidence_requires_area_weights_to_sum_to_one() -> None:
             workload=Decimal("100"),
             area_weights=(DisciplineAreaWeight(area=DisciplineAreaCode.MATHEMATICS_STATISTICS, weight=Decimal("0.4")),),
         )
+
+
+def test_preliminary_contract_exposes_only_bounded_topics() -> None:
+    preliminary = PreliminaryProfile(
+        topics=(
+            PreliminaryTopic(code="area:computer_science_data", label="Информатика и данные"),
+            PreliminaryTopic(code="area:mathematics_statistics", label="Математика и статистика"),
+        )
+    )
+
+    assert len(preliminary.topics) == 2
+    assert set(preliminary.topics[0].model_dump()) == {"code", "label"}
+    assert PreliminaryProfile.model_config["extra"] == "forbid"

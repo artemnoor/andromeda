@@ -4,12 +4,14 @@ test("guest can start and complete the production proftest session", async ({ pa
   test.setTimeout(120_000);
   await page.goto("/?view=proftest");
   await expect(page.getByTestId("proftest-intro")).toBeVisible();
+  await expect(page.getByTestId("proftest-intro")).toContainText("≈10 вопросов");
+  await expect(page.getByTestId("proftest-intro")).toContainText("3 минуты");
   await page.getByTestId("proftest-start").click();
   await expect(page.getByTestId("proftest-question")).toBeVisible();
 
   const question = page.getByTestId("proftest-question");
   const results = page.getByTestId("proftest-results");
-  for (let step = 0; step < 48; step += 1) {
+  for (let step = 0; step < 9; step += 1) {
     if (await results.isVisible().catch(() => false)) break;
     const options = page.getByTestId("proftest-option");
     if (await options.count()) {
@@ -32,6 +34,7 @@ test("guest can start and complete the production proftest session", async ({ pa
 
   await expect(results).toBeVisible();
   await expect(page.getByTestId("proftest-result-card").first()).toBeVisible();
+  expect(await page.getByTestId("proftest-question").count()).toBe(0);
 });
 
 test("proftest restores the current question after reload", async ({ page }) => {

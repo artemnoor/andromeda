@@ -7,12 +7,14 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import logging
 
+from andromeda.modules.disciplines.contracts.public import area_definition
 from andromeda.modules.recommendations.contracts.public import RankedFingerprint, RecommendationRequest, RecommendationServicePort
 from andromeda.shared.contracts.errors import ConflictError, NotFoundError, ValidationError
 
 from ..contracts.public import (
     AdaptiveAnswer,
     AdaptiveSelection,
+    AdaptiveState,
     AnswerSet,
     AnswerStatus,
     AnalyticsEventType,
@@ -21,6 +23,8 @@ from ..contracts.public import (
     ProftestAnswerSession,
     ProftestResults,
     ProftestSessionView,
+    PreliminaryProfile,
+    PreliminaryTopic,
     Question,
     QuestionStage,
     SessionAnswer,
@@ -28,15 +32,17 @@ from ..contracts.public import (
     SessionStatus,
     UserProfile,
 )
+from ..domain.questions import Questionnaire
 from ..repository.ports import ProftestAnalyticsWriter, ProftestAnswerSessionRepository
 from .adaptive import AdaptiveCandidate, AdaptiveQuestionFactory, AdaptiveQuestionSelector
+from .adaptive import MAX_ADAPTIVE_QUESTIONS_V2, MAX_ADAPTIVE_QUESTIONS_V3, MIN_ADAPTIVE_ANSWERS_BEFORE_STOP_V3, TOP_THREE_SCORE_DELTA_V3
 from .catalog import ProftestCatalogService
 from .profile_builder import UserProfileBuilder
-from .questionnaire import build_session_questionnaire
+from .questionnaire import build_session_questionnaire, session_questionnaire
 
 
 logger = logging.getLogger("andromeda.proftest.session")
-MAX_ADAPTIVE_QUESTIONS = 10
+MAX_SESSION_INTERACTIONS = 38
 
 
 class ProftestSessionService:
@@ -62,6 +68,11 @@ class ProftestSessionService:
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._profile_builder = UserProfileBuilder()
         self._selector = AdaptiveQuestionSelector()
+        self._v3_selector = AdaptiveQuestionSelector(
+            max_adaptive_questions=MAX_ADAPTIVE_QUESTIONS_V3,
+            min_answers_before_stop=MIN_ADAPTIVE_ANSWERS_BEFORE_STOP_V3,
+            stability_score_delta=TOP_THREE_SCORE_DELTA_V3,
+        )
         self._factory = AdaptiveQuestionFactory()
 
     def start(self, scope: ProfileScope) -> ProftestSessionView:
@@ -100,18 +111,18 @@ class ProftestSessionService:
         session = self._sessions.get_current(scope)
         if session is None:
             raise NotFoundError("Current proftest session was not found")
-        questionnaire = build_session_questionnaire()
+        questionnaire = self._questionnaire(session)
         if session.status is SessionStatus.COMPLETED:
             profile = self._profile_builder.build(session.answer_set, questionnaire.questions, self._adaptive_questions(session))
             results = self._results(profile)
-            return ProftestSessionView(session=session, progress=self._progress(session, None), results=results)
+            return ProftestSessionView(session=session, progress=self._progress(session, None, questionnaire), results=results)
         self._validate_required(session.answer_set, questionnaire.questions)
         profile = self._profile_builder.build(session.answer_set, questionnaire.questions, self._adaptive_questions(session))
         results = self._results(profile)
         completed, _snapshot = self._sessions.complete(scope, session, profile, expires_at=self._expires_at())
         self._track(scope, completed, AnalyticsEventType.TEST_COMPLETED)
         logger.info("proftest_session_complete recommendations=%d", len(results.recommendations))
-        return ProftestSessionView(session=completed, progress=self._progress(completed, None), results=results)
+        return ProftestSessionView(session=completed, progress=self._progress(completed, None, questionnaire), results=results)
 
     def append_analytics(self, scope: ProfileScope, events: tuple[ProftestAnalyticsEvent, ...]) -> int:
         if self._analytics is None:
@@ -133,7 +144,7 @@ class ProftestSessionService:
     def _apply_answers(self, session: ProftestAnswerSession, inputs: tuple[SessionAnswer, ...], *, advance: bool) -> ProftestAnswerSession:
         if not inputs:
             raise ValidationError("At least one answer is required")
-        questionnaire = build_session_questionnaire()
+        questionnaire = self._questionnaire(session)
         core = questionnaire.questions
         core_map = {question.id: question for question in core}
         # Ranking the entire catalogue is only needed once the core questions
@@ -215,45 +226,107 @@ class ProftestSessionService:
             update={
                 "answer_set": AnswerSet(answers=tuple(sorted(answers, key=lambda item: item.question_id)), adaptive_answers=tuple(sorted(adaptive_answers, key=lambda item: item.question_id))),
                 "adaptive_questions": adaptive_questions,
+                "adaptive_state": None if first_edited_index is not None else session.adaptive_state,
                 "cursor": cursor,
-                "interaction_count": min(38, session.interaction_count + changed),
+                "interaction_count": min(MAX_SESSION_INTERACTIONS, session.interaction_count + changed),
                 "stale_question_ids": tuple(dict.fromkeys(stale_ids)),
             }
         )
+        if first_edited_index is None and (self._core_is_complete(updated, core) or updated.answer_set.adaptive_answers):
+            updated = self._refresh_adaptive_state(updated, questionnaire)
         logger.debug("proftest_session_answers_applied changed=%d cursor=%d adaptive=%d", changed, updated.cursor, len(updated.answer_set.adaptive_answers))
         return updated
 
     def _view(self, session: ProftestAnswerSession) -> ProftestSessionView:
-        questionnaire = build_session_questionnaire()
+        questionnaire = self._questionnaire(session)
         if session.status is SessionStatus.COMPLETED:
             profile = self._profile_builder.build(session.answer_set, questionnaire.questions, self._adaptive_questions(session))
-            return ProftestSessionView(session=session, progress=self._progress(session, None), results=self._results(profile))
-        if session.cursor < len(questionnaire.questions):
-            core_question = questionnaire.questions[session.cursor]
-            return ProftestSessionView(session=session, current_question=core_question, progress=self._progress(session, core_question))
+            return ProftestSessionView(session=session, progress=self._progress(session, None, questionnaire), results=self._results(profile))
+        if session.cursor < len(questionnaire.questions) or not self._core_is_complete(session, questionnaire.questions):
+            core_index = self._next_core_index(session, questionnaire.questions)
+            core_question = questionnaire.questions[core_index]
+            return ProftestSessionView(session=session, current_question=core_question, progress=self._progress(session, core_question, questionnaire))
         selection = self._selection(session, questionnaire.questions)
         question = self._current_question(session, questionnaire.questions, selection)
-        return ProftestSessionView(session=session, current_question=question, progress=self._progress(session, question), adaptive=selection if question is not None and question.adaptive else None)
+        preliminary = self._preliminary(session, questionnaire.questions, selection)
+        if selection.status.value == "skipped":
+            logger.info("proftest_adaptive_stop reason=%s adaptive_count=%d", selection.stop_reason.value if selection.stop_reason else "unknown", selection.adaptive_count)
+        logger.debug("proftest_session_view version=%s cursor=%d core=%d adaptive=%d topics=%d", session.question_set_version, session.cursor, len(questionnaire.questions), len(session.answer_set.adaptive_answers), len(preliminary.topics))
+        return ProftestSessionView(session=session, current_question=question, progress=self._progress(session, question, questionnaire), adaptive=selection, preliminary=preliminary)
 
     def _current_question(self, session: ProftestAnswerSession, core: tuple[Question, ...], selection: AdaptiveSelection) -> Question | None:
         if session.cursor < len(core):
             return core[session.cursor]
-        if len(session.answer_set.adaptive_answers) >= MAX_ADAPTIVE_QUESTIONS or selection.status.value != "ready":
+        if len(session.answer_set.adaptive_answers) >= self._max_adaptive_questions(session) or selection.status.value != "ready":
             return None
         return self._factory.create(selection, sequence=len(session.answer_set.adaptive_answers))
 
     def _selection(self, session: ProftestAnswerSession, core: tuple[Question, ...]) -> AdaptiveSelection:
         profile = self._profile_builder.build(session.answer_set, core, session.adaptive_questions)
-        fingerprints = self._catalog.list_fingerprints()
-        ranked = self._recommendations.rank_fingerprints(profile, fingerprints, limit=max(1, len(fingerprints)))
-        selection = self._selector.select(
+        ranked = self._rank(profile)
+        state = session.adaptive_state
+        asked_dimensions = tuple(
+            dimension
+            for question in session.adaptive_questions
+            if question.id in {item.question_id for item in session.answer_set.adaptive_answers}
+            for dimension in question.declared_dimensions
+        )
+        selector = self._selector_for(session)
+        selection = selector.select(
             tuple(AdaptiveCandidate(fingerprint=item.fingerprint, score=Decimal(item.score.content_fit)) for item in ranked),
             profile,
             asked_question_ids=tuple(item.question_id for item in session.answer_set.adaptive_answers),
+            asked_dimensions=tuple(sorted(set(asked_dimensions))),
             adaptive_count=len(session.answer_set.adaptive_answers),
+            ranking_snapshots=state.ranking_snapshots if state is not None else (),
+            ranking_score_snapshots=state.ranking_score_snapshots if state is not None else (),
         )
         logger.debug("[FIX:adaptive] ranking_rebuilt adaptive_count=%d profile_dimensions=%d", len(session.answer_set.adaptive_answers), len(profile.confidence_by_dimension))
         return selection
+
+    def _rank(self, profile: UserProfile) -> tuple[RankedFingerprint, ...]:
+        fingerprints = self._catalog.list_fingerprints()
+        if not fingerprints:
+            logger.warning("proftest_adaptive_selection source_gap=empty_catalog")
+            return ()
+        return self._recommendations.rank_fingerprints(profile, fingerprints, limit=max(1, len(fingerprints)))
+
+    def _refresh_adaptive_state(self, session: ProftestAnswerSession, questionnaire: Questionnaire) -> ProftestAnswerSession:
+        # The repository stores this bounded typed state inside the existing JSON
+        # boundary; no schema migration is required for old rows.
+        questions = questionnaire.questions
+        profile = self._profile_builder.build(session.answer_set, questions, session.adaptive_questions)
+        ranked = self._rank(profile)
+        top = ranked[:10]
+        snapshot = tuple(item.fingerprint.program_id for item in top)
+        score_snapshot = tuple(item.score.content_fit for item in top)
+        previous = session.adaptive_state
+        snapshots = (*previous.ranking_snapshots, snapshot) if previous is not None else (snapshot,)
+        score_snapshots = (*previous.ranking_score_snapshots, score_snapshot) if previous is not None else (score_snapshot,)
+        state = AdaptiveState(
+            candidate_ids=snapshot,
+            candidate_count=len(ranked),
+            asked_question_ids=tuple(item.question_id for item in session.answer_set.adaptive_answers),
+            uncertain_dimensions=(),
+            ranking_snapshots=snapshots[-10:],
+            ranking_score_snapshots=score_snapshots[-10:],
+            adaptive_count=len(session.answer_set.adaptive_answers),
+            stop_reason=None,
+        )
+        return session.model_copy(update={"adaptive_state": state})
+
+    def _preliminary(self, session: ProftestAnswerSession, core: tuple[Question, ...], selection: AdaptiveSelection) -> PreliminaryProfile:
+        profile = self._profile_builder.build(session.answer_set, core, session.adaptive_questions)
+        topics = tuple(
+            PreliminaryTopic(code=f"area:{area.value}", label=area_definition(area).name)
+            for area, _weight in sorted(profile.preferred_subject_weights.items(), key=lambda item: (-item[1], item[0].value))[:3]
+        )
+        if not topics:
+            topics = tuple(
+                PreliminaryTopic(code=dimension.code, label=dimension.label)
+                for dimension in selection.dimensions[:3]
+            )
+        return PreliminaryProfile(topics=topics)
 
     def _adaptive_questions(self, session: ProftestAnswerSession) -> tuple[Question, ...]:
         if session.adaptive_questions:
@@ -262,7 +335,7 @@ class ProftestSessionService:
             return ()
         # Compatibility for drafts created before adaptive question snapshots
         # were persisted. New sessions always take the snapshot path above.
-        questionnaire = build_session_questionnaire()
+        questionnaire = self._questionnaire(session)
         base_session = session.model_copy(update={"answer_set": AnswerSet(answers=session.answer_set.answers)})
         selection = self._selection(base_session, questionnaire.questions)
         logger.warning("[FIX:adaptive] rebuilding_legacy_question_snapshots adaptive_count=%d", len(session.answer_set.adaptive_answers))
@@ -287,13 +360,46 @@ class ProftestSessionService:
             raise ValidationError("Required proftest questions are incomplete")
 
     @staticmethod
-    def _progress(session: ProftestAnswerSession, question: Question | None) -> SessionProgress:
+    def _core_is_complete(session: ProftestAnswerSession, questions: tuple[Question, ...]) -> bool:
+        answers = {answer.question_id: answer for answer in session.answer_set.answers}
+        return all(
+            question.id in answers and answers[question.id].status in {AnswerStatus.ANSWERED, AnswerStatus.UNCERTAIN}
+            for question in questions
+            if question.required
+        )
+
+    @staticmethod
+    def _next_core_index(session: ProftestAnswerSession, questions: tuple[Question, ...]) -> int:
+        answers = {answer.question_id: answer for answer in session.answer_set.answers}
+        for index, question in enumerate(questions):
+            answer = answers.get(question.id)
+            if question.required and (answer is None or answer.status not in {AnswerStatus.ANSWERED, AnswerStatus.UNCERTAIN}):
+                return index
+        return min(session.cursor, len(questions) - 1)
+
+    def _questionnaire(self, session: ProftestAnswerSession) -> Questionnaire:
+        try:
+            return session_questionnaire(session.question_set_version)
+        except ValueError as exc:
+            logger.error("proftest_session_invalid_question_set version=%s", _safe_id(session.question_set_version))
+            raise ValidationError("Proftest session question set is not supported") from exc
+
+    @staticmethod
+    def _max_adaptive_questions(session: ProftestAnswerSession) -> int:
+        return MAX_ADAPTIVE_QUESTIONS_V3 if session.question_set_version == "proftest-v3" else MAX_ADAPTIVE_QUESTIONS_V2
+
+    def _selector_for(self, session: ProftestAnswerSession) -> AdaptiveQuestionSelector:
+        return self._v3_selector if session.question_set_version == "proftest-v3" else self._selector
+
+    def _progress(self, session: ProftestAnswerSession, question: Question | None, questionnaire: Questionnaire) -> SessionProgress:
+        core_count = len(questionnaire.questions)
         stages = (QuestionStage.ABOUT.value, QuestionStage.INTERESTS.value, QuestionStage.WORK_STYLE.value, QuestionStage.ANTI_INTERESTS.value, QuestionStage.TRADE_OFFS.value, QuestionStage.CLARIFICATION.value)
         stage = question.stage.value if question is not None and question.stage is not None else QuestionStage.CLARIFICATION.value
         stage_index = stages.index(stage)
-        core_remaining = max(0, 24 - session.cursor)
-        adaptive_remaining = 0 if session.status is SessionStatus.COMPLETED else max(0, MAX_ADAPTIVE_QUESTIONS - len(session.answer_set.adaptive_answers))
-        return SessionProgress(stage=stage, stage_index=stage_index, stage_count=len(stages), answer_count=session.interaction_count, min_remaining=core_remaining + adaptive_remaining, max_remaining=min(38, core_remaining + 10))
+        core_remaining = max(0, core_count - min(session.cursor, core_count))
+        max_adaptive = self._max_adaptive_questions(session)
+        adaptive_remaining = 0 if session.status is SessionStatus.COMPLETED or (session.cursor >= core_count and question is None) else max(0, max_adaptive - len(session.answer_set.adaptive_answers))
+        return SessionProgress(stage=stage, stage_index=stage_index, stage_count=len(stages), answer_count=session.interaction_count, min_remaining=core_remaining + adaptive_remaining, max_remaining=min(MAX_SESSION_INTERACTIONS, core_remaining + max_adaptive))
 
     def _track(self, scope: ProfileScope, session: ProftestAnswerSession, event_type: AnalyticsEventType, *, payload: dict[str, str | int | float | bool | None] | None = None) -> None:
         if self._analytics is None:
