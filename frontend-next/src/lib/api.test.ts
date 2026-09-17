@@ -1,5 +1,52 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, ApiTimeoutError, API_REQUEST_TIMEOUT_MS, getCurrentProftestSession, getCurrentRecommendations, getPrograms } from "./api";
+import {
+  ApiError,
+  ApiTimeoutError,
+  API_REQUEST_TIMEOUT_MS,
+  addDecisionShortlist,
+  getCurrentProftestSession,
+  getCurrentRecommendations,
+  getDecisionContext,
+  getComparisonSummary,
+  getPrograms,
+} from "./api";
+
+const decisionContextPayload = {
+  decisionId: "decision:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  state: {
+    version: 1,
+    admissionConstraints: null,
+    choice: {
+      consideredProgramIds: ["program:01"],
+      shortlistEntries: [{
+        programId: "program:01",
+        role: "primary",
+        state: "active",
+        origin: "user",
+        revision: 2,
+        createdAt: "2026-09-17T10:00:00Z",
+        updatedAt: "2026-09-17T10:00:00Z",
+        removedAt: null,
+      }],
+      excludedProgramIds: [],
+    },
+    explicitPriorities: [],
+    revision: 2,
+    createdAt: "2026-09-17T10:00:00Z",
+    updatedAt: "2026-09-17T10:00:00Z",
+  },
+  preferences: null,
+  profileRevision: null,
+  missingData: ["admission_constraints"],
+  metadata: {
+    decisionId: "decision:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    revision: 2,
+    status: "active",
+    createdAt: "2026-09-17T10:00:00Z",
+    updatedAt: "2026-09-17T10:00:00Z",
+    profileRevision: null,
+  },
+};
 
 describe("canonical API client", () => {
   afterEach(() => {
@@ -70,5 +117,58 @@ describe("canonical API client", () => {
       preliminary: { topics: [{ code: "area:computer_science_data", label: "Информатика и данные" }] },
       adaptive: expect.objectContaining({ stopReason: "no_meaningful_question" }),
     }));
+  });
+
+  it("uses the generated decision route and preserves the explicit context shape", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(decisionContextPayload), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })));
+
+    await expect(getDecisionContext()).resolves.toMatchObject({
+      decisionId: decisionContextPayload.decisionId,
+      state: { revision: 2, choice: { shortlistEntries: [{ programId: "program:01", state: "active" }] } },
+      missingData: ["admission_constraints"],
+    });
+    expect(fetch).toHaveBeenCalledWith("/api/decision/context", expect.objectContaining({
+      credentials: "include",
+      cache: "no-store",
+    }));
+  });
+
+  it("sends an explicit shortlist command with the server revision", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      decisionId: decisionContextPayload.decisionId,
+      context: decisionContextPayload,
+      changed: true,
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    await addDecisionShortlist("program:01", "alternative", 2);
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [RequestInfo | URL, RequestInit];
+    expect(fetch).toHaveBeenCalledWith("/api/decision/shortlist", expect.objectContaining({ method: "POST" }));
+    expect(JSON.parse(String(init.body))).toEqual({
+      version: 1,
+      programId: "program:01",
+      role: "alternative",
+      expectedRevision: 2,
+    });
+  });
+
+  it("keeps comparison summary selection separate from shortlist mutations", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      programs: [],
+      scope: "all",
+      semester: null,
+      keyDifferences: [],
+      tradeoffs: [],
+      sourceGaps: [],
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    await expect(getComparisonSummary(["program:01.03.02-01", "program:01.03.02-02", "program:01.03.02-03"])).resolves.toEqual(expect.objectContaining({ programs: [] }));
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/compare/summary?programIds=program%3A01.03.02-01%2Cprogram%3A01.03.02-02%2Cprogram%3A01.03.02-03&scope=all",
+      expect.objectContaining({ credentials: "include", cache: "no-store" }),
+    );
   });
 });

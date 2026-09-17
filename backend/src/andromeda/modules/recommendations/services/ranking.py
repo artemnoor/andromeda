@@ -27,7 +27,17 @@ class RankingService:
         if limit is not None and limit < 1:
             raise ValueError("limit must be positive")
         scored = tuple(RankedFingerprint(fingerprint=fingerprint, score=self._scorer.score(profile, fingerprint)) for fingerprint in fingerprints)
-        ordered = tuple(sorted(scored, key=lambda item: (-item.score.content_fit, -item.score.breakdown.subject_fit, item.fingerprint.program_code)))
+        ordered = tuple(
+            sorted(
+                scored,
+                key=lambda item: (
+                    -item.score.content_fit,
+                    -item.score.breakdown.subject_fit,
+                    item.fingerprint.program_code,
+                    item.fingerprint.program_id,
+                ),
+            )
+        )
         if limit is not None:
             ordered = ordered[:limit]
         if not ordered:

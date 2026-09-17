@@ -20,8 +20,8 @@ from andromeda.modules.proftest.contracts.public import (
 )
 
 from ..domain.entities import RankedFingerprint
-from .requests import RecommendationRequest
-from .results import RecommendationResult
+from .requests import CandidateRankingRequest, RecommendationRequest
+from .results import CandidateRankingResult, RecommendationResult
 
 
 class ProgramFingerprintReader(Protocol):
@@ -44,6 +44,8 @@ class RecommendationServicePort(Protocol):
         limit: int | None = None,
     ) -> tuple[RankedFingerprint, ...]: ...
 
+    def rank_candidates(self, request: CandidateRankingRequest) -> CandidateRankingResult: ...
+
     def recommend_from_fingerprints(
         self,
         request: RecommendationRequest,
@@ -55,6 +57,8 @@ __all__ = [
     "ActivityCode",
     "AdaptiveAnswer",
     "AntiInterest",
+    "CandidateRankingRequest",
+    "CandidateRankingResult",
     "Confidence",
     "MatchReason",
     "MatchScore",

@@ -8,6 +8,8 @@ from .proftest_sessions import ProftestAnalyticsEventModel, ProftestAnswerSessio
 from .universities import DirectionModel, EducationLevelModel, UniversityModel
 from .events import EventDepartmentLinkModel, EventModel, EventProgramLinkModel, EventUniversityLinkModel, VenueDepartmentLinkModel, VenueModel, VenueProgramLinkModel, VenueUniversityLinkModel
 from .auth import AccountModel, AuthSessionModel
+from .decision import DecisionContextModel
+from .decision_analytics import DecisionAnalyticsEventModel
 
 __all__ = [
     "AssessmentTypeModel",
@@ -43,4 +45,6 @@ __all__ = [
     "VenueUniversityLinkModel",
     "AccountModel",
     "AuthSessionModel",
+    "DecisionContextModel",
+    "DecisionAnalyticsEventModel",
 ]

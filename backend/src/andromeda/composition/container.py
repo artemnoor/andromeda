@@ -16,22 +16,32 @@ from andromeda.infrastructure.repositories.proftest_sessions import SqlAlchemyPr
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
 from andromeda.infrastructure.repositories.universities import SqlAlchemyUniversityRepository
 from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
+from andromeda.infrastructure.repositories.decision import SqlAlchemyDecisionContextRepository
+from andromeda.infrastructure.repositories.decision_analytics import SqlAlchemyDecisionAnalyticsRepository
+from andromeda.infrastructure.repositories.decision_candidates import CatalogDecisionCandidateSource
 from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
 from andromeda.infrastructure.repositories.campus import SqlAlchemyCampusPointRepository
 from andromeda.infrastructure.repositories.admin_ops import SqlAlchemyIngestionRunReader
 from andromeda.infrastructure.repositories.auth import SqlAlchemyAccountRepository
 from andromeda.infrastructure.security.passwords import Argon2PasswordHasher
+from andromeda.infrastructure.config.settings import DEFAULT_PROFILE_TTL_SECONDS
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
 from andromeda.modules.admissions.repository.ports import AdmissionReader
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
+from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
 from andromeda.modules.events.services.events import EventService
 from andromeda.modules.campus.repository.ports import CampusPointReader
 from andromeda.modules.campus.services.campus import CampusService
 from andromeda.modules.personal_route.services.personal_route import PersonalRouteService
+from andromeda.modules.comparison.services.compare_programs import CompareProgramsService
+from andromeda.modules.comparison.services.compare_summary import ComparisonSummaryService
 from andromeda.modules.recommendations.services.current import CurrentRecommendationService
 from andromeda.modules.recommendations.services.recommendations import RecommendationService
 from andromeda.modules.admin_ops.services.ingestion_runs import IngestionRunService
 from andromeda.modules.auth.services.authentication import AuthenticationService
+from andromeda.modules.decision.services.candidates import DecisionCandidatePipeline
+from andromeda.modules.decision.services.analytics import DecisionAnalyticsService
+from andromeda.modules.decision.services.decision import DecisionService
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +99,49 @@ class AndromedaContainer:
     def user_profile_repository(self, session: Session) -> SqlAlchemyUserProfileRepository:
         return SqlAlchemyUserProfileRepository(session)
 
+    def decision_context_repository(self, session: Session) -> SqlAlchemyDecisionContextRepository:
+        return SqlAlchemyDecisionContextRepository(session)
+
+    def decision_analytics_writer(self, session: Session) -> SqlAlchemyDecisionAnalyticsRepository:
+        return SqlAlchemyDecisionAnalyticsRepository(session)
+
+    def decision_candidate_source(self, session: Session) -> CatalogDecisionCandidateSource:
+        return CatalogDecisionCandidateSource(
+            self.program_reader(session),
+            self.recommendation_catalog_reader(session),
+        )
+
+    def decision_candidate_pipeline(self, session: Session) -> DecisionCandidatePipeline:
+        return DecisionCandidatePipeline(
+            self.decision_candidate_source(session),
+            RecommendationService(self.recommendation_catalog_reader(session)),
+            AdmissionFitService(self.admission_fit_reader(session)),
+        )
+
+    def decision_service(self, session: Session) -> DecisionService:
+        return DecisionService(
+            self.decision_context_repository(session),
+            self.program_reader(session),
+            self.user_profile_repository(session),
+            self.decision_candidate_pipeline(session),
+            ttl_seconds=DEFAULT_PROFILE_TTL_SECONDS,
+            analytics=DecisionAnalyticsService(self.decision_analytics_writer(session)),
+        )
+
+    def comparison_service(self, session: Session) -> CompareProgramsService:
+        return CompareProgramsService(
+            self.program_reader(session),
+            self.curriculum_reader(session),
+            self.discipline_reader(session),
+        )
+
+    def comparison_summary_service(self, session: Session) -> ComparisonSummaryService:
+        return ComparisonSummaryService(
+            self.comparison_service(session),
+            self.program_reader(session),
+            self.curriculum_reader(session),
+        )
+
     def account_repository(self, session: Session) -> SqlAlchemyAccountRepository:
         return SqlAlchemyAccountRepository(session)
 
@@ -98,6 +151,7 @@ class AndromedaContainer:
             Argon2PasswordHasher(),
             self.user_profile_repository(session),
             SqlAlchemyProftestSessionRepository(session),
+            self.decision_context_repository(session),
         )
 
     def recommendation_catalog_reader(self, session: Session) -> CatalogRecommendationRepository:

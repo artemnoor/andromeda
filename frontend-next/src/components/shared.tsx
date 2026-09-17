@@ -76,13 +76,13 @@ export function ProfileRequired({ onAction }: { onAction?: () => void }) {
         <div className="grid h-12 w-12 place-items-center rounded-full bg-accent text-accent-foreground">
           <Compass className="h-6 w-6" />
         </div>
-        <h3 className="font-serif text-lg font-semibold">Нужен профиль</h3>
+        <h3 className="font-serif text-lg font-semibold">Профиль пока не заполнен</h3>
         <p className="max-w-md text-sm text-muted-foreground">
-          Пройдите профессиональный тест, чтобы мы могли построить персональные рекомендации и маршрут.
+          Профиль помогает уточнить Content Fit, но не нужен для каталога, сравнения или проверки поступления. Его можно заполнить в любой момент.
         </p>
         {onAction && (
           <Button onClick={onAction} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            Пройти тест
+            Уточнить предпочтения
           </Button>
         )}
       </CardContent>

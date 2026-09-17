@@ -120,6 +120,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/compare/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compare Summary */
+        get: operations["compare_summary_compare_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/proftest/questions": {
         parameters: {
             query?: never;
@@ -542,6 +559,195 @@ export interface paths {
         get: operations["current_session_auth_session_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/decision/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Append Analytics */
+        post: operations["append_analytics_decision_analytics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/decision/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Context */
+        get: operations["get_context_decision_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/decision/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Suggestions */
+        get: operations["get_suggestions_decision_suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/decision/constraints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Constraints */
+        put: operations["update_constraints_decision_constraints_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/decision/considered": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Considered */
+        post: operations["mark_considered_decision_considered_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/decision/shortlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Shortlist */
+        post: operations["add_shortlist_decision_shortlist_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/decision/shortlist/{program_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Shortlist */
+        delete: operations["remove_shortlist_decision_shortlist__program_id__delete"];
+        options?: never;
+        head?: never;
+        /** Set Shortlist Role */
+        patch: operations["set_shortlist_role_decision_shortlist__program_id__patch"];
+        trace?: never;
+    };
+    "/decision/programs/{program_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Shortlist */
+        post: operations["restore_shortlist_decision_programs__program_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/decision/programs/{program_id}/exclude": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exclude Program */
+        post: operations["exclude_program_decision_programs__program_id__exclude_post"];
+        /** Restore Excluded Program */
+        delete: operations["restore_excluded_program_decision_programs__program_id__exclude_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/decision/suggestions/{program_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Suggestion */
+        post: operations["accept_suggestion_decision_suggestions__program_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/decision/suggestions/{program_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Suggestion */
+        post: operations["reject_suggestion_decision_suggestions__program_id__reject_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1017,6 +1223,28 @@ export interface components {
          * @enum {string}
          */
         CompareStatus: "both" | "only_a" | "only_b" | "different";
+        /** ComparisonEvidenceResponse */
+        ComparisonEvidenceResponse: {
+            /** Kind */
+            kind: string;
+            /** Key */
+            key: string;
+        };
+        /** ComparisonProgramOverviewResponse */
+        ComparisonProgramOverviewResponse: {
+            program: components["schemas"]["ProgramSummaryResponse"];
+            totals?: components["schemas"]["ComparisonTotalsResponse"] | null;
+            /**
+             * Areabreakdown
+             * @default []
+             */
+            areaBreakdown: components["schemas"]["DisciplineAreaSummaryResponse"][];
+            /**
+             * Sourcegaps
+             * @default []
+             */
+            sourceGaps: components["schemas"]["ComparisonSourceGapResponse"][];
+        };
         /** ComparisonResponse */
         ComparisonResponse: {
             programA: components["schemas"]["ProgramSummaryResponse"];
@@ -1057,6 +1285,38 @@ export interface components {
          * @enum {string}
          */
         ComparisonScope: "all" | "semester";
+        /** ComparisonSourceGapResponse */
+        ComparisonSourceGapResponse: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Programids */
+            programIds: string[];
+        };
+        /** ComparisonSummaryResponse */
+        ComparisonSummaryResponse: {
+            /** Programs */
+            programs: components["schemas"]["ComparisonProgramOverviewResponse"][];
+            scope: components["schemas"]["ComparisonScope"];
+            /** Semester */
+            semester?: number | null;
+            /**
+             * Keydifferences
+             * @default []
+             */
+            keyDifferences: components["schemas"]["KeyDifferenceResponse"][];
+            /**
+             * Tradeoffs
+             * @default []
+             */
+            tradeoffs: components["schemas"]["TradeoffResponse"][];
+            /**
+             * Sourcegaps
+             * @default []
+             */
+            sourceGaps: components["schemas"]["ComparisonSourceGapResponse"][];
+        };
         /** ComparisonTotalsResponse */
         ComparisonTotalsResponse: {
             /** Hours */
@@ -1119,6 +1379,399 @@ export interface components {
             capturedAt: string;
             /** Items */
             items: components["schemas"]["CurriculumItemResponse"][];
+        };
+        /** DecisionAnalyticsAcceptedResponse */
+        DecisionAnalyticsAcceptedResponse: {
+            /** Accepted */
+            accepted: number;
+        };
+        /**
+         * DecisionAnalyticsAction
+         * @enum {string}
+         */
+        DecisionAnalyticsAction: "view" | "start" | "complete" | "consider" | "add" | "remove" | "restore" | "mark_primary" | "mark_alternative" | "set_constraints" | "answer" | "show" | "accept" | "reject" | "return";
+        /**
+         * DecisionAnalyticsClientEventType
+         * @description Events that an HTTP client may report directly.
+         *
+         *     Mutation facts are server-authoritative and therefore intentionally absent
+         *     from this enum.  The subset still covers view and interaction checkpoints.
+         * @enum {string}
+         */
+        DecisionAnalyticsClientEventType: "decision_session_started" | "admission_fit_viewed" | "comparison_started" | "comparison_completed" | "preference_question_answered" | "system_suggestion_shown" | "shortlist_returned_to";
+        /** DecisionAnalyticsEventRequest */
+        DecisionAnalyticsEventRequest: {
+            /** Eventid */
+            eventId: string;
+            eventType: components["schemas"]["DecisionAnalyticsClientEventType"];
+            payload?: components["schemas"]["DecisionAnalyticsPayloadRequest"];
+        };
+        /**
+         * DecisionAnalyticsPayloadRequest
+         * @description Camel-case HTTP adapter for the bounded analytics payload.
+         */
+        DecisionAnalyticsPayloadRequest: {
+            source?: components["schemas"]["DecisionAnalyticsSource"] | null;
+            action?: components["schemas"]["DecisionAnalyticsAction"] | null;
+            status?: components["schemas"]["DecisionAnalyticsStatus"] | null;
+            /** Programid */
+            programId?: string | null;
+            /** Programids */
+            programIds?: string[];
+            role?: components["schemas"]["ShortlistRole"] | null;
+            /** Count */
+            count?: number | null;
+            /** Questionid */
+            questionId?: string | null;
+            /** Optionid */
+            optionId?: string | null;
+        };
+        /**
+         * DecisionAnalyticsSource
+         * @enum {string}
+         */
+        DecisionAnalyticsSource: "catalog" | "program" | "admission" | "compare" | "decision" | "suggestion" | "proftest" | "system";
+        /**
+         * DecisionAnalyticsStatus
+         * @enum {string}
+         */
+        DecisionAnalyticsStatus: "realistic" | "borderline" | "unlikely" | "insufficient_data" | "available" | "provided" | "cleared" | "started" | "completed" | "unknown";
+        /** DecisionApplicantRequest */
+        DecisionApplicantRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Scores */
+            scores?: components["schemas"]["DecisionApplicantScoreRequest-Input"][];
+        };
+        /** DecisionApplicantResponse */
+        DecisionApplicantResponse: {
+            /**
+             * Version
+             * @constant
+             */
+            version: 1;
+            /** Scores */
+            scores: components["schemas"]["DecisionApplicantScoreRequest-Output"][];
+        };
+        /** DecisionApplicantScoreRequest */
+        "DecisionApplicantScoreRequest-Input": {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: number | string;
+        };
+        /** DecisionApplicantScoreRequest */
+        "DecisionApplicantScoreRequest-Output": {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: string;
+        };
+        /** DecisionChoiceResponse */
+        DecisionChoiceResponse: {
+            /** Consideredprogramids */
+            consideredProgramIds: string[];
+            /** Shortlistentries */
+            shortlistEntries: components["schemas"]["DecisionShortlistEntryResponse"][];
+            /** Excludedprogramids */
+            excludedProgramIds: string[];
+        };
+        /** DecisionConstraintsRequest */
+        DecisionConstraintsRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            applicant?: components["schemas"]["DecisionApplicantRequest"] | null;
+            /** Admissionyear */
+            admissionYear?: number | null;
+            fundingPreference?: components["schemas"]["FundingType"] | null;
+            studyForm?: components["schemas"]["StudyForm"] | null;
+            /** Maxtuition */
+            maxTuition?: (number | string) | null;
+            /** Location */
+            location?: string | null;
+        };
+        /** DecisionConstraintsResponse */
+        DecisionConstraintsResponse: {
+            /**
+             * Version
+             * @constant
+             */
+            version: 1;
+            applicant?: components["schemas"]["DecisionApplicantResponse"] | null;
+            /** Admissionyear */
+            admissionYear?: number | null;
+            fundingPreference?: components["schemas"]["FundingType"] | null;
+            studyForm?: components["schemas"]["StudyForm"] | null;
+            /** Maxtuition */
+            maxTuition?: string | null;
+            /** Location */
+            location?: string | null;
+        };
+        /** DecisionConstraintsUpdateRequest */
+        DecisionConstraintsUpdateRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            constraints: components["schemas"]["DecisionConstraintsRequest"] | null;
+            /** Expectedrevision */
+            expectedRevision?: number | null;
+        };
+        /** DecisionContextResponse */
+        DecisionContextResponse: {
+            /** Decisionid */
+            decisionId: string;
+            state: components["schemas"]["DecisionStateResponse"];
+            preferences?: components["schemas"]["UserProfileResponse-Output"] | null;
+            /** Profilerevision */
+            profileRevision?: number | null;
+            /** Missingdata */
+            missingData: string[];
+            metadata: components["schemas"]["DecisionMetadataResponse"];
+        };
+        /** DecisionMetadataResponse */
+        DecisionMetadataResponse: {
+            /** Decisionid */
+            decisionId: string;
+            /** Revision */
+            revision: number;
+            /** Status */
+            status: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+            /** Profilerevision */
+            profileRevision?: number | null;
+        };
+        /** DecisionMutationResponse */
+        DecisionMutationResponse: {
+            /** Decisionid */
+            decisionId: string;
+            context: components["schemas"]["DecisionContextResponse"];
+            /** Changed */
+            changed: boolean;
+        };
+        /** DecisionProgramCommandRequest */
+        DecisionProgramCommandRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Programid */
+            programId: string;
+            /** Expectedrevision */
+            expectedRevision?: number | null;
+        };
+        /** DecisionRefinementOptionResponse */
+        DecisionRefinementOptionResponse: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Affecteddimension */
+            affectedDimension: string;
+            /** Effect */
+            effect: string;
+        };
+        /** DecisionRefinementQuestionResponse */
+        DecisionRefinementQuestionResponse: {
+            /** Id */
+            id: string;
+            /** Prompt */
+            prompt: string;
+            /** Candidateprogramids */
+            candidateProgramIds: string[];
+            /** Options */
+            options: components["schemas"]["DecisionRefinementOptionResponse"][];
+            /** Discriminatingdimensions */
+            discriminatingDimensions: string[];
+        };
+        /** DecisionRevisionRequest */
+        DecisionRevisionRequest: {
+            /** Expectedrevision */
+            expectedRevision?: number | null;
+        };
+        /** DecisionShortlistCommandRequest */
+        DecisionShortlistCommandRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Programid */
+            programId: string;
+            /** Expectedrevision */
+            expectedRevision?: number | null;
+            /** @default primary */
+            role: components["schemas"]["ShortlistRole"];
+        };
+        /** DecisionShortlistEntryResponse */
+        DecisionShortlistEntryResponse: {
+            /** Programid */
+            programId: string;
+            /** Role */
+            role: string;
+            /** State */
+            state: string;
+            /** Origin */
+            origin: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+            /** Removedat */
+            removedAt?: string | null;
+        };
+        /** DecisionShortlistItemResponse */
+        DecisionShortlistItemResponse: {
+            /** Programid */
+            programId: string;
+            /** Programcode */
+            programCode?: string | null;
+            /** Programname */
+            programName?: string | null;
+            /** Partition */
+            partition: string;
+            /** Admissionstatus */
+            admissionStatus?: string | null;
+            /** Admissionrisk */
+            admissionRisk: string;
+            admissionFit?: components["schemas"]["AdmissionFitResponse"] | null;
+            contentFit?: components["schemas"]["MatchScoreResponse"] | null;
+            reasons: components["schemas"]["DecisionSuggestionReasonsResponse"];
+            /** Sourcegaps */
+            sourceGaps: string[];
+            /** Sourcehashes */
+            sourceHashes: string[];
+            /** Role */
+            role: string;
+            /** State */
+            state: string;
+        };
+        /** DecisionShortlistRoleRequest */
+        DecisionShortlistRoleRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            role: components["schemas"]["ShortlistRole"];
+            /** Expectedrevision */
+            expectedRevision?: number | null;
+        };
+        /** DecisionStateResponse */
+        DecisionStateResponse: {
+            /**
+             * Version
+             * @constant
+             */
+            version: 1;
+            admissionConstraints?: components["schemas"]["DecisionConstraintsResponse"] | null;
+            choice: components["schemas"]["DecisionChoiceResponse"];
+            /** Explicitpriorities */
+            explicitPriorities: string[];
+            /** Revision */
+            revision: number;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+        };
+        /** DecisionSuggestionReasonsResponse */
+        DecisionSuggestionReasonsResponse: {
+            /** Whyincluded */
+            whyIncluded: string[];
+            /** Whymaynotfit */
+            whyMayNotFit: string[];
+            /** Admissionrisk */
+            admissionRisk: string[];
+            /** Contentdifferences */
+            contentDifferences: string[];
+            /** Missingdata */
+            missingData: string[];
+        };
+        /** DecisionSuggestionResponse */
+        DecisionSuggestionResponse: {
+            /** Programid */
+            programId: string;
+            /** Programcode */
+            programCode: string;
+            /** Programname */
+            programName: string;
+            /** Partition */
+            partition: string;
+            /** Admissionstatus */
+            admissionStatus?: string | null;
+            /** Admissionrisk */
+            admissionRisk: string;
+            admissionFit?: components["schemas"]["AdmissionFitResponse"] | null;
+            contentFit?: components["schemas"]["MatchScoreResponse"] | null;
+            reasons: components["schemas"]["DecisionSuggestionReasonsResponse"];
+            /** Sourcegaps */
+            sourceGaps: string[];
+            /** Sourcehashes */
+            sourceHashes: string[];
+        };
+        /** DecisionSuggestionsResponse */
+        DecisionSuggestionsResponse: {
+            /** Decisionid */
+            decisionId: string;
+            /** Contextrevision */
+            contextRevision: number;
+            /** Datacompleteness */
+            dataCompleteness: string;
+            /** Activeshortlist */
+            activeShortlist: components["schemas"]["DecisionShortlistItemResponse"][];
+            /** Primarycandidates */
+            primaryCandidates: components["schemas"]["DecisionSuggestionResponse"][];
+            /** Alternativecandidates */
+            alternativeCandidates: components["schemas"]["DecisionSuggestionResponse"][];
+            /** Ineligiblecandidates */
+            ineligibleCandidates: components["schemas"]["DecisionSuggestionResponse"][];
+            /** Insufficientdatacandidates */
+            insufficientDataCandidates: components["schemas"]["DecisionSuggestionResponse"][];
+            /** Suggestions */
+            suggestions: components["schemas"]["DecisionSuggestionResponse"][];
+            refinementQuestion?: components["schemas"]["DecisionRefinementQuestionResponse"] | null;
+            /** Sourcegaps */
+            sourceGaps: string[];
+            /** Missingdata */
+            missingData: string[];
         };
         /** DisciplineAreaCatalogResponse */
         DisciplineAreaCatalogResponse: {
@@ -1399,6 +2052,28 @@ export interface components {
             /** Errormessage */
             errorMessage?: string | null;
         };
+        /** KeyDifferenceResponse */
+        KeyDifferenceResponse: {
+            /** Programaid */
+            programAId: string;
+            /** Programbid */
+            programBId: string;
+            /** Dimension */
+            dimension: string;
+            /** Label */
+            label: string;
+            /** Direction */
+            direction: string;
+            /** Valuea */
+            valueA?: string | null;
+            /** Valueb */
+            valueB?: string | null;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ComparisonEvidenceResponse"][];
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -1641,6 +2316,8 @@ export interface components {
             adaptive?: components["schemas"]["AdaptiveSelectionResponse"] | null;
             preliminary?: components["schemas"]["PreliminaryProfileResponse"] | null;
             results?: components["schemas"]["ProftestResultsResponse"] | null;
+            /** Profilerevision */
+            profileRevision?: number | null;
         };
         /** ProftestSubmissionRequest */
         ProftestSubmissionRequest: {
@@ -1886,6 +2563,12 @@ export interface components {
          */
         SessionStatus: "draft" | "completed" | "expired" | "abandoned";
         /**
+         * ShortlistRole
+         * @description Explicit role assigned by the user to an active shortlist entry.
+         * @enum {string}
+         */
+        ShortlistRole: "primary" | "alternative";
+        /**
          * SourceKind
          * @enum {string}
          */
@@ -1895,6 +2578,22 @@ export interface components {
          * @enum {string}
          */
         StudyForm: "full_time" | "part_time" | "evening" | "online" | "unknown";
+        /** TradeoffResponse */
+        TradeoffResponse: {
+            /** Programid */
+            programId: string;
+            /** Pairedprogramid */
+            pairedProgramId: string;
+            /** Advantage */
+            advantage: string;
+            /** Consideration */
+            consideration: string;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ComparisonEvidenceResponse"][];
+        };
         /** TuitionCostResponse */
         TuitionCostResponse: {
             /** Amount */
@@ -2538,6 +3237,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComparisonResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    compare_summary_compare_summary_get: {
+        parameters: {
+            query: {
+                programIds: string;
+                scope?: components["schemas"]["ComparisonScope"];
+                semester?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonSummaryResponse"];
                 };
             };
             /** @description Bad Request */
@@ -4698,6 +5475,1026 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthSessionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    append_analytics_decision_analytics_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionAnalyticsEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionAnalyticsAcceptedResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_context_decision_context_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionContextResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_suggestions_decision_suggestions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionSuggestionsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_constraints_decision_constraints_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionConstraintsUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    mark_considered_decision_considered_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionProgramCommandRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    add_shortlist_decision_shortlist_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionShortlistCommandRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    remove_shortlist_decision_shortlist__program_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRevisionRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_shortlist_role_decision_shortlist__program_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionShortlistRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    restore_shortlist_decision_programs__program_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRevisionRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    exclude_program_decision_programs__program_id__exclude_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRevisionRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    restore_excluded_program_decision_programs__program_id__exclude_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRevisionRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    accept_suggestion_decision_suggestions__program_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionShortlistRoleRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reject_suggestion_decision_suggestions__program_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRevisionRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
                 };
             };
             /** @description Bad Request */

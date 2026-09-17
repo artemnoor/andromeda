@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import Field, ValidationError, model_validator
 
-from andromeda.modules.proftest.contracts.public import UserProfile
+from andromeda.modules.proftest.contracts.public import ProgramFingerprint, UserProfile
 from andromeda.shared.contracts.base import ContractModel
 
 
@@ -42,4 +42,20 @@ class RecommendationRequest(ContractModel):
         return self
 
 
-__all__ = ["RecommendationRequest"]
+class CandidateRankingRequest(ContractModel):
+    """Rank only the source-backed candidates supplied by an orchestrator."""
+
+    version: int = Field(default=1, strict=True, ge=1, le=1)
+    profile: UserProfile
+    fingerprints: tuple[ProgramFingerprint, ...] = Field(default=(), max_length=200)
+    limit: int = Field(default=5, strict=True, ge=1, le=20)
+
+    @model_validator(mode="after")
+    def validate_candidates(self) -> "CandidateRankingRequest":
+        program_ids = tuple(item.program_id for item in self.fingerprints)
+        if len(program_ids) != len(set(program_ids)):
+            raise ValueError("candidate fingerprints must have unique program ids")
+        return self
+
+
+__all__ = ["CandidateRankingRequest", "RecommendationRequest"]

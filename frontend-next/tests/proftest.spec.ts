@@ -24,12 +24,23 @@ test("guest can start and complete the production proftest session", async ({ pa
     const next = page.getByTestId("proftest-next");
     await expect(next).toBeEnabled();
     const previousQuestionId = await question.getAttribute("data-question-id");
+    const nextResponse = page.waitForResponse(
+      (response) => response.request().method() === "POST" && response.url().includes("/proftest/sessions/current/next"),
+      { timeout: 30_000 },
+    );
     await next.click();
+    const response = await nextResponse;
+    await expect(response.ok()).toBe(true);
+    const payload = await response.json() as { currentQuestion?: unknown };
+    if (payload.currentQuestion == null) {
+      await expect(results).toBeVisible({ timeout: 60_000 });
+      break;
+    }
     await expect.poll(async () => {
       if (await results.isVisible().catch(() => false)) return "results";
       const nextQuestionId = await question.getAttribute("data-question-id").catch(() => null);
       return nextQuestionId && nextQuestionId !== previousQuestionId ? nextQuestionId : "pending";
-    }, { timeout: 30_000 }).not.toBe("pending");
+    }, { timeout: 15_000, intervals: [100, 250, 500, 1_000] }).not.toBe("pending");
   }
 
   await expect(results).toBeVisible();

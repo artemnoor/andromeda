@@ -34,6 +34,40 @@ BMSTU source
   → FastAPI/OpenAPI → TypeScript frontend
 ```
 
+## Decision-centered application layer
+
+`decision` — единственный новый bounded orchestration-модуль вокруг
+пользовательского выбора. Он не дублирует scoring, admissions или comparison и
+не импортирует ORM, FastAPI, ingestion или private service implementations.
+Вместо этого он читает typed public contracts существующих модулей и сохраняет
+owner-bound `DecisionContext`:
+
+```text
+catalog / compare / admission / proftest / saved choice
+                  ↓
+          DecisionContext + revision
+                  ↓
+  explicit constraints + considered programs + shortlist
+                  ↓
+  candidate suggestions: Admission Fit → Content Fit → trade-offs
+                  ↓
+       explicit user add/remove/restore/role commands
+```
+
+В aggregate входят только известные пользователю данные: admissions
+constraints, considered canonical program IDs, active/removed shortlist entries,
+roles (`primary`/`alternative`) и explicit exclusions. Profile preferences не
+копируются в `decision_contexts`: `UserProfile` остаётся владельцем
+предпочтений, а DecisionContext получает его read-only projection и revision.
+Suggestions, candidate partitions, Admission Fit outcomes, Content Fit evidence,
+refinement question и source gaps никогда не становятся implicit user choice.
+
+Каждая mutation проверяет optional `expectedRevision` и возвращает новую
+revision; конфликт даёт `409`, а не last-write-wins. Read/recalculation не
+удаляет shortlist. Server-side decision analytics записывает authoritative
+shortlist sizes после committed transition, client-side view events только
+наблюдают интерфейс и не влияют на domain behaviour.
+
 Для профиля содержания application flow продолжается так:
 
 ```text
@@ -110,6 +144,7 @@ Run создаётся до capture и атомарной projection transaction
 ```text
 backend/src/andromeda/
 ├── modules/{universities,programs,curricula,disciplines,comparison}/
+├── modules/decision/{domain,contracts,services,repository}/
 ├── modules/proftest/{domain,contracts,services,repository}/
 ├── modules/recommendations/{domain,contracts,services,repository}/
 ├── modules/admissions/{domain,contracts,services,repository}/
@@ -147,7 +182,17 @@ ProgramReader + AdmissionReader public contracts
 
 `events` публикует event/venue contracts и фильтры для списков, карточек и recommendation-aware reads. `campus` публикует point contracts, point details, events-at-point и recommendation results; он не владеет картой и не вычисляет маршруты. Оба модуля используют canonical `UniversityId`, `DepartmentId`, `ProgramId` и `VenueId`, поэтому карта может запрашивать данные без дублирования university/program сущностей.
 
-`personal_route` — тонкий application slice для текущего пользователя. Его public contracts описывают explainable logical steps, а Protocol-порты читают существующие recommendation/event/campus contracts. Composition wiring собирает `PersonalRouteService`; модуль не имеет ORM, миграций, ingestion, HTTP или map dependency. Он не хранит собственную сущность маршрута: каждый read заново строит plan из current profile, source-backed recommendations, будущих событий и связанных campus point details. `attend_event` может быть online и тогда не содержит venue/point; физическая близость, граф связей, directions и оптимизация маршрута намеренно остаются за будущим независимым map-модулем.
+`personal_route` — совместимый read-only support slice для текущего пользователя,
+а не часть DecisionService и не владелец shortlist. Его public contracts
+описывают необязательные explainable suggestions, а Protocol-порты читают
+существующие recommendation/event/campus contracts. Composition wiring собирает
+`PersonalRouteService`; модуль не имеет ORM, миграций, ingestion, HTTP или map
+dependency. Он не хранит собственную сущность выбора и не вызывается из
+candidate pipeline. `attend_event` может быть online и тогда не содержит
+venue/point; физическая близость, граф связей, directions и оптимизация
+маршрута намеренно остаются за будущим независимым map-модулем. Просмотр
+personal route/events не мутирует `DecisionContext`; программа добавляется в
+shortlist только отдельной explicit-командой из UI.
 
 Старые пути `proftest.services.ranking`, `proftest.services.matching` и `proftest.services.explanations` сохранены как точечные compatibility facades. Они не являются разрешением импортировать recommendation internals в новый runtime-код и перечислены в architecture test как единственные переходные aliases.
 
@@ -158,6 +203,13 @@ BMSTU URL, catalog pagination, detail/API shape, public study-plan resolver, PDF
 `BMSTU_DATABASE_URL` — единый target для FastAPI, Alembic и ingestion runner. `SqlAlchemy*Repository` и `SqlAlchemyIngestionRepository` — infrastructure adapters; модули видят только public contracts и repository ports. Поэтому PostgreSQL не меняет comparison/proftest/recommendations и не требует переписывать их scoring или fingerprint logic.
 
 `user_profiles` хранит только сериализованный public `UserProfile` и nullable future `account_id`; raw session token, answers и ORM objects не являются публичными контрактами. LocalStorage во frontend используется только для незавершённого draft. Completed profile восстанавливается через API и cookie.
+
+`decision_contexts` хранит один owner-bound `DecisionState` на логический выбор:
+constraints, considered IDs, shortlist entries/roles/states, exclusions,
+revision и timestamps. Он связан с тем же anonymous/account scope, но не
+дублирует `UserProfile` или recommendation ranking. `decision_analytics_events`
+хранит только bounded allow-listed events с owner hash/account binding,
+idempotency key и TTL; analytics не используется как источник domain state.
 
 `proftest_answer_sessions` хранит versioned answer state в server-side JSON вместе с
 cursor, revision, status, owner key и expiry. `proftest_analytics_events`

@@ -31,11 +31,15 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(tmp_path: 
         assert "educational_programs" in inspector.get_table_names()
         assert "discipline_areas" in inspector.get_table_names()
         assert "user_profiles" in inspector.get_table_names()
+        assert "decision_contexts" in inspector.get_table_names()
+        assert "decision_analytics_events" in inspector.get_table_names()
         assert "venue_university_links" in inspector.get_table_names()
         assert "venue_department_links" in inspector.get_table_names()
         assert "venue_program_links" in inspector.get_table_names()
         profile_columns = {column["name"] for column in inspector.get_columns("user_profiles")}
         assert {"profile_id", "session_key_hash", "profile_json", "revision", "expires_at"}.issubset(profile_columns)
+        decision_columns = {column["name"] for column in inspector.get_columns("decision_contexts")}
+        assert {"decision_id", "owner_key", "state_json", "revision", "expires_at"}.issubset(decision_columns)
         columns = {column["name"] for column in inspector.get_columns("curriculum_items")}
         assert {"source_name", "semester_identity"}.issubset(columns)
         assert "subject_group" not in columns
@@ -67,10 +71,71 @@ def test_neutral_curriculum_migration_removes_legacy_category_column(tmp_path: P
     finally:
         engine.dispose()
 
+
+def test_decision_context_migration_round_trip_is_reversible(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'decision-migration.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    config = _alembic_config(database_url)
+
+    command.upgrade(config, "0012_neutral_curriculum_items")
+    command.upgrade(config, "0013_decision_context")
+    engine = create_engine(database_url)
+    try:
+        assert "decision_contexts" in inspect(engine).get_table_names()
+    finally:
+        engine.dispose()
+
+    command.downgrade(config, "0012_neutral_curriculum_items")
+    engine = create_engine(database_url)
+    try:
+        assert "decision_contexts" not in inspect(engine).get_table_names()
+    finally:
+        engine.dispose()
+
+    command.upgrade(config, "head")
+    engine = create_engine(database_url)
+    try:
+        assert "decision_contexts" in inspect(engine).get_table_names()
+    finally:
+        engine.dispose()
+
     command.upgrade(config, "head")
     engine = create_engine(database_url)
     try:
         assert "subject_group" not in {column["name"] for column in inspect(engine).get_columns("curriculum_items")}
+    finally:
+        engine.dispose()
+
+
+def test_decision_analytics_migration_round_trip_is_reversible(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'decision-analytics-migration.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    config = _alembic_config(database_url)
+
+    command.upgrade(config, "0013_decision_context")
+    command.upgrade(config, "0014_decision_analytics")
+    engine = create_engine(database_url)
+    try:
+        inspector = inspect(engine)
+        assert "decision_analytics_events" in inspector.get_table_names()
+        primary_key = inspector.get_pk_constraint("decision_analytics_events")
+        assert primary_key["constrained_columns"] == ["owner_key", "event_id"]
+    finally:
+        engine.dispose()
+
+    command.downgrade(config, "0013_decision_context")
+    engine = create_engine(database_url)
+    try:
+        assert "decision_analytics_events" not in inspect(engine).get_table_names()
+    finally:
+        engine.dispose()
+
+    command.upgrade(config, "head")
+    engine = create_engine(database_url)
+    try:
+        assert "decision_analytics_events" in inspect(engine).get_table_names()
     finally:
         engine.dispose()
 

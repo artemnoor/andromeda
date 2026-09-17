@@ -16,6 +16,10 @@ import { PersonalRoutePage } from "@/features/personal-route/personal-route-page
 import { UnifiedFlowPage } from "@/features/unified-flow/unified-flow-page";
 import { AccountPage } from "@/features/account/account-page";
 import { OpsPage } from "@/features/ops/ops-page";
+import { DecisionContextProvider } from "@/features/decision/decision-context";
+import { DecisionPage } from "@/features/decision/decision-page";
+import { HomePage } from "@/features/home/home-page";
+import { AdmissionPage } from "@/features/admission/admission-page";
 
 export default function Page() {
   const { route, navigate } = useRouter();
@@ -33,28 +37,33 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    void loadPrograms();
-  }, [loadPrograms]);
+    if (route.view === "catalog" || route.view === "compare") void loadPrograms();
+  }, [loadPrograms, route.view]);
 
   return (
-    <AppShell route={route} navigate={navigate}>
-      {route.view === "catalog" && (
-        <CatalogPage programs={programs} loading={programsLoading} error={programsError} onRetry={loadPrograms} navigate={navigate} />
-      )}
-      {route.view === "program" && (
-        <ProgramPage id={route.id ?? programs[0]?.id ?? ""} navigate={navigate} />
-      )}
-      {route.view === "compare" && (
-        <ComparePage programs={programs} navigate={navigate} />
-      )}
-      {route.view === "proftest" && <ProftestPage navigate={navigate} />}
-      {route.view === "recommendations" && <RecommendationsPage navigate={navigate} />}
-      {route.view === "events" && <EventsPage navigate={navigate} />}
-      {route.view === "event" && <EventPage id={route.id ?? ""} navigate={navigate} />}
-      {route.view === "personal-route" && <PersonalRoutePage navigate={navigate} />}
-      {route.view === "flow" && <UnifiedFlowPage navigate={navigate} />}
-      {route.view === "account" && <AccountPage navigate={navigate} />}
-      {route.view === "ops" && <OpsPage />}
-    </AppShell>
+    <DecisionContextProvider>
+      <AppShell route={route} navigate={navigate}>
+        {route.view === "home" && <HomePage navigate={navigate} />}
+        {route.view === "decision" && <DecisionPage navigate={navigate} />}
+        {route.view === "catalog" && (
+          <CatalogPage programs={programs} loading={programsLoading} error={programsError} onRetry={loadPrograms} navigate={navigate} />
+        )}
+        {route.view === "program" && (
+          <ProgramPage id={route.id ?? programs[0]?.id ?? ""} navigate={navigate} />
+        )}
+        {route.view === "compare" && (
+          <ComparePage programs={programs} navigate={navigate} />
+        )}
+        {route.view === "proftest" && <ProftestPage navigate={navigate} />}
+        {route.view === "admission" && <AdmissionPage navigate={navigate} />}
+        {route.view === "recommendations" && <RecommendationsPage navigate={navigate} />}
+        {route.view === "events" && <EventsPage navigate={navigate} />}
+        {route.view === "event" && <EventPage id={route.id ?? ""} navigate={navigate} />}
+        {route.view === "personal-route" && <PersonalRoutePage navigate={navigate} />}
+        {route.view === "flow" && <UnifiedFlowPage navigate={navigate} />}
+        {route.view === "account" && <AccountPage navigate={navigate} />}
+        {route.view === "ops" && <OpsPage />}
+      </AppShell>
+    </DecisionContextProvider>
   );
 }

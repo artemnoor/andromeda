@@ -30,6 +30,20 @@ python -m pytest -q tests/integration/test_postgresql_smoke.py tests/integration
 
 Без PostgreSQL DSN smoke-тест явно `skipped`; CI передаёт disposable PostgreSQL URL.
 
+Decision/Shortlist и отсутствие линейной зависимости проверяются отдельно:
+
+```powershell
+cd backend
+python -m pytest -q tests/modules/decision tests/api/test_decision_routes.py tests/infrastructure/test_decision_analytics.py tests/integration/test_no_linear_flow.py
+```
+
+Набор проверяет owner-bound `DecisionContext`, optimistic revision, explicit
+add/remove/restore/role transitions, отсутствие silent prune после изменения
+ограничений, derived suggestions и batch Admission Fit. `test_no_linear_flow.py`
+подтверждает, что свежий anonymous scope может открыть context, catalog,
+comparison, admissions и Admission Fit без `UserProfile`, proftest или
+Personal Route.
+
 Для order-derived minima используйте focused набор:
 
 ```powershell
@@ -70,14 +84,15 @@ python -m mypy
 
 Проверки покрывают lifecycle `running → completed|failed`, сохранение failed audit после rollback, deterministic list/detail, bounded fixture retry, running conflict, staging-only live boundary, malformed audit data, explicit key guard, отсутствие raw source fields и OpenAPI operation IDs. Admin/Ops endpoint выключен без `ANDROMEDA_OPS_API_KEY`; ключ не попадает в логи или ответы. Browser check открывает только `/#ops`, проверяет safe detail, unavailable conflict notice, confirmation перед retry и wrong-key error state.
 
-Personal Route проверяется отдельными contract/API и vertical tests:
+Personal Route проверяется отдельными contract/API и vertical tests как
+совместимый optional support layer:
 
 ```powershell
 cd backend
 python -m pytest -q tests/modules/personal_route tests/api/test_personal_route_api.py tests/api/test_personal_route_contract.py tests/integration/test_personal_route_vertical_slice.py tests/vertical/test_personal_route_scope_guard.py
 ```
 
-Набор проверяет deterministic plan ordering, current-profile isolation, recommendation-to-event filtering, canonical event/venue/point links, online events without a point, fixed-clock behavior for past events и отсутствие map/storage dependencies. PostgreSQL job повторяет fixture → repository → profile → personal plan flow.
+Набор проверяет deterministic plan ordering, current-profile isolation, recommendation-to-event filtering, canonical event/venue/point links, online events without a point, fixed-clock behavior for past events и отсутствие map/storage dependencies. Отдельно проверяется, что DecisionService не вызывает этот модуль и что отсутствие profile не закрывает каталог/сравнение/поступление. PostgreSQL job повторяет fixture → repository → profile → optional support read flow.
 
 ## Canonical Next frontend
 
@@ -90,7 +105,7 @@ npm run test:unit
 npm run test:e2e
 ```
 
-E2E-тест использует стабильные `data-testid`, сохраняет existing comparison coverage и проходит профтест до explainable recommendation на desktop/mobile. Отдельный browser scenario завершает тест, очищает local draft и проверяет восстановление профиля и current recommendations по cookie/API. `personal-route.spec.ts` проверяет profile-required state, логические program/event steps, карточку известной точки, ссылку регистрации и отсутствие горизонтального overflow на mobile; карта и навигационные действия не тестируются, потому что не входят в slice. `admissions.spec.ts` открывает страницу реальной программы, проверяет offering, места, ЕГЭ, стоимость и переключение программы на desktop/mobile. `recommendations.spec.ts` отдельно проверяет Content Fit, блоки дисциплин, семестры, reasons/anti-reasons и отсутствие горизонтального overflow. `admission-fit.spec.ts` открывает тот же program flow, выбирает source-backed offering, вводит баллы, проверяет отдельный score/status/reasons и повторяет сценарий на viewport 390px без горизонтального overflow. Перед ним должен работать fixture demo:
+E2E-тест использует стабильные `data-testid`, сохраняет existing comparison coverage и проходит профтест до explainable recommendation на desktop/mobile. Отдельный browser scenario завершает тест, очищает local draft и проверяет восстановление профиля и current recommendations по cookie/API. `legacy-flow-compat.spec.ts` проверяет, что старый `flow` URL открывает нейтральный DecisionContext без mandatory funnel. `events-support-layer.spec.ts` проверяет optional personal route, source-backed event-to-program links и видимый source gap для события без связи; просмотр не меняет shortlist. `admissions.spec.ts` открывает страницу реальной программы, проверяет offering, места, ЕГЭ, стоимость и переключение программы на desktop/mobile. `recommendations.spec.ts` отдельно проверяет Content Fit, блоки дисциплин, семестры, reasons/anti-reasons и отсутствие горизонтального overflow. `admission-fit.spec.ts` открывает тот же program flow, выбирает source-backed offering, вводит баллы, проверяет отдельный score/status/reasons и повторяет сценарий на viewport 390px без горизонтального overflow. Перед ним должен работать fixture demo:
 
 ```powershell
 python backend/scripts/run_tracer_demo.py --mode fixture
@@ -124,15 +139,17 @@ npx playwright test --workers=1
 ```
 
 Browser scenarios проверяют desktop/mobile completion, reload resume,
-completed-result recovery, auth/guest menu, V1 journeys и существующие
-catalog/comparison/admissions/events/recommendations/route contracts. В
+completed-result recovery, auth/guest menu, independent entry points и
+существующие catalog/comparison/admissions/events/recommendations/support
+contracts. В
 двухпрограммном fixture adaptive selector может завершиться с
 `insufficient_candidate_spread`; это явный source-backed gap, а не
 синтетический adaptive вопрос.
 
 Локальный gate canonical Next включает backend pytest/mypy, Next unit, lint,
-build, OpenAPI drift и Playwright на desktop/mobile проектах. В текущем
-сценарии Next browser suite содержит 6 desktop и 6 mobile проверок; шесть
+build, OpenAPI drift и Playwright на desktop/mobile проектах. Browser suite
+запускает одинаковые сценарии на desktop и mobile; число сценариев определяется
+файлами в `frontend-next/tests`, а не фиксированным списком. Шесть
 backend PostgreSQL cases без `ANDROMEDA_POSTGRES_TEST_URL` явно skipped
 локально, а CI job `postgresql-integration` поднимает PostgreSQL 16 и
 выполняет их с миграциями.
@@ -149,6 +166,32 @@ Next unit-тесты проверяют API mapping/error/timeout contracts, а 
 ## CI
 
 GitHub Actions запускает backend tests/mypy, canonical Next contract/unit/lint/build gates, fixture smoke и Chromium E2E. Отдельный `postgresql-integration` job поднимает disposable PostgreSQL 16 service, применяет Alembic к пустой базе, прогоняет BMSTU fixture → API → `frontend-next` и выполняет PostgreSQL-backed browser scenario. Poppler и браузер устанавливаются в CI jobs.
+
+Перед отправкой изменений полный локальный gate повторяет существенные CI
+границы:
+
+```powershell
+git diff --check
+cd backend
+python -m pytest -q
+python -m mypy
+cd ..\frontend-next
+npm run check-api-drift
+npm run test:unit
+npm run lint
+npm run build
+npm run test:e2e
+```
+
+Для migration parity применяйте `alembic upgrade head`, downgrade до revision
+перед DecisionContext, повторный `upgrade head` на SQLite и PostgreSQL; `python
+-m alembic heads` должен вернуть одну голову `0014_decision_analytics`.
+
+Analytics tests проверяют allowlist, bounded canonical IDs, отсутствие raw
+profile/score/cookie/source body, owner isolation, idempotency и то, что отказ
+telemetry не блокирует shortlist mutation. Browser events допускают только
+safe view/interaction payload; authoritative shortlist size before/after
+создаётся сервером.
 
 Для локального PostgreSQL запуска используйте [руководство PostgreSQL](postgresql.md). Без test DSN PostgreSQL-only tests явно помечаются skipped; CI обязан передавать `ANDROMEDA_POSTGRES_TEST_URL`.
 

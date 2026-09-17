@@ -360,6 +360,7 @@ class ProftestSessionResponse(ApiModel):
     adaptive: AdaptiveSelectionResponse | None = None
     preliminary: PreliminaryProfileResponse | None = None
     results: ProftestResultsResponse | None = None
+    profile_revision: int | None = Field(default=None, ge=1)
 
 
 class ProftestAnalyticsAcceptedResponse(ApiModel):
@@ -397,6 +398,7 @@ def session_response(view: ProftestSessionView) -> ProftestSessionResponse:
         adaptive=AdaptiveSelectionResponse.model_validate(view.adaptive.model_dump()) if view.adaptive is not None else None,
         preliminary=PreliminaryProfileResponse.model_validate(view.preliminary.model_dump()) if view.preliminary is not None else None,
         results=results_response(view.results) if view.results is not None else None,
+        profile_revision=view.profile_revision,
     )
 
 

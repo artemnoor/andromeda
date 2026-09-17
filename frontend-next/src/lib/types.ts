@@ -183,6 +183,13 @@ export type ComparisonResponse = {
   areaBreakdownB?: AreaBreakdownItem[] | null;
 };
 
+export type ComparisonSummaryResponse = components["schemas"]["ComparisonSummaryResponse"];
+export type ComparisonProgramOverview = components["schemas"]["ComparisonProgramOverviewResponse"];
+export type ComparisonKeyDifference = components["schemas"]["KeyDifferenceResponse"];
+export type ComparisonTradeoff = components["schemas"]["TradeoffResponse"];
+export type ComparisonSourceGap = components["schemas"]["ComparisonSourceGapResponse"];
+export type ComparisonEvidence = components["schemas"]["ComparisonEvidenceResponse"];
+
 export type QuestionBlock = components["schemas"]["QuestionBlock"];
 
 export type QuestionOption = { id: string; label: string };
@@ -238,6 +245,8 @@ export type ProftestSessionResponse = {
   adaptive: components["schemas"]["AdaptiveSelectionResponse"] | null;
   preliminary: components["schemas"]["PreliminaryProfileResponse"] | null;
   results: ProftestResultsResponse | null;
+  /** Revision of the persisted UserProfile produced by completion, if known. */
+  profileRevision?: number | null;
 };
 export type ProftestAnalyticsEventRequest = components["schemas"]["ProftestAnalyticsEventRequest"];
 
@@ -260,6 +269,69 @@ export type UserProfileSnapshot = {
   createdAt: string;
   updatedAt: string;
   expiresAt?: string | null;
+};
+
+/**
+ * Decision data is deliberately kept separate from profile/recommendation
+ * view models. The generated OpenAPI types remain the source of truth for
+ * the wire shape; these aliases give screens a stable vocabulary for the
+ * explicit user-owned state and the derived system state.
+ */
+export type DecisionContextData = components["schemas"]["DecisionContextResponse"];
+export type DecisionStateData = components["schemas"]["DecisionStateResponse"];
+export type DecisionShortlistEntry = components["schemas"]["DecisionShortlistEntryResponse"];
+export type DecisionSuggestion = components["schemas"]["DecisionSuggestionResponse"];
+export type DecisionShortlistItem = components["schemas"]["DecisionShortlistItemResponse"];
+export type DecisionSuggestionsData = components["schemas"]["DecisionSuggestionsResponse"];
+export type DecisionMutationResponse = components["schemas"]["DecisionMutationResponse"];
+export type DecisionConstraintsRequest = components["schemas"]["DecisionConstraintsRequest"];
+export type DecisionConstraintsUpdateRequest = components["schemas"]["DecisionConstraintsUpdateRequest"];
+export type DecisionProgramCommandRequest = components["schemas"]["DecisionProgramCommandRequest"];
+export type DecisionShortlistCommandRequest = components["schemas"]["DecisionShortlistCommandRequest"];
+export type DecisionShortlistRoleRequest = components["schemas"]["DecisionShortlistRoleRequest"];
+export type DecisionRevisionRequest = components["schemas"]["DecisionRevisionRequest"];
+export type ShortlistRole = components["schemas"]["ShortlistRole"];
+export type DecisionPartition = DecisionSuggestion["partition"];
+
+/**
+ * Copy server arrays at the API boundary. In particular, null admission and
+ * content fields stay null: the UI must be able to distinguish unknown data
+ * from a measured zero.
+ */
+export function normalizeDecisionContext(value: DecisionContextData): DecisionContextData {
+  return {
+    ...value,
+    state: {
+      ...value.state,
+      explicitPriorities: [...value.state.explicitPriorities],
+      choice: {
+        ...value.state.choice,
+        consideredProgramIds: [...value.state.choice.consideredProgramIds],
+        excludedProgramIds: [...value.state.choice.excludedProgramIds],
+        shortlistEntries: value.state.choice.shortlistEntries.map((entry) => ({ ...entry })),
+      },
+    },
+    missingData: [...value.missingData],
+  };
+}
+
+export function normalizeDecisionSuggestions(value: DecisionSuggestionsData): DecisionSuggestionsData {
+  return {
+    ...value,
+    activeShortlist: value.activeShortlist.map((item) => ({ ...item })),
+    primaryCandidates: value.primaryCandidates.map((item) => ({ ...item })),
+    alternativeCandidates: value.alternativeCandidates.map((item) => ({ ...item })),
+    ineligibleCandidates: value.ineligibleCandidates.map((item) => ({ ...item })),
+    insufficientDataCandidates: value.insufficientDataCandidates.map((item) => ({ ...item })),
+    suggestions: value.suggestions.map((item) => ({ ...item })),
+    sourceGaps: [...value.sourceGaps],
+    missingData: [...value.missingData],
+  };
+}
+
+export type ApiRevisionConflict = {
+  status: 409;
+  message: string;
 };
 
 export type ProftestPreviewResponse = {

@@ -1,5 +1,5 @@
 """Recommendation module public entry point."""
 
-from .contracts.public import RecommendationRequest, RecommendationResult
+from .contracts.public import CandidateRankingRequest, CandidateRankingResult, RecommendationRequest, RecommendationResult
 
-__all__ = ["RecommendationRequest", "RecommendationResult"]
+__all__ = ["CandidateRankingRequest", "CandidateRankingResult", "RecommendationRequest", "RecommendationResult"]

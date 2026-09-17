@@ -7,17 +7,25 @@
  */
 
 import type { components, paths } from "./generated";
+import { normalizeDecisionContext, normalizeDecisionSuggestions } from "./types";
 import type {
   AccountInfo,
   AdmissionFitRequest,
   AdmissionFitResponse,
   AdmissionOffering,
+  DecisionConstraintsUpdateRequest,
+  DecisionContextData,
+  DecisionMutationResponse,
+  DecisionRevisionRequest,
+  DecisionSuggestionsData,
+  ShortlistRole,
   AuthSession,
   CampusPoint,
   CampusPointDetailResponse,
   CampusPointEventsResponse,
   CampusRecommendationsResponse,
   ComparisonResponse,
+  ComparisonSummaryResponse,
   CurriculumResponse,
   Discipline,
   DisciplineArea,
@@ -54,6 +62,7 @@ type ApiAdmissions = paths["/programs/{id}/admissions"]["get"]["responses"][200]
 type ApiAdmissionFit = paths["/programs/{id}/admission-fit"]["post"]["responses"][200]["content"]["application/json"];
 type ApiAdmissionFitRequest = NonNullable<paths["/programs/{id}/admission-fit"]["post"]["requestBody"]>["content"]["application/json"];
 type ApiComparison = paths["/compare"]["get"]["responses"][200]["content"]["application/json"];
+type ApiComparisonSummary = paths["/compare/summary"]["get"]["responses"][200]["content"]["application/json"];
 type ApiDisciplineAreas = paths["/discipline-areas"]["get"]["responses"][200]["content"]["application/json"];
 type ApiQuestions = paths["/proftest/questions"]["get"]["responses"][200]["content"]["application/json"];
 type ApiPreview = paths["/proftest/preview"]["post"]["responses"][200]["content"]["application/json"];
@@ -71,6 +80,17 @@ type ApiUpdateProfile = paths["/proftest/profile"]["put"]["responses"][200]["con
 type ApiRecommendationRequest = NonNullable<paths["/recommendations"]["post"]["requestBody"]>["content"]["application/json"];
 type ApiRecommendationResponse = paths["/recommendations"]["post"]["responses"][200]["content"]["application/json"];
 type ApiRecommendations = paths["/recommendations/current"]["get"]["responses"][200]["content"]["application/json"];
+type ApiDecisionContext = paths["/decision/context"]["get"]["responses"][200]["content"]["application/json"];
+type ApiDecisionSuggestions = paths["/decision/suggestions"]["get"]["responses"][200]["content"]["application/json"];
+type ApiDecisionMutation = paths["/decision/constraints"]["put"]["responses"][200]["content"]["application/json"];
+type ApiDecisionConstraintsUpdate = NonNullable<paths["/decision/constraints"]["put"]["requestBody"]>["content"]["application/json"];
+type ApiDecisionProgramCommand = NonNullable<paths["/decision/considered"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiDecisionShortlistCommand = NonNullable<paths["/decision/shortlist"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiDecisionShortlistRole = NonNullable<paths["/decision/shortlist/{program_id}"]["patch"]["requestBody"]>["content"]["application/json"];
+type ApiDecisionRevision = NonNullable<paths["/decision/shortlist/{program_id}"]["delete"]["requestBody"]>["content"]["application/json"];
+type ApiDecisionAcceptSuggestion = NonNullable<paths["/decision/suggestions/{program_id}/accept"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiDecisionAnalytics = NonNullable<paths["/decision/analytics"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiDecisionAnalyticsResponse = paths["/decision/analytics"]["post"]["responses"][200]["content"]["application/json"];
 type ApiEvents = paths["/events"]["get"]["responses"][200]["content"]["application/json"];
 type ApiEvent = paths["/events/{id}"]["get"]["responses"][200]["content"]["application/json"];
 type ApiPoint = paths["/campus/points/{id}"]["get"]["responses"][200]["content"]["application/json"];
@@ -654,6 +674,129 @@ export function getRecommendations(request: RecommendationRequest): Promise<Reco
 
 export function getCurrentRecommendations(limit = 10): Promise<RecommendationsResponse> {
   return requestJson<ApiRecommendations>(`/recommendations/current?limit=${encodeURIComponent(String(limit))}`).then(mapRecommendations);
+}
+
+export function getComparisonSummary(
+  programIds: readonly string[],
+  options: { scope?: "all" | "semester"; semester?: number } = {},
+): Promise<ComparisonSummaryResponse> {
+  const params = new URLSearchParams({ programIds: programIds.join(","), scope: options.scope ?? "all" });
+  if (options.semester !== undefined) params.set("semester", String(options.semester));
+  return requestJson<ApiComparisonSummary>(`/compare/summary?${params}`);
+}
+
+type ApiDecisionCommandResponse = ApiDecisionMutation;
+
+function mapDecisionMutation(raw: ApiDecisionCommandResponse): DecisionMutationResponse {
+  return { ...raw, context: normalizeDecisionContext(raw.context) };
+}
+
+function revisionBody(expectedRevision?: number | null): DecisionRevisionRequest {
+  return expectedRevision === undefined ? {} : { expectedRevision };
+}
+
+export function getDecisionContext(): Promise<DecisionContextData> {
+  return requestJson<ApiDecisionContext>("/decision/context").then(normalizeDecisionContext);
+}
+
+export function getDecisionSuggestions(): Promise<DecisionSuggestionsData> {
+  return requestJson<ApiDecisionSuggestions>("/decision/suggestions").then(normalizeDecisionSuggestions);
+}
+
+export function updateDecisionConstraints(request: DecisionConstraintsUpdateRequest): Promise<DecisionMutationResponse> {
+  const payload: ApiDecisionConstraintsUpdate = request;
+  return requestJson<ApiDecisionCommandResponse>("/decision/constraints", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  }).then(mapDecisionMutation);
+}
+
+export function markDecisionProgramConsidered(programId: string, expectedRevision?: number | null): Promise<DecisionMutationResponse> {
+  const payload: ApiDecisionProgramCommand = { version: 1, programId, expectedRevision };
+  return requestJson<ApiDecisionCommandResponse>("/decision/considered", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).then(mapDecisionMutation);
+}
+
+export function addDecisionShortlist(
+  programId: string,
+  role: ShortlistRole = "primary",
+  expectedRevision?: number | null,
+): Promise<DecisionMutationResponse> {
+  const payload: ApiDecisionShortlistCommand = { version: 1, programId, role, expectedRevision };
+  return requestJson<ApiDecisionCommandResponse>("/decision/shortlist", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).then(mapDecisionMutation);
+}
+
+export function removeDecisionShortlist(programId: string, expectedRevision?: number | null): Promise<DecisionMutationResponse> {
+  return requestJson<ApiDecisionCommandResponse>(`/decision/shortlist/${encodeURIComponent(programId)}`, {
+    method: "DELETE",
+    body: JSON.stringify(revisionBody(expectedRevision)),
+  }).then(mapDecisionMutation);
+}
+
+export function restoreDecisionShortlist(programId: string, expectedRevision?: number | null): Promise<DecisionMutationResponse> {
+  return requestJson<ApiDecisionCommandResponse>(`/decision/programs/${encodeURIComponent(programId)}/restore`, {
+    method: "POST",
+    body: JSON.stringify(revisionBody(expectedRevision)),
+  }).then(mapDecisionMutation);
+}
+
+export function setDecisionShortlistRole(
+  programId: string,
+  role: ShortlistRole,
+  expectedRevision?: number | null,
+): Promise<DecisionMutationResponse> {
+  const payload: ApiDecisionShortlistRole = { version: 1, role, expectedRevision };
+  return requestJson<ApiDecisionCommandResponse>(`/decision/shortlist/${encodeURIComponent(programId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  }).then(mapDecisionMutation);
+}
+
+export function excludeDecisionProgram(programId: string, expectedRevision?: number | null): Promise<DecisionMutationResponse> {
+  return requestJson<ApiDecisionCommandResponse>(`/decision/programs/${encodeURIComponent(programId)}/exclude`, {
+    method: "POST",
+    body: JSON.stringify(revisionBody(expectedRevision)),
+  }).then(mapDecisionMutation);
+}
+
+export function restoreExcludedDecisionProgram(programId: string, expectedRevision?: number | null): Promise<DecisionMutationResponse> {
+  return requestJson<ApiDecisionCommandResponse>(`/decision/programs/${encodeURIComponent(programId)}/exclude`, {
+    method: "DELETE",
+    body: JSON.stringify(revisionBody(expectedRevision)),
+  }).then(mapDecisionMutation);
+}
+
+export function acceptDecisionSuggestion(
+  programId: string,
+  role: ShortlistRole = "primary",
+  expectedRevision?: number | null,
+): Promise<DecisionMutationResponse> {
+  const payload: ApiDecisionAcceptSuggestion = { version: 1, role, expectedRevision };
+  return requestJson<ApiDecisionCommandResponse>(`/decision/suggestions/${encodeURIComponent(programId)}/accept`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).then(mapDecisionMutation);
+}
+
+export function rejectDecisionSuggestion(programId: string, expectedRevision?: number | null): Promise<DecisionMutationResponse> {
+  return requestJson<ApiDecisionCommandResponse>(`/decision/suggestions/${encodeURIComponent(programId)}/reject`, {
+    method: "POST",
+    body: JSON.stringify(revisionBody(expectedRevision)),
+  }).then(mapDecisionMutation);
+}
+
+export type DecisionAnalyticsEventRequest = ApiDecisionAnalytics;
+
+export function sendDecisionAnalytics(request: DecisionAnalyticsEventRequest): Promise<ApiDecisionAnalyticsResponse> {
+  return requestJson<ApiDecisionAnalyticsResponse>("/decision/analytics", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 }
 
 export type EventQuery = {

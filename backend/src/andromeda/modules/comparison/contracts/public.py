@@ -1,6 +1,6 @@
 """Public comparison contract facade."""
 
-from .requests import ComparisonRequest
-from .results import ComparisonResult
+from .requests import ComparisonRequest, ComparisonSummaryRequest
+from .results import ComparisonResult, ComparisonSummaryResult
 
-__all__ = ["ComparisonRequest", "ComparisonResult"]
+__all__ = ["ComparisonRequest", "ComparisonResult", "ComparisonSummaryRequest", "ComparisonSummaryResult"]

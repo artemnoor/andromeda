@@ -5,7 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from andromeda.modules.admissions.contracts.public import AdmissionProvenance, FundingType, StudyForm
 from andromeda.shared.contracts.base import ContractModel
@@ -85,7 +85,40 @@ class AdmissionFitResult(ContractModel):
     data_gaps: tuple[AdmissionFitReason, ...] = ()
 
 
+class BatchAdmissionFitOutcome(ContractModel):
+    """One source-backed or explicitly unavailable batch result."""
+
+    program_id: ProgramId
+    status: AdmissionFitStatus
+    result: AdmissionFitResult | None = None
+    data_gaps: tuple[AdmissionFitReason, ...] = Field(default=(), max_length=16)
+
+    @model_validator(mode="after")
+    def validate_result_identity(self) -> "BatchAdmissionFitOutcome":
+        if self.result is not None:
+            if self.result.program_id != self.program_id or self.result.status is not self.status:
+                raise ValueError("batch outcome result must match program and status")
+        elif self.status is not AdmissionFitStatus.INSUFFICIENT_DATA:
+            raise ValueError("missing batch result must be insufficient_data")
+        return self
+
+
+class BatchAdmissionFitResult(ContractModel):
+    """Deterministic per-program Admission Fit outcomes, never a global score."""
+
+    by_program_id: dict[ProgramId, BatchAdmissionFitOutcome] = Field(default_factory=dict, max_length=50)
+
+    @model_validator(mode="after")
+    def validate_index(self) -> "BatchAdmissionFitResult":
+        for program_id, outcome in self.by_program_id.items():
+            if program_id != outcome.program_id:
+                raise ValueError("batch result index must match outcome program id")
+        return self
+
+
 __all__ = [
+    "BatchAdmissionFitOutcome",
+    "BatchAdmissionFitResult",
     "AdmissionFitBreakdown",
     "AdmissionFitDataQuality",
     "AdmissionFitMetric",

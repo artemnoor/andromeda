@@ -7,7 +7,17 @@ import logging
 
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
 
-from ..contracts.public import MatchScore, ProgramFingerprint, Recommendation, RecommendationRequest, RecommendationResult, ReasonKind, UserProfile
+from ..contracts.public import (
+    CandidateRankingRequest,
+    CandidateRankingResult,
+    MatchScore,
+    ProgramFingerprint,
+    Recommendation,
+    RecommendationRequest,
+    RecommendationResult,
+    ReasonKind,
+    UserProfile,
+)
 from ..repository.ports import RecommendationCatalogReader
 from .explanations import ExplanationBuilder
 from .ranking import RankedFingerprint, RankingService
@@ -67,6 +77,17 @@ class RecommendationService:
         limit: int | None = None,
     ) -> tuple[RankedFingerprint, ...]:
         return self._ranking.rank(profile, fingerprints, limit=limit)
+
+    def rank_candidates(self, request: CandidateRankingRequest) -> CandidateRankingResult:
+        logger.debug(
+            "recommendations_candidate_ranking_start candidate_count=%d limit=%d",
+            len(request.fingerprints),
+            request.limit,
+        )
+        ranked = self.rank_fingerprints(request.profile, request.fingerprints, limit=request.limit)
+        result = CandidateRankingResult(ranked=ranked)
+        logger.info("recommendations_candidate_ranking_complete result_count=%d", len(result.ranked))
+        return result
 
     def _recommendation(self, profile: "UserProfile", fingerprint: ProgramFingerprint, score: MatchScore) -> Recommendation:
         if not isinstance(fingerprint, ProgramFingerprint):

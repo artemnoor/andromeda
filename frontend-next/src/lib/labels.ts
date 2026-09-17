@@ -112,9 +112,9 @@ export const ADMISSION_FIT_LABELS: Record<string, { label: string; tone: string 
 };
 
 export const ROUTE_STATUS_LABELS: Record<string, string> = {
-  ready: "Маршрут готов",
-  no_recommendations: "Нет рекомендаций",
-  no_events: "Нет ближайших событий",
+  ready: "Материалы доступны",
+  no_recommendations: "Материалы появятся позже",
+  no_events: "Ближайших событий нет",
 };
 
 export const INGESTION_STATUS_LABELS: Record<string, string> = {

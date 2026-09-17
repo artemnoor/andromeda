@@ -8,7 +8,7 @@ FastAPI-приложение `andromeda.api.main` публикует OpenAPI н�
 
 | Метод | Endpoint | Назначение |
 |---|---|---|
-| GET | `/programs` | Список программ для выбора A/B |
+| GET | `/programs` | Source-backed каталог программ для независимого выбора и shortlist |
 | GET | `/programs/{id}` | Карточка программы |
 | GET | `/programs/{id}/curriculum` | Позиции учебного плана |
 | GET | `/programs/{id}/admissions` | Source-backed данные поступления |
@@ -16,6 +16,50 @@ FastAPI-приложение `andromeda.api.main` публикует OpenAPI н�
 `GET /programs/{id}/admissions` возвращает strict `ProgramAdmissionsResponse`: каноническую программу и offering-записи по годам, форме и типу финансирования. В offering доступны места, ЕГЭ и минимумы, проходные баллы, квоты и стоимость обучения — только если они опубликованы в доступном источнике. Каждая запись и дочерний показатель содержит provenance с URL, временем capture и хэшем источника. Поля без источника остаются пустыми; значения `0` не используются как замена неизвестности.
 
 `DisciplineResponse` сохраняет `name`/`sourceName` и дополнительно отдаёт `areaWeights` — вектор областей с весами — и `primaryArea`. Каталог областей доступен через `GET /discipline-areas`; он содержит 22 стабильных кода, название, описание и позицию для сортировки.
+
+## DecisionContext и shortlist
+
+`DecisionContext` — owner-bound application state для пользовательского выбора.
+Он сохраняется по anonymous HttpOnly session или authenticated account scope и
+восстанавливается после reload. В нём хранятся только explicit данные:
+admission constraints, рассмотренные canonical `programId`, shortlist entries с
+ролями `primary`/`alternative`, explicit exclusions, revision и timestamps.
+`UserProfile` остаётся владельцем предпочтений; в ответе DecisionContext это
+read-only projection, а не копия profile JSON.
+
+| Метод | Endpoint | Request | Ответ и side effect |
+|---|---|---|---|
+| GET | `/decision/context` | — | Текущий context, profile projection, `missingData` и metadata; read-only, при первом обращении создаётся owner-bound context. |
+| GET | `/decision/suggestions` | — | Derived candidate set: до 3 primary и 2 alternative, active shortlist, ineligible/insufficient-data, reasons, Admission Fit, Content Fit, trade-offs/source gaps и optional refinement question; shortlist не меняется. |
+| PUT | `/decision/constraints` | `{constraints, expectedRevision?}`; `constraints: null` — явная очистка | Сохраняет явно введённые admissions constraints и возвращает новую revision; не удаляет и не демотирует shortlist. |
+| POST | `/decision/considered` | `{programId, expectedRevision?}` | Отмечает одну программу как рассмотренную после явного действия пользователя. |
+| POST | `/decision/shortlist` | `{programId, role, expectedRevision?}` | Явно добавляет программу или восстанавливает её active state с ролью `primary`/`alternative`. |
+| PATCH | `/decision/shortlist/{programId}` | `{role, expectedRevision?}` | Явно меняет роль active shortlist entry. |
+| DELETE | `/decision/shortlist/{programId}` | `{expectedRevision?}` | Явно переводит сохранённую программу в removed state; запись не теряется. |
+| POST | `/decision/programs/{programId}/restore` | `{expectedRevision?}` | Явно восстанавливает ранее removed shortlist entry. |
+| POST | `/decision/programs/{programId}/exclude` | `{expectedRevision?}` | Явно исключает программу из system suggestions; это не удаляет другие сохранённые варианты. |
+| DELETE | `/decision/programs/{programId}/exclude` | `{expectedRevision?}` | Возвращает программу в область system suggestions. |
+| POST | `/decision/suggestions/{programId}/accept` | `{role?, expectedRevision?}` | Принимает конкретное system suggestion и добавляет его только по explicit команде. |
+| POST | `/decision/suggestions/{programId}/reject` | `{expectedRevision?}` | Отклоняет конкретное system suggestion явно; сохранённые shortlist entries не меняются. |
+| POST | `/decision/analytics` | allow-listed `eventId`, `eventType`, bounded payload | Принимает только view/interaction events; mutation facts генерирует сервер. Сбой analytics не меняет результат пользовательской команды. |
+
+Все mutation responses содержат `decisionId`, `context` и `changed`. Если
+`expectedRevision` устарел, API возвращает `409 CONFLICT`; это предотвращает
+last-write-wins между вкладками. Unknown fields, non-canonical IDs и oversized
+payloads получают `422`. Recalculation после ввода баллов может показать
+`borderline` или `unlikely`, но не удаляет saved program автоматически.
+
+Candidate pipeline внутри Decision Service разделяет факторы, а не собирает
+магический общий score:
+
+```text
+hard constraints → batch Admission Fit → preference/Content Fit
+→ separate risk, differences, missing data → small suggestions
+```
+
+Batch Admission Fit используется для candidate set внутри
+`DecisionCandidatePipeline`; отдельный public endpoint одного варианта
+`POST /programs/{id}/admission-fit` остаётся без изменений.
 
 ## Сравнение
 
@@ -25,6 +69,20 @@ GET /compare?programIds=<program-id-a>,<program-id-b>&scope=semester&semester=1
 ```
 
 `ComparisonResponse` содержит `programA`, `programB`, `scope`, `rows`, `totalsA`, `totalsB` и `areaBreakdownA`/`areaBreakdownB`. Последние показывают агрегированный вектор содержания программы в выбранной области и режиме. Строка хранит `a`, `b`, статус и `hoursDelta`/`creditsDelta`; у дисциплин сохраняются исходные названия, семестры, формы контроля и area weights. Категории учебного плана не являются частью canonical contract.
+
+Для финального shortlist доступен additive summary endpoint:
+
+```text
+GET /compare/summary?programIds=<program-id-a>,<program-id-b>
+GET /compare/summary?programIds=<program-id-a>,<program-id-b>,<program-id-c>&scope=semester&semester=1
+```
+
+Он принимает 2–3 distinct canonical IDs и возвращает `programs`,
+`keyDifferences`, `tradeoffs`, `admissionContext`, `contentDifferences`,
+`sourceGaps` и typed `evidence`. В summary нет winner и искусственного общего
+score: выводы разделяют trade-offs и ссылаются на raw area/totals/discipline
+evidence. Legacy `/compare` с двумя программами остаётся полным drill-down
+контрактом.
 
 Доли и веса передаются как decimal-строки (`"0.4589"`), чтобы frontend не терял точность JSON number. Frontend types генерируются из OpenAPI, поэтому изменение этих полей проходит через drift gate.
 
@@ -186,32 +244,32 @@ Request содержит `profile` и `limit` (`1..20`). Профиль — то
 
 | Метод | Endpoint | Назначение |
 |---|---|---|
-| GET | `/personal-route?limit=10` | Строит логический персональный план по current profile |
+| GET | `/personal-route?limit=10` | Возвращает необязательные support-материалы по current profile |
 
-`GET /personal-route` — read-only orchestration поверх существующих `CurrentRecommendationService`, `EventService` и `CampusService`. Он не создаёт новую сущность профиля, программы, события или точки и не хранит отдельный route snapshot. `limit` ограничен диапазоном `1..20`.
+`GET /personal-route` — read-only compatibility/support orchestration поверх существующих `CurrentRecommendationService`, `EventService` и `CampusService`. Он не создаёт новую сущность профиля, программы, события или точки, не хранит отдельный route snapshot и не является частью `DecisionService`. `limit` ограничен диапазоном `1..20`. Его просмотр не меняет `DecisionContext` и не требует прохождения обязательной воронки; UI предлагает каталог, поступление и «Мой выбор», если profile ещё нет.
 
-Ответ `PersonalRouteResponse` содержит `status`, `summary`, те же source-backed `recommendations` и последовательность typed `steps`. Шаги имеют только логические типы `explore_program`, `compare_programs` и `attend_event`; позиция означает порядок действия, а не перемещение между местами. Шаг программы ссылается на canonical `programId`, шаг события — на существующий `eventId`, `venueId` и, если точка известна, полную `CampusPointDetailResponse` с карточкой, coordinate/address и university/department/program links. Для онлайн-события `venueId` и `point` остаются `null`.
+Ответ `PersonalRouteResponse` содержит `status`, `summary`, те же source-backed `recommendations` и typed support items `explore_program`, `compare_programs` и `attend_event`. `position` сохраняется для совместимости и детерминированного порядка выдачи, но не означает обязательную последовательность. Item программы ссылается на canonical `programId`, item события — на существующий `eventId`, `venueId` и, если точка известна, полную `CampusPointDetailResponse` с карточкой, coordinate/address и university/department/program links. Для онлайн-события `venueId` и `point` остаются `null`.
 
-Без current profile endpoint возвращает стандартный `404 NOT_FOUND`; пустая рекомендационная выдача получает `status: "no_recommendations"`, а отсутствие будущих подходящих событий — `status: "no_events"` при сохранённых шагах программ. События отфильтрованы по рекомендованным canonical program IDs, текущему времени и deterministic UTC ordering. Endpoint не возвращает geometry, directions, расстояния, карту или route optimizer.
+Без current profile endpoint возвращает стандартный `404 NOT_FOUND`; это source state, а не блокировка других entry points. Пустая рекомендационная выдача получает `status: "no_recommendations"`, а отсутствие будущих подходящих событий — `status: "no_events"` при сохранённых program items. События отфильтрованы по рекомендованным canonical program IDs, текущему времени и deterministic UTC ordering. Endpoint не возвращает geometry, directions, расстояния, карту или route optimizer.
 
 Минимальный пример ответа:
 
 ```json
 {
   "status": "ready",
-  "summary": "План по рекомендациям профиля",
+      "summary": "Дополнительные материалы по рекомендациям; порядок действий выбираете вы",
   "recommendations": [],
   "steps": [
     {
       "position": 1,
       "kind": "explore_program",
-      "reason": "Начните с программы с самым высоким Content Fit",
+      "reason": "При желании изучите программу с самым высоким Content Fit",
       "programIds": ["<program-id>"]
     },
     {
       "position": 3,
       "kind": "attend_event",
-      "reason": "Событие связано с рекомендованной программой",
+      "reason": "При желании посетите событие, связанное с программой",
       "programIds": ["<program-id>"],
       "eventId": "event:bmstu:dod-2026",
       "venueId": "venue:bmstu:main-campus",

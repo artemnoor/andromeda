@@ -12,6 +12,7 @@ SUBJECT_MODULES = (
     "curricula",
     "disciplines",
     "comparison",
+    "decision",
     "proftest",
     "recommendations",
     "admissions",
