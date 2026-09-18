@@ -20,6 +20,8 @@ export type ProgramSummary = {
   educationYear: string;
   studyPlanUrl?: string | null;
   sourceUrl?: string | null;
+  universityId?: string | null;
+  universityName?: string | null;
 };
 
 export type ProgramListResponse = { items: ProgramSummary[] };
@@ -384,8 +386,6 @@ export type Recommendation = {
   areaShare: { code: string; name: string; share: string }[];
   semesterDistribution: { semester: number; share: string }[];
   distinctiveSubjects: string[];
-  workloadReadiness?: OptionalMetric | null;
-  careerFit?: OptionalMetric | null;
   admissionFit?: OptionalMetric | null;
 };
 
@@ -409,6 +409,7 @@ export type AccountInfo = {
 export type AuthSession = {
   authenticated: boolean;
   account: AccountInfo | null;
+  decisionTransfer?: "bound" | "account_state_kept" | "no_anonymous_state" | "explicit_guest_import" | null;
 };
 
 export type EventKind =

@@ -43,6 +43,7 @@ class DecisionStatus(StrEnum):
     EMPTY = "empty"
     IN_PROGRESS = "in_progress"
     READY = "ready"
+    FINALIZED = "finalized"
 
 
 class AdmissionGate(StrEnum):

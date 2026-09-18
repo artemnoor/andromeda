@@ -15,7 +15,7 @@ const summary = {
       program: { id: "program:09.03.01-12", directionId: "direction:09.03.01", code: "09.03.01-12", name: "Системы", educationYear: 2026, studyPlanUrl: "https://bmstu.ru/plan-b.pdf", sourceUrl: "https://bmstu.ru/b" },
       totals: null,
       areaBreakdown: [],
-      sourceGaps: [{ code: "curriculum_missing", message: "Учебный план недоступен", programIds: ["program:09.03.01-12"] }],
+      sourceGaps: [{ code: "curriculum_missing", message: "Учебный план недоступен", explanation: "Учебный план недоступен", impact: "Часы нельзя сопоставить", canContinue: true, suggestedAction: "Проверить позже", programIds: ["program:09.03.01-12"] }],
     },
     {
       program: { id: "program:09.03.01-13", directionId: "direction:09.03.01", code: "09.03.01-13", name: "Данные", educationYear: 2026, studyPlanUrl: "https://bmstu.ru/plan-c.pdf", sourceUrl: "https://bmstu.ru/c" },
@@ -43,7 +43,7 @@ const summary = {
     consideration: "Вторая программа даёт меньший объём",
     evidence: [{ kind: "area", key: "computer_science_data" }],
   }],
-  sourceGaps: [{ code: "curriculum_missing", message: "Учебный план недоступен", programIds: ["program:09.03.01-12"] }],
+  sourceGaps: [{ code: "curriculum_missing", message: "Учебный план недоступен", explanation: "Учебный план недоступен", impact: "Часы нельзя сопоставить", canContinue: true, suggestedAction: "Проверить позже", programIds: ["program:09.03.01-12"] }],
 } satisfies ComparisonSummaryResponse;
 
 describe("summary-first comparison", () => {

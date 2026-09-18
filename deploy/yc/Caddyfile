@@ -1,4 +1,4 @@
-:80 {
+{$ANDROMEDA_DOMAIN} {
   handle_path /api/* {
     reverse_proxy backend:8020
   }

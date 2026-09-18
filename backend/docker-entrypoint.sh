@@ -6,6 +6,6 @@ if [ ! -f /app/data/tracer.db ]; then
   cp /app/seed/tracer.db /app/data/tracer.db
 fi
 
-export BMSTU_DATABASE_URL="${BMSTU_DATABASE_URL:-sqlite:////app/data/tracer.db}"
+export ANDROMEDA_DATABASE_URL="${ANDROMEDA_DATABASE_URL:-${BMSTU_DATABASE_URL:-sqlite:////app/data/andromeda.db}}"
 python -m alembic -c /app/alembic.ini upgrade head
 exec uvicorn andromeda.api.main:app --host 0.0.0.0 --port "${PORT:-8020}"

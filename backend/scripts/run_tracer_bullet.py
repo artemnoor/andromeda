@@ -1,4 +1,4 @@
-"""Run the contract-first BMSTU tracer bullet ingestion."""
+"""Deprecated compatibility wrapper implementation for Andromeda ingestion."""
 
 from __future__ import annotations
 

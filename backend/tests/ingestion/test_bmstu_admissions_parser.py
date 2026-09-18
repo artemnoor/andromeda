@@ -43,8 +43,8 @@ def test_bmstu_detail_admissions_are_emitted_as_canonical_program_contracts() ->
 
     assert len(raw.admissions) == 20
     assert {item.program_id for item in canonical.admissions} == {
-        "program:09.03.01-02",
-        "program:09.03.01-12",
+        "program:bmstu:09.03.01-02",
+        "program:bmstu:09.03.01-12",
     }
     first = canonical.admissions[0]
     current_budget = next(item for item in first.offerings if item.admission_year == 2026 and item.funding_type.value == "budget")

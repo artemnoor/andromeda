@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from andromeda.modules.proftest.contracts.public import ProfileScope
 from andromeda.modules.proftest.repository.ports import ProfileBindingPort, ProftestSessionBindingPort
-from andromeda.modules.decision.repository.ports import DecisionBindingPort
+from andromeda.modules.decision.repository.ports import DecisionBindingOutcome, DecisionBindingPort
 from andromeda.shared.contracts.errors import ConflictError, UnauthorizedError, ValidationError
 from andromeda.shared.contracts.ids import AccountId, SessionTokenHash
 
@@ -43,6 +43,13 @@ class AuthenticationService:
         self._password_min_length = password_min_length
         self._session_ttl_seconds = session_ttl_seconds
         self._clock = clock
+        self._last_decision_binding: DecisionBindingOutcome | None = None
+
+    @property
+    def last_decision_binding(self) -> DecisionBindingOutcome | None:
+        """Outcome for the current auth request, for an explicit UI notice."""
+
+        return self._last_decision_binding
 
     def register(self, email: str, password: str, token_hash: SessionTokenHash, profile_scope: ProfileScope) -> Account:
         normalized_email = _normalize_email(email)
@@ -86,6 +93,14 @@ class AuthenticationService:
         self._repository.revoke_session(token_hash, now=self._clock())
         logger.info("auth_logout_complete outcome=revoked")
 
+    def import_guest_decision(self, account: Account, profile_scope: ProfileScope) -> DecisionBindingOutcome:
+        if self._decision_binding is None:
+            raise ConflictError("Decision context binding is unavailable")
+        outcome = self._decision_binding.replace_account_with_anonymous(profile_scope, account.account_id)
+        self._last_decision_binding = outcome
+        logger.info("auth_decision_import_complete account_id=%s outcome=%s", account.account_id, outcome.value)
+        return outcome
+
     def _bind_profile(self, account: Account, profile_scope: ProfileScope) -> None:
         outcome = self._profile_binding.bind_anonymous_to_account(profile_scope, account.account_id)
         logger.info("auth_profile_binding_complete account_id=%s outcome=%s", account.account_id, outcome.value)
@@ -94,6 +109,7 @@ class AuthenticationService:
             logger.info("auth_session_binding_complete account_id=%s outcome=%s", account.account_id, session_outcome.value)
         if self._decision_binding is not None:
             decision_outcome = self._decision_binding.bind_anonymous_to_account(profile_scope, account.account_id)
+            self._last_decision_binding = decision_outcome
             logger.info("auth_decision_binding_complete account_id=%s outcome=%s", account.account_id, decision_outcome.value)
 
     def _validate_password(self, password: str) -> None:

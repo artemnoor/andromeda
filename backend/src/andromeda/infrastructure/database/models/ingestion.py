@@ -28,6 +28,11 @@ class IngestRunModel(Base):
     removed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     source_hashes_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
     source_kinds_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    university_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_gap_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    critical_gap_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    drift_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_checked", server_default="not_checked")
 
     __table_args__ = (
         CheckConstraint("status IN ('running', 'completed', 'failed')", name="ck_ingest_run_status"),
@@ -40,6 +45,10 @@ class IngestRunModel(Base):
         CheckConstraint("updated_count >= 0", name="ck_ingest_run_updated_count"),
         CheckConstraint("unchanged_count >= 0", name="ck_ingest_run_unchanged_count"),
         CheckConstraint("removed_count >= 0", name="ck_ingest_run_removed_count"),
+        CheckConstraint("duration_ms IS NULL OR duration_ms >= 0", name="ck_ingest_run_duration_ms"),
+        CheckConstraint("source_gap_count >= 0", name="ck_ingest_run_source_gap_count"),
+        CheckConstraint("critical_gap_count >= 0", name="ck_ingest_run_critical_gap_count"),
+        CheckConstraint("drift_status IN ('not_checked', 'passed', 'rejected')", name="ck_ingest_run_drift_status"),
     )
 
 

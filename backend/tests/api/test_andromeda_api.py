@@ -41,7 +41,7 @@ def test_program_selector_and_comparison_are_openapi_backed(tmp_path: Path) -> N
     assert len(programs.json()["items"]) == 2
     comparison = client.get(
         "/compare",
-        params={"programIds": "program:09.03.01-02,program:09.03.01-12", "scope": "semester", "semester": 1},
+        params={"programIds": "program:bmstu:09.03.01-02,program:bmstu:09.03.01-12", "scope": "semester", "semester": 1},
     )
     assert comparison.status_code == 200
     payload = comparison.json()
@@ -58,7 +58,7 @@ def test_discipline_area_catalog_and_curriculum_vectors_are_exposed(tmp_path: Pa
     assert areas.status_code == 200
     assert len(areas.json()["items"]) == 22
 
-    curriculum = client.get("/programs/program:09.03.01-02/curriculum")
+    curriculum = client.get("/programs/program:bmstu:09.03.01-02/curriculum")
     assert curriculum.status_code == 200
     discipline = curriculum.json()["items"][0]["discipline"]
     assert discipline["areaWeights"]
@@ -68,11 +68,11 @@ def test_discipline_area_catalog_and_curriculum_vectors_are_exposed(tmp_path: Pa
 
 def test_program_admissions_are_exposed_with_source_backed_offerings(tmp_path: Path) -> None:
     client = _client(tmp_path)
-    response = client.get("/programs/program:09.03.01-02/admissions")
+    response = client.get("/programs/program:bmstu:09.03.01-02/admissions")
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["programId"] == "program:09.03.01-02"
+    assert payload["programId"] == "program:bmstu:09.03.01-02"
     assert payload["program"]["code"] == "09.03.01-02"
     assert payload["offerings"]
     budget = next(item for item in payload["offerings"] if item["admissionYear"] == 2026 and item["fundingType"] == "budget")
@@ -100,7 +100,7 @@ def test_program_admissions_exposes_route_aware_numeric_and_bvi_scores(tmp_path:
     finally:
         adapter.close()
 
-    envelope = next(item for item in canonical.admissions if item.program_id == "program:09.03.01-02")
+    envelope = next(item for item in canonical.admissions if item.program_id == "program:bmstu:09.03.01-02")
     offering = next(item for item in envelope.offerings if item.admission_year == 2026 and item.funding_type.value == "budget")
     source = offering.provenance[0]
     updated_offering = offering.model_copy(
@@ -132,7 +132,7 @@ def test_program_admissions_exposes_route_aware_numeric_and_bvi_scores(tmp_path:
     engine = create_engine_for_url(database_url)
     Base.metadata.create_all(engine)
     SqlAlchemyIngestionRepository(engine).ingest(raw, updated_canonical)
-    payload = TestClient(create_app(database_url)).get("/programs/program:09.03.01-02/admissions").json()
+    payload = TestClient(create_app(database_url)).get("/programs/program:bmstu:09.03.01-02/admissions").json()
 
     current = next(item for item in payload["offerings"] if item["id"] == offering.id)
     assert {(item["competitionType"], item["status"], item["score"]) for item in current["passingScores"]} == {
@@ -145,13 +145,13 @@ def test_program_admissions_exposes_route_aware_numeric_and_bvi_scores(tmp_path:
 def test_program_admissions_without_source_is_a_stable_empty_response(tmp_path: Path) -> None:
     client = _client(tmp_path)
     with Session(client.app.state.engine) as session:
-        session.execute(delete(AdmissionOfferingModel).where(AdmissionOfferingModel.program_id == "program:09.03.01-02"))
+        session.execute(delete(AdmissionOfferingModel).where(AdmissionOfferingModel.program_id == "program:bmstu:09.03.01-02"))
         session.commit()
 
-    response = client.get("/programs/program:09.03.01-02/admissions")
+    response = client.get("/programs/program:bmstu:09.03.01-02/admissions")
 
     assert response.status_code == 200
-    assert response.json()["programId"] == "program:09.03.01-02"
+    assert response.json()["programId"] == "program:bmstu:09.03.01-02"
     assert response.json()["offerings"] == []
 
 

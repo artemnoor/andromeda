@@ -7,7 +7,7 @@ from andromeda.api.dependencies.auth_session import get_auth_repository
 from andromeda.infrastructure.security.passwords import Argon2PasswordHasher
 from andromeda.modules.auth.repository.ports import AccountRepository
 from andromeda.modules.auth.services.authentication import AuthenticationService
-from andromeda.modules.decision.repository.ports import DecisionAnalyticsWriter, DecisionBindingPort, DecisionContextRepository
+from andromeda.modules.decision.repository.ports import DecisionAnalyticsReader, DecisionAnalyticsWriter, DecisionBindingPort, DecisionContextRepository
 from andromeda.modules.decision.services.candidates import DecisionCandidatePipeline
 from andromeda.modules.decision.services.analytics import DecisionAnalyticsService
 from andromeda.modules.decision.services.decision import DecisionService
@@ -20,6 +20,7 @@ from andromeda.modules.admissions.services.admissions import AdmissionService
 from andromeda.modules.curricula.repository.ports import CurriculumReader
 from andromeda.modules.disciplines.repository.ports import DisciplineReader
 from andromeda.modules.programs.repository.ports import ProgramReader
+from andromeda.modules.universities.repository.ports import UniversityReader
 from andromeda.modules.proftest.repository.ports import ProfileBindingPort, ProftestAnalyticsWriter, ProftestAnswerSessionRepository, ProftestCatalogReader, ProftestSessionBindingPort, UserProfileRepository
 from andromeda.modules.proftest.contracts.public import CurrentUserProfileReader
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
@@ -40,6 +41,7 @@ from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDiscipli
 from andromeda.infrastructure.repositories.admissions import SqlAlchemyAdmissionRepository
 from andromeda.infrastructure.repositories.admission_fit import SqlAlchemyAdmissionFitReader
 from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepository
+from andromeda.infrastructure.repositories.universities import SqlAlchemyUniversityRepository
 from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
 from andromeda.infrastructure.repositories.proftest_sessions import SqlAlchemyProftestSessionRepository
 from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
@@ -56,6 +58,10 @@ from .request_context import get_session
 
 def get_program_reader(session: Session = Depends(get_session)) -> ProgramReader:
     return SqlAlchemyProgramRepository(session)
+
+
+def get_university_reader(session: Session = Depends(get_session)) -> UniversityReader:
+    return SqlAlchemyUniversityRepository(session)
 
 
 def get_curriculum_reader(session: Session = Depends(get_session)) -> CurriculumReader:
@@ -197,6 +203,10 @@ def get_decision_candidate_pipeline(
 
 
 def get_decision_analytics_writer(session: Session = Depends(get_session)) -> DecisionAnalyticsWriter:
+    return SqlAlchemyDecisionAnalyticsRepository(session)
+
+
+def get_decision_analytics_reader(session: Session = Depends(get_session)) -> DecisionAnalyticsReader:
     return SqlAlchemyDecisionAnalyticsRepository(session)
 
 

@@ -54,7 +54,7 @@ def test_admission_fit_returns_real_source_backed_facts(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["programId"] == PROGRAM_ID
+    assert payload["programId"] == "program:bmstu:09.03.01-02"
     assert payload["offeringId"] == offering["id"]
     assert payload["status"] == "realistic"
     assert payload["score"] == 100

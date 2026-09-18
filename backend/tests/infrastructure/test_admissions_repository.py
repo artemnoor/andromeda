@@ -38,8 +38,8 @@ def test_admission_projection_round_trips_through_repository_and_preserves_fk(tm
         ).all()
 
     assert len(admissions.offerings) == 10
-    assert set(persisted_program_ids) == {"program:09.03.01-02"}
-    assert all(offering.program_id == "program:09.03.01-02" for offering in admissions.offerings)
+    assert set(persisted_program_ids) == {"program:bmstu:09.03.01-02"}
+    assert all(offering.program_id == "program:bmstu:09.03.01-02" for offering in admissions.offerings)
     assert any(offering.tuition for offering in admissions.offerings)
     assert any(offering.passing_scores for offering in admissions.offerings)
     foreign_keys = inspect(engine).get_foreign_keys("admission_offerings")
@@ -53,7 +53,7 @@ def test_route_aware_passing_scores_round_trip_and_stale_children_are_removed(tm
     finally:
         adapter.close()
 
-    target_program = next(item for item in canonical.admissions if item.program_id == "program:09.03.01-02")
+    target_program = next(item for item in canonical.admissions if item.program_id == "program:bmstu:09.03.01-02")
     target_offering = next(item for item in target_program.offerings if item.admission_year == 2026 and item.funding_type.value == "budget")
     source = target_offering.provenance[0]
     route_scores = (

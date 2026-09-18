@@ -7,12 +7,12 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=/opt/andromeda/release/backend
 Environment=PYTHONPATH=/opt/andromeda/release/backend/src
-Environment=ANDROMEDA_ENV=test
-Environment=BMSTU_DATABASE_URL=sqlite:////opt/andromeda/data/tracer.db
+EnvironmentFile=-/etc/andromeda/backend.env
+Environment=ANDROMEDA_ENV=staging
 Environment=FRONTEND_ORIGIN=http://127.0.0.1
 Environment=LOG_LEVEL=INFO
-Environment=BMSTU_DB_POOL_SIZE=1
-Environment=BMSTU_DB_MAX_OVERFLOW=0
+Environment=ANDROMEDA_DB_POOL_SIZE=5
+Environment=ANDROMEDA_DB_MAX_OVERFLOW=10
 ExecStart=/opt/andromeda/venv/bin/uvicorn andromeda.api.main:app --host 127.0.0.1 --port 8020
 Restart=on-failure
 RestartSec=5

@@ -51,7 +51,7 @@ def test_campus_repository_lists_filters_detail_and_events(tmp_path: Path) -> No
         "venue:bmstu:main-campus",
     }
     assert detail is not None
-    assert detail.point.programs[0].id == "program:09.03.01-02"
+    assert detail.point.programs[0].id == "program:bmstu:09.03.01-02"
     assert detail.point.universities[0].id == "university:bmstu"
     assert events.total == 1
     assert events.items[0].id == "event:bmstu:dod-2026"
@@ -85,7 +85,7 @@ def test_campus_repository_recommendations_use_program_intersection_and_keep_unp
             limit=50,
         )
 
-    assert result.recommended_program_ids == ("program:09.03.01-12",)
+    assert result.recommended_program_ids == ("program:bmstu:09.03.01-12",)
     assert {point.id for point in result.points} == {"venue:bmstu:innovation-hub", "venue:bmstu:main-campus"}
     assert {event.id for event in result.events} == {"event:bmstu:dod-2026"}
     assert {event.id for event in result.events_without_point} == {

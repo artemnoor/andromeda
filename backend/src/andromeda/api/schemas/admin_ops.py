@@ -29,6 +29,11 @@ class IngestionRunSummaryResponse(ApiModel):
     removed_count: int = Field(strict=True, ge=0)
     error_code: str | None = Field(default=None, min_length=1, max_length=64)
     error_message: str | None = Field(default=None, min_length=1, max_length=512)
+    university_id: str | None = None
+    duration_ms: int | None = Field(default=None, strict=True, ge=0)
+    source_gap_count: int = Field(default=0, strict=True, ge=0)
+    critical_gap_count: int = Field(default=0, strict=True, ge=0)
+    drift_status: Literal["not_checked", "passed", "rejected"] = "not_checked"
 
 
 class IngestionRunDetailResponse(IngestionRunSummaryResponse):
@@ -47,6 +52,35 @@ class IngestionRunDetailEnvelope(ApiModel):
 
 class IngestionRetryRequestBody(ApiModel):
     source: Literal["bmstu_fixture", "bmstu_live"] = "bmstu_fixture"
+
+
+class SourceHealthItemResponse(ApiModel):
+    university_id: str
+    state: Literal["fresh", "stale", "degraded", "failed"]
+    latest_successful_run_id: IngestRunId | None = None
+    latest_attempt_run_id: IngestRunId | None = None
+    age_seconds: int | None = Field(default=None, strict=True, ge=0)
+    source_gap_count: int = Field(strict=True, ge=0)
+    critical_gap_count: int = Field(strict=True, ge=0)
+    drift_status: Literal["not_checked", "passed", "rejected"]
+
+
+class SourceHealthResponse(ApiModel):
+    items: tuple[SourceHealthItemResponse, ...] = ()
+
+
+class DecisionAnalyticsFunnelResponse(ApiModel):
+    decision_sessions: int = Field(strict=True, ge=0)
+    shortlist_started: int = Field(strict=True, ge=0)
+    comparison_started: int = Field(strict=True, ge=0)
+    comparison_completed: int = Field(strict=True, ge=0)
+    suggestion_shown: int = Field(strict=True, ge=0)
+    suggestion_accepted: int = Field(strict=True, ge=0)
+    final_choice_selected: int = Field(strict=True, ge=0)
+    average_shortlist_size: float | None = Field(default=None, strict=True, ge=0, le=20)
+    shortlist_conversion_percent: float | None = Field(default=None, strict=True, ge=0, le=100)
+    comparison_conversion_percent: float | None = Field(default=None, strict=True, ge=0, le=100)
+    final_choice_conversion_percent: float | None = Field(default=None, strict=True, ge=0, le=100)
 
 
 def ingestion_run_summary_response(run: IngestionRunSummary) -> IngestionRunSummaryResponse:
@@ -71,6 +105,9 @@ __all__ = [
     "IngestionRunListResponse",
     "IngestionRunSummaryResponse",
     "IngestionRetryRequestBody",
+    "SourceHealthItemResponse",
+    "SourceHealthResponse",
+    "DecisionAnalyticsFunnelResponse",
     "ingestion_run_detail_response",
     "ingestion_run_list_response",
 ]

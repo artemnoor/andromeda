@@ -91,6 +91,9 @@ type ApiDecisionRevision = NonNullable<paths["/decision/shortlist/{program_id}"]
 type ApiDecisionAcceptSuggestion = NonNullable<paths["/decision/suggestions/{program_id}/accept"]["post"]["requestBody"]>["content"]["application/json"];
 type ApiDecisionAnalytics = NonNullable<paths["/decision/analytics"]["post"]["requestBody"]>["content"]["application/json"];
 type ApiDecisionAnalyticsResponse = paths["/decision/analytics"]["post"]["responses"][200]["content"]["application/json"];
+type ApiFinalChoiceRequest = NonNullable<paths["/decision/final-choice"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiFinalChoiceMutation = paths["/decision/final-choice"]["post"]["responses"][200]["content"]["application/json"];
+type ApiFinalChoiceReopen = NonNullable<paths["/decision/final-choice"]["delete"]["requestBody"]>["content"]["application/json"];
 type ApiEvents = paths["/events"]["get"]["responses"][200]["content"]["application/json"];
 type ApiEvent = paths["/events/{id}"]["get"]["responses"][200]["content"]["application/json"];
 type ApiPoint = paths["/campus/points/{id}"]["get"]["responses"][200]["content"]["application/json"];
@@ -231,6 +234,8 @@ function mapProgram(raw: any) {
     educationYear: String(raw.educationYear),
     studyPlanUrl: raw.studyPlanUrl ?? null,
     sourceUrl: raw.sourceUrl ?? null,
+    universityId: raw.universityId ?? null,
+    universityName: raw.universityName ?? null,
   };
 }
 
@@ -397,7 +402,6 @@ function mapRecommendation(raw: any): Recommendation {
     share: value.share ?? null,
     sourceNames: value.sourceNames ?? [],
   });
-  const mapMetric = (value: any) => value ? { status: value.status ?? null, score: value.value ?? null } : null;
   return {
     programId: raw.programId,
     programCode: raw.programCode,
@@ -420,9 +424,9 @@ function mapRecommendation(raw: any): Recommendation {
     areaShare: mapShare(raw.areaShare),
     semesterDistribution: mapSemester(raw.semesterDistribution),
     distinctiveSubjects: raw.distinctiveSubjects ?? [],
-    workloadReadiness: mapMetric(raw.workloadReadiness),
-    careerFit: mapMetric(raw.careerFit),
-    admissionFit: mapMetric(raw.admissionFit),
+    admissionFit: raw.admissionFit
+      ? { status: raw.admissionFit.status ?? null, score: raw.admissionFit.value ?? null }
+      : null,
   };
 }
 
@@ -529,6 +533,7 @@ function mapSession(raw: any): AuthSession {
   const account = record(raw.account) as AccountInfo & { accountId?: string };
   return {
     authenticated: Boolean(raw.authenticated),
+    decisionTransfer: raw.decisionTransfer ?? null,
     account: raw.account ? {
       id: account.accountId ?? account.id,
       email: account.email,
@@ -790,6 +795,22 @@ export function rejectDecisionSuggestion(programId: string, expectedRevision?: n
   }).then(mapDecisionMutation);
 }
 
+export function selectDecisionFinalChoice(programId: string, expectedRevision?: number | null): Promise<DecisionMutationResponse> {
+  const payload: ApiFinalChoiceRequest = { version: 1, programId, expectedRevision };
+  return requestJson<ApiFinalChoiceMutation>("/decision/final-choice", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).then(mapDecisionMutation);
+}
+
+export function reopenDecisionFinalChoice(expectedRevision?: number | null): Promise<DecisionMutationResponse> {
+  const payload: ApiFinalChoiceReopen = expectedRevision === undefined ? {} : { expectedRevision };
+  return requestJson<ApiFinalChoiceMutation>("/decision/final-choice", {
+    method: "DELETE",
+    body: JSON.stringify(payload),
+  }).then(mapDecisionMutation);
+}
+
 export type DecisionAnalyticsEventRequest = ApiDecisionAnalytics;
 
 export function sendDecisionAnalytics(request: DecisionAnalyticsEventRequest): Promise<ApiDecisionAnalyticsResponse> {
@@ -871,6 +892,10 @@ export function loginAccount(request: LoginRequest): Promise<AuthSession> {
 
 export function logoutAccount(): Promise<AuthSession> {
   return requestJson<ApiSession>("/auth/logout", { method: "POST" }).then(mapSession);
+}
+
+export function importGuestDecision(): Promise<AuthSession> {
+  return requestJson<ApiSession>("/auth/decision/import-guest", { method: "POST" }).then(mapSession);
 }
 
 function opsHeaders(opsKey: string): HeadersInit {

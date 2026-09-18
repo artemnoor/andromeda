@@ -17,7 +17,10 @@ BACKEND_ROOT = Path(__file__).parents[2]
 
 def _migrate(database_url: str, monkeypatch) -> None:
     monkeypatch.setenv("ANDROMEDA_ENV", "test")
-    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    # The PostgreSQL CI job exports the generic URL globally.  Point Alembic
+    # explicitly at this isolated SQLite database instead of relying on the
+    # deprecated BMSTU_* fallback.
+    monkeypatch.setenv("ANDROMEDA_DATABASE_URL", database_url)
     config = Config(str(BACKEND_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
     config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))

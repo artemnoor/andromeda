@@ -37,3 +37,19 @@ test("comparison keeps category charts and legends available", async ({ page }) 
   await expect(page.getByTestId("area-pie-a").getByRole("list", { name: "Легенда программы A" })).toBeVisible();
   await expect(page.getByTestId("area-pie-b").getByRole("list", { name: "Легенда программы B" })).toBeVisible();
 });
+
+test("guest can make and keep an explicit final choice", async ({ page }) => {
+  await openCatalog(page);
+  const addButtons = page.getByRole("button", { name: "Добавить в shortlist" });
+  await expect(addButtons).toHaveCount(2, { timeout: 30_000 });
+  await addButtons.first().click();
+  await page.getByRole("button", { name: "Добавить в shortlist" }).first().click();
+  await page.locator('[data-testid="nav-decision"]:visible, [data-testid="mobile-nav-decision"]:visible').first().click();
+  await expect(page.getByTestId("decision-page")).toBeVisible();
+  await expect(page.getByText("Финальный выбор")).toBeVisible();
+  await page.getByRole("button", { name: "Выбрать эту программу" }).first().click();
+  await page.getByRole("button", { name: "Подтвердить" }).click();
+  await expect(page.getByTestId("final-choice-card")).toContainText("Вы выбрали");
+  await page.reload();
+  await expect(page.getByTestId("final-choice-card")).toContainText("Вы выбрали");
+});

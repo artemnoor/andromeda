@@ -1,4 +1,4 @@
-name: contract-first-tracer
+name: andromeda-ci
 
 on:
   push:
@@ -42,8 +42,8 @@ jobs:
       - name: Run backend tests
         run: python -m pytest -q
         working-directory: backend
-      - name: Run fixture ingestion and canonical API smoke
-        run: python backend/scripts/run_tracer_bullet.py --mode fixture --campus-fixture-dir backend/tests/fixtures/campus/raw --database-url sqlite:///backend/data/ci.db --log-level ERROR
+      - name: Run all-university fixture ingestion and canonical API smoke
+        run: python backend/scripts/run_andromeda_ingestion.py --university all --mode fixture --database-url sqlite:///backend/data/ci.db --log-level ERROR
       - name: Run strict backend typing
         run: python -m mypy
         working-directory: backend
@@ -105,14 +105,14 @@ jobs:
       - run: npm ci
         working-directory: frontend-next
       - name: Run fixture through DB, API, and canonical Next app
-        run: python backend/scripts/run_tracer_demo.py --mode fixture --check --log-level INFO
+        run: python backend/scripts/run_andromeda_demo.py --mode fixture --check --log-level INFO
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
         working-directory: frontend-next
       - name: Start fixture demo for browser tests
         shell: bash
         run: |
-          python backend/scripts/run_tracer_demo.py --mode fixture --log-level INFO > "$RUNNER_TEMP/andromeda-demo.log" 2>&1 &
+          python backend/scripts/run_andromeda_demo.py --mode fixture --log-level INFO > "$RUNNER_TEMP/andromeda-demo.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/andromeda-demo.pid"
           for attempt in {1..90}; do
             if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
@@ -135,7 +135,7 @@ jobs:
     env:
       ANDROMEDA_ENV: test
       ANDROMEDA_POSTGRES_TEST_URL: postgresql+psycopg://andromeda:andromeda-ci@127.0.0.1:5432/andromeda_ci
-      BMSTU_DATABASE_URL: postgresql+psycopg://andromeda:andromeda-ci@127.0.0.1:5432/andromeda_ci
+      ANDROMEDA_DATABASE_URL: postgresql+psycopg://andromeda:andromeda-ci@127.0.0.1:5432/andromeda_ci
       LOG_LEVEL: INFO
       ANDROMEDA_OPS_API_KEY: ci-admin-ops-key
     services:
@@ -189,14 +189,14 @@ jobs:
         run: npm run build
         working-directory: frontend-next
       - name: Run PostgreSQL fixture fullstack check
-        run: python backend/scripts/run_tracer_demo.py --mode fixture --database-url "$BMSTU_DATABASE_URL" --check --log-level INFO
+        run: python backend/scripts/run_andromeda_demo.py --mode fixture --database-url "$ANDROMEDA_DATABASE_URL" --check --log-level INFO
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
         working-directory: frontend-next
       - name: Start PostgreSQL-backed demo for browser tests
         shell: bash
         run: |
-          python backend/scripts/run_tracer_demo.py --mode fixture --database-url "$BMSTU_DATABASE_URL" --log-level INFO > "$RUNNER_TEMP/andromeda-postgres-demo.log" 2>&1 &
+          python backend/scripts/run_andromeda_demo.py --mode fixture --database-url "$ANDROMEDA_DATABASE_URL" --log-level INFO > "$RUNNER_TEMP/andromeda-postgres-demo.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/andromeda-postgres-demo.pid"
           for attempt in {1..120}; do
             if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi

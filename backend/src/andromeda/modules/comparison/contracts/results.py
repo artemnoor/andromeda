@@ -56,6 +56,11 @@ class ComparisonSourceGap(ContractModel):
     code: str
     message: str
     program_ids: tuple[ProgramId, ...] = ()
+    explanation: str = "Официальный источник не содержит это поле в текущем срезе."
+    impact: str = "Сравнение продолжается, но этот блок нельзя считать полным."
+    source_url: str | None = None
+    can_continue: bool = True
+    suggested_action: str = "Откройте официальный источник и проверьте обновление данных."
 
 
 class ProgramComparisonOverview(ContractModel):

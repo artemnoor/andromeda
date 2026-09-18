@@ -54,7 +54,7 @@ test.describe("decision analytics", () => {
     for (const event of events) {
       expect(event.eventId).toMatch(/^decision-event:[0-9a-f]{32}$/);
       for (const key of Object.keys(event.payload ?? {})) expect(forbiddenKeys.has(key)).toBe(false);
-      if (event.payload?.programId) expect(event.payload.programId).toMatch(/^program:[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9]{2,3}$/);
+      if (event.payload?.programId) expect(event.payload.programId).toMatch(/^program:(?:[a-z0-9][a-z0-9-]{1,31}:)?[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9]{2,3}$/);
       if (event.payload?.programIds) expect((event.payload.programIds as string[]).length).toBeLessThanOrEqual(3);
     }
   });

@@ -68,13 +68,20 @@ class HseSource:
         fetched_detail_urls: set[str] = set()
         curriculum_index_urls: set[str] = set()
         plan_urls: set[str] = set()
-        for detail_url in detail_urls:
+        for program_url in detail_urls:
+            # HSE publishes the machine-readable direction code on the
+            # programme's official admission passport, while the catalog link
+            # itself is a marketing overview page. Keep the base URL for plan
+            # discovery and capture the passport as the detail source.
+            detail_url = program_url.rstrip("/") + "/admission/"
             snapshot = self._optional_snapshot("hse_program_detail", detail_url)
+            if snapshot is None:
+                snapshot = self._optional_snapshot("hse_program_detail", program_url)
             if snapshot is None:
                 continue
             snapshots.append(snapshot)
-            fetched_detail_urls.add(detail_url)
-            index_url = detail_url.rstrip("/") + "/learn_plans/"
+            fetched_detail_urls.add(program_url)
+            index_url = program_url.rstrip("/") + "/learn_plans/"
             curriculum_index_urls.add(index_url)
             index_snapshot = self._optional_snapshot("hse_curriculum_index", index_url)
             if index_snapshot is None:

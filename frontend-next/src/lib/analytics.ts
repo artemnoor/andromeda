@@ -37,7 +37,10 @@ const SOURCES: readonly DecisionAnalyticsSource[] = ["catalog", "program", "admi
 const ACTIONS: readonly DecisionAnalyticsAction[] = ["view", "start", "complete", "consider", "add", "remove", "restore", "mark_primary", "mark_alternative", "set_constraints", "answer", "show", "accept", "reject", "return"];
 const STATUSES: readonly DecisionAnalyticsStatus[] = ["realistic", "borderline", "unlikely", "insufficient_data", "available", "provided", "cleared", "started", "completed", "unknown"];
 const ROLES: readonly DecisionAnalyticsRole[] = ["primary", "alternative"];
-const PROGRAM_ID_PATTERN = /^program:[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9]{2,3}$/;
+// University-scoped IDs are canonical; the legacy unscoped shape remains
+// accepted for one compatibility cycle so old clients can still emit safe
+// analytics while they are being upgraded.
+const PROGRAM_ID_PATTERN = /^program:(?:[a-z0-9][a-z0-9-]{1,31}:)?[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9]{2,3}$/;
 const TOKEN_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/;
 const DECISION_ID_PATTERN = /^decision:[0-9a-f]{32}$/;
 const emittedKeys = new Set<string>();

@@ -28,15 +28,18 @@ export function CatalogPage({
   const [query, setQuery] = useState("");
   const [direction, setDirection] = useState("all");
   const [year, setYear] = useState("all");
+  const [university, setUniversity] = useState("all");
 
   const directions = useMemo(() => [...new Set(programs.map((p) => p.directionId))].sort(), [programs]);
   const years = useMemo(() => [...new Set(programs.map((p) => p.educationYear))].sort().reverse(), [programs]);
+  const universities = useMemo(() => [...new Set(programs.map((p) => p.universityId).filter((value): value is string => Boolean(value)))].sort(), [programs]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return programs.filter((p) => {
       if (direction !== "all" && p.directionId !== direction) return false;
       if (year !== "all" && p.educationYear !== year) return false;
+      if (university !== "all" && p.universityId !== university) return false;
       if (!q) return true;
       return (
         p.name.toLowerCase().includes(q) ||
@@ -45,7 +48,7 @@ export function CatalogPage({
         directionLabel(p.directionId).toLowerCase().includes(q)
       );
     });
-  }, [programs, query, direction, year]);
+  }, [programs, query, direction, year, university]);
 
   if (loading) return <Loading label="Загружаем каталог программ…" />;
   if (error) return <ErrorState title="Каталог недоступен" message={error} onRetry={onRetry} />;
@@ -54,13 +57,13 @@ export function CatalogPage({
     <div data-testid="catalog-page">
       <PageHeader
         eyebrow="Каталог"
-        title="Образовательные программы МГТУ"
-        description="Полный каталог программ бакалавриата с привязкой к учебным планам, поступлению и сравнению. Источник — открытые данные приёмной комиссии."
+        title="Каталог образовательных программ"
+        description="Программы BMSTU и HSE с привязкой к учебным планам, поступлению и сравнению. Источник — официальные открытые данные университетов."
       />
 
       <Card className="mb-6 border-border/70 bg-card/80">
-        <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center">
-          <div className="relative flex-1">
+        <CardContent className="flex min-w-0 flex-col gap-3 p-4 md:flex-row md:items-center">
+          <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
@@ -69,9 +72,16 @@ export function CatalogPage({
               className="pl-9"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+            <Select value={university} onValueChange={setUniversity}>
+              <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Университет" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все университеты</SelectItem>
+                {universities.map((id) => <SelectItem key={id} value={id}>{programs.find((p) => p.universityId === id)?.universityName ?? id.replace("university:", "")}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={direction} onValueChange={setDirection}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Направление" />
               </SelectTrigger>
               <SelectContent>
@@ -84,7 +94,7 @@ export function CatalogPage({
               </SelectContent>
             </Select>
             <Select value={year} onValueChange={setYear}>
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-full sm:w-[130px]">
                 <SelectValue placeholder="Год" />
               </SelectTrigger>
               <SelectContent>
@@ -109,14 +119,15 @@ export function CatalogPage({
             className="group flex flex-col border-border/70 transition hover:-translate-y-0.5 hover:shadow-md"
           >
             <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
                   <GraduationCap className="h-3.5 w-3.5" />
-                  {p.code}
+                  <span className="break-words">{p.code}</span>
                 </span>
                 <Tag tone="muted">{p.educationYear}</Tag>
+                {p.universityName && <Tag tone="muted"><span className="break-words">{p.universityName}</span></Tag>}
               </div>
-              <h3 className="mt-2 font-serif text-lg font-semibold leading-snug text-foreground">
+              <h3 className="mt-2 break-words font-serif text-lg font-semibold leading-snug text-foreground">
                 {p.name}
               </h3>
             </CardHeader>
@@ -126,14 +137,14 @@ export function CatalogPage({
               </p>
             </CardContent>
             <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/60 pt-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
                   <BookOpen className="h-3.5 w-3.5" /> учебный план · поступление
                 </span>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="gap-1 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
+                  className="shrink-0 gap-1 self-end text-primary group-hover:bg-primary group-hover:text-primary-foreground sm:self-auto"
                   onClick={() => navigate({ view: "program", id: p.id })}
                 >
                   Открыть <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />

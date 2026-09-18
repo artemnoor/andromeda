@@ -70,7 +70,10 @@ class HseUniversityAdapter:
             locator = SourceLocator(source_url=snapshot.requested_url)
             education_level = "специалитет" if ".05." in direction_code or page.education_level == "специалитет" else "бакалавриат"
             raw_directions.append(RawDirectionRecord(code=direction_code, name=page.direction_name or page.name, education_level=education_level, locator=locator))
-            raw_programs.append(RawProgramRecord(code="pending", name=page.name, direction_code=direction_code, education_level=education_level, education_year=page.education_year, study_plan_url=http_url(page.url.rstrip("/") + "/learn_plans/"), source_url=http_url(page.url), locator=locator, source_code=page.url))
+            program_root = page.url.rstrip("/")
+            if program_root.endswith("/admission"):
+                program_root = program_root[: -len("/admission")]
+            raw_programs.append(RawProgramRecord(code="pending", name=page.name, direction_code=direction_code, education_level=education_level, education_year=page.education_year, study_plan_url=http_url(program_root + "/learn_plans/"), source_url=http_url(page.url), locator=locator, source_code=program_root))
         if not raw_programs:
             raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "HSE details contain no parseable programs")
         raw_programs = list(canonicalize_program_records(raw_programs))
@@ -226,12 +229,37 @@ def _match_raw_program(direction: str | None, name: str | None, programs: Sequen
     candidates = tuple(program for program in programs if not direction or direction in direction_codes(program.direction_code))
     if not name:
         return candidates[0] if len(candidates) == 1 else None
-    target = normalize_name(name)
-    exact = tuple(program for program in candidates if normalize_name(program.name) == target)
+    target = _program_name_variants(name)
+    exact = tuple(program for program in candidates if target.intersection(_program_name_variants(program.name)))
     if len(exact) == 1:
         return exact[0]
-    contained = tuple(program for program in candidates if target in normalize_name(program.name) or normalize_name(program.name) in target)
+    contained = tuple(
+        program
+        for program in candidates
+        if any(
+            left in right or right in left
+            for left in target
+            for right in _program_name_variants(program.name)
+            if len(left) >= 8 and len(right) >= 8
+        )
+    )
     return contained[0] if len(contained) == 1 else (candidates[0] if len(candidates) == 1 else None)
+
+
+def _program_name_variants(value: str) -> set[str]:
+    normalized = normalize_name(value)
+    variants = {normalized}
+    for prefix in ("бакалаврская программа ", "образовательная программа ", "образовательная программа"):
+        if normalized.startswith(prefix):
+            variants.add(normalized[len(prefix) :].strip(" -—–:«»\""))
+    for quoted in re.findall(r"[«\"]([^»\"]+)[»\"]", value):
+        variants.add(normalize_name(quoted))
+    variants = {
+        re.sub(r"\s+(?:проректор|профиль|профиля)$", "", item).strip()
+        for item in variants
+        if item
+    }
+    return variants
 
 
 def _source_for_program(captured: CapturedSources, program: RawProgramRecord) -> RawSourceSnapshot:

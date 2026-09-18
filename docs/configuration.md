@@ -7,11 +7,11 @@
 | Переменная | Компонент | По умолчанию | Назначение |
 |---|---|---|---|
 | `ANDROMEDA_ENV` | backend | `test` | Окружение: `test`, `development` или `staging`; non-test требует PostgreSQL |
-| `BMSTU_DATABASE_URL` | backend | SQLite fallback | Единый SQLAlchemy storage target для API, Alembic и ingestion |
-| `BMSTU_DB_POOL_SIZE` | backend | `5` | PostgreSQL connection pool size |
-| `BMSTU_DB_MAX_OVERFLOW` | backend | `10` | Дополнительные PostgreSQL connections |
-| `BMSTU_DB_POOL_TIMEOUT` | backend | `30` | Ожидание connection из pool, seconds |
-| `BMSTU_DB_POOL_RECYCLE` | backend | `1800` | Connection recycle interval, seconds |
+| `ANDROMEDA_DATABASE_URL` | backend | SQLite fallback | Единый SQLAlchemy storage target для API, Alembic и generic ingestion; имеет приоритет |
+| `ANDROMEDA_DB_POOL_SIZE` | backend | `5` | PostgreSQL connection pool size |
+| `ANDROMEDA_DB_MAX_OVERFLOW` | backend | `10` | Дополнительные PostgreSQL connections |
+| `ANDROMEDA_DB_POOL_TIMEOUT` | backend | `30` | Ожидание connection из pool, seconds |
+| `ANDROMEDA_DB_POOL_RECYCLE` | backend | `1800` | Connection recycle interval, seconds |
 | `FRONTEND_ORIGIN` | backend | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated trusted CORS/CSRF origins |
 | `LOG_LEVEL` | backend | `INFO` | logging level |
 | `ANDROMEDA_PROFILE_COOKIE_NAME` | backend | `andromeda_profile_session` | Anonymous profile cookie name |
@@ -38,9 +38,10 @@
 Для повторяемого fixture-запуска database URL можно передать явно:
 
 ```powershell
-python backend/scripts/run_tracer_bullet.py --mode fixture --database-url sqlite:///./data/tracer.db
+python backend/scripts/run_andromeda_ingestion.py --university all --mode fixture --database-url sqlite:///./data/andromeda.db
 ```
 
+`BMSTU_DATABASE_URL` и `BMSTU_DB_*` временно поддерживаются как deprecated fallback для обратной совместимости.
 `LOG_LEVEL=DEBUG` включает технические stage-сообщения, но raw response body, PDF text и signed query strings в логах не выводятся.
 
 В development/staging credentials передаются только через environment. Database URL в логах редактируется до `dialect://host:port/database`; password и query parameters не выводятся. SQLite fallback предназначен для быстрых тестов и старых локальных команд, не для staging.

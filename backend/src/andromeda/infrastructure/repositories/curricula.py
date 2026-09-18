@@ -10,7 +10,7 @@ from andromeda.modules.curricula.contracts.public import Curriculum, CurriculumI
 from andromeda.modules.curricula.repository.ports import CurriculumReader, CurriculumWriter
 from andromeda.shared.contracts.enums import AssessmentType
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
-from andromeda.shared.contracts.ids import ProgramId
+from andromeda.shared.contracts.ids import ProgramId, canonical_program_id
 
 from ..database.models import AssessmentTypeModel, CurriculumItemAssessmentModel, CurriculumItemModel, CurriculumModel
 
@@ -20,8 +20,9 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
         self._session = session
 
     def get_for_program(self, program_id: ProgramId) -> Curriculum | None:
+        resolved_program_id = canonical_program_id(program_id)
         model = self._session.execute(
-            select(CurriculumModel).where(CurriculumModel.program_id == program_id).order_by(CurriculumModel.education_year.desc())
+            select(CurriculumModel).where(CurriculumModel.program_id == resolved_program_id).order_by(CurriculumModel.education_year.desc())
         ).scalars().first()
         if model is None:
             return None
@@ -47,9 +48,10 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
 
         if not program_ids:
             return {}
+        resolved_program_ids = tuple(canonical_program_id(program_id) for program_id in program_ids)
         models = self._session.execute(
             select(CurriculumModel)
-            .where(CurriculumModel.program_id.in_(program_ids))
+            .where(CurriculumModel.program_id.in_(resolved_program_ids))
             .order_by(CurriculumModel.program_id, CurriculumModel.education_year.desc(), CurriculumModel.id)
         ).scalars().all()
         latest_by_program: dict[ProgramId, CurriculumModel] = {}

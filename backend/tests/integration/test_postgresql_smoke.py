@@ -75,7 +75,7 @@ def test_postgresql_supports_the_existing_api_vertical_slice() -> None:
     assert comparison.json()["rows"]
     assert proftest.status_code == 200
     assert admission_fit.status_code == 200
-    assert admission_fit.json()["programId"] == "program:09.03.01-02"
+    assert admission_fit.json()["programId"] == "program:bmstu:09.03.01-02"
     profile = proftest.json()["profile"]
     recommendations = client.post("/recommendations", json={"profile": profile, "limit": 2})
     assert recommendations.status_code == 200

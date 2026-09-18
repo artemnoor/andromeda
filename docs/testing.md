@@ -4,6 +4,14 @@
 
 ## Backend
 
+Multi-university HSE gate:
+
+```powershell
+python -m pytest -q tests/ingestion/test_hse_parser.py tests/integration/test_hse_full_ingestion.py
+```
+
+Проверяются official fixture metadata, HSE parser → canonical → persistence, admissions/curricula, repeat ingestion и coexistence с BMSTU при одинаковом direction code.
+
 ```powershell
 cd backend
 python -m pytest -q
@@ -67,8 +75,8 @@ npm run build
 Повторяемый SQLite smoke полного runner:
 
 ```powershell
-python backend/scripts/run_tracer_bullet.py --mode fixture --database-url sqlite:///backend/data/bmstu-admission-ci.db --log-level INFO
-python backend/scripts/run_tracer_bullet.py --mode fixture --database-url sqlite:///backend/data/bmstu-admission-ci.db --log-level INFO
+python backend/scripts/run_andromeda_ingestion.py --university all --mode fixture --database-url sqlite:///backend/data/andromeda-admission-ci.db --log-level INFO
+python backend/scripts/run_andromeda_ingestion.py --university all --mode fixture --database-url sqlite:///backend/data/andromeda-admission-ci.db --log-level INFO
 ```
 
 На live smoke runner динамически читает только официальный [orders manifest](https://priem.bmstu.ru/lists/orders.json) и сохраняет source gaps вместо нулевых или выдуманных баллов. В CI live сеть не требуется: используются sanitized source excerpts и injected fetchers.
@@ -108,7 +116,7 @@ npm run test:e2e
 E2E-тест использует стабильные `data-testid`, сохраняет existing comparison coverage и проходит профтест до explainable recommendation на desktop/mobile. Отдельный browser scenario завершает тест, очищает local draft и проверяет восстановление профиля и current recommendations по cookie/API. `legacy-flow-compat.spec.ts` проверяет, что старый `flow` URL открывает нейтральный DecisionContext без mandatory funnel. `events-support-layer.spec.ts` проверяет optional personal route, source-backed event-to-program links и видимый source gap для события без связи; просмотр не меняет shortlist. `admissions.spec.ts` открывает страницу реальной программы, проверяет offering, места, ЕГЭ, стоимость и переключение программы на desktop/mobile. `recommendations.spec.ts` отдельно проверяет Content Fit, блоки дисциплин, семестры, reasons/anti-reasons и отсутствие горизонтального overflow. `admission-fit.spec.ts` открывает тот же program flow, выбирает source-backed offering, вводит баллы, проверяет отдельный score/status/reasons и повторяет сценарий на viewport 390px без горизонтального overflow. Перед ним должен работать fixture demo:
 
 ```powershell
-python backend/scripts/run_tracer_demo.py --mode fixture
+python backend/scripts/run_andromeda_demo.py --mode fixture
 ```
 
 Recommendation tests дополнительно проверяют strict contracts и module boundary, неизменность детерминированного ranking, tie-break по коду, монотонный anti-interest penalty, evidence-backed explanations, пять synthetic personas, empty catalog и DB → catalog adapter → service → API путь.
@@ -133,7 +141,7 @@ fixture demo на отдельном порту, если стандартный
 
 ```powershell
 $env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:3001"
-python backend/scripts/run_tracer_demo.py --mode fixture --api-port 8010 --frontend-port 3001
+python backend/scripts/run_andromeda_demo.py --mode fixture --api-port 8010 --frontend-port 3001
 cd frontend-next
 npx playwright test --workers=1
 ```

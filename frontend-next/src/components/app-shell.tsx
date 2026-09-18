@@ -49,7 +49,7 @@ export function AppShell({
             </span>
             <span className="hidden leading-tight sm:block">
               <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
-                Andromeda · BMSTU
+                Andromeda · выбор программ
               </span>
               <span className="block font-serif text-sm font-semibold text-foreground">
                 Учебные планы как данные
@@ -131,7 +131,7 @@ export function AppShell({
       <footer className="mt-auto border-t border-border/70 bg-background/60">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-4 py-5 text-xs text-muted-foreground md:flex-row md:px-6">
           <p>
-            <span className="font-semibold text-foreground">Andromeda</span> · source-backed данные МГТУ им. Н.Э. Баумана
+            <span className="font-semibold text-foreground">Andromeda</span> · source-backed данные университетских программ
           </p>
           <p>Обновляем только через API · {new Date().getFullYear()}</p>
         </div>

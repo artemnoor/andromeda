@@ -10,8 +10,8 @@ from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionR
 from andromeda.ingestion.universities.bmstu import BmstuUniversityAdapter
 
 
-PROGRAM_A = "program:09.03.01-02"
-PROGRAM_B = "program:09.03.01-12"
+PROGRAM_A = "program:bmstu:09.03.01-02"
+PROGRAM_B = "program:bmstu:09.03.01-12"
 
 
 def _client(tmp_path: Path) -> TestClient:
@@ -76,6 +76,23 @@ def test_shortlist_mutations_use_revision_and_never_hide_explicit_choice(tmp_pat
     entry = restored.json()["context"]["state"]["choice"]["shortlistEntries"][0]
     assert entry["programId"] == PROGRAM_A
     assert entry["state"] == "active"
+
+
+def test_final_choice_requires_explicit_shortlist_entry_and_survives_reopen(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    rejected = client.post("/decision/final-choice", json={"programId": PROGRAM_A, "expectedRevision": 1})
+    assert rejected.status_code == 400, rejected.text
+
+    added = client.post("/decision/shortlist", json={"programId": PROGRAM_A, "expectedRevision": 1})
+    revision = added.json()["context"]["state"]["revision"]
+    selected = client.post("/decision/final-choice", json={"programId": PROGRAM_A, "expectedRevision": revision})
+    assert selected.status_code == 200, selected.text
+    assert selected.json()["context"]["state"]["selectedProgramId"] == PROGRAM_A
+    assert selected.json()["context"]["metadata"]["status"] == "finalized"
+
+    reopened = client.request("DELETE", "/decision/final-choice", json={"expectedRevision": selected.json()["context"]["state"]["revision"]})
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["context"]["state"]["selectedProgramId"] is None
 
 
 def test_unknown_program_is_not_accepted_into_shortlist(tmp_path: Path) -> None:

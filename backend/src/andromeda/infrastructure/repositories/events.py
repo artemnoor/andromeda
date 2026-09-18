@@ -16,7 +16,7 @@ from andromeda.modules.events.domain.entities import Event, EventFormat, EventKi
 from andromeda.modules.events.repository.ports import EventRepository
 from andromeda.shared.contracts.enums import SourceKind
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
-from andromeda.shared.contracts.ids import EventId
+from andromeda.shared.contracts.ids import EventId, canonical_program_id
 from andromeda.shared.contracts.provenance import SourceAttribution
 
 from ..database.models import (
@@ -190,17 +190,19 @@ class SqlAlchemyEventRepository(EventRepository):
                 .exists()
             )
         if filters.program_id is not None:
+            program_id = canonical_program_id(filters.program_id)
             query = query.where(
                 select(EventProgramLinkModel.event_id)
-                .where(EventProgramLinkModel.event_id == EventModel.id, EventProgramLinkModel.program_id == filters.program_id)
+                .where(EventProgramLinkModel.event_id == EventModel.id, EventProgramLinkModel.program_id == program_id)
                 .exists()
             )
         if filters.recommended:
+            recommended_program_ids = tuple(canonical_program_id(program_id) for program_id in filters.recommended_program_ids)
             query = query.where(
                 select(EventProgramLinkModel.event_id)
                 .where(
                     EventProgramLinkModel.event_id == EventModel.id,
-                    EventProgramLinkModel.program_id.in_(filters.recommended_program_ids),
+                    EventProgramLinkModel.program_id.in_(recommended_program_ids),
                 )
                 .exists()
             )

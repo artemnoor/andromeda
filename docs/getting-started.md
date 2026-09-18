@@ -24,10 +24,20 @@ cd ..
 Из корня репозитория:
 
 ```powershell
-python backend/scripts/run_tracer_demo.py --mode fixture --check
+python backend/scripts/run_andromeda_demo.py --mode fixture --check
 ```
 
-Команда прогоняет captured BMSTU sources через ingestion, Alembic, SQLite, FastAPI и canonical Next app, затем проверяет catalog, compare и admissions endpoints. Для ручного просмотра используйте ту же команду без `--check`.
+Команда прогоняет captured sources через ingestion, Alembic, SQLite, FastAPI и canonical Next app, затем проверяет catalog, compare и admissions endpoints. Для ручного просмотра используйте ту же команду без `--check`.
+
+Для generic ingestion:
+
+```powershell
+python backend/scripts/run_andromeda_ingestion.py --university bmstu --mode fixture
+python backend/scripts/run_andromeda_ingestion.py --university hse --mode fixture
+python backend/scripts/run_andromeda_ingestion.py --university all --mode fixture
+```
+
+Официальные raw fixtures находятся в `backend/tests/fixtures/tracer/raw` (BMSTU) и `backend/tests/fixtures/hse/raw` (HSE); production live режим не подменяется fixtures.
 
 ## Проверка результата
 
@@ -47,7 +57,7 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 Для live-источников:
 
 ```powershell
-python backend/scripts/run_tracer_demo.py --mode live
+python backend/scripts/run_andromeda_demo.py --mode live
 ```
 
 ## PostgreSQL dev
@@ -58,9 +68,9 @@ python backend/scripts/run_tracer_demo.py --mode live
 Copy-Item .env.development.example .env.development
 docker compose --env-file .env.development -f ops/postgres/docker-compose.yml --profile development up -d postgres-dev
 $env:ANDROMEDA_ENV = "development"
-$env:BMSTU_DATABASE_URL = "postgresql+psycopg://andromeda:change-me@127.0.0.1:5432/andromeda_dev"
+$env:ANDROMEDA_DATABASE_URL = "postgresql+psycopg://andromeda:change-me@127.0.0.1:5432/andromeda_dev"
 python -m alembic upgrade head
-python backend/scripts/run_tracer_bullet.py --mode fixture --database-url $env:BMSTU_DATABASE_URL
+python backend/scripts/run_andromeda_ingestion.py --university all --mode fixture --database-url $env:ANDROMEDA_DATABASE_URL
 ```
 
 После ingestion запустите API и `frontend-next` отдельными процессами либо через demo runner с тем же `--database-url`. Для staging используйте `.env.staging.example`, профиль `staging`, порт `5433` и базу `andromeda_staging`. Подробности, refresh и troubleshooting — в [руководстве PostgreSQL](postgresql.md).

@@ -32,8 +32,8 @@ OpenAPI экспортируется backend script и генерирует ед
 ## Поток данных
 
 ```text
-BMSTU source
-  → ingestion/universities/bmstu
+official university source
+  → ingestion registry / universities/{adapter}
   → raw DTO → normalization → canonical contracts
   → universities / programs / curricula / disciplines
   → infrastructure repositories → PostgreSQL (development/staging) or SQLite (tests)
@@ -206,7 +206,20 @@ BMSTU URL, catalog pagination, detail/API shape, public study-plan resolver, PDF
 
 ## Storage boundary
 
-`BMSTU_DATABASE_URL` — единый target для FastAPI, Alembic и ingestion runner. `SqlAlchemy*Repository` и `SqlAlchemyIngestionRepository` — infrastructure adapters; модули видят только public contracts и repository ports. Поэтому PostgreSQL не меняет comparison/proftest/recommendations и не требует переписывать их scoring или fingerprint logic.
+`ANDROMEDA_DATABASE_URL` — единый target для FastAPI, Alembic и generic ingestion runner; `BMSTU_DATABASE_URL` временно поддерживается как deprecated fallback. `SqlAlchemy*Repository` и `SqlAlchemyIngestionRepository` — infrastructure adapters; модули видят только public contracts и repository ports. Поэтому PostgreSQL не меняет comparison/proftest/recommendations и не требует переписывать их scoring или fingerprint logic.
+
+University registry выполняет единый orchestration flow:
+
+```text
+UniversityAdapter registry
+  → capture(mode=fixture|live)
+  → parse(raw DTOs)
+  → normalize + deterministic taxonomy
+  → provenance/identity/sanity validation
+  → atomic canonical persistence
+```
+
+University-owned identities namespaced: `university:bmstu`, `university:hse`, `direction:{university}:{code}`, `program:{university}:{local-code}`, `curriculum:{university}:{program-local-code}-{year}`. Local code остаётся отдельным полем. Discipline остаётся global canonical concept по нормализованному названию, потому что это намеренная cross-university vocabulary boundary.
 
 `user_profiles` хранит только сериализованный public `UserProfile` и nullable future `account_id`; raw session token, answers и ORM objects не являются публичными контрактами. LocalStorage во frontend используется только для незавершённого draft. Completed profile восстанавливается через API и cookie.
 

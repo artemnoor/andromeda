@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Andromeda Educational Program Comparison API",
-    "description": "Strict source-backed contracts for comparing BMSTU educational programmes.",
+    "title": "Andromeda Decision Support API",
+    "description": "Strict source-backed contracts for discovering, comparing and choosing educational programmes across supported universities.",
     "version": "1.0.0"
   },
   "paths": {
@@ -13,6 +13,24 @@
         ],
         "summary": "List Programs",
         "operationId": "list_programs_programs_get",
+        "parameters": [
+          {
+            "name": "universityId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Universityid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -25,64 +43,64 @@
             }
           },
           "400": {
-            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Bad Request"
           },
           "401": {
-            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Unauthorized"
           },
           "404": {
-            "description": "Not Found",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Not Found"
           },
           "409": {
-            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Conflict"
           },
           "422": {
-            "description": "Unprocessable Entity",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Unprocessable Entity"
           },
           "500": {
-            "description": "Internal Server Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
-            }
+            },
+            "description": "Internal Server Error"
           }
         }
       }
@@ -101,7 +119,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Id"
             }
           }
@@ -194,7 +212,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Id"
             }
           }
@@ -287,7 +305,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Id"
             }
           }
@@ -380,7 +398,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Id"
             }
           }
@@ -2126,7 +2144,7 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+                  "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
                 },
                 {
                   "type": "null"
@@ -2375,7 +2393,7 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+                  "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
                 },
                 {
                   "type": "null"
@@ -3264,6 +3282,204 @@
         }
       }
     },
+    "/ops/ingestion/source-health": {
+      "get": {
+        "tags": [
+          "admin-ops"
+        ],
+        "summary": "Get Source Health",
+        "operationId": "get_source_health",
+        "parameters": [
+          {
+            "name": "X-Andromeda-Ops-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Andromeda-Ops-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceHealthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/ops/analytics/funnel": {
+      "get": {
+        "tags": [
+          "admin-ops"
+        ],
+        "summary": "Get Decision Analytics Funnel",
+        "operationId": "get_decision_analytics_funnel",
+        "parameters": [
+          {
+            "name": "X-Andromeda-Ops-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Andromeda-Ops-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionAnalyticsFunnelResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/auth/register": {
       "post": {
         "tags": [
@@ -3446,6 +3662,87 @@
         }
       }
     },
+    "/auth/decision/import-guest": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Import Guest Decision",
+        "operationId": "import_guest_decision_auth_decision_import_guest_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/logout": {
       "post": {
         "tags": [
@@ -3459,7 +3756,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthSessionResponse"
+                  "$ref": "#/components/schemas/AuthStateResponse"
                 }
               }
             }
@@ -3540,7 +3837,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthSessionResponse"
+                  "$ref": "#/components/schemas/AuthStateResponse"
                 }
               }
             }
@@ -4239,7 +4536,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Program Id"
             }
           }
@@ -4340,7 +4637,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Program Id"
             }
           }
@@ -4436,6 +4733,193 @@
         }
       }
     },
+    "/decision/final-choice": {
+      "post": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Select Final Choice",
+        "operationId": "select_final_choice_decision_final_choice_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionProgramCommandRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Reopen Final Choice",
+        "operationId": "reopen_final_choice_decision_final_choice_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DecisionRevisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/decision/programs/{program_id}/restore": {
       "post": {
         "tags": [
@@ -4450,7 +4934,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Program Id"
             }
           }
@@ -4560,7 +5044,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Program Id"
             }
           }
@@ -4668,7 +5152,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Program Id"
             }
           }
@@ -4778,7 +5262,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Program Id"
             }
           }
@@ -4888,7 +5372,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
               "title": "Program Id"
             }
           }
@@ -4980,6 +5464,170 @@
               }
             },
             "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Live",
+        "operationId": "live_health_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Live Health Live Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Ready",
+        "operationId": "ready_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -5786,6 +6434,17 @@
                 "type": "null"
               }
             ]
+          },
+          "decisionTransfer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decisiontransfer"
           }
         },
         "additionalProperties": false,
@@ -5794,6 +6453,30 @@
           "authenticated"
         ],
         "title": "AuthSessionResponse"
+      },
+      "AuthStateResponse": {
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "title": "Authenticated"
+          },
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AccountResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "authenticated"
+        ],
+        "title": "AuthStateResponse"
       },
       "CampusDepartmentReferenceResponse": {
         "properties": {
@@ -5882,7 +6565,7 @@
           "programIds": {
             "items": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
             },
             "type": "array",
             "title": "Programids",
@@ -6062,7 +6745,7 @@
           "programIds": {
             "items": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
             },
             "type": "array",
             "title": "Programids",
@@ -6110,12 +6793,12 @@
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
             "title": "Id"
           },
           "directionId": {
             "type": "string",
-            "pattern": "^direction:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}$",
+            "pattern": "^direction:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}$",
             "title": "Directionid"
           },
           "code": {
@@ -6212,7 +6895,7 @@
           "recommendedProgramIds": {
             "items": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
             },
             "type": "array",
             "title": "Recommendedprogramids",
@@ -6525,6 +7208,37 @@
             },
             "type": "array",
             "title": "Programids"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation",
+            "default": "Официальный источник не содержит это поле в текущем срезе."
+          },
+          "impact": {
+            "type": "string",
+            "title": "Impact",
+            "default": "Сравнение продолжается, но этот блок нельзя считать полным."
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceurl"
+          },
+          "canContinue": {
+            "type": "boolean",
+            "title": "Cancontinue",
+            "default": true
+          },
+          "suggestedAction": {
+            "type": "string",
+            "title": "Suggestedaction",
+            "default": "Откройте официальный источник и проверьте обновление данных."
           }
         },
         "additionalProperties": false,
@@ -6867,6 +7581,109 @@
         ],
         "title": "DecisionAnalyticsEventRequest"
       },
+      "DecisionAnalyticsFunnelResponse": {
+        "properties": {
+          "decisionSessions": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Decisionsessions"
+          },
+          "shortlistStarted": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Shortliststarted"
+          },
+          "comparisonStarted": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Comparisonstarted"
+          },
+          "comparisonCompleted": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Comparisoncompleted"
+          },
+          "suggestionShown": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Suggestionshown"
+          },
+          "suggestionAccepted": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Suggestionaccepted"
+          },
+          "finalChoiceSelected": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Finalchoiceselected"
+          },
+          "averageShortlistSize": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 20.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Averageshortlistsize"
+          },
+          "shortlistConversionPercent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shortlistconversionpercent"
+          },
+          "comparisonConversionPercent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparisonconversionpercent"
+          },
+          "finalChoiceConversionPercent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finalchoiceconversionpercent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decisionSessions",
+          "shortlistStarted",
+          "comparisonStarted",
+          "comparisonCompleted",
+          "suggestionShown",
+          "suggestionAccepted",
+          "finalChoiceSelected"
+        ],
+        "title": "DecisionAnalyticsFunnelResponse"
+      },
       "DecisionAnalyticsPayloadRequest": {
         "properties": {
           "source": {
@@ -6903,7 +7720,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+                "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
               },
               {
                 "type": "null"
@@ -6914,7 +7731,7 @@
           "programIds": {
             "items": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
             },
             "type": "array",
             "maxItems": 3,
@@ -7110,7 +7927,7 @@
           "consideredProgramIds": {
             "items": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
             },
             "type": "array",
             "title": "Consideredprogramids"
@@ -7125,7 +7942,7 @@
           "excludedProgramIds": {
             "items": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
             },
             "type": "array",
             "title": "Excludedprogramids"
@@ -7477,7 +8294,7 @@
           },
           "programId": {
             "type": "string",
-            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
             "title": "Programid"
           },
           "expectedRevision": {
@@ -7577,7 +8394,7 @@
           "candidateProgramIds": {
             "items": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
             },
             "type": "array",
             "title": "Candidateprogramids"
@@ -7655,7 +8472,7 @@
           },
           "programId": {
             "type": "string",
-            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
             "title": "Programid"
           },
           "expectedRevision": {
@@ -7686,7 +8503,7 @@
         "properties": {
           "programId": {
             "type": "string",
-            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
             "title": "Programid"
           },
           "role": {
@@ -7745,7 +8562,7 @@
         "properties": {
           "programId": {
             "type": "string",
-            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
             "title": "Programid"
           },
           "programCode": {
@@ -7900,6 +8717,30 @@
           "choice": {
             "$ref": "#/components/schemas/DecisionChoiceResponse"
           },
+          "selectedProgramId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedprogramid"
+          },
+          "selectedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedat"
+          },
           "explicitPriorities": {
             "items": {
               "type": "string"
@@ -7987,7 +8828,7 @@
         "properties": {
           "programId": {
             "type": "string",
-            "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+            "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
             "title": "Programid"
           },
           "programCode": {
@@ -8595,7 +9436,7 @@
           "programIds": {
             "items": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
             },
             "type": "array",
             "title": "Programids",
@@ -8814,6 +9655,51 @@
             ],
             "title": "Errormessage"
           },
+          "universityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Universityid"
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durationms"
+          },
+          "sourceGapCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sourcegapcount",
+            "default": 0
+          },
+          "criticalGapCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Criticalgapcount",
+            "default": 0
+          },
+          "driftStatus": {
+            "type": "string",
+            "enum": [
+              "not_checked",
+              "passed",
+              "rejected"
+            ],
+            "title": "Driftstatus",
+            "default": "not_checked"
+          },
           "sourceHashes": {
             "items": {
               "type": "string",
@@ -8979,6 +9865,51 @@
               }
             ],
             "title": "Errormessage"
+          },
+          "universityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Universityid"
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durationms"
+          },
+          "sourceGapCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sourcegapcount",
+            "default": 0
+          },
+          "criticalGapCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Criticalgapcount",
+            "default": 0
+          },
+          "driftStatus": {
+            "type": "string",
+            "enum": [
+              "not_checked",
+              "passed",
+              "rejected"
+            ],
+            "title": "Driftstatus",
+            "default": "not_checked"
           }
         },
         "additionalProperties": false,
@@ -9270,7 +10201,7 @@
           "programIds": {
             "items": {
               "type": "string",
-              "pattern": "^program:[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$"
             },
             "type": "array",
             "title": "Programids",
@@ -10018,6 +10949,28 @@
             "minLength": 1,
             "format": "uri",
             "title": "Sourceurl"
+          },
+          "universityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Universityid"
+          },
+          "universityName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Universityname"
           }
         },
         "additionalProperties": false,
@@ -10385,12 +11338,6 @@
             "type": "array",
             "title": "Distinctivesubjects"
           },
-          "workloadReadiness": {
-            "$ref": "#/components/schemas/OptionalMetricResponse"
-          },
-          "careerFit": {
-            "$ref": "#/components/schemas/OptionalMetricResponse"
-          },
           "admissionFit": {
             "$ref": "#/components/schemas/OptionalMetricResponse"
           }
@@ -10408,8 +11355,6 @@
           "areaShare",
           "semesterDistribution",
           "distinctiveSubjects",
-          "workloadReadiness",
-          "careerFit",
           "admissionFit"
         ],
         "title": "RecommendationResponse"
@@ -10551,6 +11496,104 @@
         ],
         "title": "ShortlistRole",
         "description": "Explicit role assigned by the user to an active shortlist entry."
+      },
+      "SourceHealthItemResponse": {
+        "properties": {
+          "universityId": {
+            "type": "string",
+            "title": "Universityid"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "stale",
+              "degraded",
+              "failed"
+            ],
+            "title": "State"
+          },
+          "latestSuccessfulRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^ingest:[a-f0-9]{32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latestsuccessfulrunid"
+          },
+          "latestAttemptRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^ingest:[a-f0-9]{32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latestattemptrunid"
+          },
+          "ageSeconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ageseconds"
+          },
+          "sourceGapCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Sourcegapcount"
+          },
+          "criticalGapCount": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Criticalgapcount"
+          },
+          "driftStatus": {
+            "type": "string",
+            "enum": [
+              "not_checked",
+              "passed",
+              "rejected"
+            ],
+            "title": "Driftstatus"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "universityId",
+          "state",
+          "sourceGapCount",
+          "criticalGapCount",
+          "driftStatus"
+        ],
+        "title": "SourceHealthItemResponse"
+      },
+      "SourceHealthResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SourceHealthItemResponse"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SourceHealthResponse"
       },
       "SourceKind": {
         "type": "string",

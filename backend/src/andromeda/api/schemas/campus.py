@@ -19,7 +19,7 @@ from andromeda.modules.campus.contracts.results import CampusPointEventsResult, 
 from andromeda.modules.events.domain.entities import Event
 from andromeda.modules.proftest.contracts.public import Recommendation
 from andromeda.shared.contracts.enums import SourceKind
-from andromeda.shared.contracts.ids import DepartmentId, EventId, ProgramId, UniversityId, VenueId
+from andromeda.shared.contracts.ids import DepartmentId, DirectionId, EventId, ProgramId, UniversityId, VenueId
 
 from .common import ApiModel
 from .events import EventResponse, event_response
@@ -44,7 +44,7 @@ class CampusUniversityReferenceResponse(ApiModel):
 
 class CampusProgramReferenceResponse(ApiModel):
     id: ProgramId
-    direction_id: str = Field(pattern=r"^direction:[0-9]{2}\.[0-9]{2}\.[0-9]{2}$")
+    direction_id: DirectionId
     code: str = Field(pattern=r"^[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9]{2,3}$")
     name: str = Field(min_length=1, max_length=512)
     education_year: int = Field(strict=True, ge=2000, le=2100)

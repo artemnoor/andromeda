@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, CircleAlert, Eye, RefreshCw, Sparkles, X } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { EmptyState, ErrorState, Loading, PageHeader, SectionTitle, Stat, Tag } from "@/components/shared";
+import { EmptyState, explainSourceGap, ErrorState, Loading, PageHeader, SectionTitle, Stat, Tag } from "@/components/shared";
 import { useDecisionContext } from "./decision-context";
 import type { Route } from "@/lib/router";
 import type { DecisionShortlistEntry, DecisionShortlistItem, DecisionSuggestion } from "@/lib/types";
@@ -32,8 +32,11 @@ export function DecisionPage({ navigate }: { navigate: (route: Route) => void })
     setRole,
     acceptSuggestion,
     rejectSuggestion,
+    selectFinalChoice,
+    reopenFinalChoice,
   } = useDecisionContext();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [choiceToConfirm, setChoiceToConfirm] = useState<string | null>(null);
   const returnedToChoiceRef = useRef(false);
 
   useEffect(() => {
@@ -83,6 +86,8 @@ export function DecisionPage({ navigate }: { navigate: (route: Route) => void })
   const hasChoice = activeShortlist.length > 0 || removedShortlist.length > 0;
   const knownPreferences = Boolean(context.preferences);
   const knownAdmission = Boolean(context.state.admissionConstraints);
+  const selectedProgramId = context.state.selectedProgramId ?? null;
+  const selectedDetail = selectedProgramId ? activeDetails.get(selectedProgramId) : undefined;
 
   return (
     <div data-testid="decision-page" className="space-y-6">
@@ -182,6 +187,21 @@ export function DecisionPage({ navigate }: { navigate: (route: Route) => void })
         </>
       )}
 
+      {hasChoice && (
+        <FinalChoiceCard
+          selectedProgramId={selectedProgramId}
+          selectedDetail={selectedDetail}
+          activeShortlist={activeShortlist}
+          details={activeDetails}
+          choiceToConfirm={choiceToConfirm}
+          disabled={isMutating}
+          pendingAction={pendingAction}
+          onRequestSelect={setChoiceToConfirm}
+          onConfirmSelect={(id) => void run(`final:${id}`, async () => { await selectFinalChoice(id); setChoiceToConfirm(null); })}
+          onReopen={() => void run("reopen-final", reopenFinalChoice)}
+        />
+      )}
+
       <Card>
         <CardHeader className="pb-3">
           <SectionTitle hint="derived data · не ваше решение"><span className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Предложения системы</span></SectionTitle>
@@ -209,7 +229,7 @@ export function DecisionPage({ navigate }: { navigate: (route: Route) => void })
               ))}
             </div>
           )}
-          {suggestions?.sourceGaps.length ? <p className="mt-4 text-xs text-muted-foreground">Ограничения источников: {suggestions.sourceGaps.join(", ")}</p> : null}
+          {suggestions?.sourceGaps.length ? <p className="mt-4 text-xs text-muted-foreground">Ограничения источников: {suggestions.sourceGaps.map(explainSourceGap).join(" ")}</p> : null}
         </CardContent>
       </Card>
 
@@ -231,6 +251,87 @@ export function DecisionPage({ navigate }: { navigate: (route: Route) => void })
 
 function disabledFor(pending: string | null, action: string, disabled: boolean): boolean {
   return disabled || pending === action;
+}
+
+function FinalChoiceCard({
+  selectedProgramId,
+  selectedDetail,
+  activeShortlist,
+  details,
+  choiceToConfirm,
+  disabled,
+  pendingAction,
+  onRequestSelect,
+  onConfirmSelect,
+  onReopen,
+}: {
+  selectedProgramId: string | null;
+  selectedDetail?: DecisionShortlistItem;
+  activeShortlist: DecisionShortlistEntry[];
+  details: Map<string, DecisionShortlistItem>;
+  choiceToConfirm: string | null;
+  disabled: boolean;
+  pendingAction: string | null;
+  onRequestSelect: (programId: string | null) => void;
+  onConfirmSelect: (programId: string) => void;
+  onReopen: () => void;
+}) {
+  const title = selectedDetail?.programName ?? selectedProgramId ?? "Программа не выбрана";
+  const university = selectedProgramId ? universityLabel(selectedProgramId) : null;
+  return (
+    <Card className="border-primary/40 bg-primary/[0.04]" data-testid="final-choice-card">
+      <CardHeader className="pb-3"><SectionTitle hint="только ваше явное действие">Финальный выбор</SectionTitle></CardHeader>
+      <CardContent className="space-y-4">
+        {selectedProgramId ? (
+          <div className="rounded-xl border border-primary/30 bg-background p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-primary">Вы выбрали</p>
+            <p className="mt-2 font-serif text-xl font-semibold">{title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{university} · {selectedDetail?.programCode ?? selectedProgramId}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Tag tone="muted">Поступление: {selectedDetail?.admissionStatus ?? selectedDetail?.admissionRisk ?? "нет данных"}</Tag>
+              {selectedDetail?.contentFit && <Tag tone="primary">Content Fit: {selectedDetail.contentFit.contentFit}</Tag>}
+              {selectedDetail?.sourceGaps.map((gap) => <Tag key={gap} tone="muted">{explainSourceGap(gap)}</Tag>)}
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">Это сохранённое решение не меняется от обновления рекомендаций. Можно открыть программу, сравнить её с shortlist или изменить выбор.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={onReopen}>Изменить выбор</Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">Выберите одну из сохранённых программ, когда будете готовы. Andromeda не назначает финальный вариант автоматически.</p>
+            <div className="grid gap-2 md:grid-cols-2">
+              {activeShortlist.map((entry) => {
+                const detail = details.get(entry.programId);
+                const confirming = choiceToConfirm === entry.programId;
+                return (
+                  <div key={entry.programId} className="rounded-lg border border-border/70 bg-background p-3">
+                    <p className="font-medium">{detail?.programName ?? entry.programId}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{universityLabel(entry.programId)} · {detail?.admissionStatus ?? detail?.admissionRisk ?? "поступление: нет данных"}</p>
+                    {!confirming ? (
+                      <Button type="button" size="sm" className="mt-3" disabled={disabled} onClick={() => onRequestSelect(entry.programId)}>Выбрать эту программу</Button>
+                    ) : (
+                      <div className="mt-3 rounded-lg border border-amber-300/70 bg-amber-50 p-3 text-sm text-amber-950" role="dialog" aria-label="Подтверждение финального выбора">
+                        <p>Сохранить этот вариант как финальный выбор?</p>
+                        <div className="mt-2 flex gap-2"><Button type="button" size="sm" disabled={pendingAction === `final:${entry.programId}`} onClick={() => onConfirmSelect(entry.programId)}>Подтвердить</Button><Button type="button" size="sm" variant="ghost" onClick={() => onRequestSelect(null)}>Отмена</Button></div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function universityLabel(programId: string): string {
+  const slug = programId.split(":")[1];
+  if (slug === "bmstu") return "МГТУ им. Н. Э. Баумана";
+  if (slug === "hse") return "НИУ ВШЭ";
+  return slug ? `Университет: ${slug}` : "Университет не указан";
 }
 
 function ShortlistSection({
@@ -307,7 +408,7 @@ function ShortlistCard({
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Tag tone={entry.role === "primary" ? "primary" : "muted"}>{entry.role === "primary" ? "Основная" : "Альтернатива"}</Tag>
             <Tag tone="muted">Поступление: {admission}</Tag>
-            {detail?.sourceGaps.map((gap) => <Tag key={gap} tone="muted">Нет данных: {gap}</Tag>)}
+            {detail?.sourceGaps.map((gap) => <Tag key={gap} tone="muted">{explainSourceGap(gap)}</Tag>)}
           </div>
         </div>
         <p className="text-xs text-muted-foreground">сохранено вами</p>
@@ -361,7 +462,7 @@ function SuggestionCard({
         <ReasonList icon={<Check className="h-4 w-4 text-emerald-600" />} title="Почему включено" items={candidate.reasons.whyIncluded} empty="Недостаточно данных для объяснения" />
         <ReasonList icon={<Eye className="h-4 w-4 text-orange-600" />} title="Что может не подойти" items={candidate.reasons.whyMayNotFit} empty="Явных противопоказаний не найдено" />
       </div>
-      {candidate.sourceGaps.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Нужно проверить источник: {candidate.sourceGaps.join(", ")}</p>}
+      {candidate.sourceGaps.length > 0 && <p className="mt-3 text-xs text-muted-foreground">{candidate.sourceGaps.map(explainSourceGap).join(" ")}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
         <Button type="button" size="sm" disabled={disabledFor(pendingAction, `accept:${candidate.programId}`, disabled)} onClick={() => onAccept(candidate.programId)}>Добавить в shortlist</Button>
         <Button type="button" size="sm" variant="outline" disabled={disabledFor(pendingAction, `reject:${candidate.programId}`, disabled)} onClick={() => onReject(candidate.programId)}>Не предлагать</Button>

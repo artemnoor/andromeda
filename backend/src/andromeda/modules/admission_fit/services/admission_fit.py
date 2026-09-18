@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from andromeda.shared.contracts.errors import ContractError, ErrorCode, NotFoundError
-from andromeda.shared.contracts.ids import ProgramId
+from andromeda.shared.contracts.ids import ProgramId, canonical_program_id
 
 from ..contracts.public import (
     AdmissionFitReason,
@@ -37,6 +37,7 @@ class AdmissionFitService:
         self._scorer = scorer or AdmissionFitScoringService()
 
     def evaluate(self, program_id: ProgramId, request: AdmissionFitRequest) -> AdmissionFitResult:
+        resolved_program_id = canonical_program_id(program_id)
         logger.debug(
             "admission_fit_evaluation_started program_id=%s offering_id=%s subject_count=%d",
             program_id,
@@ -44,13 +45,17 @@ class AdmissionFitService:
             len(request.applicant.scores),
         )
         try:
-            snapshot = self._reader.read(program_id)
+            snapshot = self._reader.read(resolved_program_id)
+            if snapshot is None and resolved_program_id != program_id:
+                # One-cycle compatibility for in-memory/legacy consumers. The
+                # canonical repositories write only university-scoped IDs.
+                snapshot = self._reader.read(program_id)
         except Exception:
             logger.exception("admission_fit_reader_failed program_id=%s", program_id)
             raise
         if snapshot is None:
             raise NotFoundError(f"Program not found: {program_id}")
-        if snapshot.program.id != program_id or snapshot.admissions.program_id != program_id:
+        if snapshot.program.id not in {resolved_program_id, program_id} or snapshot.admissions.program_id not in {resolved_program_id, program_id}:
             logger.error("admission_fit_reader_contract_mismatch program_id=%s", program_id)
             raise ContractError(ErrorCode.CONTRACT_ERROR, "Admission Fit reader returned an incompatible program contract")
         offering = next((item for item in snapshot.admissions.offerings if item.id == request.offering_id), None)
@@ -77,17 +82,19 @@ class AdmissionFitService:
         )
         outcomes: dict[ProgramId, BatchAdmissionFitOutcome] = {}
         for program_id in request.program_ids:
-            snapshot = self._read_snapshot(program_id)
+            resolved_program_id = canonical_program_id(program_id)
+            snapshot = self._read_snapshot(resolved_program_id, legacy_program_id=program_id)
             if snapshot is None:
                 outcomes[program_id] = _missing_outcome(program_id, "Для программы нет source-backed данных поступления")
                 continue
+            public_program_id = program_id
             offering, gap = _select_offering(snapshot.admissions.offerings, request)
             if offering is None:
-                outcomes[program_id] = _missing_outcome(program_id, gap)
+                outcomes[public_program_id] = _missing_outcome(public_program_id, gap)
                 continue
-            result = self._scorer.score(program_id, offering, request.applicant)
-            outcomes[program_id] = BatchAdmissionFitOutcome(
-                program_id=program_id,
+            result = self._scorer.score(public_program_id, offering, request.applicant)
+            outcomes[public_program_id] = BatchAdmissionFitOutcome(
+                program_id=public_program_id,
                 status=result.status,
                 result=result,
                 data_gaps=result.data_gaps,
@@ -101,13 +108,16 @@ class AdmissionFitService:
         )
         return response
 
-    def _read_snapshot(self, program_id: ProgramId) -> AdmissionFitProgramData | None:
+    def _read_snapshot(self, program_id: ProgramId, *, legacy_program_id: ProgramId | None = None) -> AdmissionFitProgramData | None:
         try:
             snapshot = self._reader.read(program_id)
         except Exception:
             logger.exception("admission_fit_batch_reader_failed program_id=%s", program_id)
             raise
-        if snapshot is not None and (snapshot.program.id != program_id or snapshot.admissions.program_id != program_id):
+        if snapshot is None and legacy_program_id is not None and legacy_program_id != program_id:
+            snapshot = self._reader.read(legacy_program_id)
+        accepted_ids = {program_id, legacy_program_id} - {None}
+        if snapshot is not None and (snapshot.program.id not in accepted_ids or snapshot.admissions.program_id not in accepted_ids):
             logger.error("admission_fit_batch_reader_contract_mismatch program_id=%s", program_id)
             raise ContractError(ErrorCode.CONTRACT_ERROR, "Admission Fit reader returned an incompatible program contract")
         return snapshot

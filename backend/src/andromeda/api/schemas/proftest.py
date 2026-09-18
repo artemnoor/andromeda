@@ -319,8 +319,6 @@ class RecommendationResponse(ApiModel):
     area_share: dict[DisciplineAreaCode, Decimal]
     semester_distribution: dict[str, Decimal]
     distinctive_subjects: tuple[str, ...]
-    workload_readiness: OptionalMetricResponse
-    career_fit: OptionalMetricResponse
     admission_fit: OptionalMetricResponse
 
 
@@ -480,8 +478,6 @@ def recommendation_response(recommendation: Recommendation) -> RecommendationRes
         area_share=recommendation.area_share,
         semester_distribution=recommendation.semester_distribution,
         distinctive_subjects=recommendation.distinctive_subjects,
-        workload_readiness=OptionalMetricResponse.model_validate(recommendation.workload_readiness.model_dump()),
-        career_fit=OptionalMetricResponse.model_validate(recommendation.career_fit.model_dump()),
         admission_fit=OptionalMetricResponse.model_validate(recommendation.admission_fit.model_dump()),
     )
 

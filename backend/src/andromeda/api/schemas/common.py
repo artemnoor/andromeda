@@ -26,6 +26,8 @@ class ProgramSummaryResponse(ApiModel):
     education_year: int
     study_plan_url: HttpUrl
     source_url: HttpUrl
+    university_id: str | None = None
+    university_name: str | None = None
 
 
 class ProgramListResponse(ApiModel):

@@ -16,5 +16,5 @@ class SourceAdapter(Protocol):
     def parse(
         self,
         captured: CapturedSources,
-        program_codes: Sequence[str],
+        program_codes: Sequence[str] | None = None,
     ) -> tuple[RawTracerBundle, CanonicalSnapshot]: ...

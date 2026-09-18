@@ -49,6 +49,9 @@ class DecisionAnalyticsEventType(StrEnum):
     SUGGESTION_REJECTED = "system_suggestion_rejected"
     SHORTLIST_SIZE_CHANGED = "shortlist_size_changed"
     SHORTLIST_RETURNED = "shortlist_returned_to"
+    FINAL_CHOICE_SELECTED = "final_choice_selected"
+    FINAL_CHOICE_CHANGED = "final_choice_changed"
+    DECISION_REOPENED = "decision_reopened"
 
 
 class DecisionAnalyticsClientEventType(StrEnum):
@@ -164,6 +167,27 @@ class DecisionAnalyticsEvent(DecisionAnalyticsClientEvent):
         return self
 
 
+class DecisionAnalyticsFunnel(ContractModel):
+    """Privacy-safe aggregate for the Ops funnel.
+
+    It contains only distinct owner counts and bounded shortlist-size facts;
+    raw payloads, admission scores and profile answers never cross this read
+    boundary.
+    """
+
+    decision_sessions: int = Field(strict=True, ge=0)
+    shortlist_started: int = Field(strict=True, ge=0)
+    comparison_started: int = Field(strict=True, ge=0)
+    comparison_completed: int = Field(strict=True, ge=0)
+    suggestion_shown: int = Field(strict=True, ge=0)
+    suggestion_accepted: int = Field(strict=True, ge=0)
+    final_choice_selected: int = Field(strict=True, ge=0)
+    average_shortlist_size: float | None = Field(default=None, strict=True, ge=0, le=20)
+    shortlist_conversion_percent: float | None = Field(default=None, strict=True, ge=0, le=100)
+    comparison_conversion_percent: float | None = Field(default=None, strict=True, ge=0, le=100)
+    final_choice_conversion_percent: float | None = Field(default=None, strict=True, ge=0, le=100)
+
+
 def _validate_event_shape(event_type: DecisionAnalyticsEventType, payload: DecisionAnalyticsPayload) -> None:
     required_program = {
         DecisionAnalyticsEventType.PROGRAM_CONSIDERED,
@@ -175,6 +199,8 @@ def _validate_event_shape(event_type: DecisionAnalyticsEventType, payload: Decis
         DecisionAnalyticsEventType.SUGGESTION_SHOWN,
         DecisionAnalyticsEventType.SUGGESTION_ACCEPTED,
         DecisionAnalyticsEventType.SUGGESTION_REJECTED,
+        DecisionAnalyticsEventType.FINAL_CHOICE_SELECTED,
+        DecisionAnalyticsEventType.FINAL_CHOICE_CHANGED,
     }
     if event_type in required_program and payload.program_id is None:
         raise ValueError(f"{event_type.value} requires program_id")
@@ -197,6 +223,7 @@ __all__ = [
     "DecisionAnalyticsEvent",
     "DecisionAnalyticsEventId",
     "DecisionAnalyticsEventType",
+    "DecisionAnalyticsFunnel",
     "DecisionAnalyticsPayload",
     "DecisionAnalyticsSource",
     "DecisionAnalyticsStatus",

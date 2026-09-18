@@ -110,6 +110,10 @@ class ComparisonSummaryService:
                         code="curriculum_missing",
                         message=f"Учебный план программы {program.code} недоступен в текущем источнике.",
                         program_ids=(program.id,),
+                        explanation="На официальной странице программы не опубликован доступный учебный план.",
+                        impact="Часы, ЗЕТ и содержание этой программы нельзя корректно сопоставить.",
+                        source_url=str(program.study_plan_url),
+                        suggested_action="Проверьте страницу учебного плана позже; программу всё равно можно оставить в shortlist.",
                     )
                 )
         return tuple(gaps)

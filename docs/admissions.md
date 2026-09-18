@@ -80,16 +80,16 @@ GET /programs/<program-id>/admissions
 Fixture SQLite smoke:
 
 ```powershell
-python backend/scripts/run_tracer_demo.py --mode fixture --check
+python backend/scripts/run_andromeda_demo.py --mode fixture --check
 ```
 
 Development PostgreSQL:
 
 ```powershell
 $env:ANDROMEDA_ENV = "development"
-$env:BMSTU_DATABASE_URL = "postgresql+psycopg://andromeda:change-me@127.0.0.1:5432/andromeda_dev"
+$env:ANDROMEDA_DATABASE_URL = "postgresql+psycopg://andromeda:change-me@127.0.0.1:5432/andromeda_dev"
 python -m alembic upgrade head
-python backend/scripts/run_tracer_bullet.py --mode live --database-url $env:BMSTU_DATABASE_URL
+python backend/scripts/run_andromeda_ingestion.py --university bmstu --mode live --database-url $env:ANDROMEDA_DATABASE_URL
 ```
 
 Runner applies Alembic before ingestion and synchronizes admissions atomically with programs and curricula. A repeated source snapshot is idempotent; stale rows for the affected program are reconciled inside the same transaction. Migration `0010_admission_passing_route` backfills old rows as `general + numeric`, adds nullable score support for BVI, and keys children by route/status/type. PostgreSQL и SQLite используют один repository port и одинаковые public contracts.
@@ -97,14 +97,14 @@ Runner applies Alembic before ingestion and synchronizes admissions atomically w
 Для полного live-compatible запуска с диагностикой каталогов, order documents, numeric/BVI buckets и source gaps:
 
 ```powershell
-python backend/scripts/run_tracer_bullet.py --mode live --database-url $env:BMSTU_DATABASE_URL --log-level INFO
+python backend/scripts/run_andromeda_ingestion.py --university bmstu --mode live --database-url $env:ANDROMEDA_DATABASE_URL --log-level INFO
 ```
 
 В live mode events/campus не заполняются fixture-данными: пока для них нет полноценного live source, они остаются пустыми.
 
 ## Manual browser check
 
-1. Запустите `python backend/scripts/run_tracer_demo.py --mode fixture`.
+1. Запустите `python backend/scripts/run_andromeda_demo.py --mode fixture`.
 2. Откройте `http://127.0.0.1:3000/` и выберите «Программа».
 3. Проверьте карточки 2026 budget/paid, `318`/`230` мест, ЕГЭ minimum `46`, стоимость `529000 ₽`, исторические проходные баллы и route labels/BVI, если order fixture подключён.
 4. Переключите вторую программу в select и убедитесь, что hash, карточка и данные обновились.

@@ -57,7 +57,7 @@ def test_campus_points_list_detail_and_point_events_are_read_contracts(tmp_path:
     assert detail.status_code == 200, detail.text
     assert detail.json()["pointType"] == "building"
     assert detail.json()["universityIds"] == ["university:bmstu"]
-    assert detail.json()["programs"][0]["id"] == "program:09.03.01-02"
+    assert detail.json()["programs"][0]["id"] == "program:bmstu:09.03.01-02"
     assert events.status_code == 200, events.text
     assert events.json()["pointId"] == "venue:bmstu:main-campus"
     assert events.json()["items"][0]["id"] == "event:bmstu:dod-2026"

@@ -65,8 +65,6 @@ class Recommendation(ContractModel):
     area_share: dict[DisciplineAreaCode, Decimal] = Field(default_factory=dict)
     semester_distribution: dict[str, Decimal] = Field(default_factory=dict)
     distinctive_subjects: tuple[str, ...] = ()
-    workload_readiness: OptionalMetric = Field(default_factory=OptionalMetric)
-    career_fit: OptionalMetric = Field(default_factory=OptionalMetric)
     admission_fit: OptionalMetric = Field(default_factory=OptionalMetric)
 
     @classmethod

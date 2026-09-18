@@ -21,6 +21,7 @@ from andromeda.modules.campus.repository.ports import CampusPointReader
 from andromeda.shared.contracts.enums import SourceKind
 from andromeda.shared.contracts.errors import ContractError, ErrorCode, NotFoundError
 from andromeda.shared.contracts.provenance import SourceAttribution
+from andromeda.shared.contracts.ids import canonical_program_id
 
 from ..database.models import (
     EventModel,
@@ -111,8 +112,9 @@ class SqlAlchemyCampusPointRepository(CampusPointReader):
         return CampusPointEventsResult(point_id=point_id, events=EventListResult(items=events, total=total))
 
     def recommendations(self, program_ids: tuple[str, ...], *, limit: int) -> CampusRecommendationResult:
+        resolved_program_ids = tuple(canonical_program_id(program_id) for program_id in program_ids)
         logger.debug("campus_recommendation_read_start program_count=%d limit=%d", len(program_ids), limit)
-        point_query = select(VenueModel).where(self._program_point_condition(program_ids))
+        point_query = select(VenueModel).where(self._program_point_condition(resolved_program_ids))
         point_rows = self._session.execute(point_query.order_by(VenueModel.id.asc()).limit(limit)).scalars().all()
         points = self._to_details(point_rows)
 
@@ -120,7 +122,7 @@ class SqlAlchemyCampusPointRepository(CampusPointReader):
             select(EventProgramLinkModel.event_id)
             .where(
                 EventProgramLinkModel.event_id == EventModel.id,
-                EventProgramLinkModel.program_id.in_(program_ids),
+                EventProgramLinkModel.program_id.in_(resolved_program_ids),
             )
             .exists()
         )
@@ -131,7 +133,7 @@ class SqlAlchemyCampusPointRepository(CampusPointReader):
         events_with_point = tuple(event for event in events if event.venue is not None)
         events_without_point = tuple(event for event in events if event.venue is None)
         result = CampusRecommendationResult.from_parts(
-            program_ids,
+            resolved_program_ids,
             points=points,
             events=events_with_point,
             events_without_point=events_without_point,
@@ -243,14 +245,15 @@ class SqlAlchemyCampusPointRepository(CampusPointReader):
                 )
             )
         if filters.program_id is not None:
+            program_id = canonical_program_id(filters.program_id)
             query = query.where(
                 or_(
                     select(VenueProgramLinkModel.venue_id)
-                    .where(VenueProgramLinkModel.venue_id == VenueModel.id, VenueProgramLinkModel.program_id == filters.program_id)
+                    .where(VenueProgramLinkModel.venue_id == VenueModel.id, VenueProgramLinkModel.program_id == program_id)
                     .exists(),
                     select(EventProgramLinkModel.event_id)
                     .join(EventModel, EventModel.id == EventProgramLinkModel.event_id)
-                    .where(EventModel.venue_id == VenueModel.id, EventProgramLinkModel.program_id == filters.program_id)
+                    .where(EventModel.venue_id == VenueModel.id, EventProgramLinkModel.program_id == program_id)
                     .exists(),
                 )
             )
@@ -274,11 +277,12 @@ class SqlAlchemyCampusPointRepository(CampusPointReader):
         if filters.to_date is not None:
             query = query.where(EventModel.starts_at <= filters.to_date)
         if filters.recommended:
+            recommended_program_ids = tuple(canonical_program_id(program_id) for program_id in filters.recommended_program_ids)
             query = query.where(
                 select(EventProgramLinkModel.event_id)
                 .where(
                     EventProgramLinkModel.event_id == EventModel.id,
-                    EventProgramLinkModel.program_id.in_(filters.recommended_program_ids),
+                    EventProgramLinkModel.program_id.in_(recommended_program_ids),
                 )
                 .exists()
             )

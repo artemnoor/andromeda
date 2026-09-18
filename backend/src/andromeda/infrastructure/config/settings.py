@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlsplit
 import logging
 
 
-DEFAULT_DATABASE_URL = "sqlite:///./data/tracer.db"
+DEFAULT_DATABASE_URL = "sqlite:///./data/andromeda.db"
 DEFAULT_FRONTEND_ORIGIN = "http://localhost:3000,http://127.0.0.1:3000"
 DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_ENVIRONMENT = "test"
@@ -47,25 +47,30 @@ class Settings:
     auth_session_ttl_seconds: int = DEFAULT_AUTH_SESSION_TTL_SECONDS
     auth_password_min_length: int = DEFAULT_AUTH_PASSWORD_MIN_LENGTH
     ops_api_key: str | None = None
+    ingestion_min_relative_count: float = 0.25
 
     @classmethod
     def from_environment(cls, database_url: str | None = None) -> Settings:
         environment = os.environ.get("ANDROMEDA_ENV", DEFAULT_ENVIRONMENT).strip().lower()
         if environment not in VALID_ENVIRONMENTS:
             raise ValueError("ANDROMEDA_ENV must be one of: test, development, staging")
-        selected_database_url = database_url or os.environ.get("BMSTU_DATABASE_URL", DEFAULT_DATABASE_URL)
+        selected_database_url = database_url or _environment_with_legacy_fallback(
+            "ANDROMEDA_DATABASE_URL",
+            "BMSTU_DATABASE_URL",
+            DEFAULT_DATABASE_URL,
+        )
         if environment in {"development", "staging"} and not is_postgresql_url(selected_database_url):
-            raise ValueError(f"ANDROMEDA_ENV={environment} requires a PostgreSQL BMSTU_DATABASE_URL")
+            raise ValueError(f"ANDROMEDA_ENV={environment} requires a PostgreSQL ANDROMEDA_DATABASE_URL")
 
         settings = cls(
             database_url=selected_database_url,
             frontend_origin=os.environ.get("FRONTEND_ORIGIN", DEFAULT_FRONTEND_ORIGIN),
             log_level=os.environ.get("LOG_LEVEL", DEFAULT_LOG_LEVEL).upper(),
             environment=environment,
-            pool_size=_int_from_environment("BMSTU_DB_POOL_SIZE", 5),
-            max_overflow=_int_from_environment("BMSTU_DB_MAX_OVERFLOW", 10),
-            pool_timeout=_int_from_environment("BMSTU_DB_POOL_TIMEOUT", 30),
-            pool_recycle=_int_from_environment("BMSTU_DB_POOL_RECYCLE", 1800),
+            pool_size=_int_from_environment_with_legacy("ANDROMEDA_DB_POOL_SIZE", "BMSTU_DB_POOL_SIZE", 5),
+            max_overflow=_int_from_environment_with_legacy("ANDROMEDA_DB_MAX_OVERFLOW", "BMSTU_DB_MAX_OVERFLOW", 10),
+            pool_timeout=_int_from_environment_with_legacy("ANDROMEDA_DB_POOL_TIMEOUT", "BMSTU_DB_POOL_TIMEOUT", 30),
+            pool_recycle=_int_from_environment_with_legacy("ANDROMEDA_DB_POOL_RECYCLE", "BMSTU_DB_POOL_RECYCLE", 1800),
             profile_cookie_name=os.environ.get("ANDROMEDA_PROFILE_COOKIE_NAME", DEFAULT_PROFILE_COOKIE_NAME),
             profile_cookie_max_age=_positive_int_from_environment("ANDROMEDA_PROFILE_COOKIE_MAX_AGE", DEFAULT_PROFILE_COOKIE_MAX_AGE),
             profile_cookie_secure=_bool_from_environment("ANDROMEDA_PROFILE_COOKIE_SECURE", environment == "staging"),
@@ -78,6 +83,7 @@ class Settings:
             auth_session_ttl_seconds=_positive_int_from_environment("ANDROMEDA_AUTH_SESSION_TTL_SECONDS", DEFAULT_AUTH_SESSION_TTL_SECONDS),
             auth_password_min_length=_positive_int_from_environment("ANDROMEDA_AUTH_PASSWORD_MIN_LENGTH", DEFAULT_AUTH_PASSWORD_MIN_LENGTH),
             ops_api_key=_optional_secret_from_environment("ANDROMEDA_OPS_API_KEY"),
+            ingestion_min_relative_count=_ratio_from_environment("ANDROMEDA_INGEST_MIN_RELATIVE_COUNT", 0.25),
         )
         _validate_cookie_settings(settings.profile_cookie_name, settings.profile_cookie_samesite, settings.profile_cookie_secure, "ANDROMEDA_PROFILE_COOKIE_NAME")
         _validate_cookie_settings(settings.auth_cookie_name, settings.auth_cookie_samesite, settings.auth_cookie_secure, "ANDROMEDA_AUTH_COOKIE_NAME")
@@ -116,10 +122,45 @@ def _int_from_environment(name: str, default: int) -> int:
     return value
 
 
+def _environment_with_legacy_fallback(primary: str, legacy: str, default: str) -> str:
+    value = os.environ.get(primary)
+    if value is not None:
+        return value
+    legacy_value = os.environ.get(legacy)
+    if legacy_value is not None:
+        logger.warning("deprecated_environment_used primary=%s legacy=%s", primary, legacy)
+        return legacy_value
+    return default
+
+
+def _int_from_environment_with_legacy(primary: str, legacy: str, default: int) -> int:
+    value = _environment_with_legacy_fallback(primary, legacy, str(default))
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise ValueError(f"{primary} must be an integer") from exc
+    if parsed < 0:
+        raise ValueError(f"{primary} must be non-negative")
+    return parsed
+
+
 def _positive_int_from_environment(name: str, default: int) -> int:
     value = _int_from_environment(name, default)
     if value < 1:
         raise ValueError(f"{name} must be positive")
+    return value
+
+
+def _ratio_from_environment(name: str, default: float) -> float:
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    try:
+        value = float(raw_value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number") from exc
+    if not 0 <= value <= 1:
+        raise ValueError(f"{name} must be between 0 and 1")
     return value
 
 

@@ -84,6 +84,11 @@ def _base_values(row: IngestRunModel) -> dict[str, Any]:
             "removed_count": row.removed_count,
             "error_code": row.error_code,
             "error_message": row.error_message,
+            "university_id": row.university_id,
+            "duration_ms": row.duration_ms,
+            "source_gap_count": row.source_gap_count,
+            "critical_gap_count": row.critical_gap_count,
+            "drift_status": row.drift_status,
         }
     except (ValidationError, ValueError) as exc:
         logger.error("ingestion_run_contract_invalid run_id=%s", row.id)

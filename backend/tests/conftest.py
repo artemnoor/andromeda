@@ -11,8 +11,8 @@ from andromeda.infrastructure.database import Base, create_engine_for_url
 from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "tracer" / "raw"
-PROGRAM_A = "program:09.03.01-02"
-PROGRAM_B = "program:09.03.01-12"
+PROGRAM_A = "program:bmstu:09.03.01-02"
+PROGRAM_B = "program:bmstu:09.03.01-12"
 
 
 @pytest.fixture

@@ -39,7 +39,7 @@ def test_bmstu_fixture_ingestion_is_repeatable_and_reports_quality_counts(tmp_pa
         program_codes=(),
     )
 
-    assert first.program_ids == second.program_ids == ("program:09.03.01-02", "program:09.03.01-12")
+    assert first.program_ids == second.program_ids == ("program:bmstu:09.03.01-02", "program:bmstu:09.03.01-12")
     assert first.profile_count == second.profile_count == 2
     assert first.unique_plan_count == second.unique_plan_count == 2
     assert first.canonical_offering_count == second.canonical_offering_count

@@ -26,6 +26,32 @@ def test_development_requires_postgresql(monkeypatch: pytest.MonkeyPatch) -> Non
         Settings.from_environment()
 
 
+def test_andromeda_database_environment_takes_precedence_over_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", "sqlite:///./data/legacy.db")
+    monkeypatch.setenv("ANDROMEDA_DATABASE_URL", "sqlite:///./data/current.db")
+    monkeypatch.setenv("BMSTU_DB_POOL_SIZE", "2")
+    monkeypatch.setenv("ANDROMEDA_DB_POOL_SIZE", "7")
+
+    settings = Settings.from_environment()
+
+    assert settings.database_url.endswith("current.db")
+    assert settings.pool_size == 7
+
+
+def test_legacy_environment_is_supported_as_deprecated_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.delenv("ANDROMEDA_DATABASE_URL", raising=False)
+    monkeypatch.setenv("BMSTU_DATABASE_URL", "sqlite:///./data/legacy.db")
+    monkeypatch.delenv("ANDROMEDA_DB_MAX_OVERFLOW", raising=False)
+    monkeypatch.setenv("BMSTU_DB_MAX_OVERFLOW", "3")
+
+    settings = Settings.from_environment()
+
+    assert settings.database_url.endswith("legacy.db")
+    assert settings.max_overflow == 3
+
+
 def test_postgresql_settings_are_redacted_and_parseable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANDROMEDA_ENV", "staging")
     database_url = "postgresql+psycopg://user:p%40ss@example.test:5432/andromeda_staging?sslmode=require"

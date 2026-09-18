@@ -1,0 +1,23 @@
+name: source-health
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"
+
+jobs:
+  live-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANDROMEDA_ENV: staging
+      ANDROMEDA_DATABASE_URL: ${{ secrets.ANDROMEDA_HEALTH_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install backend
+        run: pip install -e backend
+      - name: Run live source health
+        run: python backend/scripts/source_health.py

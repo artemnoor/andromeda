@@ -32,13 +32,13 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
             if code in seen:
                 continue
             seen.add(code)
-            directions.append(Direction(id=f"direction:{code}", university_id=university.id, code=code, name=_text(raw_direction.name), education_level=_level(raw_direction.education_level)))
+            directions.append(Direction(id=f"direction:{university.id.removeprefix('university:')}:{code}", university_id=university.id, code=code, name=_text(raw_direction.name), education_level=_level(raw_direction.education_level)))
     if not directions:
         raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "HSE source has no canonical directions")
     direction = directions[0]
     directions_by_code = {item.code: item for item in directions}
     programs = tuple(
-        Program(id=f"program:{_code(item.code)}", direction_id=f"direction:{_program_direction(item, directions_by_code, direction.code)}", code=_code(item.code), name=_text(item.name), education_year=item.education_year, study_plan_url=item.study_plan_url, source_url=item.source_url)
+        Program(id=f"program:{university.id.removeprefix('university:')}:{_code(item.code)}", direction_id=f"direction:{university.id.removeprefix('university:')}:{_program_direction(item, directions_by_code, direction.code)}", code=_code(item.code), name=_text(item.name), education_year=item.education_year, study_plan_url=item.study_plan_url, source_url=item.source_url)
         for item in raw.programs
     )
     if len({item.code for item in programs}) != len(programs):
@@ -58,7 +58,7 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
         item = CurriculumItem(id=f"curriculum-item:{program.id}:{discipline_id}:{semester_key}", discipline_id=discipline_id, source_name=_text(row.discipline), semester=row.semester, hours=row.hours, credits=_credits(row.credits, row.locator.field or "credits"), assessment_types=_assessment(row.assessment), source_position=row.source_position)
         _append(items_by_program[program.code], item)
     curricula = tuple(
-        Curriculum(id=f"curriculum:{program.code}-{program.education_year}", program_id=program.id, education_year=program.education_year, source_url=program.study_plan_url, captured_at=_captured_at(raw, program), items=tuple(items_by_program[program.code]))
+        Curriculum(id=f"curriculum:{program.id.removeprefix('program:')}-{program.education_year}", program_id=program.id, education_year=program.education_year, source_url=program.study_plan_url, captured_at=_captured_at(raw, program), items=tuple(items_by_program[program.code]))
         for program in programs
         if items_by_program[program.code]
     )

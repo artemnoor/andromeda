@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { getAuthSession, registerAccount, loginAccount, logoutAccount } from "@/lib/api";
+import { getAuthSession, registerAccount, loginAccount, logoutAccount, importGuestDecision } from "@/lib/api";
 import type { AuthSession } from "@/lib/types";
 import type { View } from "@/lib/router";
 
@@ -34,6 +34,7 @@ export function AuthPanel({ onNavigate }: { onNavigate: (view: View) => void }) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"login" | "register">("login");
+  const [transferNotice, setTransferNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -59,6 +60,9 @@ export function AuthPanel({ onNavigate }: { onNavigate: (view: View) => void }) 
     try {
       const next = tab === "register" ? await registerAccount({ email, password }) : await loginAccount({ email, password });
       setSession(next);
+      if (next.decisionTransfer === "account_state_kept") {
+        setTransferNotice("У аккаунта уже есть свой выбор. Гостевой shortlist сохранён отдельно — импортировать его можно явно.");
+      }
       setOpen(false);
       setPassword("");
       onNavigate("account");
@@ -74,6 +78,19 @@ export function AuthPanel({ onNavigate }: { onNavigate: (view: View) => void }) 
     try {
       const next = await logoutAccount();
       setSession(next);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const importGuest = async () => {
+    setBusy(true);
+    try {
+      const next = await importGuestDecision();
+      setSession(next);
+      setTransferNotice("Гостевой shortlist импортирован в аккаунт. Решение сохранено между устройствами.");
+    } catch {
+      setTransferNotice("Не удалось импортировать гостевой shortlist. Текущий выбор аккаунта не изменён.");
     } finally {
       setBusy(false);
     }
@@ -104,10 +121,16 @@ export function AuthPanel({ onNavigate }: { onNavigate: (view: View) => void }) 
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56" data-testid="profile-menu-panel">
           <DropdownMenuLabel className="truncate" data-testid="auth-account">{session.account.email}</DropdownMenuLabel>
+          {transferNotice && <DropdownMenuLabel className="whitespace-normal text-xs font-normal text-amber-700">{transferNotice}</DropdownMenuLabel>}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => onNavigate("account")}>
             <UserRound className="mr-2 h-4 w-4" /> Личный кабинет
           </DropdownMenuItem>
+          {session.decisionTransfer === "account_state_kept" && (
+            <DropdownMenuItem onClick={() => void importGuest()} disabled={busy}>
+              Импортировать гостевой shortlist
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={logout} disabled={busy} data-testid="auth-logout">
             <LogOut className="mr-2 h-4 w-4" /> Выйти
           </DropdownMenuItem>

@@ -171,6 +171,15 @@ class DecisionAnalyticsService:
                 source=DecisionAnalyticsSource.SUGGESTION,
                 action=DecisionAnalyticsAction.REJECT,
             )
+        elif operation == "select_final_choice":
+            add(
+                DecisionAnalyticsEventType.FINAL_CHOICE_CHANGED
+                if before.selected_program_id is not None
+                else DecisionAnalyticsEventType.FINAL_CHOICE_SELECTED,
+                action=DecisionAnalyticsAction.COMPLETE,
+            )
+        elif operation == "reopen_final_choice":
+            add(DecisionAnalyticsEventType.DECISION_REOPENED, action=DecisionAnalyticsAction.RETURN)
 
         before_size = len(before.choice.active_shortlist)
         after_size = len(after.choice.active_shortlist)

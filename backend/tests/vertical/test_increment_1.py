@@ -29,6 +29,6 @@ def test_first_real_program_crosses_parser_db_and_api(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["program"]["id"] == "program:09.03.01-02"
-    assert payload["program"]["directionId"] == "direction:09.03.01"
+    assert payload["program"]["id"] == "program:bmstu:09.03.01-02"
+    assert payload["program"]["directionId"] == "direction:bmstu:09.03.01"
     engine.dispose()
