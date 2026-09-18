@@ -31,6 +31,7 @@ read-only projection, а не копия profile JSON.
 |---|---|---|---|
 | GET | `/decision/context` | — | Текущий context, profile projection, `missingData` и metadata; read-only, при первом обращении создаётся owner-bound context. |
 | GET | `/decision/suggestions` | — | Derived candidate set: до 3 primary и 2 alternative, active shortlist, ineligible/insufficient-data, reasons, Admission Fit, Content Fit, trade-offs/source gaps и optional refinement question; shortlist не меняется. |
+| POST | `/decision/refinement/answer` | `{questionId, optionId, expectedRevision}` | Проверяет текущий вопрос и revision, уточняет только derived profile/suggestions и возвращает новый профиль и candidate set; shortlist не меняется. |
 | PUT | `/decision/constraints` | `{constraints, expectedRevision?}`; `constraints: null` — явная очистка | Сохраняет явно введённые admissions constraints и возвращает новую revision; не удаляет и не демотирует shortlist. |
 | POST | `/decision/considered` | `{programId, expectedRevision?}` | Отмечает одну программу как рассмотренную после явного действия пользователя. |
 | POST | `/decision/shortlist` | `{programId, role, expectedRevision?}` | Явно добавляет программу или восстанавливает её active state с ролью `primary`/`alternative`. |

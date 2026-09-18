@@ -18,6 +18,12 @@ Next standalone и запускается deployment-описаниями из `
 `NEXT_PUBLIC_API_BASE_URL` в local demo. Исторический exploratory Spike
 retired и не является runtime/package частью проекта.
 
+`telegram-bot` — отдельный aiogram transport package, а не новый domain
+модуль и не второй backend. Он вызывает только public HTTP API и подписанные
+server-only `/og/*` routes `frontend-next`; его локальная SQLite хранит лишь
+зашифрованные opaque session cookies. Схема взаимодействия и deployment
+описаны в [Telegram-клиенте](telegram-bot.md).
+
 OpenAPI экспортируется backend script и генерирует единственный client в
 `frontend-next`. Production proftest находится в
 `andromeda.modules.proftest`; история retired Spike описана только в

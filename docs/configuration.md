@@ -27,6 +27,13 @@
 | `ANDROMEDA_AUTH_PASSWORD_MIN_LENGTH` | backend | `12` | Registration password minimum |
 | `NEXT_PUBLIC_API_BASE_URL` | frontend-next | `/api` | Browser API base URL; local demo runner overrides it with the API origin |
 | `NEXT_PUBLIC_DEBUG_API` | frontend-next | `0` | Client diagnostics toggle; production remains quiet |
+| `TELEGRAM_BOT_TOKEN` | telegram-bot | — | Bot secret; required for long polling |
+| `ANDROMEDA_BACKEND_URL` | telegram-bot | `http://backend:8020` | Internal canonical API URL in YC compose |
+| `ANDROMEDA_RENDERER_URL` | telegram-bot | `http://frontend:3000` | Internal Next OG renderer URL |
+| `ANDROMEDA_RENDER_HMAC_SECRET` | telegram-bot/frontend | — | Shared secret for signed OG requests |
+| `ANDROMEDA_SESSION_ENCRYPTION_KEY` | telegram-bot | — | Fernet key for bot-local opaque session cookies |
+| `ANDROMEDA_SESSION_DB` | telegram-bot | `./data/telegram.sqlite3` | Bot-local encrypted transport state |
+| `ANDROMEDA_WEB_APP_URL` | telegram-bot | `http://localhost:3000` | Canonical link target shown below images |
 
 Для повторяемого fixture-запуска database URL можно передать явно:
 

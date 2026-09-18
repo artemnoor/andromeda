@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from hashlib import sha256
+
+import fitz
+
+from andromeda.ingestion.contracts.constraints import http_url
+from andromeda.ingestion.contracts.raw import RawSourceSnapshot
+from andromeda.ingestion.contracts.source import CapturedSources
+from andromeda.ingestion.universities.hse.adapter import HseUniversityAdapter
+from andromeda.ingestion.universities.hse.identity import canonicalize_program_records
+from andromeda.ingestion.universities.hse.parser.admissions import parse_enrollment_document
+from andromeda.ingestion.universities.hse.parser.catalog import discover_program_links
+from andromeda.modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
+
+
+def _snapshot(kind: str, url: str, body: bytes) -> RawSourceSnapshot:
+    now = datetime.now(timezone.utc)
+    return RawSourceSnapshot(source_kind=kind, requested_url=http_url(url), final_url=http_url(url), status_code=200, content_type="application/pdf" if body.startswith(b"%PDF") else "text/html", captured_at=now, content_sha256=sha256(body).hexdigest(), body=body)
+
+
+def test_hse_catalog_normalizes_admission_link_without_hardcoded_programs() -> None:
+    body = b"""
+    <a href="https://www.hse.ru/ba/ami/">AMI</a>
+    <a href="https://www.hse.ru/ba/neuroscience/admission/">Neuro</a>
+    <a href="https://example.test/ba/nope/">External</a>
+    """
+    assert discover_program_links(body, "https://admissions.hse.ru/undergraduate-apply/programmes_list") == (
+        "https://www.hse.ru/ba/ami/",
+        "https://www.hse.ru/ba/neuroscience/",
+    )
+
+
+def test_hse_program_identity_is_stable_and_keeps_source_url() -> None:
+    from andromeda.ingestion.contracts.raw import RawDirectionRecord, RawProgramRecord, SourceLocator
+
+    direction = RawDirectionRecord(code="01.03.02", name="Прикладная математика и информатика", education_level="бакалавриат", locator=SourceLocator(source_url=http_url("https://www.hse.ru/ba/ami/")))
+    values = tuple(
+        RawProgramRecord(code="pending", name=name, direction_code=direction.code, education_level="бакалавриат", education_year=2026, study_plan_url=http_url(url + "learn_plans/"), source_url=http_url(url), locator=direction.locator, source_code=url)
+        for name, url in (("Прикладная математика и информатика", "https://www.hse.ru/ba/ami/"), ("Компьютерные науки и анализ данных", "https://www.hse.ru/ba/data/"))
+    )
+    first = canonicalize_program_records(values)
+    second = canonicalize_program_records(values)
+    assert tuple(value.code for value in first) == tuple(value.code for value in second)
+    assert all(value.code.startswith("01.03.02-") for value in first)
+    assert all(value.source_code.startswith("https://www.hse.ru/ba/") for value in first)
+
+
+def test_hse_enrollment_parser_preserves_bvi_status(monkeypatch) -> None:
+    import andromeda.ingestion.universities.hse.parser.admissions as admissions
+
+    monkeypatch.setattr(
+        admissions,
+        "extract_pdf_text",
+        lambda _: """Очная форма обучения\nСведения о лицах, зачисленных без вступительных испытаний\n974823 01.03.02 Прикладная математика и информатика Победитель олимпиады\n""",
+    )
+    observations = parse_enrollment_document(_snapshot("hse_enrollment_document", "https://ba.hse.ru/mirror/pubs/share/1", b"%PDF synthetic"))
+    assert observations[0].status == "bvi"
+    assert observations[0].score is None
+    assert observations[0].competition_type == "bvi"
+
+
+def test_hse_adapter_emits_canonical_snapshot_from_discovered_sources() -> None:
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_text((40, 60), "Direction 01.03.02 Applied Mathematics\nProgram Applied Mathematics\n1 Algebra O 3,00 114 36")
+    pdf = document.tobytes()
+    snapshots = CapturedSources(
+        (
+            _snapshot("hse_common", "https://www.hse.ru/contacts/", "<div>109028, г. Москва, Покровский бульвар, д. 11</div>".encode()),
+            _snapshot("hse_program_detail", "https://www.hse.ru/ba/ami/", "<h1>Applied Mathematics</h1><p>01.03.02</p>".encode()),
+            _snapshot("hse_admission_rules", "https://ba.hse.ru/minkrit", "<table><tr><th>h</th></tr><tr><td>Direction 01.03.02 Applied Mathematics</td></tr><tr><td>1</td><td>Applied Mathematics</td><td>mathematics</td><td>75</td></tr></table>".encode()),
+            _snapshot("hse_curriculum_document", "https://www.hse.ru/dbs/education/sp_UnitedWorkPlan_test.pdf", pdf),
+        )
+    )
+    adapter = HseUniversityAdapter()
+    try:
+        raw, canonical = adapter.parse(snapshots)
+    finally:
+        adapter.close()
+    assert len(raw.programs) == 1
+    assert canonical.university.id == "university:hse"
+    assert canonical.programs[0].code.startswith("01.03.02-")
+    assert canonical.curricula[0].items[0].hours == 114
+    assert sum((weight.weight for weight in canonical.disciplines[0].area_weights), start=0) == 1
+
+
+def test_hse_classifier_returns_explicit_deterministic_vector() -> None:
+    classifier = RuleBasedDisciplineClassifier()
+    weights = classifier.classify("Математический анализ")
+    assert sum((item.weight for item in weights), start=0) == 1

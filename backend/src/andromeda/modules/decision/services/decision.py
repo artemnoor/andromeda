@@ -6,7 +6,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 import logging
 
-from andromeda.modules.proftest.contracts.public import CurrentUserProfileReader, ProfileScope
+from andromeda.modules.proftest.contracts.public import CurrentUserProfileReader, ProfileRefinement, ProfileScope, UserProfileRefinementWriter
 from andromeda.modules.programs.repository.ports import ProgramReader
 from andromeda.shared.contracts.errors import AndromedaError, ConflictError, ContractError, ErrorCode, NotFoundError, ValidationError
 from andromeda.shared.contracts.ids import ProgramId
@@ -17,6 +17,8 @@ from ..contracts.public import (
     DecisionContextMetadata,
     DecisionContextResult,
     DecisionMutationResult,
+    DecisionRefinementAnswer,
+    DecisionRefinementResult,
     DecisionSuggestionsResult,
     ProgramCommand,
     ShortlistCommand,
@@ -45,6 +47,7 @@ class DecisionService:
         ttl_seconds: int,
         clock: Callable[[], datetime] | None = None,
         analytics: DecisionAnalyticsService | None = None,
+        profile_writer: UserProfileRefinementWriter | None = None,
     ) -> None:
         if ttl_seconds < 1:
             raise ValueError("ttl_seconds must be positive")
@@ -55,6 +58,7 @@ class DecisionService:
         self._ttl_seconds = ttl_seconds
         self._clock = clock or (lambda: datetime.now(timezone.utc))
         self._analytics = analytics
+        self._profile_writer = profile_writer
 
     def get_context(self, scope: ProfileScope) -> DecisionContextResult:
         snapshot = self._load(scope)
@@ -77,6 +81,59 @@ class DecisionService:
             len(result.suggestions),
         )
         return result
+
+    def answer_refinement(
+        self,
+        scope: ProfileScope,
+        command: DecisionRefinementAnswer,
+    ) -> DecisionRefinementResult:
+        """Apply one current refinement option to preferences and re-rank.
+
+        The question is read again immediately before the write.  This makes
+        stale Telegram callbacks fail closed and guarantees that a refinement
+        cannot mutate the explicit shortlist or decision revision.
+        """
+
+        if self._profile_writer is None:
+            raise ValidationError("Profile refinement is not configured")
+        profile = self._profiles.get_current(scope)
+        if profile is None:
+            raise NotFoundError("Current profile was not found")
+        if profile.revision != command.expected_revision:
+            logger.warning("decision_refinement_rejected outcome=stale_profile_revision")
+            raise ConflictError("Current profile revision is stale")
+
+        suggestions = self.get_suggestions(scope)
+        question = suggestions.refinement_question
+        if question is None or question.id != command.question_id:
+            logger.warning("decision_refinement_rejected outcome=stale_question")
+            raise ConflictError("The requested refinement question is no longer available")
+        option = next((item for item in question.options if item.id == command.option_id), None)
+        current_candidate_ids = {
+            item.program_id
+            for item in (*suggestions.primary_candidates, *suggestions.alternative_candidates)
+        }
+        if option is None or not set(question.candidate_program_ids).issubset(current_candidate_ids):
+            logger.warning("decision_refinement_rejected outcome=stale_option")
+            raise ConflictError("The requested refinement option is no longer available")
+
+        updated_profile = self._profile_writer.apply_refinement(
+            scope,
+            ProfileRefinement(
+                question_id=question.id,
+                option_id=option.id,
+                affected_dimension=option.affected_dimension,
+            ),
+            expected_revision=command.expected_revision,
+        )
+        refreshed = self.get_suggestions(scope)
+        logger.info(
+            "decision_refinement_complete profile_revision=%d candidate_count=%d context_revision=%d",
+            updated_profile.revision,
+            len(refreshed.suggestions),
+            refreshed.context_revision,
+        )
+        return DecisionRefinementResult(suggestions=refreshed, profile_revision=updated_profile.revision)
 
     def update_constraints(
         self,

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 from http.cookiejar import CookieJar
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -146,6 +148,40 @@ def verify_compare(api_base_url: str, program_codes: Sequence[str]) -> None:
     if not isinstance(rows, list) or not rows:
         raise DemoError("compare response contains no curriculum rows")
     logger.info("stage_verified name=compare programs=%s rows=%d", ",".join(program_ids), len(rows))
+
+
+def verify_og(frontend_url: str, program_codes: Sequence[str], secret: str) -> None:
+    """Smoke-test signed Next OG routes without a Telegram token or browser."""
+
+    program_ids = tuple(f"program:{code}" for code in program_codes[:2])
+    checks = (
+        ("/og/program", {"ids": program_ids[0]}),
+        ("/og/compare", {"ids": ",".join(program_ids)}),
+        ("/og/shortlist", {}),
+        ("/og/chances", {}),
+        ("/og/radar", {"ids": ",".join(program_ids)}),
+        ("/og/curriculum", {"ids": ",".join(program_ids)}),
+        ("/og/digest", {}),
+    )
+    for path, params in checks:
+        query = urlencode(sorted(params.items()))
+        timestamp = str(int(time.time()))
+        message = f"GET\n{path}\n{query}\n{timestamp}".encode("utf-8")
+        signature = hmac.new(secret.encode("utf-8"), message, hashlib.sha256).hexdigest()
+        request = Request(
+            f"{frontend_url.rstrip('/')}{path}{'?' + query if query else ''}",
+            headers={
+                "Accept": "image/png",
+                "X-Andromeda-Render-Timestamp": timestamp,
+                "X-Andromeda-Render-Signature": signature,
+            },
+        )
+        with urlopen(request, timeout=15.0) as response:
+            body = cast(bytes, response.read())
+            content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
+            if response.status != 200 or content_type != "image/png" or not body.startswith(b"\x89PNG\r\n\x1a\n"):
+                raise DemoError(f"{path} did not return a signed PNG")
+    logger.info("stage_verified name=og_routes routes=%d", len(checks))
 
 
 def verify_admissions(api_base_url: str, program_codes: Sequence[str]) -> None:
@@ -419,6 +455,8 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
     child_env["FRONTEND_ORIGIN"] = ",".join(frontend_origins)
     child_env["NEXT_PUBLIC_API_BASE_URL"] = api_base_url
     child_env["NEXT_PUBLIC_DEBUG_API"] = "0"
+    child_env["ANDROMEDA_RENDER_HMAC_SECRET"] = "ci-og-secret"
+    child_env["ANDROMEDA_INTERNAL_API_URL"] = api_base_url
     child_env["NEXT_TELEMETRY_DISABLED"] = "1"
     api_process: Popen[bytes] | None = None
     frontend_process: Popen[bytes] | None = None
@@ -441,6 +479,7 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
         discovered_codes = discover_program_codes(api_base_url)
         verification_codes = program_codes or discovered_codes[:2]
         verify_compare(api_base_url, verification_codes)
+        verify_og(frontend_url, verification_codes, child_env["ANDROMEDA_RENDER_HMAC_SECRET"])
         verify_admissions(api_base_url, verification_codes)
         verify_events(api_base_url, result.event_count)
         verify_campus_data(api_base_url, result.campus_point_count, program_id=f"program:{verification_codes[0]}")

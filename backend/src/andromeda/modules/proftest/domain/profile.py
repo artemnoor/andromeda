@@ -53,6 +53,19 @@ class ProfileScope(ContractModel):
         return "account" if self.account_id is not None else "anonymous"
 
 
+class ProfileRefinement(ContractModel):
+    """A bounded preference signal produced by a current decision question.
+
+    The decision module may select an option, but it does not own profile
+    persistence or profile scoring.  Only the typed dimension is passed to the
+    proftest owner; labels and source text never cross this boundary.
+    """
+
+    question_id: str = Field(min_length=1, max_length=128)
+    option_id: str = Field(min_length=1, max_length=128)
+    affected_dimension: str = Field(min_length=1, max_length=128)
+
+
 class UserProfileSnapshot(ContractModel):
     """Current persisted profile plus storage metadata.
 
@@ -93,4 +106,4 @@ class UserProfileSnapshot(ContractModel):
         return self
 
 
-__all__ = ["ProfileId", "ProfileScope", "UserProfileSnapshot"]
+__all__ = ["ProfileId", "ProfileRefinement", "ProfileScope", "UserProfileSnapshot"]
