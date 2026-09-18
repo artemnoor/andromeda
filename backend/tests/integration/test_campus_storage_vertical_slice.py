@@ -25,7 +25,10 @@ def test_campus_reaches_api_after_alembic_head_and_rerun(tmp_path: Path, monkeyp
         adapter.close()
     database_url = f"sqlite:///{(tmp_path / 'campus-migrated.db').as_posix()}"
     monkeypatch.setenv("ANDROMEDA_ENV", "test")
-    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    # CI's PostgreSQL job also exports the new generic URL.  Use the generic
+    # name here so Alembic and the repository target the same test database;
+    # legacy BMSTU_* fallback is covered by the configuration tests.
+    monkeypatch.setenv("ANDROMEDA_DATABASE_URL", database_url)
     config = Config(str(BACKEND_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
     config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
