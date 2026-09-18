@@ -14,11 +14,14 @@ from andromeda.api.schemas.decision import (
     DecisionMutationResponse,
     DecisionProgramCommandRequest,
     DecisionRevisionRequest,
+    DecisionRefinementAnswerRequest,
+    DecisionRefinementResponse,
     DecisionShortlistCommandRequest,
     DecisionShortlistRoleRequest,
     DecisionSuggestionsResponse,
     decision_context_response,
     decision_mutation_response,
+    decision_refinement_response,
     decision_suggestions_response,
 )
 from andromeda.modules.decision.contracts.public import (
@@ -59,6 +62,15 @@ def get_suggestions(
     service: DecisionService = Depends(get_decision_service),
 ) -> DecisionSuggestionsResponse:
     return decision_suggestions_response(service.get_suggestions(scope))
+
+
+@router.post("/refinement/answer", response_model=DecisionRefinementResponse)
+def answer_refinement(
+    request: DecisionRefinementAnswerRequest,
+    scope: ProfileScope = Depends(get_profile_scope),
+    service: DecisionService = Depends(get_decision_service),
+) -> DecisionRefinementResponse:
+    return decision_refinement_response(service.answer_refinement(scope, request.to_contract()))
 
 
 @router.put("/constraints", response_model=DecisionMutationResponse)

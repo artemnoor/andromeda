@@ -12,12 +12,13 @@ from .analytics import (
     DecisionAnalyticsSource,
     DecisionAnalyticsStatus,
 )
-from .requests import DecisionConstraintsUpdate, ProgramCommand, ShortlistCommand, ShortlistRoleCommand, SuggestionDecisionCommand
+from .requests import DecisionConstraintsUpdate, DecisionRefinementAnswer, ProgramCommand, ShortlistCommand, ShortlistRoleCommand, SuggestionDecisionCommand
 from .results import (
     DecisionCandidatePartition,
     DecisionContextResult,
     DecisionDataCompleteness,
     DecisionMutationResult,
+    DecisionRefinementResult,
     DecisionRefinementOption,
     DecisionRefinementQuestion,
     DecisionShortlistItem,
@@ -61,6 +62,8 @@ __all__ = [
     "DecisionDataCompleteness",
     "DecisionId",
     "DecisionMutationResult",
+    "DecisionRefinementAnswer",
+    "DecisionRefinementResult",
     "DecisionRefinementOption",
     "DecisionRefinementQuestion",
     "DecisionShortlistItem",

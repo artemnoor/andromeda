@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 import logging
 
 from andromeda.shared.contracts.errors import NotFoundError, ValidationError
+from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
 
-from ..contracts.public import ProfileScope, UserProfile, UserProfileSnapshot
+from ..contracts.public import ActivityCode, ProfileRefinement, ProfileScope, UserProfile, UserProfileSnapshot
+from ..domain.profiling import normalize_weights
+from ..domain.values import ZERO, quantize_ratio
 from ..repository.ports import UserProfileRepository
 
 
@@ -61,6 +65,68 @@ class UserProfilePersistenceService:
         logger.info("profile_persistence_complete operation=save_completed revision=%d", snapshot.revision)
         return snapshot
 
+    def apply_refinement(
+        self,
+        scope: ProfileScope,
+        refinement: ProfileRefinement,
+        *,
+        expected_revision: int,
+    ) -> UserProfileSnapshot:
+        """Persist one deterministic candidate-preference refinement.
+
+        Subject/activity dimensions affect Content Fit immediately.  A
+        distinctive-content dimension is retained as a bounded context marker
+        because it has no independent scoring axis in the public profile
+        contract; it is never silently translated into an invented area.
+        """
+
+        current = self._repository.get_current(scope)
+        if current is None:
+            raise NotFoundError("Current profile was not found")
+        if current.revision != expected_revision:
+            from andromeda.shared.contracts.errors import ConflictError
+
+            raise ConflictError("Current profile revision is stale")
+
+        profile = current.profile
+        subject_weights = dict(profile.preferred_subject_weights)
+        activity_weights = dict(profile.preferred_activity_weights)
+        context = set(profile.decision_context)
+        confidence = dict(profile.confidence_by_dimension)
+        kind, _, value = refinement.affected_dimension.partition(":")
+        if kind == "subject":
+            try:
+                area = DisciplineAreaCode(value)
+            except ValueError as exc:
+                raise ValidationError("Refinement subject dimension is not supported") from exc
+            subject_weights[area] = subject_weights.get(area, ZERO) + quantize_ratio(Decimal("0.35"))
+        elif kind == "activity":
+            try:
+                activity = ActivityCode(value)
+            except ValueError as exc:
+                raise ValidationError("Refinement activity dimension is not supported") from exc
+            activity_weights[activity] = activity_weights.get(activity, ZERO) + quantize_ratio(Decimal("0.35"))
+        elif kind == "content" and value:
+            context.add(f"refinement_content:{value[:96]}")
+        else:
+            raise ValidationError("Refinement dimension is not supported")
+
+        confidence[refinement.affected_dimension] = quantize_ratio(Decimal("1"))
+        updated = profile.model_copy(
+            update={
+                "preferred_subject_weights": normalize_weights(subject_weights),
+                "preferred_activity_weights": normalize_weights(activity_weights),
+                "decision_context": tuple(sorted(context))[:12],
+                "confidence_by_dimension": confidence,
+            }
+        )
+        logger.info(
+            "profile_refinement_complete dimension=%s revision=%d",
+            _safe_dimension(refinement.affected_dimension),
+            expected_revision + 1,
+        )
+        return self.update(scope, updated, expected_revision=expected_revision)
+
     def _expires_at(self) -> datetime:
         now = self._clock()
         if now.tzinfo is None or now.utcoffset() is None:
@@ -70,6 +136,10 @@ class UserProfilePersistenceService:
 
 def _axis_count(profile: UserProfile) -> int:
     return len(profile.preferred_subject_weights) + len(profile.preferred_activity_weights) + len(profile.negative_weights)
+
+
+def _safe_dimension(value: str) -> str:
+    return value.replace("\n", " ").replace("\r", " ")[:128]
 
 
 __all__ = ["UserProfilePersistenceService"]

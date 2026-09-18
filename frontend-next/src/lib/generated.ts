@@ -616,6 +616,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/decision/refinement/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Refinement */
+        post: operations["answer_refinement_decision_refinement_answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/decision/constraints": {
         parameters: {
             query?: never;
@@ -1430,7 +1447,7 @@ export interface components {
          * DecisionAnalyticsSource
          * @enum {string}
          */
-        DecisionAnalyticsSource: "catalog" | "program" | "admission" | "compare" | "decision" | "suggestion" | "proftest" | "system";
+        DecisionAnalyticsSource: "catalog" | "program" | "admission" | "compare" | "decision" | "suggestion" | "proftest" | "system" | "telegram";
         /**
          * DecisionAnalyticsStatus
          * @enum {string}
@@ -1581,6 +1598,21 @@ export interface components {
             /** Expectedrevision */
             expectedRevision?: number | null;
         };
+        /** DecisionRefinementAnswerRequest */
+        DecisionRefinementAnswerRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Questionid */
+            questionId: string;
+            /** Optionid */
+            optionId: string;
+            /** Expectedrevision */
+            expectedRevision: number;
+        };
         /** DecisionRefinementOptionResponse */
         DecisionRefinementOptionResponse: {
             /** Id */
@@ -1604,6 +1636,12 @@ export interface components {
             options: components["schemas"]["DecisionRefinementOptionResponse"][];
             /** Discriminatingdimensions */
             discriminatingDimensions: string[];
+        };
+        /** DecisionRefinementResponse */
+        DecisionRefinementResponse: {
+            suggestions: components["schemas"]["DecisionSuggestionsResponse"];
+            /** Profilerevision */
+            profileRevision: number;
         };
         /** DecisionRevisionRequest */
         DecisionRevisionRequest: {
@@ -2572,7 +2610,7 @@ export interface components {
          * SourceKind
          * @enum {string}
          */
-        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_curriculum_metadata" | "bmstu_admission_orders_index" | "bmstu_admission_orders_document" | "bmstu_events" | "bmstu_campus_points";
+        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_curriculum_metadata" | "bmstu_admission_orders_index" | "bmstu_admission_orders_document" | "bmstu_events" | "bmstu_campus_points" | "hse_common" | "hse_program_catalog" | "hse_program_detail" | "hse_curriculum_index" | "hse_curriculum_document" | "hse_admission_rules" | "hse_admission_places" | "hse_tuition" | "hse_passing_scores" | "hse_enrollment_index" | "hse_enrollment_document";
         /**
          * StudyForm
          * @enum {string}
@@ -5701,6 +5739,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionSuggestionsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    answer_refinement_decision_refinement_answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRefinementAnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRefinementResponse"];
                 };
             };
             /** @description Bad Request */

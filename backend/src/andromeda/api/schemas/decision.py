@@ -29,6 +29,8 @@ from andromeda.modules.decision.contracts.public import (
     DecisionContext,
     DecisionContextResult,
     DecisionMutationResult,
+    DecisionRefinementAnswer,
+    DecisionRefinementResult,
     DecisionShortlistItem,
     DecisionSuggestion,
     DecisionSuggestionsResult,
@@ -199,6 +201,21 @@ class DecisionShortlistRoleRequest(ApiModel):
 
 class DecisionRevisionRequest(ApiModel):
     expected_revision: int | None = Field(default=None, alias="expectedRevision", strict=True, ge=1)
+
+
+class DecisionRefinementAnswerRequest(ApiModel):
+    version: Literal[1] = 1
+    question_id: str = Field(min_length=1, max_length=128)
+    option_id: str = Field(min_length=1, max_length=128)
+    expected_revision: int = Field(alias="expectedRevision", strict=True, ge=1)
+
+    def to_contract(self) -> DecisionRefinementAnswer:
+        return DecisionRefinementAnswer(
+            version=self.version,
+            question_id=self.question_id,
+            option_id=self.option_id,
+            expected_revision=self.expected_revision,
+        )
 
 
 class DecisionAnalyticsPayloadRequest(ApiModel):
@@ -395,6 +412,11 @@ class DecisionSuggestionsResponse(ApiModel):
     missing_data: tuple[str, ...]
 
 
+class DecisionRefinementResponse(ApiModel):
+    suggestions: DecisionSuggestionsResponse
+    profile_revision: int
+
+
 def decision_context_response(value: DecisionContext) -> DecisionContextResponse:
     state = value.state
     return DecisionContextResponse(
@@ -450,6 +472,13 @@ def decision_suggestions_response(value: DecisionSuggestionsResult) -> DecisionS
         ),
         source_gaps=value.source_gaps,
         missing_data=value.missing_data,
+    )
+
+
+def decision_refinement_response(value: DecisionRefinementResult) -> DecisionRefinementResponse:
+    return DecisionRefinementResponse(
+        suggestions=decision_suggestions_response(value.suggestions),
+        profile_revision=value.profile_revision,
     )
 
 

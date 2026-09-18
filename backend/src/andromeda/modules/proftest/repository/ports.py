@@ -13,7 +13,7 @@ from andromeda.modules.programs.contracts.public import Program
 from andromeda.shared.contracts.ids import AccountId, DisciplineId, ProgramId
 
 from ..domain.entities import UserProfile
-from ..domain.profile import ProfileScope, UserProfileSnapshot
+from ..domain.profile import ProfileRefinement, ProfileScope, UserProfileSnapshot
 from ..domain.sessions import ProftestAnalyticsEvent, ProftestAnswerSession
 
 
@@ -52,6 +52,18 @@ class CurrentUserProfileReader(Protocol):
     """Read the current profile without exposing its storage implementation."""
 
     def get_current(self, scope: ProfileScope) -> UserProfileSnapshot | None: ...
+
+
+class UserProfileRefinementWriter(Protocol):
+    """Apply one validated preference signal without owning decision state."""
+
+    def apply_refinement(
+        self,
+        scope: ProfileScope,
+        refinement: ProfileRefinement,
+        *,
+        expected_revision: int,
+    ) -> UserProfileSnapshot: ...
 
 
 class UserProfileRepository(CurrentUserProfileReader, Protocol):
@@ -112,6 +124,7 @@ class ProfileBindingOutcome(str, Enum):
 __all__ = [
     "BulkProftestCatalogReader",
     "CurrentUserProfileReader",
+    "UserProfileRefinementWriter",
     "ProfileBindingOutcome",
     "ProfileBindingPort",
     "ProftestSessionBindingPort",

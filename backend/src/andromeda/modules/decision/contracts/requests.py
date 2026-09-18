@@ -51,8 +51,18 @@ class SuggestionDecisionCommand(ProgramCommand):
     action: Literal["accept", "reject"]
 
 
+class DecisionRefinementAnswer(ContractModel):
+    """Answer one currently displayed candidate-refinement question."""
+
+    version: Literal[1] = 1
+    question_id: str = Field(min_length=1, max_length=128)
+    option_id: str = Field(min_length=1, max_length=128)
+    expected_revision: int = Field(strict=True, ge=1)
+
+
 __all__ = [
     "DecisionConstraintsUpdate",
+    "DecisionRefinementAnswer",
     "ProgramCommand",
     "ShortlistCommand",
     "ShortlistRoleCommand",

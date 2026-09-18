@@ -3861,6 +3861,97 @@
         }
       }
     },
+    "/decision/refinement/answer": {
+      "post": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Answer Refinement",
+        "operationId": "answer_refinement_decision_refinement_answer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRefinementAnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionRefinementResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/decision/constraints": {
       "put": {
         "tags": [
@@ -6892,7 +6983,8 @@
           "decision",
           "suggestion",
           "proftest",
-          "system"
+          "system",
+          "telegram"
         ],
         "title": "DecisionAnalyticsSource"
       },
@@ -7408,6 +7500,41 @@
         ],
         "title": "DecisionProgramCommandRequest"
       },
+      "DecisionRefinementAnswerRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "questionId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Questionid"
+          },
+          "optionId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Optionid"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Expectedrevision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "questionId",
+          "optionId",
+          "expectedRevision"
+        ],
+        "title": "DecisionRefinementAnswerRequest"
+      },
       "DecisionRefinementOptionResponse": {
         "properties": {
           "id": {
@@ -7480,6 +7607,24 @@
           "discriminatingDimensions"
         ],
         "title": "DecisionRefinementQuestionResponse"
+      },
+      "DecisionRefinementResponse": {
+        "properties": {
+          "suggestions": {
+            "$ref": "#/components/schemas/DecisionSuggestionsResponse"
+          },
+          "profileRevision": {
+            "type": "integer",
+            "title": "Profilerevision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "suggestions",
+          "profileRevision"
+        ],
+        "title": "DecisionRefinementResponse"
       },
       "DecisionRevisionRequest": {
         "properties": {
@@ -10418,7 +10563,18 @@
           "bmstu_admission_orders_index",
           "bmstu_admission_orders_document",
           "bmstu_events",
-          "bmstu_campus_points"
+          "bmstu_campus_points",
+          "hse_common",
+          "hse_program_catalog",
+          "hse_program_detail",
+          "hse_curriculum_index",
+          "hse_curriculum_document",
+          "hse_admission_rules",
+          "hse_admission_places",
+          "hse_tuition",
+          "hse_passing_scores",
+          "hse_enrollment_index",
+          "hse_enrollment_document"
         ],
         "title": "SourceKind"
       },

@@ -213,6 +213,7 @@ def get_decision_service(
     profiles: CurrentUserProfileReader = Depends(get_current_user_profile_reader),
     candidates: DecisionCandidatePipeline = Depends(get_decision_candidate_pipeline),
     analytics: DecisionAnalyticsService = Depends(get_decision_analytics_service),
+    profile_writer: UserProfilePersistenceService = Depends(get_profile_persistence_service),
 ) -> DecisionService:
     return DecisionService(
         repository,
@@ -221,6 +222,7 @@ def get_decision_service(
         candidates,
         ttl_seconds=request.app.state.settings.profile_ttl_seconds,
         analytics=analytics,
+        profile_writer=profile_writer,
     )
 
 

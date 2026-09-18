@@ -13,6 +13,7 @@ from .contracts.public import (
     CurriculumEvidence,
     DistinctiveSubject,
     CurrentUserProfileReader,
+    ProfileRefinement,
     ProfileScope,
     ProgramFingerprint,
     Question,
@@ -21,6 +22,7 @@ from .contracts.public import (
     Questionnaire,
     UserProfile,
     UserProfileSnapshot,
+    UserProfileRefinementWriter,
 )
 
 __all__ = [
@@ -35,6 +37,7 @@ __all__ = [
     "Confidence",
     "CurriculumEvidence",
     "CurrentUserProfileReader",
+    "ProfileRefinement",
     "DistinctiveSubject",
     "ProgramFingerprint",
     "Question",
@@ -44,4 +47,5 @@ __all__ = [
     "ProfileScope",
     "UserProfile",
     "UserProfileSnapshot",
+    "UserProfileRefinementWriter",
 ]

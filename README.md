@@ -71,6 +71,7 @@ GET /compare?programIds=<program-id-a>,<program-id-b>&scope=semester&semester=1
 | [Admission Fit](docs/admission-fit.md) | Отдельная оценка реалистичности поступления |
 | [Принципы продукта](docs/product-principles.md) | Правила Decision Support и пользовательского выбора |
 | [Конфигурация](docs/configuration.md) | Переменные окружения |
+| [Telegram-клиент](docs/telegram-bot.md) | aiogram, PNG render layer, callbacks и YC deployment |
 | [PostgreSQL](docs/postgresql.md) | Dev/staging, migrations и ingestion |
 | [Тестирование](docs/testing.md) | Локальные и CI-проверки |
 

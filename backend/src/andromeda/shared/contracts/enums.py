@@ -27,6 +27,17 @@ class SourceKind(StrEnum):
     BMSTU_ADMISSION_ORDERS_DOCUMENT = "bmstu_admission_orders_document"
     BMSTU_EVENTS = "bmstu_events"
     BMSTU_CAMPUS_POINTS = "bmstu_campus_points"
+    HSE_COMMON = "hse_common"
+    HSE_PROGRAM_CATALOG = "hse_program_catalog"
+    HSE_PROGRAM_DETAIL = "hse_program_detail"
+    HSE_CURRICULUM_INDEX = "hse_curriculum_index"
+    HSE_CURRICULUM_DOCUMENT = "hse_curriculum_document"
+    HSE_ADMISSION_RULES = "hse_admission_rules"
+    HSE_ADMISSION_PLACES = "hse_admission_places"
+    HSE_TUITION = "hse_tuition"
+    HSE_PASSING_SCORES = "hse_passing_scores"
+    HSE_ENROLLMENT_INDEX = "hse_enrollment_index"
+    HSE_ENROLLMENT_DOCUMENT = "hse_enrollment_document"
 
 
 class CompareStatus(StrEnum):

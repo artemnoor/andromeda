@@ -18,13 +18,13 @@ from ..domain.entities import (
     QuestionStage,
     UserProfile,
 )
-from ..domain.profile import ProfileScope, UserProfileSnapshot
+from ..domain.profile import ProfileRefinement, ProfileScope, UserProfileSnapshot
 from ..domain.adaptive import AdaptiveDimension, AdaptiveSelection, AdaptiveState, AdaptiveStatus, AdaptiveStopReason
 from ..domain.questions import Questionnaire
 from ..domain.sessions import AnalyticsEventId, AnalyticsEventType, PreliminaryProfile, PreliminaryTopic, ProftestAnalyticsEvent, ProftestAnswerSession, ProftestSessionView, SessionAnswer, SessionId, SessionProgress, SessionStatus
 from ..domain.capabilities import ProgramSignal, SourceCapability, source_capabilities
 from ..domain.results import MatchReason, MatchScore, MetricStatus, OptionalMetric, PreviewCandidate, ProftestPreview, ProftestResults, ReasonKind, Recommendation, ScoreBreakdown
-from ..repository.ports import CurrentUserProfileReader, ProfileBindingOutcome, ProfileBindingPort, ProftestSessionBindingPort
+from ..repository.ports import CurrentUserProfileReader, ProfileBindingOutcome, ProfileBindingPort, ProftestSessionBindingPort, UserProfileRefinementWriter
 
 __all__ = [
     "ActivityCode",
@@ -66,6 +66,7 @@ __all__ = [
     "PreliminaryProfile",
     "PreliminaryTopic",
     "ProfileScope",
+    "ProfileRefinement",
     "ProftestAnalyticsEvent",
     "ProftestAnswerSession",
     "ProftestSessionView",
@@ -79,4 +80,5 @@ __all__ = [
     "SessionStatus",
     "UserProfile",
     "UserProfileSnapshot",
+    "UserProfileRefinementWriter",
 ]

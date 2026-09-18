@@ -131,6 +131,13 @@ class DecisionSuggestionsResult(ContractModel):
     missing_data: tuple[NonEmptyText, ...] = Field(default=(), max_length=32)
 
 
+class DecisionRefinementResult(ContractModel):
+    """Updated derived candidates after an explicit profile refinement."""
+
+    suggestions: DecisionSuggestionsResult
+    profile_revision: int = Field(strict=True, ge=1)
+
+
 __all__ = [
     "DecisionCandidatePartition",
     "DecisionContextResult",
@@ -138,6 +145,7 @@ __all__ = [
     "DecisionMutationResult",
     "DecisionRefinementOption",
     "DecisionRefinementQuestion",
+    "DecisionRefinementResult",
     "DecisionShortlistItem",
     "DecisionSuggestion",
     "DecisionSuggestionReasons",
