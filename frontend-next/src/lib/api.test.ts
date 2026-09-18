@@ -60,7 +60,7 @@ describe("canonical API client", () => {
     }), { status: 200, headers: { "Content-Type": "application/json" } })));
 
     await expect(getPrograms()).resolves.toEqual({
-      items: [{ id: "program:01", directionId: "01.03.02", code: "01.03.02-01", name: "Программа", educationYear: "2026", studyPlanUrl: null, sourceUrl: null }],
+      items: [{ id: "program:01", directionId: "01.03.02", code: "01.03.02-01", name: "Программа", educationYear: "2026", studyPlanUrl: null, sourceUrl: null, universityId: null, universityName: null }],
     });
     expect(fetch).toHaveBeenCalledWith("/api/programs", expect.objectContaining({ credentials: "include", cache: "no-store" }));
   });

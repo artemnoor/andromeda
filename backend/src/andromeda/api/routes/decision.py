@@ -120,6 +120,26 @@ def set_shortlist_role(
     )
 
 
+@router.post("/final-choice", response_model=DecisionMutationResponse)
+def select_final_choice(
+    request: DecisionProgramCommandRequest,
+    scope: ProfileScope = Depends(get_profile_scope),
+    service: DecisionService = Depends(get_decision_service),
+) -> DecisionMutationResponse:
+    return decision_mutation_response(service.select_final_choice(scope, request.to_contract()))
+
+
+@router.delete("/final-choice", response_model=DecisionMutationResponse)
+def reopen_final_choice(
+    request: DecisionRevisionRequest | None = Body(default=None),
+    scope: ProfileScope = Depends(get_profile_scope),
+    service: DecisionService = Depends(get_decision_service),
+) -> DecisionMutationResponse:
+    return decision_mutation_response(
+        service.reopen_final_choice(scope, expected_revision=request.expected_revision if request is not None else None)
+    )
+
+
 @router.delete("/shortlist/{program_id}", response_model=DecisionMutationResponse)
 def remove_shortlist(
     program_id: ProgramId,

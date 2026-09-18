@@ -33,7 +33,13 @@ export function CompareSummary({ data, navigate }: { data: ComparisonSummaryResp
               ) : (
                 <p className="mt-2 flex items-center gap-1 text-xs text-amber-700"><CircleAlert className="h-3.5 w-3.5" />Учебный план неизвестен</p>
               )}
-              {overview.sourceGaps.map((gap) => <p key={gap.code} className="mt-1 text-xs text-muted-foreground">{gap.message}</p>)}
+              {overview.sourceGaps.map((gap) => (
+                <div key={gap.code} className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs text-amber-950">
+                  <p className="font-medium">{gap.explanation ?? gap.message}</p>
+                  <p className="mt-1">{gap.impact ?? "Сравнение продолжается, но этот блок нельзя считать полным."}</p>
+                  {gap.sourceUrl && <a className="mt-1 inline-block underline" href={gap.sourceUrl} target="_blank" rel="noreferrer">Официальный источник</a>}
+                </div>
+              ))}
             </div>
           ))}
         </CardContent>
@@ -76,7 +82,7 @@ export function CompareSummary({ data, navigate }: { data: ComparisonSummaryResp
       {data.sourceGaps.length > 0 && (
         <div className="rounded-lg border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="status" aria-live="polite">
           <p className="font-medium">Пробелы источников</p>
-          <ul className="mt-1 space-y-1">{data.sourceGaps.map((gap, index) => <li key={`${gap.code}-${index}`}>• {gap.message}</li>)}</ul>
+          <ul className="mt-1 space-y-2">{data.sourceGaps.map((gap, index) => <li key={`${gap.code}-${index}`}><span className="font-medium">{gap.explanation ?? gap.message}</span><br />{gap.impact ?? "Сравнение продолжается, но этот блок нельзя считать полным."} {gap.suggestedAction ?? "Откройте официальный источник и проверьте обновление данных."}</li>)}</ul>
         </div>
       )}
     </section>

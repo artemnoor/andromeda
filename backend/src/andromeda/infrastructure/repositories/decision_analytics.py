@@ -5,11 +5,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import logging
 
-from sqlalchemy import delete
+from collections import defaultdict
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from andromeda.modules.decision.contracts.public import DecisionAnalyticsEvent, DecisionAnalyticsWriter
+from andromeda.modules.decision.contracts.public import DecisionAnalyticsEvent, DecisionAnalyticsFunnel, DecisionAnalyticsWriter
+from andromeda.modules.decision.repository.ports import DecisionAnalyticsReader
 from andromeda.modules.proftest.contracts.public import ProfileScope
 
 from ..database.models import DecisionAnalyticsEventModel
@@ -18,7 +20,7 @@ from ..database.models import DecisionAnalyticsEventModel
 logger = logging.getLogger("andromeda.infrastructure.repositories.decision_analytics")
 
 
-class SqlAlchemyDecisionAnalyticsRepository(DecisionAnalyticsWriter):
+class SqlAlchemyDecisionAnalyticsRepository(DecisionAnalyticsWriter, DecisionAnalyticsReader):
     """Append-only analytics writer with TTL cleanup and per-owner dedupe."""
 
     def __init__(self, session: Session) -> None:
@@ -70,6 +72,47 @@ class SqlAlchemyDecisionAnalyticsRepository(DecisionAnalyticsWriter):
             len(events) - inserted,
         )
         return inserted
+
+    def funnel(self) -> DecisionAnalyticsFunnel:
+        """Return aggregate counts without exposing event payloads."""
+
+        rows = self._session.execute(
+            select(
+                DecisionAnalyticsEventModel.owner_key,
+                DecisionAnalyticsEventModel.event_type,
+                DecisionAnalyticsEventModel.payload_json,
+            ).where(DecisionAnalyticsEventModel.expires_at > _now())
+        ).all()
+        owners_by_type: dict[str, set[str]] = defaultdict(set)
+        shortlist_sizes: list[int] = []
+        for owner_key, event_type, payload in rows:
+            owners_by_type[str(event_type)].add(str(owner_key))
+            if str(event_type) == "shortlist_size_changed":
+                value = payload.get("shortlist_size_after") if isinstance(payload, dict) else None
+                if isinstance(value, int) and 0 <= value <= 20:
+                    shortlist_sizes.append(value)
+
+        sessions = len(owners_by_type["decision_session_started"])
+
+        def count(event_type: str) -> int:
+            return len(owners_by_type[event_type])
+
+        def conversion(value: int) -> float | None:
+            return round(value * 100 / sessions, 2) if sessions else None
+
+        return DecisionAnalyticsFunnel(
+            decision_sessions=sessions,
+            shortlist_started=count("program_added_to_shortlist"),
+            comparison_started=count("comparison_started"),
+            comparison_completed=count("comparison_completed"),
+            suggestion_shown=count("system_suggestion_shown"),
+            suggestion_accepted=count("system_suggestion_accepted"),
+            final_choice_selected=count("final_choice_selected"),
+            average_shortlist_size=round(sum(shortlist_sizes) / len(shortlist_sizes), 2) if shortlist_sizes else None,
+            shortlist_conversion_percent=conversion(count("program_added_to_shortlist")),
+            comparison_conversion_percent=conversion(count("comparison_completed")),
+            final_choice_conversion_percent=conversion(count("final_choice_selected")),
+        )
 
 
 def _now() -> datetime:

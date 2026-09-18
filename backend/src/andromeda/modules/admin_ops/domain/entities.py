@@ -31,6 +31,11 @@ class IngestionRunSummary(ContractModel):
     removed_count: int = Field(strict=True, ge=0)
     error_code: str | None = Field(default=None, min_length=1, max_length=64)
     error_message: str | None = Field(default=None, min_length=1, max_length=512)
+    university_id: str | None = None
+    duration_ms: int | None = Field(default=None, strict=True, ge=0)
+    source_gap_count: int = Field(default=0, strict=True, ge=0)
+    critical_gap_count: int = Field(default=0, strict=True, ge=0)
+    drift_status: str = Field(default="not_checked", pattern=r"^(not_checked|passed|rejected)$")
 
     @model_validator(mode="after")
     def validate_lifecycle(self) -> "IngestionRunSummary":

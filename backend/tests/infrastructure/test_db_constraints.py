@@ -22,16 +22,16 @@ def test_curriculum_item_identity_is_non_null_and_unique(tmp_path) -> None:
             ]
         )
         session.flush()
-        session.add(DirectionModel(id="direction:09.03.01", university_id="university:bmstu", code="09.03.01", name="Информатика", education_level="bachelor"))
+        session.add(DirectionModel(id="direction:bmstu:09.03.01", university_id="university:bmstu", code="09.03.01", name="Информатика", education_level="bachelor"))
         session.flush()
-        session.add(ProgramModel(id="program:09.03.01-02", direction_id="direction:09.03.01", code="09.03.01-02", name="Программа", education_year=2026, study_plan_url="https://example.com/plan.pdf", source_url="https://example.com/"))
+        session.add(ProgramModel(id="program:bmstu:09.03.01-02", direction_id="direction:bmstu:09.03.01", code="09.03.01-02", name="Программа", education_year=2026, study_plan_url="https://example.com/plan.pdf", source_url="https://example.com/"))
         session.flush()
-        session.add(CurriculumModel(id="curriculum:09.03.01-02-2026", program_id="program:09.03.01-02", education_year=2026, source_url="https://example.com/plan.pdf", captured_at=datetime(2026, 1, 1, tzinfo=timezone.utc)))
+        session.add(CurriculumModel(id="curriculum:bmstu:09.03.01-02-2026", program_id="program:bmstu:09.03.01-02", education_year=2026, source_url="https://example.com/plan.pdf", captured_at=datetime(2026, 1, 1, tzinfo=timezone.utc)))
         session.flush()
         session.add(
             CurriculumItemModel(
                 id="item-a",
-                curriculum_id="curriculum:09.03.01-02-2026",
+                curriculum_id="curriculum:bmstu:09.03.01-02-2026",
                 discipline_id="discipline:0123456789abcdef",
                 source_name="Математика",
                 semester=None,
@@ -44,7 +44,7 @@ def test_curriculum_item_identity_is_non_null_and_unique(tmp_path) -> None:
         session.add(
             CurriculumItemModel(
                 id="item-b",
-                curriculum_id="curriculum:09.03.01-02-2026",
+                curriculum_id="curriculum:bmstu:09.03.01-02-2026",
                 discipline_id="discipline:0123456789abcdef",
                 source_name="Математика",
                 semester=None,

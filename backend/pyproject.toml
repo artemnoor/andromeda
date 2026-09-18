@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bmstu-andromeda-parser"
+name = "andromeda-backend"
 version = "0.1.0"
-description = "Canonical Andromeda backend and official BMSTU ingestion"
+description = "Source-backed Andromeda decision-support backend and university ingestion adapters"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

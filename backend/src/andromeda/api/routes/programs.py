@@ -1,35 +1,59 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
-from andromeda.api.dependencies import get_curriculum_reader, get_discipline_reader, get_program_reader
+from andromeda.api.dependencies import get_curriculum_reader, get_discipline_reader, get_program_reader, get_university_reader
 from andromeda.api.schemas.common import CurriculumItemResponse, CurriculumResponse, ProgramListResponse, ProgramResponse, ProgramSummaryResponse
 from andromeda.api.schemas.disciplines import discipline_response
 from andromeda.modules.curricula.repository.ports import CurriculumReader
 from andromeda.modules.disciplines.repository.ports import DisciplineReader
 from andromeda.modules.programs.contracts.public import Program
 from andromeda.modules.programs.repository.ports import ProgramReader
+from andromeda.modules.universities.repository.ports import UniversityReader
 from andromeda.shared.contracts.errors import NotFoundError
 from andromeda.shared.contracts.ids import ProgramId
 
 router = APIRouter(prefix="/programs", tags=["programs"])
 
 
-def _summary(program: Program) -> ProgramSummaryResponse:
-    return ProgramSummaryResponse.model_validate(program.model_dump())
+def _university_id(program: Program) -> str | None:
+    parts = program.direction_id.split(":")
+    return f"university:{parts[1]}" if len(parts) == 3 else None
+
+
+def _summary(program: Program, universities: UniversityReader | None = None) -> ProgramSummaryResponse:
+    university_id = _university_id(program)
+    university = universities.get(university_id) if universities is not None and university_id is not None else None
+    return ProgramSummaryResponse.model_validate(
+        {
+            **program.model_dump(),
+            "university_id": university_id,
+            "university_name": university.name if university is not None else None,
+        }
+    )
 
 
 @router.get("", response_model=ProgramListResponse)
-def list_programs(programs: ProgramReader = Depends(get_program_reader)) -> ProgramListResponse:
-    return ProgramListResponse(items=tuple(_summary(program) for program in programs.list()))
+def list_programs(
+    university_id: str | None = Query(default=None, alias="universityId"),
+    programs: ProgramReader = Depends(get_program_reader),
+    universities: UniversityReader = Depends(get_university_reader),
+) -> ProgramListResponse:
+    return ProgramListResponse(
+        items=tuple(_summary(program, universities) for program in programs.list(university_id=university_id))
+    )
 
 
 @router.get("/{id}", response_model=ProgramResponse)
-def get_program(id: ProgramId, programs: ProgramReader = Depends(get_program_reader)) -> ProgramResponse:
+def get_program(
+    id: ProgramId,
+    programs: ProgramReader = Depends(get_program_reader),
+    universities: UniversityReader = Depends(get_university_reader),
+) -> ProgramResponse:
     program = programs.get(id)
     if program is None:
         raise NotFoundError("Program was not found")
-    return ProgramResponse(program=_summary(program))
+    return ProgramResponse(program=_summary(program, universities))
 
 
 @router.get("/{id}/curriculum", response_model=CurriculumResponse)
@@ -38,6 +62,7 @@ def get_curriculum(
     programs: ProgramReader = Depends(get_program_reader),
     curricula: CurriculumReader = Depends(get_curriculum_reader),
     disciplines: DisciplineReader = Depends(get_discipline_reader),
+    universities: UniversityReader = Depends(get_university_reader),
 ) -> CurriculumResponse:
     program = programs.get(id)
     if program is None:
@@ -63,7 +88,7 @@ def get_curriculum(
             )
         )
     return CurriculumResponse(
-        program=_summary(program),
+        program=_summary(program, universities),
         curriculum_id=curriculum.id,
         education_year=curriculum.education_year,
         source_url=curriculum.source_url,

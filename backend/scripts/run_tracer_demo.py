@@ -1,4 +1,8 @@
-"""Run and verify the complete contract-first tracer bullet locally or in CI."""
+"""Legacy compatibility implementation for the Andromeda demo.
+
+The supported command is ``run_andromeda_demo.py``. This module remains for
+one transition cycle because existing tests and local scripts import it.
+"""
 
 from __future__ import annotations
 
@@ -28,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from andromeda.ingestion.universities.bmstu import DEFAULT_CAMPUS_FIXTURE_DIR, DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR  # noqa: E402
 from andromeda.infrastructure.config import Settings  # noqa: E402
+from andromeda.shared.contracts.ids import canonical_program_id  # noqa: E402
 from run_tracer_bullet import (  # noqa: E402
     TracerRunResult,
     configure_logging,
@@ -35,7 +40,7 @@ from run_tracer_bullet import (  # noqa: E402
     selected_program_codes,
 )
 
-logger = logging.getLogger("tracer.demo")
+logger = logging.getLogger("andromeda.demo")
 
 
 class DemoError(RuntimeError):
@@ -43,12 +48,12 @@ class DemoError(RuntimeError):
 
 
 def default_database_url() -> str:
-    environment_url = os.environ.get("BMSTU_DATABASE_URL")
+    environment_url = os.environ.get("ANDROMEDA_DATABASE_URL") or os.environ.get("BMSTU_DATABASE_URL")
     if environment_url is not None:
         return environment_url
     if os.environ.get("ANDROMEDA_ENV", "test").strip().lower() in {"development", "staging"}:
         return Settings.from_environment().database_url
-    return "sqlite:///backend/data/tracer-demo.db"
+    return "sqlite:///backend/data/andromeda-demo.db"
 
 
 def resolve_database_url(database_url: str) -> str:
@@ -64,7 +69,7 @@ def resolve_database_url(database_url: str) -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run the complete BMSTU tracer bullet")
+    parser = argparse.ArgumentParser(description="Run the complete Andromeda fixture/live demo")
     parser.add_argument("--mode", choices=("fixture", "live"), default="fixture")
     parser.add_argument("--fixture-dir", type=Path, default=DEFAULT_FIXTURE_DIR)
     parser.add_argument("--event-fixture-dir", type=Path, default=DEFAULT_EVENT_FIXTURE_DIR)
@@ -123,9 +128,9 @@ def discover_program_codes(api_base_url: str) -> tuple[str, ...]:
     if not isinstance(items, list):
         raise DemoError("program catalog response does not contain an item list")
     codes = tuple(
-        item["code"]
+        item["id"]
         for item in items
-        if isinstance(item, dict) and isinstance(item.get("code"), str) and item["code"]
+        if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"]
     )
     if len(codes) < 2:
         raise DemoError("program catalog contains fewer than two programs for comparison")
@@ -135,8 +140,8 @@ def discover_program_codes(api_base_url: str) -> tuple[str, ...]:
 
 def verify_compare(api_base_url: str, program_codes: Sequence[str]) -> None:
     if len(program_codes) != 2:
-        raise DemoError("the tracer demo requires exactly two program codes")
-    program_ids = tuple(f"program:{code}" for code in program_codes)
+        raise DemoError("the Andromeda demo requires exactly two program codes")
+    program_ids = tuple(_verification_program_id(value) for value in program_codes)
     query = quote(",".join(program_ids), safe="")
     body = _http_get(f"{api_base_url}/compare?programIds={query}")
     payload = _json_object(body, "compare endpoint")
@@ -153,7 +158,7 @@ def verify_compare(api_base_url: str, program_codes: Sequence[str]) -> None:
 def verify_og(frontend_url: str, program_codes: Sequence[str], secret: str) -> None:
     """Smoke-test signed Next OG routes without a Telegram token or browser."""
 
-    program_ids = tuple(f"program:{code}" for code in program_codes[:2])
+    program_ids = tuple(_verification_program_id(value) for value in program_codes[:2])
     checks = (
         ("/og/program", {"ids": program_ids[0]}),
         ("/og/compare", {"ids": ",".join(program_ids)}),
@@ -187,7 +192,7 @@ def verify_og(frontend_url: str, program_codes: Sequence[str], secret: str) -> N
 def verify_admissions(api_base_url: str, program_codes: Sequence[str]) -> None:
     """Verify the admissions projection is reachable through the public API."""
     for code in program_codes:
-        program_id = f"program:{code}"
+        program_id = _verification_program_id(code)
         body = _http_get(f"{api_base_url}/programs/{quote(program_id, safe='')}/admissions")
         payload = _json_object(body, "admissions endpoint")
         if payload.get("programId") != program_id:
@@ -264,6 +269,10 @@ def verify_events(api_base_url: str, expected_event_count: int = 5) -> None:
     if any(item.get("id") == "event:bmstu:research-day-2026" for item in recommended_items if isinstance(item, dict)):
         raise DemoError("unlinked university event was returned by recommended filter")
     logger.info("stage_verified name=events_recommended count=%d recommendation_count=%d", len(recommended_items), len(recommended_ids))
+
+
+def _verification_program_id(value: str) -> str:
+    return canonical_program_id(value if value.startswith("program:") else f"program:{value}")
 
 
 def verify_campus_data(api_base_url: str, expected_point_count: int = 5, program_id: str | None = None) -> None:
@@ -439,7 +448,7 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
     )
 
     child_env = os.environ.copy()
-    child_env["BMSTU_DATABASE_URL"] = database_url
+    child_env["ANDROMEDA_DATABASE_URL"] = database_url
     child_env["PYTHONPATH"] = os.pathsep.join(
         value for value in (str(BACKEND_ROOT / "src"), child_env.get("PYTHONPATH")) if value
     )
@@ -477,12 +486,12 @@ def run_demo(args: argparse.Namespace) -> TracerRunResult:
         wait_for_http(f"{api_base_url}/openapi.json", api_process, args.timeout, "api")
         wait_for_http(frontend_url, frontend_process, args.timeout, "frontend")
         discovered_codes = discover_program_codes(api_base_url)
-        verification_codes = program_codes or discovered_codes[:2]
+        verification_codes = tuple(_verification_program_id(value) for value in (program_codes or discovered_codes[:2]))
         verify_compare(api_base_url, verification_codes)
         verify_og(frontend_url, verification_codes, child_env["ANDROMEDA_RENDER_HMAC_SECRET"])
         verify_admissions(api_base_url, verification_codes)
         verify_events(api_base_url, result.event_count)
-        verify_campus_data(api_base_url, result.campus_point_count, program_id=f"program:{verification_codes[0]}")
+        verify_campus_data(api_base_url, result.campus_point_count, program_id=verification_codes[0])
         if not args.check:
             logger.info("demo_ready api=%s frontend=%s; press Ctrl-C to stop", api_base_url, frontend_url)
             while True:

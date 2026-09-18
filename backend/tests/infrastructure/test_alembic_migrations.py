@@ -221,6 +221,45 @@ def test_route_migration_backfills_existing_numeric_scores(tmp_path: Path, monke
         engine.dispose()
 
 
+def test_university_scoped_identity_migrates_bmstu_and_allows_hse_collision_free(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'scoped-identity.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    config = _alembic_config(database_url)
+    command.upgrade(config, "0014_decision_analytics")
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("INSERT INTO education_levels (id) VALUES ('bachelor')"))
+            connection.execute(
+                text("INSERT INTO universities (id, name, city, official_site, address) VALUES ('university:bmstu', 'BMSTU', 'Москва', 'https://bmstu.ru/', 'Москва')")
+            )
+            connection.execute(
+                text("INSERT INTO universities (id, name, city, official_site, address) VALUES ('university:hse', 'HSE', 'Москва', 'https://hse.ru/', 'Москва')")
+            )
+            connection.execute(
+                text("INSERT INTO directions (id, university_id, code, name, education_level) VALUES ('direction:09.03.01', 'university:bmstu', '09.03.01', 'Информатика', 'bachelor')")
+            )
+            connection.execute(
+                text("INSERT INTO educational_programs (id, direction_id, code, name, education_year, study_plan_url, source_url) VALUES ('program:09.03.01-02', 'direction:09.03.01', '09.03.01-02', 'Профиль', 2026, 'https://bmstu.ru/plan.pdf', 'https://bmstu.ru/program')")
+            )
+
+        command.upgrade(config, "head")
+        with engine.begin() as connection:
+            assert connection.execute(text("SELECT id FROM directions WHERE university_id = 'university:bmstu'")).scalar_one() == "direction:bmstu:09.03.01"
+            assert connection.execute(text("SELECT id FROM educational_programs WHERE direction_id = 'direction:bmstu:09.03.01'")).scalar_one() == "program:bmstu:09.03.01-02"
+            connection.execute(
+                text("INSERT INTO directions (id, university_id, code, name, education_level) VALUES ('direction:hse:09.03.01', 'university:hse', '09.03.01', 'Информатика', 'bachelor')")
+            )
+            connection.execute(
+                text("INSERT INTO educational_programs (id, direction_id, code, name, education_year, study_plan_url, source_url) VALUES ('program:hse:09.03.01-02', 'direction:hse:09.03.01', '09.03.01-02', 'Профиль HSE', 2026, 'https://hse.ru/plan.pdf', 'https://hse.ru/program')")
+            )
+            rows = connection.execute(text("SELECT id FROM educational_programs ORDER BY id")).scalars().all()
+            assert rows == ["program:bmstu:09.03.01-02", "program:hse:09.03.01-02"]
+    finally:
+        engine.dispose()
+
+
 def test_environment_url_is_used_for_alembic_even_when_ini_differs(tmp_path: Path, monkeypatch) -> None:
     target_url = f"sqlite:///{(tmp_path / 'environment-target.db').as_posix()}"
     ignored_url = f"sqlite:///{(tmp_path / 'ini-target.db').as_posix()}"

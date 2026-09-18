@@ -70,7 +70,8 @@ def test_preview_and_results_use_real_catalog(tmp_path: Path) -> None:
     recommendation = payload["recommendations"][0]
     assert isinstance(recommendation["contentFit"], int)
     assert Decimal(recommendation["score"]["breakdown"]["antiPenalty"]) >= 0
-    assert recommendation["workloadReadiness"]["status"] == "not_available"
+    assert "workloadReadiness" not in recommendation
+    assert "careerFit" not in recommendation
 
 
 def test_submission_rejects_unknown_fields_with_strict_contract(tmp_path: Path) -> None:

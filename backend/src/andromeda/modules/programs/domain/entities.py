@@ -23,10 +23,14 @@ class Program(ContractModel):
 
     @model_validator(mode="after")
     def validate_identity(self) -> Self:
-        if self.id != f"program:{self.code}":
+        university_slug = self.direction_id.removeprefix("direction:").split(":", 1)[0] if self.direction_id.count(":") == 2 else None
+        expected = f"program:{university_slug}:{self.code}" if university_slug else f"program:{self.code}"
+        legacy = f"program:{self.code}"
+        if self.id not in {expected, legacy}:
             logger.error("contract_semantic_violation model=Program field=id")
-            raise ValueError("program id must equal program:<code>")
-        if not self.code.startswith(self.direction_id.removeprefix("direction:") + "-"):
+            raise ValueError("program id must equal program:<university>:<code>")
+        direction_code = self.direction_id.rsplit(":", 1)[-1]
+        if not self.code.startswith(direction_code + "-"):
             logger.error("contract_semantic_violation model=Program field=direction_id")
             raise ValueError("program code must belong to its direction")
         return self

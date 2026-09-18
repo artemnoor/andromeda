@@ -47,5 +47,5 @@ def test_fixture_runner_preserves_single_program_scope_for_events(
         program_codes=selected,
     )
 
-    assert result.program_ids == ("program:09.03.01-02",)
+    assert result.program_ids == ("program:bmstu:09.03.01-02",)
     assert result.event_count == 3

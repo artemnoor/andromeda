@@ -8,6 +8,20 @@ import type { Provenance } from "@/lib/types";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+export function explainSourceGap(code: string): string {
+  const labels: Record<string, string> = {
+    curriculum_missing: "Учебный план не опубликован в доступном официальном источнике.",
+    study_plan: "Учебный план не опубликован в доступном официальном источнике.",
+    tuition_constraint_not_available_in_candidate_source: "Стоимость обучения не сопоставима по доступным официальным данным.",
+    location_constraint_not_available_in_candidate_source: "Локация не сопоставима по доступным официальным данным.",
+    catalog_empty: "В официальном каталоге сейчас не найдено программ.",
+  };
+  if (labels[code]) return labels[code];
+  if (code.includes("tuition")) return "Стоимость обучения не опубликована или не распознана в официальном источнике.";
+  if (code.includes("curriculum") || code.includes("work-plan") || code.includes("study-plan")) return "Содержание учебного плана недоступно в официальном источнике.";
+  return "Официальный источник не содержит это поле в текущем срезе.";
+}
+
 export function Loading({ label = "Загружаем данные…" }: { label?: string }) {
   return (
     <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -168,7 +182,7 @@ export function Tag({ children, tone = "default" }: { children: React.ReactNode;
     tone === "primary" ? "border-primary/30 bg-primary/10 text-primary"
     : tone === "muted" ? "border-border bg-muted text-muted-foreground"
     : "border-border bg-card text-foreground";
-  return <Badge variant="outline" className={cn("font-medium", cls)}>{children}</Badge>;
+  return <Badge variant="outline" className={cn("max-w-full whitespace-normal break-words font-medium", cls)}>{children}</Badge>;
 }
 
 export function SectionTitle({ children, hint }: { children: React.ReactNode; hint?: string }) {

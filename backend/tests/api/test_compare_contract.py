@@ -29,8 +29,8 @@ def test_compare_summary_is_additive_and_keeps_raw_route_unchanged(ingested_db: 
     assert response.status_code == 200
     payload = response.json()
     assert [program["program"]["id"] for program in payload["programs"]] == [
-        "program:09.03.01-02",
-        "program:09.03.01-12",
+        "program:bmstu:09.03.01-02",
+        "program:bmstu:09.03.01-12",
     ]
     assert "winner" not in payload
     assert "overallScore" not in payload

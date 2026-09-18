@@ -32,6 +32,12 @@ class AccountResponse(ApiModel):
 class AuthSessionResponse(ApiModel):
     authenticated: bool
     account: AccountResponse | None = None
+    decision_transfer: str | None = None
+
+
+class AuthStateResponse(ApiModel):
+    authenticated: bool
+    account: AccountResponse | None = None
 
 
 def auth_response(session: AuthSessionResult) -> AuthSessionResponse:
@@ -48,8 +54,16 @@ def auth_response(session: AuthSessionResult) -> AuthSessionResponse:
     )
 
 
-def account_response(account: Account) -> AuthSessionResponse:
-    return auth_response(AuthSessionResult(authenticated=True, account=account))
+def account_response(account: Account, *, decision_transfer: str | None = None) -> AuthSessionResponse:
+    return AuthSessionResponse(authenticated=True, account=account_response_data(account), decision_transfer=decision_transfer)
 
 
-__all__ = ["AuthSessionResponse", "LoginRequest", "RegisterRequest", "account_response", "auth_response"]
+def account_response_data(account: Account) -> AccountResponse:
+    return AccountResponse(
+        accountId=account.account_id,
+        email=account.email,
+        createdAt=account.created_at,
+    )
+
+
+__all__ = ["AuthSessionResponse", "AuthStateResponse", "LoginRequest", "RegisterRequest", "account_response", "auth_response"]

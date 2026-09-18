@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 
 from andromeda.modules.programs.contracts.public import Program
 from andromeda.modules.programs.repository.ports import ProgramReader, ProgramWriter
-from andromeda.shared.contracts.ids import ProgramId
+from andromeda.shared.contracts.ids import ProgramId, UniversityId, canonical_program_id
 
-from ..database.models import ProgramModel
+from ..database.models import DirectionModel, ProgramModel
 
 
 class SqlAlchemyProgramRepository(ProgramReader, ProgramWriter):
@@ -15,11 +15,14 @@ class SqlAlchemyProgramRepository(ProgramReader, ProgramWriter):
         self._session = session
 
     def get(self, program_id: ProgramId) -> Program | None:
-        model = self._session.get(ProgramModel, program_id)
+        model = self._session.get(ProgramModel, canonical_program_id(program_id))
         return _to_contract(model) if model is not None else None
 
-    def list(self) -> tuple[Program, ...]:
-        models = self._session.execute(select(ProgramModel).order_by(ProgramModel.code)).scalars().all()
+    def list(self, university_id: UniversityId | None = None) -> tuple[Program, ...]:
+        statement = select(ProgramModel).join(DirectionModel, ProgramModel.direction_id == DirectionModel.id)
+        if university_id is not None:
+            statement = statement.where(DirectionModel.university_id == university_id)
+        models = self._session.execute(statement.order_by(ProgramModel.code, ProgramModel.id)).scalars().all()
         return tuple(_to_contract(model) for model in models)
 
     def save(self, program: Program) -> None:

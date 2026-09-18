@@ -63,7 +63,7 @@ def test_campus_normalization_reuses_event_venue_ids_and_canonical_links() -> No
         adapter.close()
     assert len(raw.campus_points) == len(canonical.campus_points) == 5
     assert canonical.campus_points[0].id == "venue:bmstu:main-campus"
-    assert canonical.campus_points[0].program_ids == ("program:09.03.01-02", "program:09.03.01-12")
+    assert canonical.campus_points[0].program_ids == ("program:bmstu:09.03.01-02", "program:bmstu:09.03.01-12")
     assert canonical.campus_points[0].department_ids == ("department:bmstu:iu7",)
     assert canonical.campus_points[0].provenance[0].kind is SourceKind.BMSTU_CAMPUS_POINTS
 
@@ -80,7 +80,7 @@ def test_campus_normalization_scopes_program_links_without_dropping_physical_poi
         adapter.close()
     main = next(point for point in canonical.campus_points if point.id == "venue:bmstu:main-campus")
     innovation = next(point for point in canonical.campus_points if point.id == "venue:bmstu:innovation-hub")
-    assert main.program_ids == ("program:09.03.01-02",)
+    assert main.program_ids == ("program:bmstu:09.03.01-02",)
     assert innovation.program_ids == ()
 
 

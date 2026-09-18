@@ -29,9 +29,11 @@ class Direction(ContractModel):
 
     @model_validator(mode="after")
     def validate_identity(self) -> Self:
-        if self.id != f"direction:{self.code}":
+        expected = f"direction:{self.university_id.removeprefix('university:')}:{self.code}"
+        legacy = f"direction:{self.code}"
+        if self.id not in {expected, legacy}:
             logger.error("contract_semantic_violation model=Direction field=id")
-            raise ValueError("direction id must equal direction:<code>")
+            raise ValueError("direction id must equal direction:<university>:<code>")
         return self
 
 

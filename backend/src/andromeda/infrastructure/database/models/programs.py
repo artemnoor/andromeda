@@ -19,7 +19,7 @@ class ProgramModel(Base):
 
     __table_args__ = (
         UniqueConstraint("direction_id", "code", name="uq_program_direction_code"),
-        CheckConstraint("id = 'program:' || code", name="ck_program_id_matches_code"),
+        CheckConstraint("id LIKE 'program:%:%'", name="ck_program_id_matches_university_code"),
         CheckConstraint("code LIKE '__.__.__-%'", name="ck_program_code_shape"),
         CheckConstraint("education_year >= 2000 AND education_year <= 2100", name="ck_program_education_year"),
         CheckConstraint("length(name) > 0", name="ck_program_name_non_empty"),

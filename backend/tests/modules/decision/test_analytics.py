@@ -61,6 +61,9 @@ def test_allowlist_is_exact_and_payload_rejects_unknown_or_unsafe_shape() -> Non
         "system_suggestion_rejected",
         "shortlist_size_changed",
         "shortlist_returned_to",
+        "final_choice_selected",
+        "final_choice_changed",
+        "decision_reopened",
     }
 
     with pytest.raises(PydanticValidationError):

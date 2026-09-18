@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from ....shared.contracts.ids import ProgramId
+from ....shared.contracts.ids import ProgramId, UniversityId
 
 from ..contracts.public import Program
 
@@ -12,7 +12,7 @@ class ProgramReader(Protocol):
 
     def get(self, program_id: ProgramId) -> Program | None: ...
 
-    def list(self) -> tuple[Program, ...]: ...
+    def list(self, university_id: UniversityId | None = None) -> tuple[Program, ...]: ...
 
 
 class ProgramWriter(Protocol):

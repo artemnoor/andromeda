@@ -50,7 +50,7 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
             seen_direction_codes.add(direction_code)
             directions.append(
                 Direction(
-                    id=f"direction:{direction_code}",
+                    id=f"direction:{university.id.removeprefix('university:')}:{direction_code}",
                     university_id=university.id,
                     code=direction_code,
                     name=_text(raw_direction.name),
@@ -63,8 +63,8 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
     directions_by_code = {item.code: item for item in directions}
     programs = tuple(
         Program(
-            id=f"program:{_code(program.code)}",
-            direction_id=f"direction:{_program_direction(program, directions_by_code, direction.code)}",
+            id=f"program:{university.id.removeprefix('university:')}:{_code(program.code)}",
+            direction_id=f"direction:{university.id.removeprefix('university:')}:{_program_direction(program, directions_by_code, direction.code)}",
             code=_code(program.code),
             name=_text(program.name),
             education_year=program.education_year,
@@ -109,7 +109,7 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
 
     curricula = tuple(
         Curriculum(
-            id=f"curriculum:{program.code}-{program.education_year}",
+            id=f"curriculum:{program.id.removeprefix('program:')}-{program.education_year}",
             program_id=program.id,
             education_year=program.education_year,
             source_url=program.study_plan_url,

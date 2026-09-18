@@ -12,7 +12,7 @@ from andromeda.modules.programs.contracts.public import Program
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.ids import AccountId
 
-from ..contracts.analytics import DecisionAnalyticsEvent
+from ..contracts.analytics import DecisionAnalyticsEvent, DecisionAnalyticsFunnel
 from ..domain.entities import DecisionSnapshot, DecisionState
 from ..domain.values import DecisionId
 
@@ -29,6 +29,8 @@ class DecisionBindingPort(Protocol):
     """Transfer an anonymous owner without merging two explicit choices."""
 
     def bind_anonymous_to_account(self, scope: ProfileScope, account_id: AccountId) -> DecisionBindingOutcome: ...
+
+    def replace_account_with_anonymous(self, scope: ProfileScope, account_id: AccountId) -> DecisionBindingOutcome: ...
 
 
 class DecisionContextRepository(DecisionBindingPort, Protocol):
@@ -52,6 +54,12 @@ class DecisionAnalyticsWriter(Protocol):
     """Owner-scoped, idempotent persistence boundary for observational events."""
 
     def append(self, scope: ProfileScope, events: tuple[DecisionAnalyticsEvent, ...]) -> int: ...
+
+
+class DecisionAnalyticsReader(Protocol):
+    """Read only aggregate boundary for protected Ops surfaces."""
+
+    def funnel(self) -> DecisionAnalyticsFunnel: ...
 
 
 class ProgramCandidateSnapshot(ContractModel):
@@ -78,6 +86,7 @@ __all__ = [
     "DecisionBindingOutcome",
     "DecisionBindingPort",
     "DecisionAnalyticsWriter",
+    "DecisionAnalyticsReader",
     "DecisionContextRepository",
     "ProgramCandidateSnapshot",
     "ProgramCandidateSource",

@@ -293,6 +293,8 @@ class DecisionState(ContractModel):
     version: Literal[1] = 1
     admission_constraints: AdmissionConstraints | None = None
     choice: DecisionChoice = Field(default_factory=DecisionChoice)
+    selected_program_id: ProgramId | None = None
+    selected_at: datetime | None = None
     explicit_priorities: tuple[ShortText, ...] = Field(default=(), max_length=12)
     revision: int = Field(default=1, strict=True, ge=1)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -306,12 +308,22 @@ class DecisionState(ContractModel):
             raise ValueError("decision state created_at cannot be after updated_at")
         if len(self.explicit_priorities) != len(set(self.explicit_priorities)):
             raise ValueError("explicit priorities must be unique")
+        if self.selected_at is not None and not _is_aware(self.selected_at):
+            raise ValueError("selected_at must be timezone-aware")
+        if self.selected_program_id is None and self.selected_at is not None:
+            raise ValueError("selected_at requires selected_program_id")
+        if self.selected_program_id is not None:
+            selected = next((entry for entry in self.choice.active_shortlist if entry.program_id == self.selected_program_id), None)
+            if selected is None:
+                raise ValueError("final program must be an active shortlist entry")
         return self
 
     @property
     def status(self) -> DecisionStatus:
         if self.admission_constraints is None and not self.choice.considered_program_ids and not self.choice.shortlist_entries and not self.explicit_priorities:
             return DecisionStatus.EMPTY
+        if self.selected_program_id is not None:
+            return DecisionStatus.FINALIZED
         if self.choice.active_shortlist:
             return DecisionStatus.READY
         return DecisionStatus.IN_PROGRESS
@@ -322,6 +334,8 @@ class DecisionState(ContractModel):
             version=self.version,
             admission_constraints=self.admission_constraints,
             choice=choice,
+            selected_program_id=self.selected_program_id,
+            selected_at=self.selected_at,
             explicit_priorities=self.explicit_priorities,
             revision=self.revision + 1,
             created_at=self.created_at,
@@ -334,6 +348,42 @@ class DecisionState(ContractModel):
             version=self.version,
             admission_constraints=constraints,
             choice=self.choice,
+            selected_program_id=self.selected_program_id,
+            selected_at=self.selected_at,
+            explicit_priorities=self.explicit_priorities,
+            revision=self.revision + 1,
+            created_at=self.created_at,
+            updated_at=now,
+        )
+
+    def select_final_choice(self, program_id: ProgramId, *, now: datetime) -> DecisionState:
+        _ensure_aware(now)
+        if not any(entry.program_id == program_id and entry.state is ShortlistEntryState.ACTIVE for entry in self.choice.shortlist_entries):
+            raise ValueError("final program must be an active shortlist entry")
+        if self.selected_program_id == program_id:
+            return self
+        return self.__class__(
+            version=self.version,
+            admission_constraints=self.admission_constraints,
+            choice=self.choice,
+            selected_program_id=program_id,
+            selected_at=now,
+            explicit_priorities=self.explicit_priorities,
+            revision=self.revision + 1,
+            created_at=self.created_at,
+            updated_at=now,
+        )
+
+    def reopen_final_choice(self, *, now: datetime) -> DecisionState:
+        _ensure_aware(now)
+        if self.selected_program_id is None:
+            return self
+        return self.__class__(
+            version=self.version,
+            admission_constraints=self.admission_constraints,
+            choice=self.choice,
+            selected_program_id=None,
+            selected_at=None,
             explicit_priorities=self.explicit_priorities,
             revision=self.revision + 1,
             created_at=self.created_at,

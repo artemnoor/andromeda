@@ -49,7 +49,10 @@ class Curriculum(ContractModel):
 
     @model_validator(mode="after")
     def validate_identity(self) -> Self:
-        if self.id != f"curriculum:{self.program_id.removeprefix('program:')}-{self.education_year}":
+        program_identity = self.program_id.removeprefix("program:")
+        expected = f"curriculum:{program_identity}-{self.education_year}"
+        legacy = f"curriculum:{program_identity.split(':', 1)[-1]}-{self.education_year}"
+        if self.id not in {expected, legacy}:
             logger.error("contract_semantic_violation model=Curriculum field=id")
             raise ValueError("curriculum id must derive from program and education year")
         identities = [(item.discipline_id, item.semester) for item in self.items]

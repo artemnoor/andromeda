@@ -1,14 +1,26 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${ANDROMEDA_STAGING_DB}
+      POSTGRES_USER: ${ANDROMEDA_STAGING_DB_USER}
+      POSTGRES_PASSWORD: ${ANDROMEDA_STAGING_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
     image: ${BACKEND_IMAGE}
     restart: unless-stopped
+    depends_on:
+      - postgres
     environment:
-      ANDROMEDA_ENV: test
-      BMSTU_DATABASE_URL: sqlite:////app/data/tracer.db
-      FRONTEND_ORIGIN: http://localhost
+      ANDROMEDA_ENV: staging
+      ANDROMEDA_DATABASE_URL: postgresql+psycopg://${ANDROMEDA_STAGING_DB_USER}:${ANDROMEDA_STAGING_DB_PASSWORD}@postgres:5432/${ANDROMEDA_STAGING_DB}
+      FRONTEND_ORIGIN: https://${ANDROMEDA_DOMAIN}
       LOG_LEVEL: INFO
-      BMSTU_DB_POOL_SIZE: 1
-      BMSTU_DB_MAX_OVERFLOW: 0
+      ANDROMEDA_DB_POOL_SIZE: 5
+      ANDROMEDA_DB_MAX_OVERFLOW: 10
     volumes:
       - andromeda_data:/app/data
 
@@ -42,14 +54,18 @@ services:
     depends_on:
       - frontend
       - backend
+    environment:
+      ANDROMEDA_DOMAIN: ${ANDROMEDA_DOMAIN:-localhost}
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
 
 volumes:
+  postgres_data:
   andromeda_data:
   caddy_data:
   caddy_config:

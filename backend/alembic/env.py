@@ -31,7 +31,7 @@ logger = logging.getLogger("andromeda.alembic")
 
 
 def _configured_database_url() -> str:
-    environment_url = os.environ.get("BMSTU_DATABASE_URL")
+    environment_url = os.environ.get("ANDROMEDA_DATABASE_URL") or os.environ.get("BMSTU_DATABASE_URL")
     configured_url = environment_url or config.get_main_option("sqlalchemy.url") or None
     settings = Settings.from_environment(configured_url)
     database_url = settings.database_url

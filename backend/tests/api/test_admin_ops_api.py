@@ -117,3 +117,14 @@ def test_admin_ops_live_retry_is_staging_only(tmp_path: Path, monkeypatch) -> No
 
     assert response.status_code == 400
     assert response.json()["code"] == "CONTRACT_ERROR"
+
+
+def test_admin_ops_exposes_privacy_safe_decision_funnel(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", OPS_KEY)
+    client = TestClient(create_app(_database_with_fixture(tmp_path)))
+    response = client.get("/ops/analytics/funnel", headers={"X-Andromeda-Ops-Key": OPS_KEY})
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["decisionSessions"] == 0
+    assert "payload" not in response.text
+    assert "scores" not in response.text

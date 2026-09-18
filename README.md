@@ -1,8 +1,10 @@
-# Andromeda BMSTU
+# Andromeda
 
-> Andromeda — data-driven система поддержки выбора образовательной программы.
+> Stage: MVP / Private Alpha. Tracer bullet phase: completed.
 
-Andromeda объединяет source-backed данные МГТУ им. Н.Э. Баумана о поступлении и содержании учебных планов и помогает превратить набор вариантов в небольшой объяснимый shortlist. Пользователь может начать с каталога, сравнения, проверки поступления, профиля предпочтений или уже сохранённого выбора — профтест и линейный маршрут не обязательны.
+Andromeda — multi-university data-driven система поддержки выбора образовательной программы. Основной объект продукта — `DecisionContext` и пользовательский shortlist: система объединяет source-backed сведения о программах, содержании учебных планов и поступлении, а пользователь сам принимает финальное решение.
+
+BMSTU — первый полноценный источник, HSE — второй. Новые университеты подключаются через adapters (`capture → parse → normalize → validate → persist`), без университетских ветвлений в доменных модулях. Пользователь может начать с каталога, сравнения, проверки поступления, профиля предпочтений или уже сохранённого выбора — профтест и линейный маршрут не обязательны.
 
 Система разделяет факты и решения: `DecisionContext` хранит только явно подтверждённые пользователем ограничения и shortlist, а предложения, Admission Fit, Content Fit, trade-offs и source gaps остаются derived evidence. Andromeda никогда не удаляет сохранённую программу автоматически; последнее решение принимает пользователь. Гостевая anonymous HttpOnly-сессия работает сразу, аккаунт нужен только для переноса выбора между устройствами.
 
@@ -10,7 +12,7 @@ Andromeda объединяет source-backed данные МГТУ им. Н.Э. 
 
 ```powershell
 python -m pip install -e "backend[dev]"
-python backend/scripts/run_tracer_demo.py --mode fixture --check
+python backend/scripts/run_andromeda_demo.py --mode fixture --check
 ```
 
 После запуска API доступен на `http://127.0.0.1:8000/docs`, UI — на `http://127.0.0.1:3000/`. Для ручной работы уберите `--check`.
@@ -19,12 +21,13 @@ python backend/scripts/run_tracer_demo.py --mode fixture --check
 
 ## Что уже работает
 
-- BMSTU fixture/live ingestion с provenance и fail-closed source selection.
+- Generic university ingestion (`--university bmstu|hse|all`) с provenance и fail-closed source selection.
+- BMSTU и HSE fixture/live adapters с university-scoped canonical IDs.
 - Изолированные модули universities, programs, curricula, disciplines, decision, comparison, proftest, recommendations, admissions и admission_fit.
 - SQLAlchemy/Alembic с FK, unique/check constraints и Decimal без float-конверсии.
 - FastAPI/OpenAPI и сгенерированные TypeScript-типы.
 - Persistent shortlist с ролями «основная/альтернатива», явными add/remove/restore и optimistic revision; raw A/B comparison и summary-first сравнение 2–3 программ.
-- Профиль содержания: короткое ядро из пяти вопросов, preliminary topic chips, bounded adaptive refinement и TOP реальных программ с объяснениями по учебному плану. Новая session-сессия использует `proftest-v3`; старые pinned `proftest-v2` продолжают читаться.
+- Профиль содержания: короткое ядро из пяти вопросов, preliminary topic chips, bounded adaptive refinement и реальные программы с объяснениями по учебному плану. Career Fit и персональный Workload Readiness не являются MVP capability; вместо них показываются source-backed Content Fit и workload evidence в сравнении.
 - Persistence профиля: completed `UserProfile` хранится по anonymous HttpOnly session cookie и восстанавливается после перезагрузки UI.
 - Recommendation vertical slice: готовый `UserProfile` → детерминированный Content Fit → reasons/anti-reasons по реальному fingerprint.
 - Admissions vertical slice: реальные BMSTU данные поступления по canonical `program_id` — места, ЕГЭ и минимумы, квоты, проходные баллы, стоимость и форма обучения.
@@ -40,7 +43,7 @@ npm run generate-api
 npm run check-api-drift
 ```
 
-`Content Fit` рассчитывается детерминированно по реальным часам/ЗЕТ и долям предметных областей. В recommendation response `Workload readiness` и `Career Fit` пока имеют статус `not_available`; отдельный `Admission Fit` показывает риск по source-backed admissions facts и не влияет на Content Fit или ranking рекомендаций.
+`Content Fit` рассчитывается детерминированно по реальным часам/ЗЕТ и долям предметных областей. Отдельный `Admission Fit` показывает риск по source-backed admissions facts и не влияет на Content Fit или ranking рекомендаций.
 
 ### Данные поступления
 
@@ -73,8 +76,10 @@ GET /compare?programIds=<program-id-a>,<program-id-b>&scope=semester&semester=1
 | [Конфигурация](docs/configuration.md) | Переменные окружения |
 | [Telegram-клиент](docs/telegram-bot.md) | aiogram, PNG render layer, callbacks и YC deployment |
 | [PostgreSQL](docs/postgresql.md) | Dev/staging, migrations и ingestion |
+| [MVP](docs/mvp.md) | Scope и measurable Definition of Done |
+| [Deployment](docs/deployment.md) | Staging, health checks, backups и rollback |
 | [Тестирование](docs/testing.md) | Локальные и CI-проверки |
 
-## Лицензия
+## License
 
-Лицензия проекта не задана в текущем репозитории.
+MIT — см. [LICENSE](LICENSE).

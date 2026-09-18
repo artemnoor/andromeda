@@ -167,6 +167,46 @@ class SqlAlchemyDecisionContextRepository(DecisionContextRepository):
         logger.info("decision_context_binding_complete outcome=bound")
         return DecisionBindingOutcome.BOUND
 
+    def replace_account_with_anonymous(self, scope: ProfileScope, account_id: AccountId) -> DecisionBindingOutcome:
+        """Explicitly import the guest decision state after a conflict.
+
+        This operation is never called by login itself. It is a separate
+        user-confirmed command, so an existing account choice cannot be
+        silently overwritten.
+        """
+
+        if scope.account_id is not None:
+            return DecisionBindingOutcome.NO_ANONYMOUS_STATE
+        anonymous = self._session.scalar(
+            select(DecisionContextModel)
+            .where(
+                DecisionContextModel.account_id.is_(None),
+                DecisionContextModel.session_key_hash == scope.session_key_hash,
+            )
+            .with_for_update()
+        )
+        account_context = self._session.scalar(
+            select(DecisionContextModel)
+            .where(DecisionContextModel.account_id == account_id)
+            .with_for_update()
+        )
+        if anonymous is None or _utc(anonymous.expires_at) <= _now():
+            self._session.commit()
+            return DecisionBindingOutcome.NO_ANONYMOUS_STATE
+        try:
+            if account_context is not None:
+                self._session.delete(account_context)
+                self._session.flush()
+            anonymous.account_id = account_id
+            anonymous.session_key_hash = None
+            anonymous.owner_key = f"account:{account_id.removeprefix('account:')}"
+            self._session.commit()
+        except SQLAlchemyError:
+            self._session.rollback()
+            raise
+        logger.info("decision_context_binding_complete outcome=explicit_guest_import")
+        return DecisionBindingOutcome.BOUND
+
     @property
     def _dialect(self) -> str:
         return self._session.get_bind().dialect.name

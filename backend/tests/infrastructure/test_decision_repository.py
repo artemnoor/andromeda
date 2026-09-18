@@ -155,6 +155,28 @@ def test_account_state_wins_and_anonymous_state_is_not_deleted(tmp_path: Path) -
     assert kept_anonymous.state.choice.active_shortlist[0].program_id == PROGRAM_A
 
 
+def test_explicit_guest_import_replaces_account_state_only_after_command(tmp_path: Path) -> None:
+    engine = create_engine_for_url(f"sqlite:///{(tmp_path / 'decision-binding-import.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    account_id = "account:" + "3" * 32
+    account_scope = ProfileScope(session_key_hash="1" * 64, account_id=account_id)
+    anonymous_scope = ProfileScope(session_key_hash="2" * 64)
+
+    with Session(engine) as session:
+        repository = SqlAlchemyDecisionContextRepository(session)
+        account = repository.get_or_create(account_scope, expires_at=_expires())
+        repository.save(account_scope, _next_state(account, PROGRAM_B), expected_revision=account.revision, expires_at=_expires())
+        anonymous = repository.get_or_create(anonymous_scope, expires_at=_expires())
+        repository.save(anonymous_scope, _next_state(anonymous, PROGRAM_A), expected_revision=anonymous.revision, expires_at=_expires())
+
+        assert repository.bind_anonymous_to_account(anonymous_scope, account_id) is DecisionBindingOutcome.ACCOUNT_STATE_KEPT
+        assert repository.replace_account_with_anonymous(anonymous_scope, account_id) is DecisionBindingOutcome.BOUND
+        imported = repository.get_current(account_scope)
+
+    assert imported is not None
+    assert imported.state.choice.active_shortlist[0].program_id == PROGRAM_A
+
+
 def test_storage_state_has_no_hydrated_profile_contract() -> None:
     state = DecisionState()
     context = DecisionContext(

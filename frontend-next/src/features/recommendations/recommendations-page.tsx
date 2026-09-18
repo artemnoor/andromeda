@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { PageHeader, Loading, ErrorState, ProfileRequired, ScoreBadge, Stat, SectionTitle, Tag } from "@/components/shared";
+import { explainSourceGap, PageHeader, Loading, ErrorState, ProfileRequired, ScoreBadge, Stat, SectionTitle, Tag } from "@/components/shared";
 import { getCurrentProfile, getCurrentRecommendations } from "@/lib/api";
 import { formatPercent, formatShare, formatDecimal } from "@/lib/format";
 import type { UserProfileSnapshot, RecommendationsResponse, Recommendation, DecisionSuggestion } from "@/lib/types";
@@ -179,7 +179,7 @@ function DecisionSuggestionCard({
           <div><p className="mb-1 flex items-center gap-1 font-medium"><Check className="h-4 w-4 text-emerald-600" />Почему включено</p><p className="text-muted-foreground">{candidate.reasons.whyIncluded.join("; ") || "Недостаточно данных для объяснения"}</p></div>
           <div><p className="mb-1 font-medium">Что может не подойти</p><p className="text-muted-foreground">{candidate.reasons.whyMayNotFit.join("; ") || "Явных противопоказаний не найдено"}</p></div>
         </div>
-        {candidate.sourceGaps.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Пробелы источника: {candidate.sourceGaps.join(", ")}</p>}
+        {candidate.sourceGaps.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Данные: {candidate.sourceGaps.map(explainSourceGap).join(" ")}</p>}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button type="button" size="sm" disabled={pending} onClick={onAccept}>Добавить в shortlist</Button>
           <Button type="button" size="sm" variant="outline" disabled={pending} onClick={onReject}>Не предлагать</Button>
@@ -258,7 +258,9 @@ function RecommendationCard({ rec, rank, navigate }: { rec: Recommendation; rank
               )}
               <div className="flex flex-wrap gap-2">
                 {rec.admissionFit && <Tag tone="muted">Шанс поступления: {rec.admissionFit.score ?? "—"}</Tag>}
-                {rec.workloadReadiness && <Tag tone="muted">Готовность к нагрузке: {rec.workloadReadiness.score ?? "—"}</Tag>}
+                {rec.semesterDistribution.length > 0 && (
+                  <Tag tone="muted">Нагрузка по семестрам: есть данные учебного плана</Tag>
+                )}
               </div>
             </div>
           </div>

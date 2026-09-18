@@ -41,6 +41,6 @@ class DirectionModel(Base):
     __table_args__ = (
         UniqueConstraint("university_id", "code", name="uq_direction_university_code"),
         CheckConstraint("length(code) = 8 AND substr(code, 3, 1) = '.' AND substr(code, 6, 1) = '.'", name="ck_direction_code_shape"),
-        CheckConstraint("id = 'direction:' || code", name="ck_direction_id_matches_code"),
+        CheckConstraint("id LIKE 'direction:%:%' AND id = 'direction:' || replace(university_id, 'university:', '') || ':' || code", name="ck_direction_id_matches_university_code"),
         CheckConstraint("length(name) > 0", name="ck_direction_name_non_empty"),
     )

@@ -12,6 +12,8 @@ import {
   removeDecisionShortlist as apiRemoveDecisionShortlist,
   restoreDecisionShortlist as apiRestoreDecisionShortlist,
   restoreExcludedDecisionProgram as apiRestoreExcludedDecisionProgram,
+  reopenDecisionFinalChoice as apiReopenDecisionFinalChoice,
+  selectDecisionFinalChoice as apiSelectDecisionFinalChoice,
   setDecisionShortlistRole as apiSetDecisionShortlistRole,
   updateDecisionConstraints as apiUpdateDecisionConstraints,
   ApiError,
@@ -58,6 +60,8 @@ export type DecisionContextValue = {
   restoreExcluded: (programId: string) => Promise<DecisionMutationResponse>;
   acceptSuggestion: (programId: string, role?: ShortlistRole) => Promise<DecisionMutationResponse>;
   rejectSuggestion: (programId: string) => Promise<DecisionMutationResponse>;
+  selectFinalChoice: (programId: string) => Promise<DecisionMutationResponse>;
+  reopenFinalChoice: () => Promise<DecisionMutationResponse>;
 };
 
 const DecisionContextReact = createContext<DecisionContextValue | null>(null);
@@ -212,6 +216,14 @@ export function DecisionContextProvider({ children }: { children: ReactNode }) {
     (programId: string) => runMutation((expectedRevision) => apiRejectDecisionSuggestion(programId, expectedRevision)),
     [runMutation],
   );
+  const selectFinalChoice = useCallback(
+    (programId: string) => runMutation((expectedRevision) => apiSelectDecisionFinalChoice(programId, expectedRevision)),
+    [runMutation],
+  );
+  const reopenFinalChoice = useCallback(
+    () => runMutation((expectedRevision) => apiReopenDecisionFinalChoice(expectedRevision)),
+    [runMutation],
+  );
   const clearMutationError = useCallback(() => {
     setMutationError(null);
     setConflict(null);
@@ -262,6 +274,8 @@ export function DecisionContextProvider({ children }: { children: ReactNode }) {
     restoreExcluded,
     acceptSuggestion,
     rejectSuggestion,
+    selectFinalChoice,
+    reopenFinalChoice,
   }), [
     context,
     suggestions,
@@ -288,6 +302,8 @@ export function DecisionContextProvider({ children }: { children: ReactNode }) {
     restoreExcluded,
     acceptSuggestion,
     rejectSuggestion,
+    selectFinalChoice,
+    reopenFinalChoice,
   ]);
 
   return <DecisionContextReact.Provider value={value}>{children}</DecisionContextReact.Provider>;

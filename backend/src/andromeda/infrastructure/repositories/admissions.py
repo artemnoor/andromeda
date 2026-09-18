@@ -25,7 +25,7 @@ from andromeda.modules.admissions.contracts.public import (
     TuitionCost,
 )
 from andromeda.modules.admissions.repository.ports import AdmissionRepository
-from andromeda.shared.contracts.ids import ProgramId
+from andromeda.shared.contracts.ids import ProgramId, canonical_program_id
 
 from ..database.models import (
     AdmissionExamRequirementModel,
@@ -47,14 +47,15 @@ class SqlAlchemyAdmissionRepository(AdmissionRepository):
         self._session = session
 
     def get_for_program(self, program_id: ProgramId) -> ProgramAdmissions:
+        resolved_program_id = canonical_program_id(program_id)
         offerings = self._session.execute(
             select(AdmissionOfferingModel)
-            .where(AdmissionOfferingModel.program_id == program_id)
+            .where(AdmissionOfferingModel.program_id == resolved_program_id)
             .order_by(AdmissionOfferingModel.admission_year.desc(), AdmissionOfferingModel.id)
         ).scalars().all()
         if not offerings:
             logger.warning("admissions_read_empty program_id=%s", program_id)
-            return ProgramAdmissions(program_id=program_id)
+            return ProgramAdmissions(program_id=resolved_program_id)
 
         offering_ids = tuple(item.id for item in offerings)
         exams = self._by_offering(AdmissionExamRequirementModel, offering_ids)
@@ -62,7 +63,7 @@ class SqlAlchemyAdmissionRepository(AdmissionRepository):
         passing_scores = self._by_offering(AdmissionPassingScoreModel, offering_ids)
         tuition = self._by_offering(AdmissionTuitionModel, offering_ids)
         result = ProgramAdmissions(
-            program_id=program_id,
+            program_id=resolved_program_id,
             offerings=tuple(
                 self._offering_contract(
                     model,

@@ -91,6 +91,8 @@ class SqlAlchemyIngestionRepository:
             curriculum_item_count=len(raw.curriculum_rows),
             event_count=len(raw.events),
             campus_point_count=len(raw.campus_points),
+            source_gap_count=len(raw.source_gaps),
+            critical_gap_count=_critical_gap_count(raw.source_gaps),
         )
 
     def record_captured_metadata(self, run_id: str, captured: CapturedSources | tuple[RawSourceSnapshot, ...]) -> None:
@@ -115,6 +117,10 @@ class SqlAlchemyIngestionRepository:
             curriculum_item_count=sum(len(curriculum.items) for curriculum in canonical.curricula),
             event_count=len(canonical.events),
             campus_point_count=len(canonical.campus_points),
+            university_id=canonical.university.id,
+            source_gap_count=len(canonical.source_gaps),
+            critical_gap_count=_critical_gap_count(canonical.source_gaps),
+            drift_status="passed",
         )
         logger.info("ingest_transaction_start run_id=%s", resolved_run_id)
         stats = _SyncStats()
@@ -165,6 +171,10 @@ class SqlAlchemyIngestionRepository:
         curriculum_item_count: int | None = None,
         event_count: int | None = None,
         campus_point_count: int | None = None,
+        university_id: str | None = None,
+        source_gap_count: int | None = None,
+        critical_gap_count: int | None = None,
+        drift_status: str | None = None,
     ) -> None:
         with self._factory() as session:
             with session.begin():
@@ -182,6 +192,14 @@ class SqlAlchemyIngestionRepository:
                     run.event_count = event_count
                 if campus_point_count is not None:
                     run.campus_point_count = campus_point_count
+                if university_id is not None:
+                    run.university_id = university_id
+                if source_gap_count is not None:
+                    run.source_gap_count = source_gap_count
+                if critical_gap_count is not None:
+                    run.critical_gap_count = critical_gap_count
+                if drift_status is not None:
+                    run.drift_status = drift_status
 
     def _create_run(
         self,
@@ -209,7 +227,12 @@ class SqlAlchemyIngestionRepository:
                         program_count=program_count,
                         curriculum_item_count=curriculum_item_count,
                         event_count=event_count,
-                        campus_point_count=campus_point_count,
+                campus_point_count=campus_point_count,
+                university_id=None,
+                duration_ms=None,
+                source_gap_count=0,
+                critical_gap_count=0,
+                drift_status="not_checked",
                     )
                 )
 
@@ -221,6 +244,7 @@ class SqlAlchemyIngestionRepository:
                     raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest audit row disappeared")
                 run.status = "completed"
                 run.finished_at = datetime.now(timezone.utc)
+                run.duration_ms = _duration_ms(run.started_at, run.finished_at)
                 run.inserted_count = stats.inserted
                 run.updated_count = stats.updated
                 run.unchanged_count = stats.unchanged
@@ -238,6 +262,8 @@ class SqlAlchemyIngestionRepository:
                         return
                     run.status = "failed"
                     run.finished_at = datetime.now(timezone.utc)
+                    run.duration_ms = _duration_ms(run.started_at, run.finished_at)
+                    run.drift_status = "rejected" if error_code == "INGESTION_DRIFT_REJECTED" else run.drift_status
                     run.error_code = error_code
                     run.error_message = error_message
         except Exception:
@@ -583,6 +609,8 @@ def _values_equal(actual: object, expected: object) -> bool:
 
 
 def _safe_error_code(error: Exception) -> str:
+    if "INGESTION_DRIFT_REJECTED" in str(error):
+        return "INGESTION_DRIFT_REJECTED"
     if isinstance(error, AndromedaError):
         return error.code.value
     return "INGESTION_FAILED"
@@ -591,3 +619,14 @@ def _safe_error_code(error: Exception) -> str:
 def _safe_error_message(error: Exception) -> str:
     del error
     return "Ingestion failed"
+
+
+def _critical_gap_count(gaps: tuple[Any, ...]) -> int:
+    critical_tokens = ("direction", "program", "curriculum", "study-plan", "admission")
+    return sum(1 for gap in gaps if any(token in gap.reason.lower() for token in critical_tokens))
+
+
+def _duration_ms(started_at: datetime, finished_at: datetime) -> int:
+    started = started_at if started_at.tzinfo is not None else started_at.replace(tzinfo=timezone.utc)
+    finished = finished_at if finished_at.tzinfo is not None else finished_at.replace(tzinfo=timezone.utc)
+    return max(0, int((finished - started).total_seconds() * 1000))

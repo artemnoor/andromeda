@@ -47,7 +47,8 @@ def test_recommendations_accept_profile_contract_and_return_real_evidence(tmp_pa
     assert len(payload["recommendations"]) == 2
     assert all(0 <= item["contentFit"] <= 100 for item in payload["recommendations"])
     assert Decimal(payload["recommendations"][0]["score"]["breakdown"]["antiPenalty"]) >= 0
-    assert payload["recommendations"][0]["workloadReadiness"]["status"] == "not_available"
+    assert "workloadReadiness" not in payload["recommendations"][0]
+    assert "careerFit" not in payload["recommendations"][0]
 
 
 def test_recommendations_reject_unknown_fields_and_invalid_limit(tmp_path: Path) -> None:

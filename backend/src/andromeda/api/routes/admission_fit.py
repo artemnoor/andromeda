@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from andromeda.api.dependencies.services import get_admission_fit_service
 from andromeda.api.schemas.admission_fit import AdmissionFitRequestBody, AdmissionFitResponse, admission_fit_request, admission_fit_response
 from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
-from andromeda.shared.contracts.ids import ProgramId
+from andromeda.shared.contracts.ids import ProgramId, canonical_program_id
 
 
 logger = logging.getLogger("andromeda.api.admission_fit")
@@ -28,7 +28,7 @@ def calculate_program_admission_fit(
         request.offering_id,
         len(request.applicant.scores),
     )
-    result = service.evaluate(id, admission_fit_request(request))
+    result = service.evaluate(id, admission_fit_request(request)).model_copy(update={"program_id": canonical_program_id(id)})
     response = admission_fit_response(result)
     logger.info(
         "admission_fit_http_complete status=200 program_id=%s offering_id=%s fit_status=%s score=%d",

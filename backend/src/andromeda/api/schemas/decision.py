@@ -309,6 +309,8 @@ class DecisionStateResponse(ApiModel):
     version: Literal[1]
     admission_constraints: DecisionConstraintsResponse | None = None
     choice: DecisionChoiceResponse
+    selected_program_id: ProgramId | None = None
+    selected_at: datetime | None = None
     explicit_priorities: tuple[str, ...]
     revision: int
     created_at: datetime
@@ -429,6 +431,8 @@ def decision_context_response(value: DecisionContext) -> DecisionContextResponse
                 shortlist_entries=tuple(_shortlist_entry_response(item) for item in state.choice.shortlist_entries),
                 excluded_program_ids=state.choice.excluded_program_ids,
             ),
+            selected_program_id=state.selected_program_id,
+            selected_at=state.selected_at,
             explicit_priorities=state.explicit_priorities,
             revision=state.revision,
             created_at=state.created_at,

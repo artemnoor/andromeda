@@ -39,7 +39,7 @@ def test_andromeda_db_repository_service_api_admission_fit_slice(tmp_path: Path)
 
     assert response.status_code == 200
     result = response.json()
-    assert result["programId"] == "program:09.03.01-02"
+    assert result["programId"] == "program:bmstu:09.03.01-02"
     assert result["reasons"]
     assert any(
         provenance["sourceKind"] == "bmstu_major_detail"

@@ -208,6 +208,24 @@ class DecisionService:
             transition=lambda choice, now: choice.set_role(command.program_id, role=command.role, now=now),
         )
 
+    def select_final_choice(self, scope: ProfileScope, command: ProgramCommand) -> DecisionMutationResult:
+        self._require_program(command.program_id)
+        return self._mutate(
+            scope,
+            expected_revision=command.expected_revision,
+            operation="select_final_choice",
+            program_id=command.program_id,
+            transition=lambda state, now: state.select_final_choice(command.program_id, now=now),
+        )
+
+    def reopen_final_choice(self, scope: ProfileScope, *, expected_revision: int | None) -> DecisionMutationResult:
+        return self._mutate(
+            scope,
+            expected_revision=expected_revision,
+            operation="reopen_final_choice",
+            transition=lambda state, now: state.reopen_final_choice(now=now),
+        )
+
     def exclude_program(self, scope: ProfileScope, command: ProgramCommand) -> DecisionMutationResult:
         self._require_program(command.program_id)
         return self._mutate_choice(

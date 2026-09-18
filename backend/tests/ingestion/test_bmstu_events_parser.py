@@ -67,7 +67,7 @@ def test_event_normalization_is_deterministic_and_maps_program_codes() -> None:
         "event:bmstu:online-open-lecture-2026",
         "event:bmstu:career-hybrid-2026",
     ]
-    assert set(canonical.events[0].program_ids) == {"program:09.03.01-02", "program:09.03.01-12"}
+    assert set(canonical.events[0].program_ids) == {"program:bmstu:09.03.01-02", "program:bmstu:09.03.01-12"}
     assert canonical.events[0].department_ids == ("department:bmstu:iu7",)
     assert len(raw.events) == len(canonical.events)
     assert all(event.provenance[0].kind is SourceKind.BMSTU_EVENTS for event in canonical.events)
@@ -85,7 +85,7 @@ def test_event_normalization_scopes_mixed_program_links_to_selected_program() ->
         adapter.close()
 
     mixed = next(event for event in canonical.events if event.id == "event:bmstu:dod-2026")
-    assert mixed.program_ids == ("program:09.03.01-02",)
+    assert mixed.program_ids == ("program:bmstu:09.03.01-02",)
     assert {event.id for event in canonical.events} == {
         "event:bmstu:dod-2026",
         "event:bmstu:robotics-workshop-2026",
