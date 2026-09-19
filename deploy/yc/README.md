@@ -26,5 +26,5 @@ browser path or a `backend:8000` fallback.
 The local/demo compose profile may use SQLite for a cheap single-process run,
 but it is not the staging target. Staging requires a domain configured in
 Caddy, automatic HTTPS, PostgreSQL backups, and the readiness check at
-`/health/ready`. Bot transport sessions remain in a separate encrypted volume;
+`/api/health/ready`. Bot transport sessions remain in a separate encrypted volume;
 canonical programs, profiles and scoring remain backend-owned.

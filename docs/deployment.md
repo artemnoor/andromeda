@@ -49,13 +49,13 @@ directory, not only `.next/static`.
 
 ## Smoke checks
 
-`/health/live` checks that the process is running. `/health/ready` checks
-database reachability and exact compatibility with the image's Alembic head;
+`/api/health/live` checks that the process is running. `/api/health/ready`
+checks database reachability and exact compatibility with the image's Alembic head;
 it intentionally does not depend on BMSTU/HSE availability.
 
 ```bash
-curl --fail https://andromeda.example.org/health/live
-curl --fail https://andromeda.example.org/health/ready
+curl --fail https://andromeda.example.org/api/health/live
+curl --fail https://andromeda.example.org/api/health/ready
 curl --fail https://andromeda.example.org/programs
 ```
 
@@ -86,7 +86,7 @@ pg_restore --clean --if-exists --dbname="$ANDROMEDA_RESTORE_URL" andromeda-YYYYM
 ```
 
 Never put connection strings or dump files in Git. Verify restores regularly
-by running `alembic upgrade head`, `/health/ready`, and a catalog/decision smoke
+by running `alembic upgrade head`, `/api/health/ready`, and a catalog/decision smoke
 check against the restored database.
 
 ## Rollback
