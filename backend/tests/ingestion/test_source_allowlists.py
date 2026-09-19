@@ -11,6 +11,7 @@ from andromeda.ingestion.universities.hse.html import official_hse_url
 def test_bmstu_allows_explicit_public_document_hosts_only() -> None:
     resolver = lambda _: ("8.8.8.8",)
     validate_source_url("https://api.www.bmstu.ru/majors/", BMSTU_SOURCE_HOST_POLICY, resolver=resolver)
+    validate_source_url("https://mirror.bmstu.ru/sveden/common", BMSTU_SOURCE_HOST_POLICY, resolver=resolver)
     validate_source_url("https://storage.yandex.net/plan.pdf", BMSTU_SOURCE_HOST_POLICY, resolver=resolver)
     with pytest.raises(SourcePolicyError, match="not in the adapter allowlist"):
         validate_source_url("https://example.com/plan.pdf", BMSTU_SOURCE_HOST_POLICY, resolver=resolver)

@@ -64,6 +64,31 @@ def test_allowed_redirect_is_recorded_in_final_url_provenance() -> None:
     assert resource.redirects == ("https://www.bmstu.ru/final",)
 
 
+def test_official_bmstu_mirror_redirect_is_allowed() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(301, headers={"location": "https://mirror.bmstu.ru/sveden/common"}, request=request)
+        return httpx.Response(200, content=b"official mirror", request=request)
+
+    fetcher = Fetcher(
+        FetchConfig(retries=0),
+        transport=httpx.MockTransport(handler),
+        resolver=_public_resolver,
+    )
+    try:
+        resource = fetcher.fetch_http("https://bmstu.ru/sveden/common")
+    finally:
+        fetcher.close()
+
+    assert resource.ok is True
+    assert resource.final_url == "https://mirror.bmstu.ru/sveden/common"
+    assert resource.redirects == ("https://mirror.bmstu.ru/sveden/common",)
+
+
 def test_response_larger_than_policy_is_truncated_and_not_successful() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=b"x" * 2048, request=request)
