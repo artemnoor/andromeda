@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import logging
 from time import monotonic, sleep
 from typing import Any
+from urllib.parse import urljoin
 
 import httpx
 
@@ -215,6 +216,7 @@ class Fetcher:
                 if 300 <= response.status_code < 400:
                     location = response.headers.get("location")
                     response.close()
+                    redirect_target = urljoin(current_url, location or "")
                     try:
                         target = resolve_redirect(
                             current_url,
@@ -223,6 +225,14 @@ class Fetcher:
                             resolver=self._resolver,
                         )
                     except SourcePolicyError as exc:
+                        logger.warning(
+                            "source_redirect_rejected requested=%s current=%s target=%s status=%s code=%s",
+                            safe_url_for_log(url),
+                            safe_url_for_log(current_url),
+                            safe_url_for_log(redirect_target),
+                            response.status_code,
+                            exc.code,
+                        )
                         return self._failure(
                             url,
                             current_url,
