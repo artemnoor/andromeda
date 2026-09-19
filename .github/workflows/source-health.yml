@@ -9,11 +9,25 @@ jobs:
   live-sources:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: andromeda_health
+          POSTGRES_USER: andromeda_health
+          POSTGRES_PASSWORD: source-health-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U andromeda_health -d andromeda_health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       ANDROMEDA_ENV: staging
-      ANDROMEDA_DATABASE_URL: ${{ secrets.ANDROMEDA_HEALTH_DATABASE_URL }}
-      FRONTEND_ORIGIN: ${{ vars.ANDROMEDA_FRONTEND_ORIGIN || 'https://andromeda.example.org' }}
-      ANDROMEDA_OPS_API_KEY: ${{ secrets.ANDROMEDA_OPS_API_KEY }}
+      ANDROMEDA_DATABASE_URL: postgresql+psycopg://andromeda_health:source-health-ci-only@localhost:5432/andromeda_health
+      FRONTEND_ORIGIN: https://andromeda.example.org
+      ANDROMEDA_OPS_API_KEY: source-health-ci-ephemeral-key
       LOG_LEVEL: INFO
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +42,9 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check uv==0.11.28
           uv sync --locked --extra dev
+        working-directory: backend
+      - name: Migrate ephemeral health database
+        run: uv run --locked --extra dev python -m alembic upgrade head
         working-directory: backend
       - name: Run live source health
         run: uv run --locked --extra dev python scripts/source_health.py --artifact "$GITHUB_WORKSPACE/source-health.json"
