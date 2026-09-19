@@ -8,6 +8,7 @@ from andromeda.ingestion.universities.bmstu.capture import (
     BmstuSource,
     FetchedResource,
     ORDERS_MANIFEST_URL,
+    S01_URL,
     parse_orders_manifest,
     _is_supported_download_url,
     _is_supported_public_plan_url,
@@ -107,6 +108,10 @@ def test_live_capture_discovers_details_and_public_plan_variants() -> None:
     documents = captured.by_kind("bmstu_curriculum_document")
     order_index = captured.by_kind("bmstu_admission_orders_index")
     order_documents = captured.by_kind("bmstu_admission_orders_document")
+    common = captured.by_kind("bmstu_common")
+    assert len(common) == 1
+    assert str(common[0].requested_url) == S01_URL
+    assert str(common[0].requested_url) == "https://bmstu.ru/sveden/common"
     assert len(details) == 3
     assert len(metadata) == 3
     assert len(documents) == 2

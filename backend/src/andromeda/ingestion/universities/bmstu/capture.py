@@ -25,7 +25,7 @@ JsonObject = dict[str, JsonValue]
 logger = logging.getLogger("andromeda.ingestion.bmstu.source.fetch")
 selection_logger = logging.getLogger("andromeda.ingestion.bmstu.source.select")
 
-S01_URL = "https://bmstu.ru/sveden/common/"
+S01_URL = "https://bmstu.ru/sveden/common"
 S06_CATALOG_URL = "https://bmstu.ru/bachelor/majors"
 S06_API_BASE_URL = "https://api.www.bmstu.ru/majors/baccalaureate-and-specialty"
 S06_DETAIL_API_BASE_URL = "https://api.www.bmstu.ru/majors/"
