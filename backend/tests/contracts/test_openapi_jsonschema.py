@@ -34,3 +34,4 @@ def test_openapi_publishes_shared_enums_and_required_contract_fields() -> None:
     assert schemas["CompareStatus"]["enum"] == ["both", "only_a", "only_b", "different"]
     assert set(schemas["ProgramResponse"]["required"]) == {"program"}
     assert "programIds" in document["paths"]["/compare"]["get"]["parameters"][0]["name"]
+    assert document["paths"]["/programs"]["get"]["responses"]["422"]["description"] == "Unprocessable Entity"

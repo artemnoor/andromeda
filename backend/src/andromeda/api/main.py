@@ -3,10 +3,12 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable
 from time import perf_counter
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.responses import JSONResponse, Response
@@ -46,6 +48,43 @@ DOCS_CONTENT_SECURITY_POLICY = "default-src 'self'; base-uri 'self'; frame-ances
 HSTS_HEADER = "max-age=31536000; includeSubDomains"
 
 
+def _canonicalize_openapi(document: dict[str, Any]) -> dict[str, Any]:
+    """Keep generated contracts stable across Python HTTP reason-phrase versions."""
+
+    paths = document.get("paths")
+    if not isinstance(paths, dict):
+        return document
+    for path_item in paths.values():
+        if not isinstance(path_item, dict):
+            continue
+        for operation in path_item.values():
+            if not isinstance(operation, dict):
+                continue
+            responses = operation.get("responses")
+            if not isinstance(responses, dict):
+                continue
+            response = responses.get("422")
+            if isinstance(response, dict) and response.get("description") == "Unprocessable Content":
+                response["description"] = "Unprocessable Entity"
+    return document
+
+
+class AndromedaFastAPI(FastAPI):
+    """FastAPI application with a stable, checked-in OpenAPI representation."""
+
+    def openapi(self) -> dict[str, Any]:
+        if self.openapi_schema is None:
+            self.openapi_schema = _canonicalize_openapi(
+                get_openapi(
+                    title=self.title,
+                    version=self.version,
+                    description=self.description,
+                    routes=self.routes,
+                )
+            )
+        return self.openapi_schema
+
+
 def _andromeda_error_response(request: Request, exc: AndromedaError, settings: Settings) -> JSONResponse:
     status = 429 if exc.code is ErrorCode.RATE_LIMITED else 401 if exc.code is ErrorCode.UNAUTHORIZED else 404 if exc.code is ErrorCode.NOT_FOUND else 409 if exc.code is ErrorCode.CONFLICT else 400 if exc.code in (ErrorCode.VALIDATION_ERROR, ErrorCode.CONTRACT_ERROR, ErrorCode.SOURCE_CONTRACT_ERROR) else 500
     if exc.code is ErrorCode.RATE_LIMITED:
@@ -56,7 +95,7 @@ def _andromeda_error_response(request: Request, exc: AndromedaError, settings: S
 
 def create_app(database_url: str | None = None) -> FastAPI:
     settings = Settings.from_environment(database_url)
-    app = FastAPI(
+    app = AndromedaFastAPI(
         title="Andromeda Decision Support API",
         version="1.0.0",
         description="Strict source-backed contracts for discovering, comparing and choosing educational programmes across supported universities.",
