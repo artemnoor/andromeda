@@ -17,6 +17,9 @@ the deployment environment, never in this repository.
 `TELEGRAM_BOT_TOKEN`, `ANDROMEDA_RENDER_HMAC_SECRET`,
 `ANDROMEDA_SESSION_ENCRYPTION_KEY` and `ANDROMEDA_WEB_APP_URL` as secret
 environment inputs. It has no public port and uses long polling.
+The backend trusted browser origin defaults to `https://${ANDROMEDA_DOMAIN}`;
+set `ANDROMEDA_FRONTEND_ORIGIN` explicitly when a reverse proxy exposes a
+non-default origin or port (for example, a local TLS smoke).
 The frontend is built with `NEXT_PUBLIC_API_BASE_URL=/api`, so the public site
 does not expose an internal VM address or need CORS for normal same-origin use.
 Server-side OG routes use the explicit runtime variable

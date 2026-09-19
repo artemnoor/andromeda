@@ -14,6 +14,7 @@ environment file or secret manager):
 | `ANDROMEDA_ENV=staging` | Enables staging safety checks. |
 | `ANDROMEDA_DATABASE_URL=postgresql+psycopg://...` | PostgreSQL connection. |
 | `ANDROMEDA_DOMAIN=andromeda.example.org` | Caddy hostname and HTTPS. |
+| `ANDROMEDA_FRONTEND_ORIGIN` | Optional explicit browser origin for non-default ports or a reverse-proxy origin; defaults to `https://${ANDROMEDA_DOMAIN}`. |
 | `ANDROMEDA_OPS_API_KEY` | Protected Ops endpoints. |
 | `BACKEND_IMAGE` | Immutable backend image tag or digest. |
 | `FRONTEND_IMAGE` | Immutable Next standalone image tag or digest. |

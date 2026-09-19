@@ -177,6 +177,8 @@ npx playwright test --workers=1
 ```powershell
 $env:PLAYWRIGHT_BASE_URL = "https://localhost:8443"
 $env:PLAYWRIGHT_IGNORE_HTTPS_ERRORS = "1"
+# For a compose smoke on a non-default HTTPS port, set the backend origin too:
+$env:ANDROMEDA_FRONTEND_ORIGIN = "https://localhost:8443"
 npx playwright test tests/catalog-programs.spec.ts --project=chromium
 ```
 
