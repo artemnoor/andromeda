@@ -46,6 +46,12 @@ jobs:
       - name: Migrate ephemeral health database
         run: uv run --locked --extra dev python -m alembic upgrade head
         working-directory: backend
+      - name: Record BMSTU source redirect headers
+        run: |
+          curl --silent --show-error --max-time 30 \
+            --dump-header "$RUNNER_TEMP/bmstu-source-headers.txt" \
+            --output /dev/null https://bmstu.ru/sveden/common || true
+          sed -n '1,40p' "$RUNNER_TEMP/bmstu-source-headers.txt"
       - name: Run live source health
         run: uv run --locked --extra dev python scripts/source_health.py --artifact "$GITHUB_WORKSPACE/source-health.json"
         working-directory: backend
@@ -54,4 +60,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: source-health
-          path: source-health.json
+          path: |
+            source-health.json
+            ${{ runner.temp }}/bmstu-source-headers.txt
