@@ -1,8 +1,7 @@
 # Andromeda
 
-> Stage: Private Alpha → MVP Production Level transition. The production
-> promotion gate is evidence-based and is not complete until the release
-> checklist passes.
+> Stage: MVP Production Level — bounded, source-backed BMSTU/HSE MVP. See the
+> [release evidence](docs/release/mvp-production-level-evidence.md) and [gate](docs/release/mvp-production-level-gate.md).
 
 Andromeda — multi-university data-driven система поддержки выбора образовательной программы. Основной объект продукта — `DecisionContext` и пользовательский shortlist: система объединяет source-backed сведения о программах, содержании учебных планов и поступлении, а пользователь сам принимает финальное решение.
 

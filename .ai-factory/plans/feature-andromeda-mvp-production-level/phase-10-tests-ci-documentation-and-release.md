@@ -10,38 +10,24 @@ Priority: P0 for release gate; P1 for developer experience; P2/P3 for later qual
 
 ## Implementation status
 
-Implemented locally through the canonical path. Test taxonomy, coverage
-configuration, local targets, CI gates, deployment contract checks, current
-documentation, release evidence, disposable PostgreSQL deployment, TLS
-gateway smoke, backup/restore, and failed-image rollback are now exercised.
-On 2026-09-19, the repository-controlled `source_health.py --mode live
---university all` probe also completed successfully against a disposable,
-migrated SQLite database and wrote
-`artifacts/release/source-health-20260919.json`. It accepted BMSTU and HSE as
-`degraded` with typed source gaps and no blocking gaps (BMSTU 344 snapshots,
-134 programmes, 100% curriculum/admission/taxonomy coverage; HSE 1,493
-snapshots, 96 programmes, 85/96 curriculum, 49/96 admission, 84.59% taxonomy
-coverage). A `core.autocrlf=false` clean-checkout simulation with documented
-`npm ci` also passed the full canonical local target (`535 passed, 8 skipped`,
-frontend/Telegram/fixture/migration/production smoke included). Remote GitHub
-Actions has a successful baseline `main` run for commit `4088116`, but no
-feature-branch run exists for this uncommitted implementation snapshot, and
-the source-health workflow has no recorded run. MVP-095 remains open because
-an owner-attached CI/repeatability/deployment record is still external release
-evidence, not a fact a local snapshot can establish. The current worktree was
-also rerun through `python scripts/andromeda.py full` after the clean-checkout
-simulation: it exited 0 with backend `535 passed, 8 skipped`, frontend unit
-`19 passed`, Telegram `14 passed`, migration checks `22 passed`, backend
-coverage `87%`, fixture ingestion, and production-like smoke all passing.
-The disposable PostgreSQL 16 target was also rerun with a unique ephemeral
-container: `5 passed` across PostgreSQL ingestion, smoke, and user-profile
-persistence; the container had no persistent volume and was removed after the
-run.
-The release metadata ledger now records a secret-free clean/dirty worktree
-state and hashes of tracked diff/untracked manifest; `--require-clean` fails
-closed and is part of the CI documentation job. This improves checkpoint
-attribution but does not replace the still-missing owner-attached CI,
-deployment, restore, and authorized live-source records.
+The full incremental implementation and release gate are complete on code
+checkpoint `b15dbe7`. Test taxonomy, coverage configuration, local targets, CI
+gates, deployment contract checks, current documentation, release evidence,
+disposable PostgreSQL deployment, TLS gateway smoke, backup/restore, reversible
+migrations, and rollback checkpoints are exercised. The owner-attached
+[source-health run](https://github.com/artemnoor/andromeda/actions/runs/35437889399)
+completed BMSTU and HSE live capture with typed degraded states and zero
+blocking gaps: BMSTU 344 source hashes/134 programmes with 100% curriculum,
+admission, and taxonomy coverage; HSE 1,493 source hashes/96 programmes with
+88.54% curriculum, 51.04% admission, and 84.59% taxonomy coverage. The
+[clean-checkpoint CI run](https://github.com/artemnoor/andromeda/actions/runs/35437883636)
+passed all required jobs. A clean production-like `b15dbe7` deployment passed
+readiness at `0022_ingestion_concurrency`, fixture ingestion, HTTPS/Caddy
+smoke, 52 Chromium/mobile browser tests, PostgreSQL backup/restore, and
+`0022 → 0021 → 0022` migration rollback. `MVP-095` is complete; the public
+status is now MVP Production Level for the bounded BMSTU/HSE scope. Full
+details and limitations are in
+`docs/release/mvp-production-level-evidence.md`.
 
 ## Objective
 

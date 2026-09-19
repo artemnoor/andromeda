@@ -1,10 +1,11 @@
-# Andromeda MVP scope / Private Alpha transition
+# Andromeda MVP scope / MVP Production Level
 
 ## Stage
 
-Private Alpha transition toward MVP Production Level. Core loop:
-**Discover → Refine → Shortlist → Compare → Decide**. The production-level
-label is reserved for the evidence gate in `docs/mvp-production-level.md`.
+MVP Production Level for the bounded, source-backed BMSTU/HSE scope. Core loop:
+**Discover → Refine → Shortlist → Compare → Decide**. The evidence and known
+boundaries are recorded in [the release record](release/mvp-production-level-evidence.md)
+and [the gate](release/mvp-production-level-gate.md).
 
 ## Target user
 

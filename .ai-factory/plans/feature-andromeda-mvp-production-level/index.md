@@ -1380,7 +1380,7 @@ Details: [phase-09-security-auth-ops-observability.md](phase-09-security-auth-op
 - [x] MVP-092 Make CI strict, efficient, and explanatory
 - [x] MVP-093 Prove production-like deployment and rollback
 - [x] MVP-094 Reconcile current docs, archive, and AI workflow
-- [ ] MVP-095 Run final exit gate and preserve rollback checkpoints
+- [x] MVP-095 Run final exit gate and preserve rollback checkpoints
 
 Details: [phase-10-tests-ci-documentation-and-release.md](phase-10-tests-ci-documentation-and-release.md)
 
@@ -1455,11 +1455,12 @@ milestone only when the product owner creates one.
 
 ## Handoff and Verification Notes
 
-Implementation is being executed incrementally from the baseline while
-preserving pre-existing user files. Every phase must leave the system runnable
-and update the task checkbox only after its phase evidence is verified. The
-release status remains Private Alpha transition until the external clean CI
-and production-like deployment/restore evidence is attached.
+Implementation was executed incrementally from the baseline while preserving
+pre-existing user files. Every phase left the system runnable and the task
+checkboxes were updated only after evidence was verified. The release status
+is MVP Production Level for the bounded BMSTU/HSE source-backed scope; the
+attached evidence record preserves clean CI, deployment, restore, rollback,
+and live source-health checkpoints.
 
 Before handoff, verify:
 
