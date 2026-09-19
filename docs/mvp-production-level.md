@@ -7,10 +7,10 @@ release code checkpoint `b15dbe7`
 
 This ledger is a release-evidence document, not a runtime source of truth. It
 records what the repository currently proves, what it does not prove, and the
-next verification required before the project may claim **MVP Production
-Level**. `VERIFIED` means the bounded MVP behavior has executable evidence in a
-clean checkout or a named disposable deployment; it does not claim enterprise
-scale or completeness outside the supported source scope.
+follow-up verification still required for ongoing operation. `VERIFIED` means
+the bounded MVP behavior has executable evidence in a clean checkout or a named
+disposable deployment; it does not claim enterprise scale or completeness
+outside the supported source scope.
 
 ## Status vocabulary
 

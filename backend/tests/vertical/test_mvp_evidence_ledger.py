@@ -29,7 +29,7 @@ def test_mvp_evidence_ledger_links_and_release_markers_are_valid() -> None:
     ledger_rows = [line for line in ledger_section.splitlines() if line.startswith("| ")]
     assert ledger_rows
     assert all(row.split("|")[2].strip() in ALLOWED_STATUSES for row in ledger_rows[2:])
-    assert "Current release decision:** **NOT READY" in document
+    assert "Current release decision:** **PROMOTED — MVP Production Level" in document
     assert "MVP-095" in document
     assert "PostgreSQL" in document
     assert "UNVERIFIED" in document
