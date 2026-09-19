@@ -89,6 +89,35 @@ def test_official_bmstu_mirror_redirect_is_allowed() -> None:
     assert resource.redirects == ("https://mirror.bmstu.ru/sveden/common",)
 
 
+def test_official_bmstu_api_mirror_redirect_is_allowed() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(
+                301,
+                headers={"location": "https://api.mirror.bmstu.ru/majors/baccalaureate-and-specialty"},
+                request=request,
+            )
+        return httpx.Response(200, content=b"official API mirror", request=request)
+
+    fetcher = Fetcher(
+        FetchConfig(retries=0),
+        transport=httpx.MockTransport(handler),
+        resolver=_public_resolver,
+    )
+    try:
+        resource = fetcher.fetch_http("https://api.www.bmstu.ru/majors/baccalaureate-and-specialty")
+    finally:
+        fetcher.close()
+
+    assert resource.ok is True
+    assert resource.final_url == "https://api.mirror.bmstu.ru/majors/baccalaureate-and-specialty"
+    assert resource.redirects == ("https://api.mirror.bmstu.ru/majors/baccalaureate-and-specialty",)
+
+
 def test_response_larger_than_policy_is_truncated_and_not_successful() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=b"x" * 2048, request=request)

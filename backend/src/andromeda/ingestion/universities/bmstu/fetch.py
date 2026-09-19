@@ -35,6 +35,7 @@ BMSTU_SOURCE_HOST_POLICY = SourceHostPolicy(
             "www.bmstu.ru",
             "mirror.bmstu.ru",
             "api.www.bmstu.ru",
+            "api.mirror.bmstu.ru",
             "priem.bmstu.ru",
             "disk.yandex.ru",
             "clck.ru",
