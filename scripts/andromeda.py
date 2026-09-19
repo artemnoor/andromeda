@@ -90,7 +90,11 @@ def _deployment_contract() -> None:
 def _python_audit_command() -> list[str]:
     uv = shutil.which("uv")
     if uv is not None:
-        return [uv, "run", "--project", str(BACKEND), "--locked", "--extra", "dev", "--with", "pip-audit==2.9.0", "pip-audit", "--strict", "--progress-spinner", "off"]
+        # Keep the auditor outside the project runtime environment.  ``uv
+        # run --with`` can install the console wrapper without its import
+        # package on Windows; ``uv tool run --from`` creates a complete,
+        # pinned ephemeral tool environment on every supported platform.
+        return [uv, "tool", "run", "--from", "pip-audit==2.9.0", "pip-audit", "--strict", "--progress-spinner", "off"]
     return [sys.executable, "-m", "pip_audit", "--strict", "--progress-spinner", "off"]
 
 

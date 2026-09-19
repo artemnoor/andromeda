@@ -180,7 +180,7 @@ jobs:
       - name: Audit locked Python dependencies
         run: |
           uv export --locked --format requirements.txt --no-hashes --no-editable --no-dev --no-emit-project --output-file "$RUNNER_TEMP/andromeda-runtime-requirements.txt"
-          uv run --with pip-audit==2.9.0 pip-audit -r "$RUNNER_TEMP/andromeda-runtime-requirements.txt" --strict --progress-spinner off
+          uv tool run --from pip-audit==2.9.0 pip-audit -r "$RUNNER_TEMP/andromeda-runtime-requirements.txt" --strict --progress-spinner off
         working-directory: backend
       - uses: actions/setup-node@v4
         with:
