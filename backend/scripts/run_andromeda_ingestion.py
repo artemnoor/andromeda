@@ -18,14 +18,13 @@ sys.path.insert(0, str(BACKEND_ROOT / "src"))
 
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawTracerBundle
+from andromeda.ingestion.capabilities import preflight
+from andromeda.ingestion.quality import evaluate_quality
 from andromeda.ingestion.registry import adapter_spec, create_adapter, supported_universities
+from andromeda.composition import build_container
 from andromeda.infrastructure.config import Settings, redact_database_url
 from andromeda.infrastructure.database import create_engine_for_url
-from andromeda.infrastructure.database.models import IngestRunModel
-from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 
 logger = logging.getLogger("andromeda.runner")
@@ -70,37 +69,6 @@ def _validate(raw: RawTracerBundle, canonical: CanonicalSnapshot) -> None:
                 raise ValueError("BVI passing score contains numeric score")
 
 
-def _check_live_drift(engine: object, university_id: str, canonical: CanonicalSnapshot, minimum_ratio: float) -> None:
-    """Reject suspicious live shrinkage before canonical tables are touched."""
-
-    with Session(engine) as session:  # type: ignore[arg-type]
-        previous = session.scalar(
-            select(IngestRunModel)
-            .where(IngestRunModel.university_id == university_id, IngestRunModel.status == "completed")
-            .order_by(IngestRunModel.finished_at.desc(), IngestRunModel.id.desc())
-            .limit(1)
-        )
-    if previous is None:
-        return
-    current_metrics = {
-        "programs": len(canonical.programs),
-        "curriculum_items": sum(len(item.items) for item in canonical.curricula),
-        "sources": len(canonical.sources),
-    }
-    previous_metrics = {
-        "programs": previous.program_count,
-        "curriculum_items": previous.curriculum_item_count,
-        "sources": previous.source_count,
-    }
-    rejected = [
-        f"{name} {current_metrics[name]} < {previous_metrics[name]}*{minimum_ratio:.2f}"
-        for name in current_metrics
-        if previous_metrics[name] > 0 and current_metrics[name] < previous_metrics[name] * minimum_ratio
-    ]
-    if rejected:
-        raise ContractError(ErrorCode.CONTRACT_ERROR, "INGESTION_DRIFT_REJECTED: " + "; ".join(rejected))
-
-
 def run_university(
     *,
     university: str,
@@ -121,24 +89,58 @@ def run_university(
         selected_fixture,
         redact_database_url(database_url),
     )
-    engine = create_engine_for_url(database_url)
+    preflight(spec.slug)
+    settings = Settings.from_environment(database_url)
+    engine = create_engine_for_url(database_url, **settings.engine_options)
+    container = build_container(engine, settings)
     try:
         _migrate(database_url)
-        adapter = create_adapter(spec.slug)
+        repository = container.ingestion
+        run_id = repository.start_run(
+            source_profile=f"{spec.slug}:{mode}:cli:mvp023.v1",
+            source_revision="fixture-manifest-v1" if mode == "fixture" else "official-live-v1",
+            configuration_version="mvp023.v1",
+            university_id=f"university:{spec.slug}",
+        )
         try:
-            captured = adapter.capture(mode=mode, fixture_dir=selected_fixture)
-            raw, canonical = adapter.parse(captured, program_codes=program_codes or None)
-        finally:
-            close = getattr(adapter, "close", None)
-            if close is not None:
-                close()
-        _validate(raw, canonical)
-        repository = SqlAlchemyIngestionRepository(engine)
-        run_id = repository.start_run()
-        repository.record_source_metadata(run_id, raw)
-        try:
-            if mode == "live":
-                _check_live_drift(engine, str(canonical.university.id), canonical, minimum_ratio)
+            adapter = create_adapter(spec.slug)
+            try:
+                captured = adapter.capture(mode=mode, fixture_dir=selected_fixture)
+                repository.record_captured_metadata(run_id, captured)
+                raw, canonical = adapter.parse(captured, program_codes=program_codes or None)
+            finally:
+                close = getattr(adapter, "close", None)
+                if close is not None:
+                    close()
+            _validate(raw, canonical)
+            repository.record_source_metadata(run_id, raw)
+            previous = repository.previous_projection(str(canonical.university.id))
+            quality = evaluate_quality(
+                raw,
+                canonical,
+                previous=previous,
+                minimum_relative_count=minimum_ratio,
+                run_id=run_id,
+            )
+            repository.record_quality(
+                run_id,
+                quality,
+                university_id=str(canonical.university.id),
+                program_ids=tuple(str(program.id) for program in canonical.programs),
+            )
+            logger.info(
+                "ingestion_quality_decision run_id=%s university=%s status=%s blocking=%d degradable=%d",
+                run_id,
+                spec.slug,
+                quality.status,
+                len(quality.blocking_reasons),
+                len(quality.degradable_reasons),
+            )
+            if not quality.accepted:
+                raise ContractError(
+                    ErrorCode.CONTRACT_ERROR,
+                    "INGESTION_QUALITY_REJECTED: " + ",".join(quality.blocking_reasons),
+                )
             repository.ingest(raw, canonical, run_id=run_id)
         except Exception as exc:
             repository.mark_failed(run_id, exc)

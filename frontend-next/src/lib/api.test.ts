@@ -4,10 +4,14 @@ import {
   ApiTimeoutError,
   API_REQUEST_TIMEOUT_MS,
   addDecisionShortlist,
+  calculateAdmissionFit,
+  comparePrograms,
+  getCurriculum,
   getCurrentProftestSession,
   getCurrentRecommendations,
   getDecisionContext,
   getComparisonSummary,
+  getProgram,
   getPrograms,
 } from "./api";
 
@@ -63,6 +67,132 @@ describe("canonical API client", () => {
       items: [{ id: "program:01", directionId: "01.03.02", code: "01.03.02-01", name: "Программа", educationYear: "2026", studyPlanUrl: null, sourceUrl: null, universityId: null, universityName: null }],
     });
     expect(fetch).toHaveBeenCalledWith("/api/programs", expect.objectContaining({ credentials: "include", cache: "no-store" }));
+  });
+
+  it("preserves program provenance and curriculum source gaps through typed mappers", async () => {
+    const program = {
+      id: "program:01",
+      directionId: "01.03.02",
+      code: "01.03.02-01",
+      name: "Программа",
+      educationYear: 2026,
+      studyPlanUrl: "https://example.test/plan.pdf",
+      sourceUrl: "https://example.test/catalog",
+      universityId: "university:test",
+      universityName: "Тестовый университет",
+      provenance: [{ kind: "bmstu_curriculum_document", url: "https://example.test/catalog", capturedAt: "2026-09-18T10:00:00Z", contentSha256: "a", inferred: false }],
+      sourceGaps: [{ code: "passing_score_missing", severity: "degradable", message: "Проходной балл не опубликован", sourceUrl: null, field: "passing_score", recordKey: "program:01", canContinue: true }],
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input);
+      const body = path.endsWith("/curriculum")
+        ? {
+            program,
+            curriculumId: "curriculum:01",
+            educationYear: 2026,
+            sourceUrl: "https://example.test/plan.pdf",
+            capturedAt: "2026-09-18T10:00:00Z",
+            items: [],
+            provenance: [{ kind: "bmstu_curriculum_document", url: "https://example.test/plan.pdf", capturedAt: "2026-09-18T10:00:00Z", contentSha256: "a", inferred: false }],
+            sourceGaps: program.sourceGaps,
+          }
+        : { program };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getProgram("program:01")).resolves.toMatchObject({
+      program: { universityName: "Тестовый университет", sourceGaps: [{ code: "passing_score_missing", canContinue: true }] },
+    });
+    await expect(getCurriculum("program:01")).resolves.toMatchObject({
+      provenance: [{ sourceUrl: "https://example.test/plan.pdf" }],
+      sourceGaps: [{ message: "Проходной балл не опубликован" }],
+    });
+  });
+
+  it("preserves comparison provenance and source-gap details", async () => {
+    const baseProgram = { id: "program:01", directionId: "01.03.02", code: "01.03.02-01", name: "Программа", educationYear: 2026, studyPlanUrl: "https://example.test/plan.pdf", sourceUrl: "https://example.test/catalog", provenance: [], sourceGaps: [] };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      programA: baseProgram,
+      programB: { ...baseProgram, id: "program:02", code: "01.03.02-02" },
+      scope: "all",
+      semester: null,
+      rows: [],
+      totalsA: { hours: 1, credits: "1.0" },
+      totalsB: { hours: 2, credits: "2.0" },
+      areaBreakdownA: [],
+      areaBreakdownB: [],
+      provenance: [{ kind: "bmstu_curriculum_document", url: "https://example.test/plan.pdf", capturedAt: "2026-09-18T10:00:00Z", contentSha256: "a", inferred: false }],
+      sourceGapDetails: [{ code: "curriculum_missing", severity: "degradable", message: "Нет плана", sourceUrl: null, field: "curriculum", recordKey: "program:02", canContinue: true }],
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    await expect(comparePrograms(["program:01", "program:02"])).resolves.toMatchObject({
+      provenance: [{ sourceUrl: "https://example.test/plan.pdf" }],
+      sourceGapDetails: [{ code: "curriculum_missing", severity: "degradable" }],
+    });
+  });
+
+  it("keeps recommendation evidence, inferred provenance, and typed gaps", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      profile: { interests: [], activityPreferences: [], antiInterests: [], confidence: { value: "0.75" } },
+      recommendations: [{
+        programId: "program:01",
+        programCode: "01.03.02-01",
+        programName: "Программа",
+        contentFit: 82,
+        score: { programId: "program:01", programCode: "01.03.02-01", programName: "Программа", breakdown: { subjectFit: "0.8", activityFit: "0.7", distinctiveFit: "0.6", antiPenalty: "0", rawContentFit: "0.82" } },
+        reasons: [{ kind: "fit", area: "computer_science_data", activity: null, text: "Совпадение", workload: "10", share: "0.5", sourceNames: ["Алгоритмы"], provenance: [{ kind: "bmstu_curriculum_document", url: "https://bmstu.ru/plan.pdf", capturedAt: "2026-09-18T10:00:00Z", contentSha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", field: "curriculum", recordKey: "program:01", inferred: false }] }],
+        antiFitReasons: [],
+        areaShare: { computer_science_data: "0.5" },
+        semesterDistribution: { "1": "1" },
+        distinctiveSubjects: ["Алгоритмы"],
+        admissionFit: { status: "available", value: 75 },
+        provenance: [{ kind: "bmstu_curriculum_document", url: "https://bmstu.ru/plan.pdf", capturedAt: "2026-09-18T10:00:00Z", contentSha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", universityId: "university:bmstu", runId: "ingest:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", field: "curriculum", recordKey: "program:01", inferred: false }],
+        sourceGaps: [{ code: "passing_score_missing", severity: "degradable", message: "Проходной балл отсутствует", field: "passing_score", recordKey: "program:01", canContinue: true }],
+      }],
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    await expect(getCurrentRecommendations()).resolves.toMatchObject({
+      recommendations: [{
+        provenance: [{ sourceKind: "bmstu_curriculum_document", sourceUrl: "https://bmstu.ru/plan.pdf", universityId: "university:bmstu", runId: "ingest:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", inferred: false }],
+        sourceGaps: [{ code: "passing_score_missing", severity: "degradable", canContinue: true }],
+        reasons: [{ provenance: [{ field: "curriculum", recordKey: "program:01" }] }],
+      }],
+    });
+  });
+
+  it("preserves admission metric status instead of turning unavailable data into zero", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      programId: "program:01",
+      offeringId: "admission-offering:01",
+      admissionYear: 2026,
+      studyForm: "full_time",
+      fundingType: "budget",
+      status: "insufficient_data",
+      score: 0,
+      applicantTotalScore: null,
+      dataQuality: "partial",
+      breakdown: {
+        minimumReadiness: { value: null, status: "not_available" },
+        passingReadiness: { value: null, status: "not_available" },
+        dataCompleteness: { value: "50.00", status: "partial" },
+      },
+      reasons: [],
+      antiReasons: [],
+      dataGaps: [{ kind: "data_gap", message: "Не указан обязательный предмет" }],
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    await expect(calculateAdmissionFit("program:01", {
+      version: 1,
+      offeringId: "admission-offering:01",
+      applicant: { version: 1, scores: [] },
+    })).resolves.toMatchObject({
+      status: "insufficient_data",
+      breakdown: {
+        minimumReadiness: { value: null, status: "not_available" },
+        dataCompleteness: { value: 50, status: "partial" },
+      },
+    });
   });
 
   it("exposes structured API errors to feature boundaries", async () => {

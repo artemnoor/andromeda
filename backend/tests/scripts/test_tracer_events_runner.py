@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[2] / "scripts"))
 
-from run_tracer_bullet import result_payload, run_ingest, selected_program_codes
+from run_andromeda_bmstu import result_payload, run_ingest, selected_program_codes
 
 
 def test_fixture_runner_reports_event_count_and_endpoint(tmp_path: Path) -> None:

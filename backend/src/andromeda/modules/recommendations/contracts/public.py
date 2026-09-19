@@ -14,6 +14,7 @@ from andromeda.modules.proftest.contracts.public import (
     MatchScore,
     ProgramFingerprint,
     Recommendation,
+    RecommendationEvidence,
     ReasonKind,
     ScoreBreakdown,
     UserProfile,
@@ -46,10 +47,22 @@ class RecommendationServicePort(Protocol):
 
     def rank_candidates(self, request: CandidateRankingRequest) -> CandidateRankingResult: ...
 
+    def build_evidence(
+        self,
+        profile: UserProfile | None,
+        fingerprint: ProgramFingerprint | None,
+        *,
+        profile_revision: int | None = None,
+        question_set_version: str | None = None,
+    ) -> RecommendationEvidence: ...
+
     def recommend_from_fingerprints(
         self,
         request: RecommendationRequest,
         fingerprints: Iterable[ProgramFingerprint],
+        *,
+        profile_revision: int | None = None,
+        question_set_version: str | None = None,
     ) -> RecommendationResult: ...
 
 
@@ -64,6 +77,7 @@ __all__ = [
     "MatchScore",
     "ProgramFingerprint",
     "Recommendation",
+    "RecommendationEvidence",
     "ReasonKind",
     "RecommendationRequest",
     "RecommendationResult",

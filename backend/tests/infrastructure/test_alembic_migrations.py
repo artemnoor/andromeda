@@ -54,6 +54,38 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(tmp_path: 
             if constraint["name"] == "uq_admission_passing_score_identity"
         )
         assert passing_unique["column_names"] == ["offering_id", "competition_type", "status", "score_type"]
+        program_columns = {column["name"] for column in inspector.get_columns("educational_programs")}
+        assert {"provenance_json", "source_gaps_json"}.issubset(program_columns)
+        curriculum_columns = {column["name"] for column in inspector.get_columns("curricula")}
+        assert {"provenance_json", "source_gaps_json"}.issubset(curriculum_columns)
+        admission_columns = {column["name"] for column in inspector.get_columns("admission_offerings")}
+        assert {"university_id", "run_id", "field", "record_key", "inferred"}.issubset(admission_columns)
+        ingest_columns = {column["name"] for column in inspector.get_columns("ingest_runs")}
+        assert {"projection_target", "heartbeat_at", "projection_status", "recovery_reason"}.issubset(ingest_columns)
+        ingest_indexes = {index["name"] for index in inspector.get_indexes("ingest_runs")}
+        assert ingest_indexes >= {"ix_ingest_runs_status_started_at", "uq_ingest_runs_active_identity"}
+        active_index = next(index for index in inspector.get_indexes("ingest_runs") if index["name"] == "uq_ingest_runs_active_identity")
+        assert active_index["column_names"] == ["university_id", "source_profile", "projection_target"]
+        assert {index["name"] for index in inspector.get_indexes("source_snapshots")} >= {"ix_source_snapshots_ingest_run_id"}
+    finally:
+        engine.dispose()
+
+
+def test_current_0016_database_reaches_current_head(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'from-0016.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    config = _alembic_config(database_url)
+    command.upgrade(config, "0016_ingestion_source_health")
+    command.upgrade(config, "head")
+    engine = create_engine(database_url)
+    try:
+        inspector = inspect(engine)
+        assert "provenance_json" in {column["name"] for column in inspector.get_columns("educational_programs")}
+        assert "university_id" in {column["name"] for column in inspector.get_columns("admission_offerings")}
+        assert "uq_ingest_runs_active_identity" in {
+            index["name"] for index in inspector.get_indexes("ingest_runs")
+        }
     finally:
         engine.dispose()
 

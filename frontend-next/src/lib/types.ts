@@ -4,12 +4,29 @@
 import type { components } from "./generated";
 
 export type Provenance = {
+  kind?: string | null;
+  url?: string | null;
   sourceKind?: string | null;
   sourceUrl?: string | null;
   capturedAt?: string | null;
   contentSha256?: string | null;
   locator?: string | null;
   sourceName?: string | null;
+  universityId?: string | null;
+  runId?: string | null;
+  field?: string | null;
+  recordKey?: string | null;
+  inferred?: boolean;
+};
+
+export type SourceGapReference = {
+  code: string;
+  severity: "blocking" | "degradable" | "informational";
+  message: string;
+  sourceUrl?: string | null;
+  field?: string | null;
+  recordKey?: string | null;
+  canContinue: boolean;
 };
 
 export type ProgramSummary = {
@@ -22,6 +39,8 @@ export type ProgramSummary = {
   sourceUrl?: string | null;
   universityId?: string | null;
   universityName?: string | null;
+  provenance?: Provenance[];
+  sourceGaps?: SourceGapReference[];
 };
 
 export type ProgramListResponse = { items: ProgramSummary[] };
@@ -61,6 +80,8 @@ export type CurriculumResponse = {
   sourceUrl?: string | null;
   capturedAt: string;
   items: CurriculumItem[];
+  provenance?: Provenance[];
+  sourceGaps?: SourceGapReference[];
 };
 
 export type ExamRequirement = {
@@ -125,10 +146,15 @@ export type ProgramAdmissionsResponse = {
   offerings: AdmissionOffering[];
 };
 
+export type AdmissionFitMetric = {
+  value: number | null;
+  status: string;
+};
+
 export type AdmissionFitBreakdown = {
-  minimumReadiness: number | null;
-  passingReadiness: number | null;
-  dataCompleteness: number | null;
+  minimumReadiness: AdmissionFitMetric;
+  passingReadiness: AdmissionFitMetric;
+  dataCompleteness: AdmissionFitMetric;
 };
 
 export type AdmissionFitResponse = {
@@ -183,6 +209,8 @@ export type ComparisonResponse = {
   totalsB: ComparisonTotals;
   areaBreakdownA?: AreaBreakdownItem[] | null;
   areaBreakdownB?: AreaBreakdownItem[] | null;
+  provenance?: Provenance[];
+  sourceGapDetails?: SourceGapReference[];
 };
 
 export type ComparisonSummaryResponse = components["schemas"]["ComparisonSummaryResponse"];
@@ -263,6 +291,7 @@ export type UserProfile = {
   negativeWeights: WeightedArea[];
   confidence: string;
   adaptiveAnswers: { dimension: string; value: string }[];
+  confidenceByDimension?: { dimension: string; value: string }[];
 };
 
 export type UserProfileSnapshot = {
@@ -368,12 +397,15 @@ export type FitReason = {
   workload?: number | null;
   share?: string | null;
   sourceNames?: string[] | null;
+  provenance?: Provenance[];
 };
 
 export type OptionalMetric = {
   status?: string | null;
   score?: number | null;
 };
+
+export type RecommendationEvidence = components["schemas"]["RecommendationEvidenceResponse"];
 
 export type Recommendation = {
   programId: string;
@@ -387,6 +419,9 @@ export type Recommendation = {
   semesterDistribution: { semester: number; share: string }[];
   distinctiveSubjects: string[];
   admissionFit?: OptionalMetric | null;
+  provenance: Provenance[];
+  sourceGaps: SourceGapReference[];
+  evidence: RecommendationEvidence;
 };
 
 export type ProftestResultsResponse = {
@@ -506,6 +541,14 @@ export type IngestionRunSummary = {
   curriculumItemCount: number;
   eventCount: number;
   campusPointCount: number;
+  sourceGapCount: number;
+  criticalGapCount: number;
+  qualityStatus: "not_checked" | "passed" | "degraded" | "rejected";
+  driftStatus: "not_checked" | "passed" | "rejected";
+  sourceProfile?: string | null;
+  universityId?: string | null;
+  durationMs?: number | null;
+  projectionStatus?: string | null;
 };
 
 export type IngestionRunDetail = IngestionRunSummary & {
@@ -514,10 +557,23 @@ export type IngestionRunDetail = IngestionRunSummary & {
   unchangedCount: number;
   removedCount: number;
   errorMessage?: string | null;
+  errorCode?: string | null;
+  previousGoodRunId?: string | null;
+  sourceRevision?: string | null;
+  configurationVersion?: string | null;
+  retryOfRunId?: string | null;
+  projectionTarget?: string | null;
+  heartbeatAt?: string | null;
+  recoveryReason?: string | null;
   sourceHashes: string[];
   sourceKinds: string[];
 };
 
 export type IngestionRunListResponse = { items: IngestionRunSummary[]; total: number };
 export type IngestionRunDetailResponse = { run: IngestionRunDetail };
-export type IngestionRetryRequest = { source: string };
+export type IngestionRetrySource = "bmstu_fixture" | "bmstu_live" | "hse_fixture" | "hse_live";
+export type IngestionRetryRequest = {
+  source: IngestionRetrySource;
+  idempotencyKey?: string;
+  retryOfRunId?: string;
+};

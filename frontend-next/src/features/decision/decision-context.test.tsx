@@ -70,6 +70,7 @@ describe("DecisionContext frontend state boundary", () => {
         admissionRisk: "unknown",
         admissionFit: null,
         contentFit: null,
+        constraintOutcomes: [],
         reasons: {
           whyIncluded: [],
           whyMayNotFit: [],
@@ -79,6 +80,8 @@ describe("DecisionContext frontend state boundary", () => {
         },
         sourceGaps: ["study_plan"],
         sourceHashes: [],
+        provenance: [],
+        sourceGapDetails: [],
       }],
       insufficientDataCandidates: [],
       suggestions: [],

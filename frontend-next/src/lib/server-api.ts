@@ -31,7 +31,7 @@ export function authorizeOgRequest(request: Request): OgRequestContext {
 }
 
 export async function fetchInternal<T>(context: OgRequestContext, path: string): Promise<T> {
-  const baseUrl = (process.env.ANDROMEDA_INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://backend:8000").replace(/\/$/, "");
+  const baseUrl = (process.env.ANDROMEDA_INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://backend:8020").replace(/\/$/, "");
   const headers: HeadersInit = { accept: "application/json" };
   if (context.cookie) headers.cookie = context.cookie;
   const response = await fetch(`${baseUrl}${path}`, { headers, cache: "no-store" });

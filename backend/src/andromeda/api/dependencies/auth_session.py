@@ -11,8 +11,8 @@ from typing import Literal, cast
 from fastapi import Depends, Request, Response
 from sqlalchemy.orm import Session
 
+from andromeda.composition import AndromedaContainer
 from andromeda.infrastructure.config.settings import Settings
-from andromeda.infrastructure.repositories.auth import SqlAlchemyAccountRepository
 from andromeda.modules.auth.contracts.public import Account
 from andromeda.modules.auth.repository.ports import AccountRepository
 from andromeda.shared.contracts.errors import UnauthorizedError, ValidationError
@@ -24,8 +24,11 @@ from .request_context import get_session
 _TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{32,256}$")
 
 
-def get_auth_repository(session: Session = Depends(get_session)) -> AccountRepository:
-    return SqlAlchemyAccountRepository(session)
+def get_auth_repository(request: Request, session: Session = Depends(get_session)) -> AccountRepository:
+    container = getattr(request.app.state, "container", None)
+    if not isinstance(container, AndromedaContainer):
+        raise RuntimeError("Andromeda composition root is not configured")
+    return container.account_repository(session)
 
 
 def auth_token_hash(raw_token: str) -> SessionTokenHash:

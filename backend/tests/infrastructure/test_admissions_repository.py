@@ -46,6 +46,32 @@ def test_admission_projection_round_trips_through_repository_and_preserves_fk(tm
     assert any(foreign_key["referred_table"] == "educational_programs" and foreign_key["constrained_columns"] == ["program_id"] for foreign_key in foreign_keys)
 
 
+def test_batch_admission_reader_matches_single_program_contract(tmp_path: Path) -> None:
+    adapter = BmstuUniversityAdapter()
+    try:
+        raw, canonical = adapter.parse_sources(fixture_dir=Path(__file__).parents[1] / "fixtures" / "tracer" / "raw")
+    finally:
+        adapter.close()
+
+    engine = create_engine_for_url(f"sqlite:///{(tmp_path / 'admissions-batch.db').as_posix()}")
+    try:
+        Base.metadata.create_all(engine)
+        SqlAlchemyIngestionRepository(engine).ingest(raw, canonical)
+        with Session(engine) as session:
+            repository = SqlAlchemyAdmissionRepository(session)
+            batch = repository.get_for_programs(("program:09.03.01-02", "program:09.03.01-12"))
+            single = repository.get_for_program("program:09.03.01-02")
+
+        assert tuple(item.program_id for item in batch) == (
+            "program:bmstu:09.03.01-02",
+            "program:bmstu:09.03.01-12",
+        )
+        assert batch[0] == single
+        assert len(batch[1].offerings) == 10
+    finally:
+        engine.dispose()
+
+
 def test_route_aware_passing_scores_round_trip_and_stale_children_are_removed(tmp_path: Path) -> None:
     adapter = BmstuUniversityAdapter()
     try:

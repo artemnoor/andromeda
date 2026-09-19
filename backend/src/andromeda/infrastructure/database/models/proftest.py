@@ -26,6 +26,7 @@ class UserProfileModel(Base):
         UniqueConstraint("session_key_hash", name="uq_user_profiles_session_key_hash"),
         Index("uq_user_profiles_account_id", "account_id", unique=True),
         Index("ix_user_profiles_session_key_hash", "session_key_hash"),
+        Index("ix_user_profiles_expiry", "expires_at"),
         CheckConstraint("length(profile_id) > 0", name="ck_user_profiles_profile_id_non_empty"),
         CheckConstraint("length(session_key_hash) = 64", name="ck_user_profiles_session_hash_length"),
         CheckConstraint("revision >= 1", name="ck_user_profiles_revision_positive"),

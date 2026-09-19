@@ -6,7 +6,8 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode, DisciplineAreaDefinition
-from andromeda.shared.contracts.enums import AssessmentType, CompareStatus, ComparisonScope, EducationLevel
+from andromeda.shared.contracts.enums import AssessmentType, CompareStatus, ComparisonScope, EducationLevel, SourceKind
+from andromeda.shared.contracts.provenance import GapSeverity
 
 
 def to_camel(value: str) -> str:
@@ -16,6 +17,29 @@ def to_camel(value: str) -> str:
 
 class ApiModel(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid", populate_by_name=True, alias_generator=to_camel)
+
+
+class SourceAttributionResponse(ApiModel):
+    kind: SourceKind
+    url: HttpUrl
+    captured_at: datetime
+    content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    locator: str | None = None
+    university_id: str | None = None
+    run_id: str | None = None
+    field: str | None = None
+    record_key: str | None = None
+    inferred: bool = False
+
+
+class SourceGapReferenceResponse(ApiModel):
+    code: str
+    severity: GapSeverity
+    message: str
+    source_url: HttpUrl | None = None
+    field: str | None = None
+    record_key: str | None = None
+    can_continue: bool = True
 
 
 class ProgramSummaryResponse(ApiModel):
@@ -28,6 +52,8 @@ class ProgramSummaryResponse(ApiModel):
     source_url: HttpUrl
     university_id: str | None = None
     university_name: str | None = None
+    provenance: tuple[SourceAttributionResponse, ...] = ()
+    source_gaps: tuple[SourceGapReferenceResponse, ...] = ()
 
 
 class ProgramListResponse(ApiModel):
@@ -81,6 +107,8 @@ class CurriculumResponse(ApiModel):
     source_url: HttpUrl
     captured_at: datetime
     items: tuple[CurriculumItemResponse, ...]
+    provenance: tuple[SourceAttributionResponse, ...] = ()
+    source_gaps: tuple[SourceGapReferenceResponse, ...] = ()
 
 
 class WorkloadResponse(ApiModel):
@@ -115,3 +143,5 @@ class ComparisonResponse(ApiModel):
     totals_b: ComparisonTotalsResponse
     area_breakdown_a: tuple[DisciplineAreaSummaryResponse, ...] = ()
     area_breakdown_b: tuple[DisciplineAreaSummaryResponse, ...] = ()
+    provenance: tuple[SourceAttributionResponse, ...] = ()
+    source_gap_details: tuple[SourceGapReferenceResponse, ...] = ()

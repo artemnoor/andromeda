@@ -34,6 +34,16 @@ class IngestionRunSummaryResponse(ApiModel):
     source_gap_count: int = Field(default=0, strict=True, ge=0)
     critical_gap_count: int = Field(default=0, strict=True, ge=0)
     drift_status: Literal["not_checked", "passed", "rejected"] = "not_checked"
+    quality_status: Literal["not_checked", "passed", "degraded", "rejected"] = "not_checked"
+    previous_good_run_id: IngestRunId | None = None
+    source_profile: str
+    source_revision: str
+    configuration_version: str
+    retry_of_run_id: IngestRunId | None = None
+    projection_target: str = "canonical"
+    heartbeat_at: datetime | None = None
+    projection_status: Literal["not_started", "running", "committed", "reconciled", "failed"] = "not_started"
+    recovery_reason: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class IngestionRunDetailResponse(IngestionRunSummaryResponse):
@@ -51,7 +61,9 @@ class IngestionRunDetailEnvelope(ApiModel):
 
 
 class IngestionRetryRequestBody(ApiModel):
-    source: Literal["bmstu_fixture", "bmstu_live"] = "bmstu_fixture"
+    source: Literal["bmstu_fixture", "bmstu_live", "hse_fixture", "hse_live"] = "bmstu_fixture"
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=96, pattern=r"^[A-Za-z0-9._:-]+$")
+    retry_of_run_id: IngestRunId | None = None
 
 
 class SourceHealthItemResponse(ApiModel):

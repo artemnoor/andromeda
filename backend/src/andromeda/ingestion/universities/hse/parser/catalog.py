@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 import re
 from urllib.parse import urldefrag, urlparse
 
@@ -23,7 +22,7 @@ class HseProgramPage:
     direction_code: str | None
     direction_name: str
     education_level: str
-    education_year: int
+    education_year: int | None
 
 
 def canonical_url(url: str) -> str:
@@ -65,7 +64,7 @@ def parse_program_detail(snapshot: RawSourceSnapshot) -> HseProgramPage:
     direction_name = clean_text(code_line.replace(direction_code or "", "")) or title
     education_level = "специалитет" if "специалитет" in text.casefold() else "бакалавриат"
     years = [int(value) for value in re.findall(r"\b(20\d{2})\b", text)]
-    education_year = max((year for year in years if 2020 <= year <= 2100), default=datetime.now().year)
+    education_year = max((year for year in years if 2020 <= year <= 2100), default=None)
     return HseProgramPage(canonical_url(str(snapshot.requested_url)), title, direction_code, direction_name, education_level, education_year)
 
 

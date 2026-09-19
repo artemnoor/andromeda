@@ -8,8 +8,10 @@ Backend Andromeda — единый modular monolith для ingestion офици�
 Из корня репозитория:
 
 ```powershell
-python -m pip install -e "backend[dev]"
-python backend/scripts/run_tracer_demo.py --mode fixture --check
+python -m pip install uv
+uv sync --project backend --locked --extra dev --extra browser
+python scripts/andromeda.py production-smoke
+python backend/scripts/run_andromeda_demo.py --mode fixture --check
 ```
 
 Без `--check` runner оставляет FastAPI и canonical `frontend-next` запущенными:
@@ -40,7 +42,7 @@ official BMSTU catalog/API
 Для полного поддерживаемого каталога не передавайте список программ:
 
 ```powershell
-python backend/scripts/run_tracer_bullet.py --mode live --database-url $env:BMSTU_DATABASE_URL --log-level INFO
+python backend/scripts/run_andromeda_bmstu.py --mode live --database-url $env:ANDROMEDA_DATABASE_URL --log-level INFO
 ```
 
 Runner сам обходит catalog pagination, находит направления и программы,
@@ -51,7 +53,7 @@ Runner сам обходит catalog pagination, находит направле
 Для backend-only fixture run:
 
 ```powershell
-python backend/scripts/run_tracer_bullet.py --mode fixture --database-url sqlite:///./data/tracer.db --log-level INFO
+python backend/scripts/run_andromeda_bmstu.py --mode fixture --database-url sqlite:///./data/andromeda-demo.db --log-level INFO
 ```
 
 Runner применяет `alembic upgrade head` до ingestion. Повторный запуск
@@ -73,7 +75,9 @@ Admissions строятся только из официальных detail/orde
 
 ## Storage and source artifacts
 
-`BMSTU_DATABASE_URL` — единый target для API, Alembic и ingestion. Raw
+`ANDROMEDA_DATABASE_URL` — canonical target для API, Alembic и ingestion.
+`BMSTU_DATABASE_URL` остаётся только deprecated fallback на один migration
+cycle. Raw
 snapshots immutable и связаны с content SHA-256; canonical tables обновляются
 в одной projection transaction. SQLite предназначен для tests/local smoke,
 development и staging используют PostgreSQL.
@@ -81,24 +85,28 @@ development и staging используют PostgreSQL.
 Poppler `pdftotext` нужен для текстового разбора study-plan PDF. CI
 устанавливает и проверяет его до backend tests.
 
+Перед live/fixture ingestion можно проверить parser capabilities без сети:
+
+```powershell
+python backend/scripts/preflight.py --profile bmstu --profile hse
+```
+
+Direct Python dependencies are resolved from `backend/uv.lock` with
+`uv sync --locked`; Playwright/Chromium остаются optional browser fallback.
+
 ## Проверки
 
 ```powershell
-cd backend
-python -m pytest -q
-python -m mypy
-cd ..
-python backend/scripts/export_openapi.py --out frontend-next/openapi.json
-cd frontend-next
-npm run check-api-drift
-npm run test:unit
-npm run lint
-npm run build
-npm run test:e2e
+python scripts/andromeda.py fast
+python scripts/andromeda.py backend
+python scripts/andromeda.py frontend
+python scripts/andromeda.py production-smoke
 ```
 
-Для browser E2E сначала запустите demo runner без `--check`. CI выполняет
-тот же canonical Next flow для SQLite fixture и PostgreSQL 16 service.
+Для browser E2E сначала запустите demo runner без `--check`, затем выполните
+`python scripts/andromeda.py playwright`. CI выполняет тот же canonical Next
+flow для SQLite fixture и PostgreSQL 16 service. Backend coverage и migration
+artifacts создаются через `backend-coverage` и `migrations` targets.
 
 ## Границы
 

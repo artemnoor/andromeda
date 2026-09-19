@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import re
 
 from andromeda.ingestion.contracts.raw import RawSourceSnapshot
+from andromeda.ingestion.pdf_policy import PdfResourceError
 
 from ..pdf import extract_pdf_text
 from ..identity import direction_codes
@@ -90,6 +91,8 @@ def _parse_structured_table(body: bytes, direction: str | None, program_name: st
                         position += 1
                         observations.append(CurriculumObservation(direction, program_name, name, hours, credits, position))
         return tuple(observations)
+    except PdfResourceError:
+        raise
     except Exception:
         return ()
 

@@ -15,17 +15,35 @@ from andromeda.modules.proftest.services.session import ProftestSessionService
 router = APIRouter(prefix="/proftest", tags=["proftest"])
 
 
-@router.get("/questions", response_model=QuestionnaireResponse)
+@router.get(
+    "/questions",
+    response_model=QuestionnaireResponse,
+    deprecated=True,
+    summary="Legacy questionnaire compatibility adapter",
+    description="Compatibility read path for clients that have not migrated to /proftest/sessions. The canonical user flow is the version-pinned session API.",
+)
 def get_questions(service: ProftestService = Depends(get_proftest_service)) -> QuestionnaireResponse:
     return questionnaire_response(service.questionnaire())
 
 
-@router.post("/preview", response_model=ProftestPreviewResponse)
+@router.post(
+    "/preview",
+    response_model=ProftestPreviewResponse,
+    deprecated=True,
+    summary="Legacy proftest preview compatibility adapter",
+    description="Compatibility adapter over the existing profile/ranking services. New clients must use /proftest/sessions.",
+)
 def preview(request: ProftestSubmissionRequest, service: ProftestService = Depends(get_proftest_service)) -> ProftestPreviewResponse:
     return preview_response(service.preview(request.to_contract()))
 
 
-@router.post("/results", response_model=ProftestResultsResponse)
+@router.post(
+    "/results",
+    response_model=ProftestResultsResponse,
+    deprecated=True,
+    summary="Legacy proftest results compatibility adapter",
+    description="Compatibility adapter that delegates to the canonical profile builder and recommendation service. New clients must complete /proftest/sessions.",
+)
 def results(
     request: ProftestSubmissionRequest,
     scope: ProfileScope = Depends(get_profile_scope),

@@ -8,13 +8,14 @@ import unicodedata
 
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawTracerBundle
+from andromeda.ingestion.contracts.source import source_gap_reference
 from andromeda.modules.curricula.contracts.public import Curriculum, CurriculumItem
 from andromeda.modules.disciplines.contracts.public import Discipline
 from andromeda.modules.programs.contracts.public import Program
 from andromeda.modules.universities.contracts.public import Direction, University
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel, SourceKind
 from andromeda.shared.contracts.errors import ContractError, ErrorCode, ErrorDetail
-from andromeda.shared.contracts.provenance import SourceAttribution
+from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 
 from ..identity import direction_codes
 
@@ -38,7 +39,7 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
     direction = directions[0]
     directions_by_code = {item.code: item for item in directions}
     programs = tuple(
-        Program(id=f"program:{university.id.removeprefix('university:')}:{_code(item.code)}", direction_id=f"direction:{university.id.removeprefix('university:')}:{_program_direction(item, directions_by_code, direction.code)}", code=_code(item.code), name=_text(item.name), education_year=item.education_year, study_plan_url=item.study_plan_url, source_url=item.source_url)
+        Program(id=f"program:{university.id.removeprefix('university:')}:{_code(item.code)}", direction_id=f"direction:{university.id.removeprefix('university:')}:{_program_direction(item, directions_by_code, direction.code)}", code=_code(item.code), name=_text(item.name), education_year=item.education_year, study_plan_url=item.study_plan_url, source_url=item.source_url, provenance=_source_attribution(raw, str(item.source_url), ("hse_program_detail", "hse_program_catalog"), field="program", record_key=_code(item.code)), source_gaps=_source_gaps(raw, _code(item.code), str(item.source_url), field="program"))
         for item in raw.programs
     )
     if len({item.code for item in programs}) != len(programs):
@@ -58,7 +59,7 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
         item = CurriculumItem(id=f"curriculum-item:{program.id}:{discipline_id}:{semester_key}", discipline_id=discipline_id, source_name=_text(row.discipline), semester=row.semester, hours=row.hours, credits=_credits(row.credits, row.locator.field or "credits"), assessment_types=_assessment(row.assessment), source_position=row.source_position)
         _append(items_by_program[program.code], item)
     curricula = tuple(
-        Curriculum(id=f"curriculum:{program.id.removeprefix('program:')}-{program.education_year}", program_id=program.id, education_year=program.education_year, source_url=program.study_plan_url, captured_at=_captured_at(raw, program), items=tuple(items_by_program[program.code]))
+        Curriculum(id=f"curriculum:{program.id.removeprefix('program:')}-{program.education_year}", program_id=program.id, education_year=program.education_year, source_url=program.study_plan_url, captured_at=_captured_at(raw, program), items=tuple(items_by_program[program.code]), provenance=_source_attribution(raw, str(program.study_plan_url), ("hse_curriculum_document", "hse_curriculum_index"), field="curriculum", record_key=program.id), source_gaps=_source_gaps(raw, program.code, str(program.study_plan_url), field="curriculum"))
         for program in programs
         if items_by_program[program.code]
     )
@@ -129,6 +130,45 @@ def _source_kind(value: str) -> SourceKind:
         return SourceKind(value)
     except ValueError as exc:
         raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Unknown HSE source kind: {value}") from exc
+
+
+def _source_attribution(
+    raw: RawTracerBundle,
+    source_url: str,
+    source_kinds: tuple[str, ...],
+    *,
+    field: str,
+    record_key: str,
+) -> tuple[SourceAttribution, ...]:
+    snapshot = next(
+        (
+            item
+            for item in raw.snapshots
+            if item.source_kind in source_kinds and str(item.requested_url) == source_url
+        ),
+        next((item for item in raw.snapshots if item.source_kind in source_kinds), None),
+    )
+    if snapshot is None:
+        return ()
+    return (
+        SourceAttribution(
+            kind=SourceKind(snapshot.source_kind),
+            url=snapshot.requested_url,
+            captured_at=snapshot.captured_at,
+            content_sha256=snapshot.content_sha256,
+            university_id="university:hse",
+            field=field,
+            record_key=record_key,
+        ),
+    )
+
+
+def _source_gaps(raw: RawTracerBundle, record_key: str, source_url: str, *, field: str) -> tuple[SourceGapReference, ...]:
+    return tuple(
+        source_gap_reference(gap, field=field, record_key=record_key)
+        for gap in raw.source_gaps
+        if record_key in gap.entity_key or source_url in str(gap.source_url)
+    )
 
 
 def _captured_at(raw: RawTracerBundle, program: object) -> datetime:

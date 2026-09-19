@@ -47,6 +47,13 @@ def test_recommendations_accept_profile_contract_and_return_real_evidence(tmp_pa
     assert len(payload["recommendations"]) == 2
     assert all(0 <= item["contentFit"] <= 100 for item in payload["recommendations"])
     assert Decimal(payload["recommendations"][0]["score"]["breakdown"]["antiPenalty"]) >= 0
+    assert payload["recommendations"][0]["provenance"]
+    assert payload["recommendations"][0]["reasons"][0]["provenance"]
+    evidence = payload["recommendations"][0]["evidence"]
+    assert evidence["policyVersion"] == "content-fit.v1"
+    assert evidence["taxonomyVersion"] == "taxonomy-22.v1"
+    assert evidence["reliability"]["status"] in {"available", "partial", "not_available"}
+    assert "curriculum_activity_mapping" in evidence["inferredSignals"]
     assert "workloadReadiness" not in payload["recommendations"][0]
     assert "careerFit" not in payload["recommendations"][0]
 

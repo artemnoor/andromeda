@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from andromeda.modules.programs.contracts.public import Program
 from andromeda.modules.programs.repository.ports import ProgramReader, ProgramWriter
 from andromeda.shared.contracts.ids import ProgramId, UniversityId, canonical_program_id
+from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 
 from ..database.models import DirectionModel, ProgramModel
 
@@ -35,6 +38,8 @@ class SqlAlchemyProgramRepository(ProgramReader, ProgramWriter):
             "education_year": program.education_year,
             "study_plan_url": str(program.study_plan_url),
             "source_url": str(program.source_url),
+            "provenance_json": _provenance_json(program.provenance),
+            "source_gaps_json": _source_gaps_json(program.source_gaps),
         }
         if existing is None:
             self._session.add(ProgramModel(**values))
@@ -52,5 +57,29 @@ def _to_contract(model: ProgramModel) -> Program:
             "education_year": model.education_year,
             "study_plan_url": model.study_plan_url,
             "source_url": model.source_url,
+            "provenance": _provenance_values(model.provenance_json),
+            "source_gaps": _source_gap_values(model.source_gaps_json),
         }
     )
+
+
+def _provenance_json(values: tuple[SourceAttribution, ...]) -> str:
+    return json.dumps([value.model_dump(mode="json") for value in values], ensure_ascii=False, separators=(",", ":"))
+
+
+def _provenance_values(value: str) -> tuple[SourceAttribution, ...]:
+    parsed = json.loads(value)
+    if not isinstance(parsed, list):
+        raise ValueError("persisted program provenance must be a list")
+    return tuple(SourceAttribution.model_validate(item, strict=False) for item in parsed)
+
+
+def _source_gaps_json(values: tuple[SourceGapReference, ...]) -> str:
+    return json.dumps([value.model_dump(mode="json") for value in values], ensure_ascii=False, separators=(",", ":"))
+
+
+def _source_gap_values(value: str) -> tuple[SourceGapReference, ...]:
+    parsed = json.loads(value)
+    if not isinstance(parsed, list):
+        raise ValueError("persisted program source gaps must be a list")
+    return tuple(SourceGapReference.model_validate(item, strict=False) for item in parsed)

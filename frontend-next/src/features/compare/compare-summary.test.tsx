@@ -6,19 +6,19 @@ import type { ComparisonSummaryResponse } from "@/lib/types";
 const summary = {
   programs: [
     {
-      program: { id: "program:09.03.01-02", directionId: "direction:09.03.01", code: "09.03.01-02", name: "Информатика", educationYear: 2026, studyPlanUrl: "https://bmstu.ru/plan-a.pdf", sourceUrl: "https://bmstu.ru/a" },
+      program: { id: "program:09.03.01-02", directionId: "direction:09.03.01", code: "09.03.01-02", name: "Информатика", educationYear: 2026, studyPlanUrl: "https://bmstu.ru/plan-a.pdf", sourceUrl: "https://bmstu.ru/a", provenance: [], sourceGaps: [] },
       totals: { hours: 3200, credits: "240.00" },
       areaBreakdown: [],
       sourceGaps: [],
     },
     {
-      program: { id: "program:09.03.01-12", directionId: "direction:09.03.01", code: "09.03.01-12", name: "Системы", educationYear: 2026, studyPlanUrl: "https://bmstu.ru/plan-b.pdf", sourceUrl: "https://bmstu.ru/b" },
+      program: { id: "program:09.03.01-12", directionId: "direction:09.03.01", code: "09.03.01-12", name: "Системы", educationYear: 2026, studyPlanUrl: "https://bmstu.ru/plan-b.pdf", sourceUrl: "https://bmstu.ru/b", provenance: [], sourceGaps: [] },
       totals: null,
       areaBreakdown: [],
       sourceGaps: [{ code: "curriculum_missing", message: "Учебный план недоступен", explanation: "Учебный план недоступен", impact: "Часы нельзя сопоставить", canContinue: true, suggestedAction: "Проверить позже", programIds: ["program:09.03.01-12"] }],
     },
     {
-      program: { id: "program:09.03.01-13", directionId: "direction:09.03.01", code: "09.03.01-13", name: "Данные", educationYear: 2026, studyPlanUrl: "https://bmstu.ru/plan-c.pdf", sourceUrl: "https://bmstu.ru/c" },
+      program: { id: "program:09.03.01-13", directionId: "direction:09.03.01", code: "09.03.01-13", name: "Данные", educationYear: 2026, studyPlanUrl: "https://bmstu.ru/plan-c.pdf", sourceUrl: "https://bmstu.ru/c", provenance: [], sourceGaps: [] },
       totals: { hours: 3000, credits: "240.00" },
       areaBreakdown: [],
       sourceGaps: [],

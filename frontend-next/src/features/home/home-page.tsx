@@ -38,7 +38,7 @@ export function HomePage({ navigate }: { navigate: (route: Route) => void }) {
       <PageHeader
         eyebrow="Andromeda · выбор программы"
         title="Что вы хотите понять?"
-        description="Соберите небольшой осмысленный shortlist из реальных программ МГТУ. Можно начать с любого сценария — профтест не обязателен."
+        description="Соберите небольшой осмысленный shortlist из реальных программ поддерживаемых университетов. Можно начать с любого сценария — профтест не обязателен."
         actions={<Tag tone="muted">Можно продолжить как гость</Tag>}
       />
 

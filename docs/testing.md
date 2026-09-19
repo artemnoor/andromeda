@@ -2,6 +2,31 @@
 
 # Тестирование
 
+## Canonical targets
+
+Из корня репозитория новый разработчик или AI agent может начать с:
+
+```powershell
+python scripts/andromeda.py fast
+python scripts/andromeda.py production-smoke
+python scripts/andromeda.py full
+```
+
+Для release checkpoint дополнительно запускается:
+
+```powershell
+python scripts/release_evidence.py --require-clean
+```
+
+Команда пишет secret-free metadata и завершается с ошибкой на dirty
+worktree; сама по себе она не повышает release status.
+
+Отдельные `backend`, `backend-coverage`, `frontend`,
+`frontend-coverage`, `ingestion`, `postgres`, `playwright`, `telegram`,
+`migrations`, `deployment`, `security` и `release-evidence` targets описаны в
+[test matrix](test-matrix.md). Coverage — диагностический отчёт; критические
+правила и обязательные слои перечислены там же.
+
 ## Backend
 
 Multi-university HSE gate:
@@ -18,7 +43,7 @@ python -m pytest -q
 python -m mypy
 ```
 
-Тесты покрывают module contracts, parser → canonical boundary, dynamic BMSTU catalog identity, DB constraints, atomic repositories, API и полный backend vertical slice. Отдельные проверки гарантируют наличие всех 22 областей, положительные deterministic vectors BMSTU taxonomy, сумму каждого вектора `1.0000`, сохранение area weights в SQLite и агрегацию содержания по часам/ЗЕТ. Последний полный live audit дал 2 582 уникальные дисциплины: у всех есть valid `area_weights`, `fallback_unclassified = 0`, используются 21 из 22 областей (отсутствующая область зафиксирована как отсутствие источника).
+Тесты покрывают module contracts, parser → canonical boundary, dynamic BMSTU catalog identity, DB constraints, atomic repositories, API и полный backend vertical slice. Отдельные проверки гарантируют наличие всех 22 областей, положительные deterministic vectors BMSTU taxonomy, сумму каждого вектора `1.0000`, сохранение area weights в SQLite и агрегацию содержания по часам/ЗЕТ. Каждый ingestion run сохраняет в quality metadata версию taxonomy, source hashes, coverage, unresolved/fallback counts, конфликтные и дублированные ключи, area usage и affected programs. Поддерживается committed regression corpus для всех 22 областей и известных unknowns; неподтверждённый исторический live-аудит на 2 582 дисциплины больше не является product claim.
 
 Миграция `0003_discipline_taxonomy` создаёт справочник областей и таблицы весов дисциплин. Fixture smoke прогоняет цепочку ingestion → repository → comparison → API на чистой и повторно используемой SQLite-базе. PostgreSQL integration tests используют Alembic, а не `Base.metadata.create_all()`, и проверяют migration chain, FK/unique/check constraints, idempotent rerun, projection update и rollback. Для full BMSTU ingestion повторный live run должен сохранить canonical counts без дублей и допускает только обновление provenance/curriculum metadata.
 
@@ -113,13 +138,13 @@ npm run test:unit
 npm run test:e2e
 ```
 
-E2E-тест использует стабильные `data-testid`, сохраняет existing comparison coverage и проходит профтест до explainable recommendation на desktop/mobile. Отдельный browser scenario завершает тест, очищает local draft и проверяет восстановление профиля и current recommendations по cookie/API. `legacy-flow-compat.spec.ts` проверяет, что старый `flow` URL открывает нейтральный DecisionContext без mandatory funnel. `events-support-layer.spec.ts` проверяет optional personal route, source-backed event-to-program links и видимый source gap для события без связи; просмотр не меняет shortlist. `admissions.spec.ts` открывает страницу реальной программы, проверяет offering, места, ЕГЭ, стоимость и переключение программы на desktop/mobile. `recommendations.spec.ts` отдельно проверяет Content Fit, блоки дисциплин, семестры, reasons/anti-reasons и отсутствие горизонтального overflow. `admission-fit.spec.ts` открывает тот же program flow, выбирает source-backed offering, вводит баллы, проверяет отдельный score/status/reasons и повторяет сценарий на viewport 390px без горизонтального overflow. Перед ним должен работать fixture demo:
+E2E-тест использует стабильные `data-testid`, сохраняет existing comparison coverage и проходит профтест до explainable recommendation на desktop/mobile. Отдельный browser scenario завершает тест, очищает local draft и проверяет восстановление профиля и current recommendations по cookie/API. `legacy-flow-compat.spec.ts` проверяет, что старый `flow` URL открывает нейтральный DecisionContext без mandatory funnel. `events-support-layer.spec.ts` проверяет optional personal route, source-backed event-to-program links и видимый source gap для события без связи; просмотр не меняет shortlist. Admission assertions находятся в `mvp-production-flow.spec.ts` и `admission-fit.spec.ts`; recommendation failure/empty assertions — в `recommendations-states.spec.ts`, responsive/accessibility smoke — в `responsive-accessibility.spec.ts`, а `ops-control-plane.spec.ts` дополнительно проверяет wrong-key recovery, configured ops access, подтверждённый fixture retry и безопасный run detail. Ops-сценарий запускается только при явно заданном `PLAYWRIGHT_OPS_API_KEY` поверх staging-like `ANDROMEDA_OPS_API_KEY`, чтобы локальный публичный demo не получал встроенный ключ. Перед ним должен работать fixture demo:
 
 ```powershell
 python backend/scripts/run_andromeda_demo.py --mode fixture
 ```
 
-Recommendation tests дополнительно проверяют strict contracts и module boundary, неизменность детерминированного ranking, tie-break по коду, монотонный anti-interest penalty, evidence-backed explanations, пять synthetic personas, empty catalog и DB → catalog adapter → service → API путь.
+Recommendation tests дополнительно проверяют strict contracts и module boundary, неизменность детерминированного ranking, tie-break по коду, монотонный anti-interest penalty, evidence-backed explanations, пять synthetic personas, empty catalog и DB → catalog adapter → service → API путь. Versioned corpus `tests/fixtures/recommendations/regression-v1.json` и `tests/modules/recommendations/test_regression_corpus.py` добавляют replay-кейсы для `content-fit.v1`: top-level thematic fit, anti-interest exclusions, source-gap degradation, explicit unknown reasons, metamorphic axis isolation и stable tie-break. Corpus не утверждает predictive accuracy и должен обновляться только вместе с policy/taxonomy review.
 
 Persistence-проверки включают strict `ProfileScope`/`UserProfileSnapshot`, anonymous cookie isolation, revision conflict, migration `0005_user_profiles`, repository transaction, SQLite migration → BMSTU ingestion → `POST /proftest/results` → `GET /proftest/profile` → `GET /recommendations/current` и PostgreSQL smoke. Auth-проверки дополнительно покрывают Argon2 hash, opaque/revocable sessions, cookie flags, trusted Origin, anonymous → account transfer, account-profile-wins conflict и cross-account isolation. Профиль не смешивается с Admission Fit и Content Fit ranking.
 
@@ -146,6 +171,18 @@ cd frontend-next
 npx playwright test --workers=1
 ```
 
+Для disposable compose smoke через локальный Caddy с self-signed TLS
+используйте только явно заданный тестовый флаг:
+
+```powershell
+$env:PLAYWRIGHT_BASE_URL = "https://localhost:8443"
+$env:PLAYWRIGHT_IGNORE_HTTPS_ERRORS = "1"
+npx playwright test tests/catalog-programs.spec.ts --project=chromium
+```
+
+`PLAYWRIGHT_IGNORE_HTTPS_ERRORS` действует только в Playwright и не меняет
+secure-cookie, Origin/CSRF или TLS policy backend.
+
 Browser scenarios проверяют desktop/mobile completion, reload resume,
 completed-result recovery, auth/guest menu, independent entry points и
 существующие catalog/comparison/admissions/events/recommendations/support
@@ -154,13 +191,38 @@ contracts. В
 `insufficient_candidate_spread`; это явный source-backed gap, а не
 синтетический adaptive вопрос.
 
+Для signal-quality replay используется versioned fixture
+`tests/fixtures/proftest/signal-corpus-v3.json`. Он проверяет, что v3 persona
+answers дают только объявленные subject/activity/anti-interest axes,
+uncertain answers не создают сигналы, а adaptive answer меняет измеримый
+Content Fit axis. При blocking curriculum gaps selector останавливает
+дополнительные вопросы с `stopReason=source_gap`; profile остаётся доступным,
+но это не повышает evidence reliability.
+
+`ProftestPage` хранит только validated answer draft с `questionSetVersion` и
+`sessionId`; completed/expired session очищает draft. Restore/start/save/complete
+ошибки имеют retry или безопасный restart, а `409` сначала перечитывает
+authoritative session. Для проверки запускаются `proftest.spec.ts` на Chromium
+desktop/mobile; malformed localStorage и временный restore failure входят в
+browser regression.
+
+После completion profile persistence является отдельным checkpoint handoff:
+`test_proftest_projection.py` проверяет, что persisted `profileRevision` и
+`proftest-v3` доходят до recommendation evidence, а отказ recommendation path
+возвращает completed session с сохранённым профилем и `results=null`. API
+регрессия проверяет те же поля в wire contract; `proftest-decision-integration.spec.ts`
+проверяет видимость набора вопросов, ревизии, completeness/source gaps и
+отсутствие автоматической мутации shortlist. Результаты не являются
+психологическим диагнозом: confidence отображается как полнота профильного
+сигнала, а source-backed evidence и missing data остаются отдельными.
+
 Локальный gate canonical Next включает backend pytest/mypy, Next unit, lint,
 build, OpenAPI drift и Playwright на desktop/mobile проектах. Browser suite
 запускает одинаковые сценарии на desktop и mobile; число сценариев определяется
-файлами в `frontend-next/tests`, а не фиксированным списком. Шесть
-backend PostgreSQL cases без `ANDROMEDA_POSTGRES_TEST_URL` явно skipped
-локально, а CI job `postgresql-integration` поднимает PostgreSQL 16 и
-выполняет их с миграциями.
+файлами в `frontend-next/tests`, а не фиксированным списком. PostgreSQL target
+требует явный disposable `ANDROMEDA_POSTGRES_TEST_URL`; он не превращает
+отсутствие сервиса в незаметный зелёный skip. CI job `postgresql-integration`
+поднимает PostgreSQL 16 и выполняет cases с миграциями.
 
 Для focused запуска:
 
@@ -173,27 +235,30 @@ Next unit-тесты проверяют API mapping/error/timeout contracts, а 
 
 ## CI
 
-GitHub Actions запускает backend tests/mypy, canonical Next contract/unit/lint/build gates, fixture smoke и Chromium E2E. Отдельный `postgresql-integration` job поднимает disposable PostgreSQL 16 service, применяет Alembic к пустой базе, прогоняет BMSTU fixture → API → `frontend-next` и выполняет PostgreSQL-backed browser scenario. Poppler и браузер устанавливаются в CI jobs.
+GitHub Actions запускает backend tests/mypy/architecture/coverage, canonical
+Next contract/unit/coverage/lint/build gates, fixture smoke и Chromium E2E.
+Отдельные jobs проверяют migrations, PostgreSQL, proftest, Telegram,
+dependency audit, документацию и Docker packaging. `postgresql-integration`
+поднимает disposable PostgreSQL 16 service, применяет Alembic к пустой базе,
+прогоняет BMSTU fixture → API → `frontend-next` и выполняет PostgreSQL-backed
+browser scenario. Poppler и браузер устанавливаются в CI jobs; live
+source-health остаётся scheduled read-only workflow.
 
 Перед отправкой изменений полный локальный gate повторяет существенные CI
 границы:
 
 ```powershell
-git diff --check
-cd backend
-python -m pytest -q
-python -m mypy
-cd ..\frontend-next
-npm run check-api-drift
-npm run test:unit
-npm run lint
-npm run build
-npm run test:e2e
+python scripts/andromeda.py fast
+python scripts/andromeda.py backend-coverage
+python scripts/andromeda.py frontend
+python scripts/andromeda.py frontend-coverage
+python scripts/andromeda.py production-smoke
 ```
 
-Для migration parity применяйте `alembic upgrade head`, downgrade до revision
-перед DecisionContext, повторный `upgrade head` на SQLite и PostgreSQL; `python
--m alembic heads` должен вернуть одну голову `0014_decision_analytics`.
+Для migration parity используйте `python scripts/andromeda.py migrations`:
+команда применяет текущий Alembic head (`0022_ingestion_concurrency`) к пустой
+SQLite-базе и запускает `alembic check`. PostgreSQL migration/rollback smoke
+остаётся отдельным disposable target и не использует рабочую базу.
 
 Analytics tests проверяют allowlist, bounded canonical IDs, отсутствие raw
 profile/score/cookie/source body, owner isolation, idempotency и то, что отказ

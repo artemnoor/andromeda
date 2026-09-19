@@ -58,6 +58,7 @@ class AuthenticationService:
         account_id = _account_id()
         password_hash = self._password_hasher.hash(password)
         logger.debug("auth_register_start account_id=%s", account_id)
+        self._repository.purge_expired_sessions(now=now)
         try:
             account = self._repository.create(account_id, normalized_email, password_hash, now=now)
         except ConflictError:
@@ -76,6 +77,7 @@ class AuthenticationService:
             raise UnauthorizedError("Invalid email or password")
         account = credentials[0]
         now = self._clock()
+        self._repository.purge_expired_sessions(now=now)
         self._repository.create_session(account.account_id, token_hash, now=now, expires_at=self._expires_at(now))
         self._bind_profile(account, profile_scope)
         logger.info("auth_login_complete account_id=%s profile_binding=attempted", account.account_id)

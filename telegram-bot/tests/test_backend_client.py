@@ -35,3 +35,26 @@ async def test_backend_client_maps_conflict_without_response_body() -> None:
             await BackendHttpClient("http://backend", client=client).get_suggestions()
 
     assert error.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_backend_client_retries_transient_backend_failure_with_bounded_policy() -> None:
+    attempts = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(503, request=_request)
+        return httpx.Response(200, json={"items": []}, request=_request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await BackendHttpClient(
+            "http://backend",
+            retry_attempts=2,
+            retry_backoff_seconds=0,
+            client=client,
+        ).list_programs()
+
+    assert attempts == 2
+    assert result.value.items == []

@@ -118,19 +118,33 @@ class ProftestSessionService:
         questionnaire = self._questionnaire(session)
         if session.status is SessionStatus.COMPLETED:
             profile = self._profile_builder.build(session.answer_set, questionnaire.questions, self._adaptive_questions(session))
-            results = self._results(profile)
+            profile_revision = self._profile_revision(scope)
+            results = self._try_results(
+                profile,
+                profile_revision=profile_revision,
+                question_set_version=session.question_set_version,
+            )
             return ProftestSessionView(
                 session=session,
                 progress=self._progress(session, None, questionnaire),
                 results=results,
-                profile_revision=self._profile_revision(scope),
+                profile_revision=profile_revision,
             )
         self._validate_required(session.answer_set, questionnaire.questions)
         profile = self._profile_builder.build(session.answer_set, questionnaire.questions, self._adaptive_questions(session))
-        results = self._results(profile)
         completed, snapshot = self._sessions.complete(scope, session, profile, expires_at=self._expires_at())
         self._track(scope, completed, AnalyticsEventType.TEST_COMPLETED)
-        logger.info("proftest_session_complete recommendations=%d profile_revision=%d", len(results.recommendations), snapshot.revision)
+        results = self._try_results(
+            profile,
+            profile_revision=snapshot.revision,
+            question_set_version=completed.question_set_version,
+        )
+        logger.info(
+            "proftest_session_complete recommendations=%d profile_revision=%d recommendation_status=%s",
+            len(results.recommendations) if results is not None else 0,
+            snapshot.revision,
+            "available" if results is not None else "unavailable",
+        )
         return ProftestSessionView(
             session=completed,
             progress=self._progress(completed, None, questionnaire),
@@ -258,7 +272,11 @@ class ProftestSessionService:
             return ProftestSessionView(
                 session=session,
                 progress=self._progress(session, None, questionnaire),
-                results=self._results(profile),
+                results=self._try_results(
+                    profile,
+                    profile_revision=profile_revision,
+                    question_set_version=session.question_set_version,
+                ),
                 profile_revision=profile_revision,
             )
         if session.cursor < len(questionnaire.questions) or not self._core_is_complete(session, questionnaire.questions):
@@ -371,10 +389,42 @@ class ProftestSessionService:
             return ()
         return tuple(question for index in range(count) if (question := self._factory.create(selection, sequence=index)) is not None)
 
-    def _results(self, profile: UserProfile) -> ProftestResults:
+    def _results(
+        self,
+        profile: UserProfile,
+        *,
+        profile_revision: int | None = None,
+        question_set_version: str | None = None,
+    ) -> ProftestResults:
         fingerprints = self._catalog.list_fingerprints()
-        result = self._recommendations.recommend_from_fingerprints(RecommendationRequest(profile=profile, limit=10), fingerprints)
+        result = self._recommendations.recommend_from_fingerprints(
+            RecommendationRequest(profile=profile, limit=10),
+            fingerprints,
+            profile_revision=profile_revision,
+            question_set_version=question_set_version,
+        )
         return ProftestResults(profile=profile, recommendations=result.recommendations)
+
+    def _try_results(
+        self,
+        profile: UserProfile,
+        *,
+        profile_revision: int | None,
+        question_set_version: str,
+    ) -> ProftestResults | None:
+        try:
+            return self._results(
+                profile,
+                profile_revision=profile_revision,
+                question_set_version=question_set_version,
+            )
+        except Exception:
+            logger.exception(
+                "proftest_recommendations_unavailable profile_saved=True profile_revision=%s question_set_version=%s",
+                profile_revision if profile_revision is not None else "unknown",
+                question_set_version,
+            )
+            return None
 
     @staticmethod
     def _validate_required(answer_set: AnswerSet, questions: tuple[Question, ...]) -> None:

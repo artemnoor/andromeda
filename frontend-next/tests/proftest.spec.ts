@@ -57,3 +57,34 @@ test("proftest restores the current question after reload", async ({ page }) => 
   await expect(page.getByTestId("proftest-question")).toBeVisible();
   await expect(page.getByTestId("proftest-option").first()).toHaveAttribute("aria-pressed", "true");
 });
+
+test("proftest discards a malformed local draft before starting a session", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("andromeda:proftest:proftest-v3:session-answers", "{not-json");
+  });
+
+  await page.goto("/?view=proftest");
+  await expect(page.getByTestId("proftest-intro")).toBeVisible();
+  await expect(page.getByTestId("proftest-intro")).toContainText("Начать тест");
+  await page.getByTestId("proftest-start").click();
+  await expect(page.getByTestId("proftest-question")).toBeVisible();
+});
+
+test("proftest offers a retry when session restore fails", async ({ page }) => {
+  let intercepted = false;
+  await page.route("**/proftest/sessions/current", async (route) => {
+    if (!intercepted) {
+      intercepted = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ code: "SERVICE_UNAVAILABLE", message: "temporary", details: [] }) });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto("/?view=proftest");
+  await expect(page.getByTestId("proftest-intro")).toBeVisible();
+  await expect(page.getByTestId("proftest-intro").getByRole("alert")).toContainText("Не удалось восстановить");
+  await expect(page.getByTestId("proftest-start")).toContainText("Повторить");
+  await page.getByTestId("proftest-start").click();
+  await expect(page.getByTestId("proftest-question")).toBeVisible();
+});

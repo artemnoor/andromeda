@@ -54,6 +54,12 @@ class FakeRepository(AccountRepository):
             return None
         return self.get_by_id(session[0])
 
+    def purge_expired_sessions(self, *, now: datetime) -> int:
+        expired = [token for token, session in self.sessions.items() if session[1] <= now]
+        for token in expired:
+            del self.sessions[token]
+        return len(expired)
+
     def revoke_session(self, token_hash: SessionTokenHash, *, now: datetime) -> None:
         session = self.sessions.get(token_hash)
         if session:

@@ -25,7 +25,7 @@ export function ProgramCard({ program, palette, risk }: { program: Record<string
     <div style={{ display: "flex", flexDirection: "column", padding: 28, border: `1px solid ${palette.border}`, borderRadius: 18, background: palette.card, gap: 11 }}>
       <div style={{ display: "flex", fontSize: 18, color: palette.muted }}>{text(program.code)} · {text(program.directionId ?? program.direction_id)}</div>
       <div style={{ display: "flex", fontSize: 30, fontWeight: 700 }}>{text(program.name)}</div>
-      <div style={{ display: "flex", gap: 24, fontSize: 20 }}><span>МГТУ им. Н. Э. Баумана</span><span style={{ color: palette.secondary }}>{risk ? statusLabel(risk) : "источник найден"}</span></div>
+      <div style={{ display: "flex", gap: 24, fontSize: 20 }}><span>{text(program.universityName, "Поддерживаемый университет")}</span><span style={{ color: palette.secondary }}>{risk ? statusLabel(risk) : "источник найден"}</span></div>
     </div>
   );
 }

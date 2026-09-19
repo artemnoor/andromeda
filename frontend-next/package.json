@@ -9,6 +9,7 @@
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
     "test:unit": "vitest run",
+    "test:unit:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "generate-api": "node scripts/generate-api.mjs",
     "check-api-drift": "node scripts/check-api-drift.mjs"
@@ -23,6 +24,7 @@
     "@radix-ui/react-switch": "^1.2.5",
     "@radix-ui/react-tabs": "^1.1.12",
     "@radix-ui/react-toast": "^1.2.14",
+    "@vitest/istanbul-lib-report": "^1.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.525.0",
@@ -37,6 +39,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^5.0.1",
     "eslint": "^9",
     "eslint-config-next": "^16.1.1",
     "openapi-typescript": "^7.9.1",

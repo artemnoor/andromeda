@@ -78,6 +78,47 @@ class SqlAlchemyAdmissionRepository(AdmissionRepository):
         logger.debug("admissions_read_complete program_id=%s offerings=%d", program_id, len(result.offerings))
         return result
 
+    def get_for_programs(self, program_ids: tuple[ProgramId, ...]) -> tuple[ProgramAdmissions, ...]:
+        """Read all candidate offerings with bounded child queries.
+
+        Decision suggestions read the whole catalog. Keeping this batch path
+        in the admissions adapter avoids one offering query per candidate
+        while leaving the module-facing port source-backed and typed.
+        """
+
+        resolved_ids = tuple(dict.fromkeys(canonical_program_id(item) for item in program_ids))
+        if not resolved_ids:
+            return ()
+        offerings = self._session.execute(
+            select(AdmissionOfferingModel)
+            .where(AdmissionOfferingModel.program_id.in_(resolved_ids))
+            .order_by(AdmissionOfferingModel.program_id, AdmissionOfferingModel.admission_year.desc(), AdmissionOfferingModel.id)
+        ).scalars().all()
+        by_program: dict[str, list[AdmissionOfferingModel]] = {program_id: [] for program_id in resolved_ids}
+        for offering in offerings:
+            by_program.setdefault(offering.program_id, []).append(offering)
+        offering_ids = tuple(item.id for item in offerings)
+        exams = self._by_offering(AdmissionExamRequirementModel, offering_ids) if offering_ids else {}
+        quotas = self._by_offering(AdmissionQuotaModel, offering_ids) if offering_ids else {}
+        passing_scores = self._by_offering(AdmissionPassingScoreModel, offering_ids) if offering_ids else {}
+        tuition = self._by_offering(AdmissionTuitionModel, offering_ids) if offering_ids else {}
+        return tuple(
+            ProgramAdmissions(
+                program_id=program_id,
+                offerings=tuple(
+                    self._offering_contract(
+                        model,
+                        exams.get(model.id, ()),
+                        quotas.get(model.id, ()),
+                        passing_scores.get(model.id, ()),
+                        tuition.get(model.id, ()),
+                    )
+                    for model in by_program[program_id]
+                ),
+            )
+            for program_id in resolved_ids
+        )
+
     def save(self, admissions: ProgramAdmissions) -> None:
         self.sync((admissions,))
 
@@ -233,6 +274,11 @@ class SqlAlchemyAdmissionRepository(AdmissionRepository):
                         "content_sha256": model.content_sha256,
                         "locator": model.source_locator,
                         "source_name": model.source_name,
+                        "university_id": model.university_id,
+                        "run_id": model.run_id,
+                        "field": model.field,
+                        "record_key": model.record_key,
+                        "inferred": model.inferred,
                     }
                 ),
             ),
@@ -260,6 +306,11 @@ def _provenance_values(provenance: AdmissionProvenance) -> dict[str, object]:
         "captured_at": provenance.captured_at,
         "content_sha256": provenance.content_sha256,
         "source_locator": provenance.locator,
+        "university_id": provenance.university_id,
+        "run_id": provenance.run_id,
+        "field": provenance.field,
+        "record_key": provenance.record_key,
+        "inferred": provenance.inferred,
     }
 
 
@@ -358,6 +409,11 @@ def _row_provenance(row: object) -> AdmissionProvenance:
             "captured_at": row.captured_at,  # type: ignore[attr-defined]
             "content_sha256": row.content_sha256,  # type: ignore[attr-defined]
             "locator": row.source_locator,  # type: ignore[attr-defined]
+            "university_id": row.university_id,  # type: ignore[attr-defined]
+            "run_id": row.run_id,  # type: ignore[attr-defined]
+            "field": row.field,  # type: ignore[attr-defined]
+            "record_key": row.record_key,  # type: ignore[attr-defined]
+            "inferred": row.inferred,  # type: ignore[attr-defined]
         }
     )
 

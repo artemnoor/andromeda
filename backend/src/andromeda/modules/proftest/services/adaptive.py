@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from andromeda.shared.contracts.provenance import GapSeverity
 import logging
 from typing import Literal
 
@@ -61,6 +62,20 @@ class AdaptiveQuestionSelector:
         if len(top) < 2:
             logger.warning("adaptive_skip_insufficient_candidates candidate_count=%d", len(top))
             return AdaptiveSelection(status=AdaptiveStatus.SKIPPED, reason="Недостаточно программ для осмысленного уточнения.", candidate_count=len(ranked), top_candidate_count=len(top), asked_question_ids=asked_question_ids, adaptive_count=adaptive_count, stop_reason=AdaptiveStopReason.INSUFFICIENT_CANDIDATES)
+        if all(
+            GapSeverity.BLOCKING in {gap.severity for gap in candidate.fingerprint.source_gaps}
+            for candidate in top
+        ):
+            logger.warning("adaptive_skip_blocking_source_gap candidate_count=%d", len(top))
+            return AdaptiveSelection(
+                status=AdaptiveStatus.SKIPPED,
+                reason="В каталоге недостаточно подтверждённых данных для дополнительного уточнения.",
+                candidate_count=len(ranked),
+                top_candidate_count=len(top),
+                asked_question_ids=asked_question_ids,
+                adaptive_count=adaptive_count,
+                stop_reason=AdaptiveStopReason.SOURCE_GAP,
+            )
         if adaptive_count >= self._max_adaptive_questions:
             return AdaptiveSelection(status=AdaptiveStatus.SKIPPED, reason="Достигнут лимит уточняющих вопросов.", candidate_count=len(ranked), top_candidate_count=len(top), asked_question_ids=asked_question_ids, adaptive_count=adaptive_count, stop_reason=AdaptiveStopReason.MAX_QUESTIONS)
         stop_reason = _stable_stop_reason(

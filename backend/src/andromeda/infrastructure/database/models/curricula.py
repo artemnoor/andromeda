@@ -23,6 +23,8 @@ class CurriculumModel(Base):
     education_year: Mapped[int] = mapped_column(Integer, nullable=False)
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    provenance_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    source_gaps_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
 
     __table_args__ = (
         UniqueConstraint("program_id", "education_year", name="uq_curriculum_program_year"),

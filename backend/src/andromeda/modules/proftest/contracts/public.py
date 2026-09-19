@@ -23,7 +23,7 @@ from ..domain.adaptive import AdaptiveDimension, AdaptiveSelection, AdaptiveStat
 from ..domain.questions import Questionnaire
 from ..domain.sessions import AnalyticsEventId, AnalyticsEventType, PreliminaryProfile, PreliminaryTopic, ProftestAnalyticsEvent, ProftestAnswerSession, ProftestSessionView, SessionAnswer, SessionId, SessionProgress, SessionStatus
 from ..domain.capabilities import ProgramSignal, SourceCapability, source_capabilities
-from ..domain.results import MatchReason, MatchScore, MetricStatus, OptionalMetric, PreviewCandidate, ProftestPreview, ProftestResults, ReasonKind, Recommendation, ScoreBreakdown
+from ..domain.results import EvidenceMetric, EvidenceSignal, EvidenceStatus, MatchReason, MatchScore, MetricStatus, OptionalMetric, PreviewCandidate, ProftestPreview, ProftestResults, ReasonKind, Recommendation, RecommendationEvidence, ScoreBreakdown, SourceFreshness
 from ..repository.ports import CurrentUserProfileReader, ProfileBindingOutcome, ProfileBindingPort, ProftestSessionBindingPort, UserProfileRefinementWriter
 
 __all__ = [
@@ -43,6 +43,9 @@ __all__ = [
     "Confidence",
     "CurriculumEvidence",
     "DistinctiveSubject",
+    "EvidenceMetric",
+    "EvidenceSignal",
+    "EvidenceStatus",
     "MatchReason",
     "MatchScore",
     "MetricStatus",
@@ -59,6 +62,7 @@ __all__ = [
     "Questionnaire",
     "ReasonKind",
     "Recommendation",
+    "RecommendationEvidence",
     "CurrentUserProfileReader",
     "ProfileBindingOutcome",
     "ProfileBindingPort",
@@ -74,6 +78,7 @@ __all__ = [
     "SourceCapability",
     "source_capabilities",
     "ScoreBreakdown",
+    "SourceFreshness",
     "SessionId",
     "SessionAnswer",
     "SessionProgress",

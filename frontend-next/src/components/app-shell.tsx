@@ -38,7 +38,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen flex-col" data-testid="app-shell">
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-3 md:px-6">
+        <div className="mx-auto flex min-w-0 w-full max-w-6xl items-center gap-4 px-4 py-3 md:px-6">
           <button
             onClick={() => navigate({ view: "home" })}
             className="group flex shrink-0 items-center gap-2.5 text-left"
@@ -57,7 +57,7 @@ export function AppShell({
             </span>
           </button>
 
-          <nav aria-label="Основные разделы" className="hidden flex-1 items-center gap-1 lg:flex">
+          <nav aria-label="Основные разделы" className="hidden min-w-0 flex-1 items-center gap-1 lg:flex">
             {primary.map((item) => {
               const Icon = ICONS[item.icon];
               const active = route.view === item.view || (route.view === "event" && item.view === "events");
@@ -81,8 +81,8 @@ export function AppShell({
             })}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2">
-            <nav aria-label="Дополнительные разделы" className="hidden items-center gap-1 md:flex">
+          <div className="ml-auto flex min-w-0 shrink-0 items-center gap-2">
+            <nav aria-label="Дополнительные разделы" className="hidden min-w-0 items-center gap-1 md:flex">
               {secondary.map((item) => {
                 const Icon = ICONS[item.icon];
                 const active = route.view === item.view;
@@ -101,7 +101,7 @@ export function AppShell({
                     )}
                   >
                     {Icon && <Icon className="h-4 w-4" />}
-                    <span className="hidden xl:inline">{item.label}</span>
+                    <span className="hidden 2xl:inline">{item.label}</span>
                   </button>
                 );
               })}

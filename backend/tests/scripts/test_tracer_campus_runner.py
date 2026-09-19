@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parents[2] / "scripts"))
 
-from run_tracer_bullet import result_payload, run_ingest  # noqa: E402
+from run_andromeda_bmstu import result_payload, run_ingest  # noqa: E402
 
 
 def test_fixture_runner_reports_campus_point_count_and_contract_endpoints(tmp_path: Path) -> None:

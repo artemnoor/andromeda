@@ -5,49 +5,69 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
+from andromeda.ingestion.pdf_policy import DEFAULT_PDF_POLICY, PdfResourceError, validate_page_count, validate_pdf_payload, validate_text_size
+
 
 def is_pdf(body: bytes, content_type: str | None = None, url: str = "") -> bool:
     return body.startswith(b"%PDF") or "pdf" in (content_type or "").casefold() or url.casefold().split("?", 1)[0].endswith(".pdf")
 
 
 def extract_pdf_text(body: bytes) -> str:
+    validate_pdf_payload(body)
     try:
         import fitz  # type: ignore[import-untyped]
 
         document = fitz.open(stream=body, filetype="pdf")
-        return "\n\n".join(page.get_text() or "" for page in document).strip()
+        try:
+            validate_page_count(document.page_count)
+            return validate_text_size("\n\n".join(page.get_text() or "" for page in document).strip())
+        finally:
+            document.close()
+    except PdfResourceError:
+        raise
     except Exception:
         pass
     try:
         from pypdf import PdfReader
 
         reader = PdfReader(io.BytesIO(body))
+        validate_page_count(len(reader.pages))
         pages: list[str] = []
         for page in reader.pages:
             pages.append(page.extract_text() or "")
-        return "\n\n".join(pages).strip()
+        return validate_text_size("\n\n".join(pages).strip())
+    except PdfResourceError:
+        raise
     except Exception:
         return ""
 
 
 def pdf_metadata(body: bytes) -> dict[str, Any]:
+    validate_pdf_payload(body)
     try:
         import fitz
 
         document = fitz.open(stream=body, filetype="pdf")
-        metadata = document.metadata or {}
-        return {
-            "pages": document.page_count,
-            "title": str(metadata.get("title", "") or ""),
-            "author": str(metadata.get("author", "") or ""),
-            "subject": str(metadata.get("subject", "") or ""),
-        }
+        try:
+            validate_page_count(document.page_count)
+            metadata = document.metadata or {}
+            return {
+                "pages": document.page_count,
+                "title": str(metadata.get("title", "") or ""),
+                "author": str(metadata.get("author", "") or ""),
+                "subject": str(metadata.get("subject", "") or ""),
+            }
+        finally:
+            document.close()
+    except PdfResourceError:
+        raise
     except Exception:
         pass
     try:
         from pypdf import PdfReader
 
         reader = PdfReader(io.BytesIO(body))
+        validate_page_count(len(reader.pages))
         metadata = reader.metadata or {}
         return {
             "pages": len(reader.pages),
@@ -55,6 +75,8 @@ def pdf_metadata(body: bytes) -> dict[str, Any]:
             "author": str(metadata.get("/Author", "") or ""),
             "subject": str(metadata.get("/Subject", "") or ""),
         }
+    except PdfResourceError:
+        raise
     except Exception:
         return {"pages": None, "title": "", "author": "", "subject": ""}
 
@@ -67,12 +89,17 @@ def extract_pdf_tables(body: bytes, max_pages: int | None = 120) -> list[dict[st
     остаётся опциональным: при проблемном шаблоне исходный PDF всё равно
     сохраняется, а текстовый fallback продолжает работать.
     """
+    validate_pdf_payload(body)
+    page_limit = DEFAULT_PDF_POLICY.max_pages if max_pages is None else min(max_pages, DEFAULT_PDF_POLICY.max_pages)
     try:
         import pdfplumber
 
         result: list[dict[str, Any]] = []
         with pdfplumber.open(io.BytesIO(body)) as document:
-            pages = document.pages if max_pages is None else document.pages[:max_pages]
+            validate_page_count(len(document.pages), DEFAULT_PDF_POLICY)
+            if len(document.pages) > page_limit:
+                raise PdfResourceError("pdf_table_page_limit_exceeded")
+            pages = document.pages
             for page_number, page in enumerate(pages, start=1):
                 for table_number, table in enumerate(page.extract_tables(), start=1):
                     rows = [
@@ -83,6 +110,8 @@ def extract_pdf_tables(body: bytes, max_pages: int | None = 120) -> list[dict[st
                     if rows:
                         result.append({"page": page_number, "table": table_number, "rows": rows})
         return result
+    except PdfResourceError:
+        raise
     except Exception:
         return []
 

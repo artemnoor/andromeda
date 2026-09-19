@@ -34,7 +34,14 @@ class _RecommendationSpy:
     def rank_fingerprints(self, profile: UserProfile, fingerprints: Iterable[ProgramFingerprint], *, limit: int | None = None) -> tuple[RankedFingerprint, ...]:
         return tuple(RankedFingerprint(fingerprint, self.scorer.score(profile, fingerprint)) for fingerprint in fingerprints)
 
-    def recommend_from_fingerprints(self, request: RecommendationRequest, fingerprints: tuple[ProgramFingerprint, ...]) -> RecommendationResult:
+    def recommend_from_fingerprints(
+        self,
+        request: RecommendationRequest,
+        fingerprints: tuple[ProgramFingerprint, ...],
+        *,
+        profile_revision: int | None = None,
+        question_set_version: str | None = None,
+    ) -> RecommendationResult:
         self.requests.append(request)
         return RecommendationResult(profile=request.profile, recommendations=())
 

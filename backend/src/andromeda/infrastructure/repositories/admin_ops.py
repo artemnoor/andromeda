@@ -89,6 +89,16 @@ def _base_values(row: IngestRunModel) -> dict[str, Any]:
             "source_gap_count": row.source_gap_count,
             "critical_gap_count": row.critical_gap_count,
             "drift_status": row.drift_status,
+            "quality_status": row.quality_status,
+            "previous_good_run_id": row.previous_good_run_id,
+            "source_profile": row.source_profile,
+            "source_revision": row.source_revision,
+            "configuration_version": row.configuration_version,
+            "retry_of_run_id": row.retry_of_run_id,
+            "projection_target": row.projection_target,
+            "heartbeat_at": _aware(row.heartbeat_at),
+            "projection_status": row.projection_status,
+            "recovery_reason": row.recovery_reason,
         }
     except (ValidationError, ValueError) as exc:
         logger.error("ingestion_run_contract_invalid run_id=%s", row.id)

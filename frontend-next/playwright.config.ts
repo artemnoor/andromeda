@@ -10,6 +10,7 @@ export default defineConfig({
   reporter: "line",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
+    ignoreHTTPSErrors: process.env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS === "1",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },

@@ -24,9 +24,15 @@ def retry_ingestion_run(
     body: IngestionRetryRequestBody,
     service: IngestionRunService = Depends(get_ingestion_run_service),
 ) -> IngestionRunDetailEnvelope:
-    result = service.retry(IngestionRetryRequest(source=IngestionRetrySource(body.source)))
+    result = service.retry(
+        IngestionRetryRequest(
+            source=IngestionRetrySource(body.source),
+            idempotency_key=body.idempotency_key,
+            retry_of_run_id=body.retry_of_run_id,
+        )
+    )
     response = ingestion_run_detail_response(IngestionRunDetailResult(run=result.run))
-    logger.info("admin_ops_ingestion_retry_complete run_id=%s source=%s", result.run.id, body.source)
+    logger.info("admin_ops_ingestion_retry_complete run_id=%s source_profile=%s", result.run.id, result.run.source_profile)
     return response
 
 
@@ -69,9 +75,14 @@ def get_source_health(
         successful = next((run for run in candidates if run.status is IngestionRunStatus.COMPLETED), None)
         age_seconds = int(max(0, (now - successful.finished_at).total_seconds())) if successful and successful.finished_at else None
         state: Literal["fresh", "stale", "degraded", "failed"]
-        if latest.status is IngestionRunStatus.FAILED and successful is None:
+        if latest.status is IngestionRunStatus.RUNNING:
+            state = "degraded"
+        elif latest.status is IngestionRunStatus.FAILED and successful is None:
             state = "failed"
-        elif latest.status is IngestionRunStatus.FAILED or (successful and successful.critical_gap_count > 0):
+        elif latest.status is IngestionRunStatus.FAILED or (
+            successful
+            and (successful.critical_gap_count > 0 or successful.quality_status in {"degraded", "rejected"})
+        ):
             state = "degraded"
         elif age_seconds is None or age_seconds > 30 * 24 * 60 * 60:
             state = "stale"

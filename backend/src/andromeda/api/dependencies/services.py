@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from fastapi import Depends, Request
+from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from andromeda.api.dependencies.auth_session import get_auth_repository
-from andromeda.infrastructure.security.passwords import Argon2PasswordHasher
-from andromeda.modules.auth.repository.ports import AccountRepository
+from andromeda.composition import AndromedaContainer
 from andromeda.modules.auth.services.authentication import AuthenticationService
-from andromeda.modules.decision.repository.ports import DecisionAnalyticsReader, DecisionAnalyticsWriter, DecisionBindingPort, DecisionContextRepository
+from andromeda.modules.decision.repository.ports import DecisionAnalyticsReader, DecisionAnalyticsWriter, DecisionBindingPort, DecisionContextRepository, ProgramCandidateSource
 from andromeda.modules.decision.services.candidates import DecisionCandidatePipeline
 from andromeda.modules.decision.services.analytics import DecisionAnalyticsService
 from andromeda.modules.decision.services.decision import DecisionService
@@ -30,290 +28,284 @@ from andromeda.modules.proftest.services.session import ProftestSessionService
 from andromeda.modules.recommendations.services.recommendations import RecommendationService
 from andromeda.modules.recommendations.services.current import CurrentRecommendationService
 from andromeda.modules.events.services.events import EventService
+from andromeda.modules.events.repository.ports import EventReader
 from andromeda.modules.campus.repository.ports import CampusPointReader
 from andromeda.modules.campus.services.campus import CampusService
 from andromeda.modules.personal_route.services.personal_route import PersonalRouteService
 from andromeda.modules.admin_ops.repository.ports import IngestionRetryExecutor, IngestionRunReader
 from andromeda.modules.admin_ops.services.ingestion_runs import IngestionRunService
 
-from andromeda.infrastructure.repositories.curricula import SqlAlchemyCurriculumRepository
-from andromeda.infrastructure.repositories.disciplines import SqlAlchemyDisciplineRepository
-from andromeda.infrastructure.repositories.admissions import SqlAlchemyAdmissionRepository
-from andromeda.infrastructure.repositories.admission_fit import SqlAlchemyAdmissionFitReader
-from andromeda.infrastructure.repositories.programs import SqlAlchemyProgramRepository
-from andromeda.infrastructure.repositories.universities import SqlAlchemyUniversityRepository
-from andromeda.infrastructure.repositories.proftest import SqlAlchemyProftestCatalogRepository
-from andromeda.infrastructure.repositories.proftest_sessions import SqlAlchemyProftestSessionRepository
-from andromeda.infrastructure.repositories.recommendations import CatalogRecommendationRepository
-from andromeda.infrastructure.repositories.user_profiles import SqlAlchemyUserProfileRepository
-from andromeda.infrastructure.repositories.decision import SqlAlchemyDecisionContextRepository
-from andromeda.infrastructure.repositories.decision_analytics import SqlAlchemyDecisionAnalyticsRepository
-from andromeda.infrastructure.repositories.decision_candidates import CatalogDecisionCandidateSource
-from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
-from andromeda.infrastructure.repositories.campus import SqlAlchemyCampusPointRepository
-from andromeda.infrastructure.repositories.admin_ops import SqlAlchemyIngestionRunReader
-from andromeda.infrastructure.repositories.bmstu_ingestion_retry import SqlAlchemyBmstuIngestionRetryExecutor
+from .composition import get_composition_root
 from .request_context import get_session
 
 
-def get_program_reader(session: Session = Depends(get_session)) -> ProgramReader:
-    return SqlAlchemyProgramRepository(session)
+def get_program_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> ProgramReader:
+    return container.program_reader(session)
 
 
-def get_university_reader(session: Session = Depends(get_session)) -> UniversityReader:
-    return SqlAlchemyUniversityRepository(session)
+def get_university_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> UniversityReader:
+    return container.university_reader(session)
 
 
-def get_curriculum_reader(session: Session = Depends(get_session)) -> CurriculumReader:
-    return SqlAlchemyCurriculumRepository(session)
+def get_curriculum_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> CurriculumReader:
+    return container.curriculum_reader(session)
 
 
-def get_discipline_reader(session: Session = Depends(get_session)) -> DisciplineReader:
-    return SqlAlchemyDisciplineRepository(session)
+def get_discipline_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> DisciplineReader:
+    return container.discipline_reader(session)
 
 
-def get_admission_reader(session: Session = Depends(get_session)) -> AdmissionReader:
-    return SqlAlchemyAdmissionRepository(session)
+def get_admission_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> AdmissionReader:
+    return container.admission_reader(session)
 
 
 def get_admission_service(
-    programs: ProgramReader = Depends(get_program_reader),
-    admissions: AdmissionReader = Depends(get_admission_reader),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> AdmissionService:
-    return AdmissionService(programs, admissions)
+    return container.admission_service(session)
 
 
 def get_admission_fit_reader(
-    programs: ProgramReader = Depends(get_program_reader),
-    admissions: AdmissionReader = Depends(get_admission_reader),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> AdmissionFitDataReader:
-    return SqlAlchemyAdmissionFitReader(programs, admissions)
+    return container.admission_fit_reader(session)
 
 
 def get_admission_fit_service(
-    reader: AdmissionFitDataReader = Depends(get_admission_fit_reader),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> AdmissionFitService:
-    return AdmissionFitService(reader)
+    return container.admission_fit_service(session)
 
 
 def get_compare_service(
-    programs: ProgramReader = Depends(get_program_reader),
-    curricula: CurriculumReader = Depends(get_curriculum_reader),
-    disciplines: DisciplineReader = Depends(get_discipline_reader),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> CompareProgramsService:
-    return CompareProgramsService(programs, curricula, disciplines)
+    return container.comparison_service(session)
 
 
 def get_compare_summary_service(
-    compare_service: CompareProgramsService = Depends(get_compare_service),
-    programs: ProgramReader = Depends(get_program_reader),
-    curricula: CurriculumReader = Depends(get_curriculum_reader),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> ComparisonSummaryService:
-    return ComparisonSummaryService(compare_service, programs, curricula)
+    return container.comparison_summary_service(session)
 
 
 def get_proftest_catalog_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
     session: Session = Depends(get_session),
-    programs: ProgramReader = Depends(get_program_reader),
-    curricula: CurriculumReader = Depends(get_curriculum_reader),
-    disciplines: DisciplineReader = Depends(get_discipline_reader),
 ) -> ProftestCatalogReader:
-    return SqlAlchemyProftestCatalogRepository(programs, curricula, disciplines, session=session)
+    return container.proftest_catalog_reader(session)
 
 
 def get_proftest_catalog_service(
-    catalog_reader: ProftestCatalogReader = Depends(get_proftest_catalog_reader),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> ProftestCatalogService:
-    return ProftestCatalogService(catalog_reader)
+    return container.proftest_catalog_service(session)
 
 
-def get_user_profile_repository(session: Session = Depends(get_session)) -> UserProfileRepository:
-    return SqlAlchemyUserProfileRepository(session)
+def get_user_profile_repository(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> UserProfileRepository:
+    return container.user_profile_repository(session)
 
 
-def get_profile_binding_port(session: Session = Depends(get_session)) -> ProfileBindingPort:
-    return SqlAlchemyUserProfileRepository(session)
+def get_profile_binding_port(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> ProfileBindingPort:
+    return container.user_profile_repository(session)
 
 
-def get_proftest_session_binding_port(session: Session = Depends(get_session)) -> ProftestSessionBindingPort:
-    return SqlAlchemyProftestSessionRepository(session)
+def get_proftest_session_binding_port(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> ProftestSessionBindingPort:
+    return container.proftest_session_repository(session)
 
 
-def get_decision_context_repository(session: Session = Depends(get_session)) -> DecisionContextRepository:
-    return SqlAlchemyDecisionContextRepository(session)
+def get_decision_context_repository(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> DecisionContextRepository:
+    return container.decision_context_repository(session)
 
 
 def get_decision_binding_port(
-    repository: DecisionContextRepository = Depends(get_decision_context_repository),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> DecisionBindingPort:
-    return repository
+    return container.decision_context_repository(session)
 
 
 def get_auth_service(
-    request: Request,
-    repository: AccountRepository = Depends(get_auth_repository),
-    profile_binding: ProfileBindingPort = Depends(get_profile_binding_port),
-    session_binding: ProftestSessionBindingPort = Depends(get_proftest_session_binding_port),
-    decision_binding: DecisionBindingPort = Depends(get_decision_binding_port),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> AuthenticationService:
-    settings = request.app.state.settings
-    return AuthenticationService(
-        repository,
-        Argon2PasswordHasher(),
-        profile_binding,
-        session_binding,
-        decision_binding,
-        password_min_length=settings.auth_password_min_length,
-        session_ttl_seconds=settings.auth_session_ttl_seconds,
-    )
+    return container.auth_service(session)
 
 
 def get_profile_persistence_service(
-    request: Request,
-    repository: UserProfileRepository = Depends(get_user_profile_repository),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> UserProfilePersistenceService:
-    return UserProfilePersistenceService(repository, ttl_seconds=request.app.state.settings.profile_ttl_seconds)
+    return container.profile_persistence_service(session)
 
 
 def get_current_user_profile_reader(
-    repository: UserProfileRepository = Depends(get_user_profile_repository),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> CurrentUserProfileReader:
-    return repository
+    return container.current_user_profile_reader(session)
 
 
 def get_recommendation_service(
-    catalog: ProftestCatalogService = Depends(get_proftest_catalog_service),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> RecommendationService:
-    return RecommendationService(CatalogRecommendationRepository(catalog))
+    return container.recommendation_service(session)
 
 
 def get_decision_candidate_source(
-    programs: ProgramReader = Depends(get_program_reader),
-    catalog: ProftestCatalogService = Depends(get_proftest_catalog_service),
-) -> CatalogDecisionCandidateSource:
-    return CatalogDecisionCandidateSource(programs, CatalogRecommendationRepository(catalog))
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> ProgramCandidateSource:
+    return container.decision_candidate_source(session)
 
 
 def get_decision_candidate_pipeline(
-    source: CatalogDecisionCandidateSource = Depends(get_decision_candidate_source),
-    recommendations: RecommendationService = Depends(get_recommendation_service),
-    admission_fit: AdmissionFitService = Depends(get_admission_fit_service),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> DecisionCandidatePipeline:
-    return DecisionCandidatePipeline(source, recommendations, admission_fit)
+    return container.decision_candidate_pipeline(session)
 
 
-def get_decision_analytics_writer(session: Session = Depends(get_session)) -> DecisionAnalyticsWriter:
-    return SqlAlchemyDecisionAnalyticsRepository(session)
+def get_decision_analytics_writer(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> DecisionAnalyticsWriter:
+    return container.decision_analytics_writer(session)
 
 
-def get_decision_analytics_reader(session: Session = Depends(get_session)) -> DecisionAnalyticsReader:
-    return SqlAlchemyDecisionAnalyticsRepository(session)
+def get_decision_analytics_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> DecisionAnalyticsReader:
+    return container.decision_analytics_reader(session)
 
 
 def get_decision_analytics_service(
-    writer: DecisionAnalyticsWriter = Depends(get_decision_analytics_writer),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> DecisionAnalyticsService:
-    return DecisionAnalyticsService(writer)
+    return container.decision_analytics_service(session)
 
 
 def get_decision_service(
-    request: Request,
-    repository: DecisionContextRepository = Depends(get_decision_context_repository),
-    programs: ProgramReader = Depends(get_program_reader),
-    profiles: CurrentUserProfileReader = Depends(get_current_user_profile_reader),
-    candidates: DecisionCandidatePipeline = Depends(get_decision_candidate_pipeline),
-    analytics: DecisionAnalyticsService = Depends(get_decision_analytics_service),
-    profile_writer: UserProfilePersistenceService = Depends(get_profile_persistence_service),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> DecisionService:
-    return DecisionService(
-        repository,
-        programs,
-        profiles,
-        candidates,
-        ttl_seconds=request.app.state.settings.profile_ttl_seconds,
-        analytics=analytics,
-        profile_writer=profile_writer,
-    )
+    return container.decision_service(session)
 
 
 def get_proftest_service(
-    catalog: ProftestCatalogService = Depends(get_proftest_catalog_service),
-    recommendations: RecommendationService = Depends(get_recommendation_service),
-    profile_persistence: UserProfilePersistenceService = Depends(get_profile_persistence_service),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> ProftestService:
-    return ProftestService(catalog, recommendations=recommendations, profile_persistence=profile_persistence)
+    return container.proftest_service(session)
 
 
-def get_proftest_session_repository(session: Session = Depends(get_session)) -> SqlAlchemyProftestSessionRepository:
-    return SqlAlchemyProftestSessionRepository(session)
+def get_proftest_session_repository(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> ProftestAnswerSessionRepository:
+    return container.proftest_session_repository(session)
 
 
 def get_proftest_session_service(
-    request: Request,
-    catalog: ProftestCatalogService = Depends(get_proftest_catalog_service),
-    recommendations: RecommendationService = Depends(get_recommendation_service),
-    repository: ProftestAnswerSessionRepository = Depends(get_proftest_session_repository),
-    analytics: ProftestAnalyticsWriter = Depends(get_proftest_session_repository),
-    profile_reader: CurrentUserProfileReader = Depends(get_current_user_profile_reader),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> ProftestSessionService:
-    return ProftestSessionService(
-        catalog,
-        recommendations,
-        repository,
-        analytics,
-        profile_reader=profile_reader,
-        ttl_seconds=request.app.state.settings.profile_ttl_seconds,
-    )
+    return container.proftest_session_service(session)
 
 
 def get_current_recommendation_service(
-    profile_reader: CurrentUserProfileReader = Depends(get_current_user_profile_reader),
-    recommendations: RecommendationService = Depends(get_recommendation_service),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> CurrentRecommendationService:
-    return CurrentRecommendationService(profile_reader, recommendations)
+    return container.current_recommendation_service(session)
 
 
-def get_event_reader(session: Session = Depends(get_session)) -> SqlAlchemyEventRepository:
-    return SqlAlchemyEventRepository(session)
+def get_event_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> EventReader:
+    return container.event_reader(session)
 
 
 def get_event_service(
-    reader: SqlAlchemyEventRepository = Depends(get_event_reader),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> EventService:
-    return EventService(reader)
+    return container.event_service(session)
 
 
-def get_campus_point_reader(session: Session = Depends(get_session)) -> CampusPointReader:
-    return SqlAlchemyCampusPointRepository(session)
+def get_campus_point_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> CampusPointReader:
+    return container.campus_point_reader(session)
 
 
 def get_campus_service(
-    reader: CampusPointReader = Depends(get_campus_point_reader),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> CampusService:
-    return CampusService(reader)
+    return container.campus_service(session)
 
 
 def get_personal_route_service(
-    current_recommendations: CurrentRecommendationService = Depends(get_current_recommendation_service),
-    events: EventService = Depends(get_event_service),
-    campus: CampusService = Depends(get_campus_service),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> PersonalRouteService:
-    """Compose the logical plan from existing application services only."""
-
-    return PersonalRouteService(current_recommendations, events, campus)
+    return container.personal_route_service(session)
 
 
-def get_ingestion_run_reader(session: Session = Depends(get_session)) -> IngestionRunReader:
-    return SqlAlchemyIngestionRunReader(session)
+def get_ingestion_run_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> IngestionRunReader:
+    return container.ingestion_run_reader(session)
 
 
-def get_ingestion_retry_executor(request: Request) -> IngestionRetryExecutor:
-    settings = request.app.state.settings
-    return SqlAlchemyBmstuIngestionRetryExecutor(request.app.state.engine, settings.environment)
+def get_ingestion_retry_executor(
+    container: AndromedaContainer = Depends(get_composition_root),
+) -> IngestionRetryExecutor:
+    return container.ingestion_retry_executor()
 
 
 def get_ingestion_run_service(
-    reader: IngestionRunReader = Depends(get_ingestion_run_reader),
-    executor: IngestionRetryExecutor = Depends(get_ingestion_retry_executor),
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
 ) -> IngestionRunService:
-    return IngestionRunService(reader, executor)
+    return container.ingestion_run_service(session)

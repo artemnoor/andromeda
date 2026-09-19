@@ -15,7 +15,7 @@ from .contracts.public import (
     StudyForm,
     TuitionCost,
 )
-from .repository.ports import AdmissionReader, AdmissionRepository, AdmissionWriter
+from .repository.ports import AdmissionReader, AdmissionRepository, AdmissionWriter, BatchAdmissionReader
 
 __all__ = [
     "AdmissionOffering",
@@ -24,6 +24,7 @@ __all__ = [
     "AdmissionReader",
     "AdmissionRepository",
     "AdmissionWriter",
+    "BatchAdmissionReader",
     "ExamRequirement",
     "FundingType",
     "PassingScore",

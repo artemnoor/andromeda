@@ -2,13 +2,14 @@
 
 ## Идентичность и цель
 
-Andromeda — data-driven source-backed modular monolith для поддержки выбора образовательной программы. Текущий основной контекст — BMSTU: canonical university/program/discipline data проходит через ingestion и доступен через typed application contracts, FastAPI/OpenAPI и frontend.
+Andromeda — data-driven source-backed modular monolith для поддержки выбора образовательной программы. Текущий основной продуктовый scope — source-backed BMSTU и HSE adapters: canonical university/program/discipline data проходит через ingestion и доступен через typed application contracts, FastAPI/OpenAPI и frontend.
 
 Проект помогает пользователю собрать persistent shortlist, сравнивать реальные учебные планы, проверять Admission Fit, при желании проходить compact профтест, получать объяснимые suggestions и просматривать source-backed факты поступления. `DecisionContext` хранит explicit пользовательский выбор; события и campus spatial data предоставляются как optional support layer для UI и будущих внешних клиентов; сама карта и маршрутизация не входят в текущую систему.
 
-## Текущий BMSTU scope
+## Текущий supported-university scope
 
 - BMSTU fixture/live ingestion с dynamic catalog discovery, provenance, нормализацией и canonical IDs; live source gaps сохраняются явно.
+- HSE fixture/live adapter с отдельными catalog/curriculum/admissions assumptions, university-scoped canonical IDs и явными partial/source-gap состояниями; live coverage может быть degraded и не является гарантией полноты.
 - Учебные планы, программы, curricula и дисциплины с workload, семестрами, формами контроля и taxonomy areas.
 - Профиль содержания пользователя (`UserProfile`), Content Fit и рекомендации по реальным fingerprints.
 - Source-backed admissions facts и отдельный Admission Fit для явно выбранной программы.
@@ -75,7 +76,7 @@ Backend: Python 3.11+, FastAPI, Pydantic, SQLAlchemy и Alembic. PostgreSQL — 
 
 ## Направление multi-university
 
-BMSTU — первый adapter и fixture. Следующий университет должен получить свой source parser/mappings/normalizers в собственном `ingestion/universities/<university>` namespace, сохраняя общие canonical contracts и application flows. Университетская специфика не должна просачиваться в comparison, recommendations, admissions или API.
+BMSTU — первый adapter, HSE — второй реализованный adapter и fixture/live target. Следующий университет должен получить свой source parser/mappings/normalizers в собственном `ingestion/universities/<university>` namespace, сохраняя общие canonical contracts и application flows. Университетская специфика не должна просачиваться в comparison, recommendations, admissions или API.
 
 ## Out of scope
 

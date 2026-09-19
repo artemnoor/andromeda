@@ -8,11 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PageHeader, Loading, ErrorState, Stat, SectionTitle, Tag } from "@/components/shared";
+import { PageHeader, Loading, ErrorState, EmptyState, Stat, SectionTitle, Tag } from "@/components/shared";
 import { getIngestionRuns, getIngestionRun, retryIngestion } from "@/lib/api";
 import { INGESTION_STATUS_LABELS } from "@/lib/labels";
 import { formatDateTime } from "@/lib/format";
-import type { IngestionRunSummary, IngestionRunDetail } from "@/lib/types";
+import type { IngestionRetrySource, IngestionRunSummary, IngestionRunDetail } from "@/lib/types";
 
 const STATUS_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   running: Clock,
@@ -24,6 +24,12 @@ const STATUS_TONE: Record<string, string> = {
   completed: "text-emerald-600",
   failed: "text-destructive",
 };
+const RETRY_SOURCES: Array<{ value: IngestionRetrySource; label: string }> = [
+  { value: "bmstu_fixture", label: "МГТУ · fixture" },
+  { value: "hse_fixture", label: "ВШЭ · fixture" },
+  { value: "bmstu_live", label: "МГТУ · live (staging)" },
+  { value: "hse_live", label: "ВШЭ · live (staging)" },
+];
 
 export function OpsPage() {
   const [opsKey, setOpsKey] = useState("");
@@ -34,27 +40,44 @@ export function OpsPage() {
   const [status, setStatus] = useState<string>("all");
   const [detail, setDetail] = useState<IngestionRunDetail | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [retrySource, setRetrySource] = useState<IngestionRetrySource>("bmstu_fixture");
 
-  const loadRuns = async (key: string) => {
+  const loadRuns = async (key: string): Promise<boolean> => {
+    if (!key.trim()) {
+      setError("Введите ops-ключ перед загрузкой данных.");
+      return false;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await getIngestionRuns({ status: status === "all" ? undefined : (status as never) }, key);
       setRuns(res.items);
+      return true;
     } catch {
       setError("Ops API недоступен или неверный ключ (возвращает 404 для защиты поверхности).");
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
+  const login = async () => {
+    if (!opsKey.trim()) {
+      setError("Введите ops-ключ.");
+      return;
+    }
+    setError(null);
+    if (await loadRuns(opsKey)) setAuthed(true);
+  };
+
   useEffect(() => {
-    if (authed) void loadRuns(opsKey || "demo-key");
-  }, [status, authed]);
+    if (authed) void loadRuns(opsKey);
+  }, [status, authed, opsKey]);
 
   const openDetail = async (id: string) => {
+    if (!opsKey.trim()) return;
     try {
-      const res = await getIngestionRun(id, opsKey || "demo-key");
+      const res = await getIngestionRun(id, opsKey);
       setDetail(res.run);
     } catch {
       setError("Не удалось загрузить детали run.");
@@ -62,11 +85,21 @@ export function OpsPage() {
   };
 
   const retry = async () => {
+    if (!opsKey.trim()) {
+      setError("Введите ops-ключ перед retry.");
+      return;
+    }
+    const sourceLabel = RETRY_SOURCES.find((item) => item.value === retrySource)?.label ?? retrySource;
+    if (!window.confirm(`Запустить ingestion: ${sourceLabel}?`)) return;
     setRetrying(true);
+    setError(null);
     try {
-      const res = await retryIngestion({ source: "bmstu_fixture" }, opsKey || "demo-key");
+      const idempotencyKey = `ops-${Date.now()}-${globalThis.crypto?.randomUUID?.() ?? "retry"}`;
+      const res = await retryIngestion({ source: retrySource, idempotencyKey }, opsKey);
       setDetail(res.run);
-      await loadRuns(opsKey || "demo-key");
+      await loadRuns(opsKey);
+    } catch {
+      setError("Не удалось запустить ingestion. Проверьте состояние источника и ops-ключ.");
     } finally {
       setRetrying(false);
     }
@@ -86,10 +119,11 @@ export function OpsPage() {
               <Label htmlFor="opskey">Ops key</Label>
               <Input id="opskey" type="password" value={opsKey} onChange={(e) => setOpsKey(e.target.value)} placeholder="ANDROMEDA_OPS_API_KEY" />
             </div>
-            <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setAuthed(true); }}>
+            <Button data-testid="ops-login" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => void login()}>
               <Wrench className="h-4 w-4" /> Войти
             </Button>
-            <p className="text-xs text-muted-foreground">Подсказка: в demo-режиме подойдёт любой непустой ключ.</p>
+            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            <p className="text-xs text-muted-foreground">Ключ не сохраняется и передаётся только в заголовке X-Andromeda-Ops-Key.</p>
           </CardContent>
         </Card>
       </div>
@@ -103,10 +137,18 @@ export function OpsPage() {
         title="Ingestion runs"
         description="Контроль ingestion: список запусков, детали и ограниченный retry. Без выдачи raw snapshots и credentials."
         actions={
-          <Button variant="outline" size="sm" className="gap-1" onClick={retry} disabled={retrying}>
-            {retrying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Retry fixture
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={retrySource} onValueChange={(value) => setRetrySource(value as IngestionRetrySource)}>
+              <SelectTrigger className="w-[190px]" aria-label="Источник для retry"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {RETRY_SOURCES.map((source) => <SelectItem key={source.value} value={source.value}>{source.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" className="gap-1" onClick={retry} disabled={retrying}>
+              {retrying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Запустить ingestion
+            </Button>
+          </div>
         }
       />
 
@@ -121,10 +163,10 @@ export function OpsPage() {
               <SelectItem value="failed">Ошибка</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={() => loadRuns(opsKey || "demo-key")} className="gap-1">
+          <Button variant="outline" size="sm" onClick={() => loadRuns(opsKey)} className="gap-1">
             <RefreshCw className="h-4 w-4" /> Обновить
           </Button>
-          <Tag tone="muted" >ключ: {opsKey ? "•".repeat(6) : "demo"}</Tag>
+          <Tag tone="muted">ключ: {"•".repeat(Math.min(opsKey.length, 8))}</Tag>
         </CardContent>
       </Card>
 
@@ -147,9 +189,9 @@ export function OpsPage() {
                   </TableHeader>
                   <TableBody>
                     {runs.map((r) => {
-                      const Icon = STATUS_ICON[r.status];
+                      const Icon = STATUS_ICON[r.status] ?? Activity;
                       return (
-                        <TableRow key={r.id} className="cursor-pointer" onClick={() => openDetail(r.id)}>
+                        <TableRow key={r.id}>
                           <TableCell className="font-mono text-xs">{r.id.slice(0, 18)}…</TableCell>
                           <TableCell>{r.source}</TableCell>
                           <TableCell>
@@ -158,10 +200,17 @@ export function OpsPage() {
                             </span>
                           </TableCell>
                           <TableCell className="hidden text-muted-foreground md:table-cell">{formatDateTime(r.startedAt)}</TableCell>
-                          <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" aria-label={`Открыть run ${r.id}`} onClick={() => void openDetail(r.id)}>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
+                    {runs.length === 0 && (
+                      <TableRow><TableCell colSpan={5}><EmptyState title="Запусков пока нет" message="После первого fixture или live ingestion здесь появится диагностируемый run." /></TableCell></TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -186,6 +235,18 @@ export function OpsPage() {
                     <Stat label="Точек кампуса" value={detail.campusPointCount} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
+                    <Stat label="Source gaps" value={detail.sourceGapCount} />
+                    <Stat label="Критические gaps" value={detail.criticalGapCount} />
+                    <Stat label="Quality" value={detail.qualityStatus} />
+                    <Stat label="Projection" value={detail.projectionStatus ?? "—"} />
+                  </div>
+                  <dl className="space-y-1 text-xs text-muted-foreground">
+                    <div className="flex justify-between gap-3"><dt>Профиль источника</dt><dd className="text-right font-mono">{detail.sourceProfile ?? detail.source}</dd></div>
+                    <div className="flex justify-between gap-3"><dt>Revision</dt><dd>{detail.sourceRevision ?? "—"}</dd></div>
+                    <div className="flex justify-between gap-3"><dt>Конфигурация</dt><dd>{detail.configurationVersion ?? "—"}</dd></div>
+                    {detail.retryOfRunId && <div className="flex justify-between gap-3"><dt>Retry of</dt><dd className="font-mono">{detail.retryOfRunId}</dd></div>}
+                  </dl>
+                  <div className="grid grid-cols-2 gap-2">
                     <Stat label="Добавлено" value={detail.insertedCount} />
                     <Stat label="Обновлено" value={detail.updatedCount} />
                     <Stat label="Без изменений" value={detail.unchangedCount} />
@@ -197,7 +258,7 @@ export function OpsPage() {
                     </div>
                   )}
                   <div className="flex flex-wrap gap-1.5">
-                    {detail.sourceKinds.map((k) => <Tag key={k} tone="muted">{k}</Tag>)}
+                    {Array.from(new Set(detail.sourceKinds)).map((kind) => <Tag key={kind} tone="muted">{kind}</Tag>)}
                   </div>
                 </div>
               ) : (

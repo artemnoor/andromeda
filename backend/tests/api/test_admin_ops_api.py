@@ -84,6 +84,40 @@ def test_admin_ops_retry_uses_fixture_profile_and_creates_audited_run(tmp_path: 
     assert listing.json()["items"][0]["id"] == run["id"]
 
 
+def test_admin_ops_supports_hse_fixture_profile(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", OPS_KEY)
+    database_url = _database_with_fixture(tmp_path)
+    client = TestClient(create_app(database_url))
+
+    response = client.post(
+        "/ops/ingestion/runs/retry",
+        json={"source": "hse_fixture", "idempotencyKey": "hse-fixture-test-001"},
+        headers={"X-Andromeda-Ops-Key": OPS_KEY},
+    )
+
+    assert response.status_code == 200, response.text
+    run = response.json()["run"]
+    assert run["status"] == "completed"
+    assert run["sourceProfile"].startswith("hse:fixture:")
+    assert run["sourceRevision"] == "fixture-manifest-v1"
+    assert run["qualityStatus"] == "degraded"
+
+
+def test_admin_ops_retry_idempotency_returns_the_same_audit_run(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", OPS_KEY)
+    database_url = _database_with_fixture(tmp_path)
+    client = TestClient(create_app(database_url))
+    headers = {"X-Andromeda-Ops-Key": OPS_KEY}
+    body = {"source": "bmstu_fixture", "idempotencyKey": "bmstu-retry-test-001"}
+
+    first = client.post("/ops/ingestion/runs/retry", json=body, headers=headers)
+    second = client.post("/ops/ingestion/runs/retry", json=body, headers=headers)
+
+    assert first.status_code == second.status_code == 200
+    assert first.json()["run"]["id"] == second.json()["run"]["id"]
+    assert client.get("/ops/ingestion/runs", headers=headers).json()["total"] == 2
+
+
 def test_admin_ops_retry_rejects_when_a_run_is_running(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", OPS_KEY)
     database_url = _database_with_fixture(tmp_path)
@@ -91,7 +125,12 @@ def test_admin_ops_retry_rejects_when_a_run_is_running(tmp_path: Path, monkeypat
     from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
 
     engine = create_engine_for_url(database_url)
-    SqlAlchemyIngestionRepository(engine).start_run()
+    SqlAlchemyIngestionRepository(engine).start_run(
+        university_id="university:bmstu",
+        source_profile="bmstu:fixture:fixture-manifest-v1:mvp023.v1",
+        source_revision="fixture-manifest-v1",
+        configuration_version="mvp023.v1",
+    )
     client = TestClient(create_app(database_url))
 
     response = client.post(

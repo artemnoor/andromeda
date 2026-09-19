@@ -1,8 +1,10 @@
-# Andromeda MVP / Private Alpha
+# Andromeda MVP scope / Private Alpha transition
 
 ## Stage
 
-MVP / Private Alpha. Core loop: **Discover → Refine → Shortlist → Compare → Decide**.
+Private Alpha transition toward MVP Production Level. Core loop:
+**Discover → Refine → Shortlist → Compare → Decide**. The production-level
+label is reserved for the evidence gate in `docs/mvp-production-level.md`.
 
 ## Target user
 

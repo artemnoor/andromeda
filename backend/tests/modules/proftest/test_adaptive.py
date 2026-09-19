@@ -9,6 +9,7 @@ from andromeda.modules.proftest.services.adaptive import AdaptiveCandidate, Adap
 from andromeda.modules.proftest.services.questionnaire import build_session_questionnaire, build_session_questionnaire_v2
 from andromeda.modules.proftest.services.session import ProftestSessionService
 from andromeda.modules.recommendations.domain.entities import RankedFingerprint
+from andromeda.shared.contracts.provenance import GapSeverity, SourceGapReference
 
 
 def _fingerprint(code: str, math_share: str, computer_share: str) -> ProgramFingerprint:
@@ -53,6 +54,41 @@ def test_adaptive_selector_skips_when_catalog_has_no_meaningful_spread() -> None
     assert selection.status is AdaptiveStatus.SKIPPED
     assert selection.reason
     assert AdaptiveQuestionFactory().create(selection) is None
+
+
+def test_adaptive_selector_stops_when_all_top_candidates_have_blocking_source_gaps() -> None:
+    incomplete = _fingerprint("02", "0.8", "0.2").model_copy(
+        update={
+            "source_gaps": (
+                SourceGapReference(
+                    code="curriculum_blocked",
+                    severity=GapSeverity.BLOCKING,
+                    message="Curriculum source is unavailable.",
+                    field="curriculum",
+                ),
+            )
+        }
+    )
+    complete = _fingerprint("12", "0.2", "0.8").model_copy(
+        update={
+            "source_gaps": (
+                SourceGapReference(
+                    code="curriculum_blocked",
+                    severity=GapSeverity.BLOCKING,
+                    message="Curriculum source is unavailable.",
+                    field="curriculum",
+                ),
+            )
+        }
+    )
+
+    selection = AdaptiveQuestionSelector().select(
+        (AdaptiveCandidate(incomplete, Decimal("80")), AdaptiveCandidate(complete, Decimal("79")))
+    )
+
+    assert selection.status is AdaptiveStatus.SKIPPED
+    assert selection.stop_reason.value == "source_gap"
+    assert "недостаточно подтверждённых данных" in (selection.reason or "")
 
 
 def test_session_rebuilds_ranking_with_adaptive_answers() -> None:

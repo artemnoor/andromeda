@@ -79,6 +79,8 @@ class EventUniversityLinkModel(Base):
     event_id: Mapped[str] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"), primary_key=True)
     university_id: Mapped[str] = mapped_column(ForeignKey("universities.id"), primary_key=True)
 
+    __table_args__ = (Index("ix_event_university_links_university_id", "university_id"),)
+
 
 class EventDepartmentLinkModel(Base):
     __tablename__ = "event_department_links"
@@ -88,6 +90,7 @@ class EventDepartmentLinkModel(Base):
 
     __table_args__ = (
         CheckConstraint("department_id LIKE 'department:%:%'", name="ck_event_departments_id_shape"),
+        Index("ix_event_department_links_department_id", "department_id"),
     )
 
 

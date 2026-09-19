@@ -4,6 +4,7 @@ from pydantic import Field
 
 from ...modules.curricula.contracts.public import Curriculum
 from ...modules.disciplines.contracts.public import Discipline
+from ...modules.disciplines.contracts.classification import ClassificationOutcome
 from ...modules.programs.contracts.public import Program
 from ...modules.admissions.contracts.public import ProgramAdmissions
 from ...modules.events.contracts.public import Event
@@ -28,3 +29,4 @@ class CanonicalSnapshot(ContractModel):
     campus_points: tuple[CampusPoint, ...] = ()
     directions: tuple[Direction, ...] = ()
     source_gaps: tuple[RawSourceGap, ...] = ()
+    classification_outcomes: tuple[ClassificationOutcome, ...] = ()

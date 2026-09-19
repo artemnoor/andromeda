@@ -19,8 +19,4 @@ class ProgramWriter(Protocol):
     def save(self, program: Program) -> None: ...
 
 
-class ProgramRepository(ProgramReader, ProgramWriter, Protocol):
-    """Combined storage port used only by infrastructure composition."""
-
-
-__all__ = ["ProgramReader", "ProgramRepository", "ProgramWriter"]
+__all__ = ["ProgramReader", "ProgramWriter"]

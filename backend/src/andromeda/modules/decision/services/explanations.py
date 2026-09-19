@@ -12,7 +12,12 @@ from andromeda.modules.admission_fit.contracts.public import (
 from andromeda.modules.programs.contracts.public import Program
 from andromeda.modules.proftest.contracts.public import MatchScore, ProgramFingerprint
 
-from ..contracts.public import DecisionCandidatePartition, DecisionSuggestionReasons
+from ..contracts.public import (
+    DecisionCandidatePartition,
+    DecisionConstraintApplicability,
+    DecisionConstraintOutcome,
+    DecisionSuggestionReasons,
+)
 from ..domain.values import AdmissionGate
 
 
@@ -28,6 +33,7 @@ class DecisionExplanationBuilder:
         content_fit: MatchScore | None,
         profile_present: bool,
         partition: DecisionCandidatePartition,
+        constraint_outcomes: Iterable[DecisionConstraintOutcome] = (),
         extra_missing: Iterable[str] = (),
     ) -> tuple[DecisionSuggestionReasons, tuple[str, ...]]:
         included: list[str] = []
@@ -56,6 +62,8 @@ class DecisionExplanationBuilder:
         else:
             self._admission_reasons(admission, admission_risk, included, may_not_fit, missing, source_gaps)
 
+        self._constraint_reasons(constraint_outcomes, included, may_not_fit, missing, source_gaps)
+
         if partition is DecisionCandidatePartition.ALTERNATIVE:
             included.append("Вариант оставлен среди ближайших альтернатив для дальнейшего сравнения")
         elif partition is DecisionCandidatePartition.INELIGIBLE:
@@ -77,6 +85,23 @@ class DecisionExplanationBuilder:
             ),
             _unique(source_gaps),
         )
+
+    @staticmethod
+    def _constraint_reasons(
+        outcomes: Iterable[DecisionConstraintOutcome],
+        included: list[str],
+        may_not_fit: list[str],
+        missing: list[str],
+        source_gaps: list[str],
+    ) -> None:
+        for outcome in outcomes:
+            if outcome.applicability is DecisionConstraintApplicability.APPLIED and outcome.satisfied is True:
+                included.append(outcome.message)
+            elif outcome.applicability is DecisionConstraintApplicability.APPLIED and outcome.satisfied is False:
+                may_not_fit.append(outcome.message)
+            elif outcome.applicability is DecisionConstraintApplicability.INSUFFICIENT_DATA:
+                missing.append(outcome.message)
+            source_gaps.extend(outcome.source_gaps)
 
     @staticmethod
     def _admission_reasons(

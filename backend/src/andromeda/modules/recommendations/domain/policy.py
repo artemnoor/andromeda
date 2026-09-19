@@ -10,6 +10,9 @@ from pydantic import Field, model_validator
 from andromeda.shared.contracts.base import ContractModel
 
 
+RECOMMENDATION_POLICY_VERSION = "content-fit.v1"
+
+
 class RecommendationWeights(ContractModel):
     """Weights for the explainable Content Fit components."""
 
@@ -37,4 +40,4 @@ class RecommendationPolicy(ContractModel):
         return self
 
 
-__all__ = ["RecommendationPolicy", "RecommendationWeights"]
+__all__ = ["RECOMMENDATION_POLICY_VERSION", "RecommendationPolicy", "RecommendationWeights"]

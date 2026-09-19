@@ -11,6 +11,7 @@ from andromeda.modules.programs.contracts.public import Program
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.enums import CompareStatus, ComparisonScope
 from andromeda.shared.contracts.ids import ProgramId, Semester
+from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 from ..domain.entities import Workload
 
 
@@ -39,6 +40,8 @@ class ComparisonResult(ContractModel):
     totals_b: ComparisonTotals
     area_breakdown_a: tuple[DisciplineAreaSummary, ...] = ()
     area_breakdown_b: tuple[DisciplineAreaSummary, ...] = ()
+    provenance: tuple[SourceAttribution, ...] = ()
+    source_gap_details: tuple[SourceGapReference, ...] = ()
 
 
 ComparisonDifferenceDirection = Literal["more_in_a", "more_in_b", "different", "unknown"]

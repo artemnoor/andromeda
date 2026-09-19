@@ -66,6 +66,8 @@ class FingerprintBuilder:
                     assessment_types=item.assessment_types,
                     workload=item_workload,
                     area_weights=area_weights,
+                    provenance=curriculum.provenance,
+                    source_gaps=curriculum.source_gaps,
                 )
             )
 
@@ -85,6 +87,8 @@ class FingerprintBuilder:
             semester_distribution=dict(sorted(semester_share.items())),
             activity_signals=dict(sorted(activity_signals.items(), key=lambda entry: entry[0].value)),
             evidence=tuple(evidence),
+            provenance=(*program.provenance, *curriculum.provenance),
+            source_gaps=(*program.source_gaps, *curriculum.source_gaps),
         )
         logger.info(
             "fingerprint_complete program_id=%s basis=%s total_hours=%d total_credits=%s area_count=%d",

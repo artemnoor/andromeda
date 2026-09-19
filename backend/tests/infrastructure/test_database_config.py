@@ -54,6 +54,8 @@ def test_legacy_environment_is_supported_as_deprecated_fallback(monkeypatch: pyt
 
 def test_postgresql_settings_are_redacted_and_parseable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANDROMEDA_ENV", "staging")
+    monkeypatch.setenv("FRONTEND_ORIGIN", "http://localhost:3000")
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", "staging-test-ops-key-001")
     database_url = "postgresql+psycopg://user:p%40ss@example.test:5432/andromeda_staging?sslmode=require"
     monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
 
@@ -75,6 +77,8 @@ def test_sqlite_engine_keeps_foreign_key_pragma(tmp_path) -> None:
 
 def test_settings_emit_safe_debug_diagnostic(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
     monkeypatch.setenv("ANDROMEDA_ENV", "staging")
+    monkeypatch.setenv("FRONTEND_ORIGIN", "http://localhost:3000")
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", "staging-test-ops-key-001")
     monkeypatch.setenv("BMSTU_DATABASE_URL", "postgresql+psycopg://user:secret@example.test/andromeda")
     with caplog.at_level(logging.DEBUG, logger="andromeda.infrastructure.config"):
         Settings.from_environment()
@@ -85,6 +89,8 @@ def test_settings_emit_safe_debug_diagnostic(monkeypatch: pytest.MonkeyPatch, ca
 
 def test_profile_cookie_settings_are_environment_configurable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANDROMEDA_ENV", "staging")
+    monkeypatch.setenv("FRONTEND_ORIGIN", "http://localhost:3000")
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", "staging-test-ops-key-001")
     monkeypatch.setenv("BMSTU_DATABASE_URL", "postgresql+psycopg://user:secret@example.test/andromeda")
     monkeypatch.setenv("ANDROMEDA_PROFILE_COOKIE_NAME", "andromeda_staging_session")
     monkeypatch.setenv("ANDROMEDA_PROFILE_COOKIE_MAX_AGE", "7200")
@@ -107,3 +113,28 @@ def test_profile_cookie_none_requires_secure_transport(monkeypatch: pytest.Monke
 
     with pytest.raises(ValueError, match="SameSite=None"):
         Settings.from_environment()
+
+
+def test_staging_requires_explicit_origin_and_ops_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_ENV", "staging")
+    database_url = "postgresql+psycopg://user:secret@example.test/andromeda"
+    monkeypatch.delenv("FRONTEND_ORIGIN", raising=False)
+    monkeypatch.delenv("ANDROMEDA_OPS_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="explicit FRONTEND_ORIGIN"):
+        Settings.from_environment(database_url)
+
+    monkeypatch.setenv("FRONTEND_ORIGIN", "https://andromeda.example.test")
+    with pytest.raises(ValueError, match="ANDROMEDA_OPS_API_KEY"):
+        Settings.from_environment(database_url)
+
+
+def test_production_requires_https_and_uses_secure_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANDROMEDA_ENV", "production")
+    monkeypatch.setenv("FRONTEND_ORIGIN", "https://andromeda.example.test")
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", "production-test-ops-key-001")
+
+    settings = Settings.from_environment("postgresql+psycopg://user:secret@example.test/andromeda")
+
+    assert settings.environment == "production"
+    assert settings.profile_cookie_secure is True
+    assert settings.auth_cookie_secure is True

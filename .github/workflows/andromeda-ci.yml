@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   telegram-bot:
     runs-on: ubuntu-latest
@@ -38,15 +41,39 @@ jobs:
         run: |
           pdftotext -layout backend/tests/fixtures/tracer/raw/curriculum.pdf "$RUNNER_TEMP/bmstu-curriculum.txt"
           grep -q "ПЛАН УЧЕБНОГО ПРОЦЕССА" "$RUNNER_TEMP/bmstu-curriculum.txt"
-      - run: python -m pip install -e "backend[dev,browser]"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra browser
+        working-directory: backend
+      - name: Run ingestion capability preflight
+        run: uv run --locked --extra dev --extra browser python scripts/preflight.py --profile bmstu --profile hse
+        working-directory: backend
       - name: Run backend tests
-        run: python -m pytest -q
+        run: uv run --locked --extra dev --extra browser python -m pytest -q --cov=src/andromeda --cov-report=term-missing --cov-report=xml:coverage-backend.xml --junitxml=junit-backend.xml
+        working-directory: backend
+      - name: Run explicit architecture boundary gate
+        run: uv run --locked --extra dev --extra browser python -m pytest -q tests/architecture
+        working-directory: backend
+      - name: Run empty-database migration gate
+        run: |
+          export ANDROMEDA_DATABASE_URL="sqlite:///$RUNNER_TEMP/andromeda-migration.db"
+          uv run --locked --extra dev python -m alembic upgrade head
+          uv run --locked --extra dev python -m alembic check
         working-directory: backend
       - name: Run all-university fixture ingestion and canonical API smoke
-        run: python backend/scripts/run_andromeda_ingestion.py --university all --mode fixture --database-url sqlite:///backend/data/ci.db --log-level ERROR
+        run: uv run --project backend --locked --extra dev --extra browser python backend/scripts/run_andromeda_ingestion.py --university all --mode fixture --database-url sqlite:///$RUNNER_TEMP/andromeda-ci.db --log-level ERROR
       - name: Run strict backend typing
-        run: python -m mypy
+        run: uv run --locked --extra dev --extra browser python -m mypy
         working-directory: backend
+      - name: Upload backend test and coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-and-coverage
+          path: |
+            backend/coverage-backend.xml
+            backend/junit-backend.xml
 
   frontend-next:
     runs-on: ubuntu-latest
@@ -56,9 +83,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m pip install -e "backend[dev]"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: backend
       - name: Export canonical OpenAPI contract
-        run: python backend/scripts/export_openapi.py --out frontend-next/openapi.ci.json
+        run: uv run --project backend --locked --extra dev python backend/scripts/export_openapi.py --out frontend-next/openapi.ci.json
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -74,11 +105,92 @@ jobs:
       - name: Run Next unit tests
         run: npm run test:unit
         working-directory: frontend-next
+      - name: Run Next unit coverage
+        run: npm run test:unit:coverage
+        working-directory: frontend-next
       - name: Lint canonical Next app
         run: npm run lint
         working-directory: frontend-next
       - name: Build canonical Next app
         run: npm run build
+        working-directory: frontend-next
+      - name: Upload frontend coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-and-coverage
+          path: frontend-next/coverage
+
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify repository documentation links
+        run: python scripts/check_docs.py
+      - name: Verify canonical command surface
+        run: python scripts/andromeda.py --help
+      - name: Verify release metadata has a clean worktree
+        run: python scripts/release_evidence.py --require-clean
+      - name: Verify deployment packaging contract
+        run: python scripts/check_deployment_artifacts.py
+      - name: Verify clean patch formatting
+        run: git diff --check
+
+  packaging:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend-next]
+    env:
+      BACKEND_IMAGE: andromeda-backend:ci
+      FRONTEND_IMAGE: andromeda-frontend:ci
+      TELEGRAM_BOT_IMAGE: andromeda-telegram:ci
+      ANDROMEDA_STAGING_DB: andromeda_ci
+      ANDROMEDA_STAGING_DB_USER: andromeda
+      ANDROMEDA_STAGING_DB_PASSWORD: ci-only-placeholder
+      ANDROMEDA_DOMAIN: andromeda.example.org
+      ANDROMEDA_OPS_API_KEY: ci-only-ops-key
+      TELEGRAM_BOT_TOKEN: ci-only-token
+      ANDROMEDA_RENDER_HMAC_SECRET: ci-only-render-secret
+      ANDROMEDA_SESSION_ENCRYPTION_KEY: ci-only-session-key
+      ANDROMEDA_WEB_APP_URL: https://andromeda.example.org
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify tracked deployment contract
+        run: python scripts/check_deployment_artifacts.py
+      - name: Build backend image from tracked inputs
+        run: docker build --file backend/Dockerfile --tag "$BACKEND_IMAGE" backend
+      - name: Build frontend standalone image from tracked inputs
+        run: docker build --file frontend-next/Dockerfile --tag "$FRONTEND_IMAGE" frontend-next
+      - name: Build Telegram transport image from tracked inputs
+        run: docker build --file telegram-bot/Dockerfile --tag "$TELEGRAM_BOT_IMAGE" .
+      - name: Validate resolved YC compose contract
+        run: docker compose --file deploy/yc/compose.yaml config --quiet
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: backend
+      - name: Audit locked Python dependencies
+        run: |
+          uv export --locked --format requirements.txt --no-hashes --no-editable --no-dev --no-emit-project --output-file "$RUNNER_TEMP/andromeda-runtime-requirements.txt"
+          uv run --with pip-audit==2.9.0 pip-audit -r "$RUNNER_TEMP/andromeda-runtime-requirements.txt" --strict --progress-spinner off
+        working-directory: backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-next/package-lock.json
+      - run: npm ci
+        working-directory: frontend-next
+      - name: Audit production JavaScript dependencies
+        run: npm audit --omit=dev --audit-level=high
         working-directory: frontend-next
 
   fullstack:
@@ -86,6 +198,7 @@ jobs:
     needs: [backend, frontend-next]
     env:
       ANDROMEDA_OPS_API_KEY: ci-admin-ops-key
+      PLAYWRIGHT_OPS_API_KEY: ci-admin-ops-key
     steps:
       - uses: actions/checkout@v4
       - name: Install Poppler for study-plan parsing
@@ -96,7 +209,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m pip install -e "backend[dev]"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: backend
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -105,14 +222,14 @@ jobs:
       - run: npm ci
         working-directory: frontend-next
       - name: Run fixture through DB, API, and canonical Next app
-        run: python backend/scripts/run_andromeda_demo.py --mode fixture --check --log-level INFO
+        run: uv run --project backend --locked --extra dev python backend/scripts/run_andromeda_demo.py --mode fixture --check --log-level INFO
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
         working-directory: frontend-next
       - name: Start fixture demo for browser tests
         shell: bash
         run: |
-          python backend/scripts/run_andromeda_demo.py --mode fixture --log-level INFO > "$RUNNER_TEMP/andromeda-demo.log" 2>&1 &
+          uv run --project backend --locked --extra dev python backend/scripts/run_andromeda_demo.py --mode fixture --log-level INFO > "$RUNNER_TEMP/andromeda-demo.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/andromeda-demo.pid"
           for attempt in {1..90}; do
             if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
@@ -128,6 +245,12 @@ jobs:
         shell: bash
         run: |
           if [ -f "$RUNNER_TEMP/andromeda-demo.pid" ]; then kill "$(cat "$RUNNER_TEMP/andromeda-demo.pid")" || true; fi
+      - name: Upload fixture browser logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-browser-logs
+          path: ${{ runner.temp }}/andromeda-demo.log
 
   postgresql-integration:
     runs-on: ubuntu-latest
@@ -162,15 +285,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m pip install -e "backend[dev]"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev
+        working-directory: backend
       - name: Apply Alembic migrations to PostgreSQL
-        run: python -m alembic upgrade head
+        run: uv run --locked --extra dev python -m alembic upgrade head
         working-directory: backend
       - name: Run PostgreSQL repository and API checks
-        run: python -m pytest -q tests/integration/test_postgresql_ingestion.py tests/integration/test_postgresql_smoke.py tests/integration/test_postgresql_user_profile.py tests/integration/test_personal_route_vertical_slice.py tests/integration/test_admission_fit_vertical_slice.py tests/integration/test_campus_storage_vertical_slice.py tests/integration/test_campus_live_projection_safety.py tests/vertical/test_campus_vertical_slice.py tests/vertical/test_personal_route_scope_guard.py
+        run: uv run --locked --extra dev python -m pytest -q tests/integration/test_postgresql_ingestion.py tests/integration/test_postgresql_smoke.py tests/integration/test_postgresql_user_profile.py tests/integration/test_personal_route_vertical_slice.py tests/integration/test_admission_fit_vertical_slice.py tests/integration/test_campus_storage_vertical_slice.py tests/integration/test_campus_live_projection_safety.py tests/vertical/test_campus_vertical_slice.py tests/vertical/test_personal_route_scope_guard.py
         working-directory: backend
       - name: Run auth/profile persistence checks
-        run: python -m pytest -q tests/api/test_auth_api.py tests/integration/test_user_profile_persistence.py
+        run: uv run --locked --extra dev python -m pytest -q tests/api/test_auth_api.py tests/integration/test_user_profile_persistence.py
         working-directory: backend
       - uses: actions/setup-node@v4
         with:
@@ -180,7 +307,7 @@ jobs:
       - run: npm ci
         working-directory: frontend-next
       - name: Export PostgreSQL job OpenAPI contract
-        run: python backend/scripts/export_openapi.py --out frontend-next/openapi.ci.json
+        run: uv run --project backend --locked --extra dev python backend/scripts/export_openapi.py --out frontend-next/openapi.ci.json
       - run: npm run check-api-drift
         working-directory: frontend-next
         env:
@@ -189,14 +316,14 @@ jobs:
         run: npm run build
         working-directory: frontend-next
       - name: Run PostgreSQL fixture fullstack check
-        run: python backend/scripts/run_andromeda_demo.py --mode fixture --database-url "$ANDROMEDA_DATABASE_URL" --check --log-level INFO
+        run: uv run --project backend --locked --extra dev python backend/scripts/run_andromeda_demo.py --mode fixture --database-url "$ANDROMEDA_DATABASE_URL" --check --log-level INFO
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
         working-directory: frontend-next
       - name: Start PostgreSQL-backed demo for browser tests
         shell: bash
         run: |
-          python backend/scripts/run_andromeda_demo.py --mode fixture --database-url "$ANDROMEDA_DATABASE_URL" --log-level INFO > "$RUNNER_TEMP/andromeda-postgres-demo.log" 2>&1 &
+          uv run --project backend --locked --extra dev python backend/scripts/run_andromeda_demo.py --mode fixture --database-url "$ANDROMEDA_DATABASE_URL" --log-level INFO > "$RUNNER_TEMP/andromeda-postgres-demo.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/andromeda-postgres-demo.pid"
           for attempt in {1..120}; do
             if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
@@ -225,15 +352,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m pip install -e "backend[dev,browser]"
+      - name: Install locked backend environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra browser
+        working-directory: backend
       - name: Run production proftest and admission-fit checks
-        run: python -m pytest -q backend/tests/modules/proftest backend/tests/modules/admission_fit backend/tests/api/test_proftest_api.py backend/tests/api/test_proftest_contract.py backend/tests/api/test_proftest_profile_api.py backend/tests/api/test_proftest_profile_contract.py backend/tests/api/test_admission_fit_api.py backend/tests/api/test_admission_fit_contract.py backend/tests/integration/test_proftest_catalog.py backend/tests/integration/test_proftest_vertical_slice.py backend/tests/integration/test_user_profile_persistence.py backend/tests/integration/test_admission_fit_vertical_slice.py
+        run: uv run --project backend --locked --extra dev --extra browser python -m pytest -q backend/tests/modules/proftest backend/tests/modules/admission_fit backend/tests/api/test_proftest_api.py backend/tests/api/test_proftest_contract.py backend/tests/api/test_proftest_profile_api.py backend/tests/api/test_proftest_profile_contract.py backend/tests/api/test_admission_fit_api.py backend/tests/api/test_admission_fit_contract.py backend/tests/integration/test_proftest_catalog.py backend/tests/integration/test_proftest_vertical_slice.py backend/tests/integration/test_user_profile_persistence.py backend/tests/integration/test_admission_fit_vertical_slice.py
       - name: Run auth module and API checks
-        run: python -m pytest -q backend/tests/modules/auth backend/tests/api/test_auth_api.py backend/tests/integration/test_user_profile_persistence.py
+        run: uv run --project backend --locked --extra dev --extra browser python -m pytest -q backend/tests/modules/auth backend/tests/api/test_auth_api.py backend/tests/integration/test_user_profile_persistence.py
       - name: Run recommendation module and API integration tests
-        run: python -m pytest -q backend/tests/modules/recommendations backend/tests/api/test_recommendations_api.py backend/tests/api/test_recommendations_contract.py backend/tests/integration/test_recommendations_catalog.py
+        run: uv run --project backend --locked --extra dev --extra browser python -m pytest -q backend/tests/modules/recommendations backend/tests/api/test_recommendations_api.py backend/tests/api/test_recommendations_contract.py backend/tests/integration/test_recommendations_catalog.py
       - name: Run strict Andromeda typing gate
-        run: python -m mypy backend/src/andromeda
+        run: uv run --project backend --locked --extra dev --extra browser python -m mypy backend/src/andromeda
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

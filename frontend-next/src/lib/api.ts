@@ -9,7 +9,6 @@
 import type { components, paths } from "./generated";
 import { normalizeDecisionContext, normalizeDecisionSuggestions } from "./types";
 import type {
-  AccountInfo,
   AdmissionFitRequest,
   AdmissionFitResponse,
   AdmissionOffering,
@@ -40,6 +39,7 @@ import type {
   IngestionRunSummary,
   PersonalRouteResponse,
   PersonalRouteStep,
+  ProgramSummary,
   ProgramAdmissionsResponse,
   ProgramListResponse,
   ProgramResponse,
@@ -51,6 +51,8 @@ import type {
   QuestionnaireResponse,
   Recommendation,
   RecommendationsResponse,
+  Provenance,
+  SourceGapReference,
   UserProfile,
   UserProfileSnapshot,
 } from "./types";
@@ -104,10 +106,36 @@ type ApiRuns = paths["/ops/ingestion/runs"]["get"]["responses"][200]["content"][
 type ApiRun = paths["/ops/ingestion/runs/{id}"]["get"]["responses"][200]["content"]["application/json"];
 type ApiRetry = paths["/ops/ingestion/runs/retry"]["post"]["responses"][200]["content"]["application/json"];
 type ApiSession = paths["/auth/session"]["get"]["responses"][200]["content"]["application/json"];
+type ApiAuthSession = paths["/auth/login"]["post"]["responses"][200]["content"]["application/json"];
+type ApiImportedAuthSession = paths["/auth/decision/import-guest"]["post"]["responses"][200]["content"]["application/json"];
+type ApiAuthState = paths["/auth/logout"]["post"]["responses"][200]["content"]["application/json"];
 type ApiRegisterRequest = NonNullable<paths["/auth/register"]["post"]["requestBody"]>["content"]["application/json"];
 type ApiLoginRequest = NonNullable<paths["/auth/login"]["post"]["requestBody"]>["content"]["application/json"];
 type ApiEventsQuery = NonNullable<paths["/events"]["get"]["parameters"]["query"]>;
 type ApiCampusPointEventsQuery = NonNullable<paths["/campus/points/{id}/events"]["get"]["parameters"]["query"]>;
+type ApiSourceAttribution = components["schemas"]["SourceAttributionResponse"];
+type ApiAdmissionProvenance = components["schemas"]["AdmissionProvenanceResponse"];
+type ApiEventProvenance = components["schemas"]["EventProvenanceResponse"];
+type ApiCampusProvenance = components["schemas"]["CampusProvenanceResponse"];
+type ApiProvenance = ApiSourceAttribution | ApiAdmissionProvenance | ApiEventProvenance | ApiCampusProvenance;
+type ApiSourceGap = components["schemas"]["SourceGapReferenceResponse"];
+type ApiProgramSummary = components["schemas"]["ProgramSummaryResponse"];
+type ApiDiscipline = components["schemas"]["DisciplineResponse"];
+type ApiCurriculumItem = components["schemas"]["CurriculumItemResponse"];
+type ApiAdmissionOffering = components["schemas"]["AdmissionOfferingResponse"];
+type ApiExamRequirement = components["schemas"]["ExamRequirementResponse"];
+type ApiQuota = components["schemas"]["QuotaResponse"];
+type ApiPassingScore = components["schemas"]["PassingScoreResponse"];
+type ApiTuition = components["schemas"]["TuitionCostResponse"];
+type ApiAdmissionFitReason = components["schemas"]["AdmissionFitReasonResponse"];
+type ApiRecommendationReason = components["schemas"]["ReasonResponse"];
+type ApiRecommendationMetric = components["schemas"]["EvidenceMetricResponse"];
+type ApiRecommendationEvidence = components["schemas"]["RecommendationEvidenceResponse"];
+type ApiEventPayload = components["schemas"]["EventResponse"];
+type ApiCampusPointPayload = components["schemas"]["CampusPointResponse"] | components["schemas"]["CampusPointDetailResponse"];
+type ApiRouteStepPayload = components["schemas"]["PersonalRouteStepResponse"];
+type ApiAccountPayload = components["schemas"]["AccountResponse"];
+type ApiProfileOutput = components["schemas"]["UserProfileResponse-Output"];
 
 const CONFIGURED_API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api").replace(/\/$/, "");
 const DEBUG_API_REQUESTS = process.env.NEXT_PUBLIC_DEBUG_API === "1";
@@ -203,29 +231,63 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
   }
 }
 
-function record(value: unknown): Record<string, any> {
-  return value !== null && typeof value === "object" ? value as Record<string, any> : {};
-}
-
 function numberOrNull(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function mapProvenance(value: unknown): Record<string, any> {
-  const raw = record(value);
+function mapProvenance(value: ApiProvenance | null | undefined): Provenance {
+  if (!value) {
+    return {
+      kind: null,
+      url: null,
+      sourceKind: null,
+      sourceUrl: null,
+      capturedAt: null,
+      contentSha256: null,
+      locator: null,
+      sourceName: null,
+      universityId: null,
+      runId: null,
+      field: null,
+      recordKey: null,
+      inferred: false,
+    };
+  }
+  const sourceKind = "sourceKind" in value ? value.sourceKind : value.kind;
+  const sourceUrl = "sourceUrl" in value ? value.sourceUrl : value.url;
+  const sourceName = "sourceName" in value ? value.sourceName : null;
   return {
-    sourceKind: raw.sourceKind ?? raw.kind ?? null,
-    sourceUrl: raw.sourceUrl ?? raw.url ?? null,
-    capturedAt: raw.capturedAt ?? null,
-    contentSha256: raw.contentSha256 ?? null,
-    locator: raw.locator ?? null,
-    sourceName: raw.sourceName ?? null,
+    kind: "kind" in value ? value.kind : null,
+    url: sourceUrl,
+    sourceKind,
+    sourceUrl,
+    capturedAt: value.capturedAt,
+    contentSha256: value.contentSha256,
+    locator: value.locator ?? null,
+    sourceName,
+    universityId: value.universityId ?? null,
+    runId: value.runId ?? null,
+    field: value.field ?? null,
+    recordKey: value.recordKey ?? null,
+    inferred: value.inferred,
   };
 }
 
-function mapProgram(raw: any) {
+function mapSourceGap(value: ApiSourceGap): SourceGapReference {
+  return {
+    code: value.code,
+    severity: value.severity,
+    message: value.message,
+    sourceUrl: value.sourceUrl ?? null,
+    field: value.field ?? null,
+    recordKey: value.recordKey ?? null,
+    canContinue: value.canContinue,
+  };
+}
+
+function mapProgram(raw: ApiProgramSummary): ProgramSummary {
   return {
     id: raw.id,
     directionId: raw.directionId,
@@ -236,16 +298,18 @@ function mapProgram(raw: any) {
     sourceUrl: raw.sourceUrl ?? null,
     universityId: raw.universityId ?? null,
     universityName: raw.universityName ?? null,
+    ...(raw.provenance ? { provenance: raw.provenance.map(mapProvenance) } : {}),
+    ...(raw.sourceGaps ? { sourceGaps: raw.sourceGaps.map(mapSourceGap) } : {}),
   };
 }
 
-function mapDiscipline(raw: any): Discipline {
+function mapDiscipline(raw: ApiDiscipline): Discipline {
   return {
     id: raw.id,
     name: raw.name,
     normalizedName: raw.normalizedName,
     primaryArea: raw.primaryArea,
-    areaWeights: (raw.areaWeights ?? []).map((area: any): DisciplineArea => ({
+    areaWeights: raw.areaWeights.map((area): DisciplineArea => ({
       code: area.code,
       name: area.name,
       description: area.description ?? null,
@@ -254,14 +318,16 @@ function mapDiscipline(raw: any): Discipline {
   };
 }
 
-function mapCurriculum(raw: any): CurriculumResponse {
+function mapCurriculum(raw: ApiCurriculum): CurriculumResponse {
   return {
     program: mapProgram(raw.program),
     curriculumId: raw.curriculumId,
     educationYear: String(raw.educationYear),
     sourceUrl: raw.sourceUrl ?? null,
     capturedAt: raw.capturedAt,
-    items: (raw.items ?? []).map((item: any) => ({
+    ...(raw.provenance ? { provenance: raw.provenance.map(mapProvenance) } : {}),
+    ...(raw.sourceGaps ? { sourceGaps: raw.sourceGaps.map(mapSourceGap) } : {}),
+    items: raw.items.map((item: ApiCurriculumItem) => ({
       id: item.id,
       discipline: mapDiscipline(item.discipline),
       sourceName: item.sourceName,
@@ -274,15 +340,15 @@ function mapCurriculum(raw: any): CurriculumResponse {
   };
 }
 
-function mapAdmissions(raw: any): ProgramAdmissionsResponse {
-  const offerings: AdmissionOffering[] = (raw.offerings ?? []).map((offering: any) => ({
+function mapAdmissions(raw: ApiAdmissions): ProgramAdmissionsResponse {
+  const offerings: AdmissionOffering[] = raw.offerings.map((offering: ApiAdmissionOffering) => ({
     id: offering.id,
     admissionYear: offering.admissionYear,
     studyForm: offering.studyForm ?? "unknown",
     fundingType: offering.fundingType ?? "unknown",
     scope: offering.scope,
     places: offering.places ?? null,
-    exams: (offering.exams ?? []).map((exam: any) => ({
+    exams: offering.exams.map((exam: ApiExamRequirement) => ({
       subject: exam.subject,
       sourceName: exam.sourceName ?? null,
       minimumScore: numberOrNull(exam.minimumScore),
@@ -290,20 +356,20 @@ function mapAdmissions(raw: any): ProgramAdmissionsResponse {
       isRequired: exam.isRequired ?? true,
       provenance: mapProvenance(exam.provenance),
     })),
-    quotas: (offering.quotas ?? []).map((quota: any) => ({
+    quotas: offering.quotas.map((quota: ApiQuota) => ({
       quotaType: quota.quotaType,
       sourceName: quota.sourceName ?? null,
       places: quota.places ?? null,
       provenance: mapProvenance(quota.provenance),
     })),
-    passingScores: (offering.passingScores ?? []).map((passing: any) => ({
+    passingScores: offering.passingScores.map((passing: ApiPassingScore) => ({
       scoreType: passing.scoreType,
       competitionType: passing.competitionType,
       status: passing.status,
       score: passing.score ?? null,
       provenance: mapProvenance(passing.provenance),
     })),
-    tuition: (offering.tuition ?? []).map((tuition: any) => ({
+    tuition: offering.tuition.map((tuition: ApiTuition) => ({
       amount: tuition.amount,
       currency: tuition.currency,
       academicYear: tuition.academicYear ?? null,
@@ -317,12 +383,12 @@ function mapAdmissions(raw: any): ProgramAdmissionsResponse {
   return { program: mapProgram(raw.program), programId: raw.programId, offerings };
 }
 
-function mapAdmissionFit(raw: any): AdmissionFitResponse {
-  const metric = (value: unknown) => numberOrNull(record(value).value);
-  const reason = (value: any) => {
-    const item = record(value);
-    return item.message ?? "Недостаточно данных для пояснения.";
-  };
+function mapAdmissionFit(raw: ApiAdmissionFit): AdmissionFitResponse {
+  const metric = (value: components["schemas"]["AdmissionFitMetricResponse"]) => ({
+    value: numberOrNull(value.value),
+    status: value.status,
+  });
+  const reason = (value: ApiAdmissionFitReason) => value.message;
   return {
     status: raw.status,
     score: raw.score,
@@ -333,20 +399,20 @@ function mapAdmissionFit(raw: any): AdmissionFitResponse {
       passingReadiness: metric(raw.breakdown?.passingReadiness),
       dataCompleteness: metric(raw.breakdown?.dataCompleteness),
     },
-    reasons: (raw.reasons ?? []).map(reason),
-    antiReasons: (raw.antiReasons ?? []).map(reason),
-    dataGaps: (raw.dataGaps ?? []).map(reason),
+    reasons: raw.reasons.map(reason),
+    antiReasons: raw.antiReasons.map(reason),
+    dataGaps: raw.dataGaps.map(reason),
   };
 }
 
-function mapComparison(raw: any): ComparisonResponse {
+function mapComparison(raw: ApiComparison): ComparisonResponse {
   return {
     programA: mapProgram(raw.programA),
     programB: mapProgram(raw.programB),
     scope: raw.scope,
     semester: raw.semester ?? null,
-    rows: (raw.rows ?? []).map((row: any) => ({
-      discipline: row.discipline?.name ?? "Без названия",
+    rows: raw.rows.map((row) => ({
+      discipline: row.discipline.name,
       semester: row.semester ?? null,
       hoursA: row.a?.hours ?? null,
       hoursB: row.b?.hours ?? null,
@@ -359,29 +425,32 @@ function mapComparison(raw: any): ComparisonResponse {
     })),
     totalsA: { totalHours: raw.totalsA?.hours ?? 0, totalCredits: raw.totalsA?.credits ?? "0.0000" },
     totalsB: { totalHours: raw.totalsB?.hours ?? 0, totalCredits: raw.totalsB?.credits ?? "0.0000" },
-    areaBreakdownA: (raw.areaBreakdownA ?? []).map((item: any) => ({ code: item.area, name: item.name, share: item.share })),
-    areaBreakdownB: (raw.areaBreakdownB ?? []).map((item: any) => ({ code: item.area, name: item.name, share: item.share })),
+    areaBreakdownA: raw.areaBreakdownA.map((item) => ({ code: item.area, name: item.name, share: item.share })),
+    areaBreakdownB: raw.areaBreakdownB.map((item) => ({ code: item.area, name: item.name, share: item.share })),
+    provenance: raw.provenance.map(mapProvenance),
+    sourceGapDetails: raw.sourceGapDetails.map(mapSourceGap),
   };
 }
 
-function mapProfile(raw: any): UserProfile {
-  const weights = (value: unknown) => Object.entries(record(value)).map(([code, weight]) => ({ code, name: code, weight: String(weight) }));
+function mapProfile(raw: ApiProfileOutput): UserProfile {
+  const weights = (value: Record<string, string> | undefined) => Object.entries(value ?? {}).map(([code, weight]) => ({ code, name: code, weight }));
   return {
     interests: raw.interests ?? [],
     activityPreferences: raw.activityPreferences ?? [],
-    antiInterests: (raw.antiInterests ?? []).map((item: any) => typeof item === "string" ? item : item.area),
+    antiInterests: (raw.antiInterests ?? []).map((item) => item.area),
     preferredSubjectWeights: weights(raw.preferredSubjectWeights),
     preferredActivityWeights: weights(raw.preferredActivityWeights),
     negativeWeights: weights(raw.negativeWeights),
-    confidence: String(raw.confidence?.value ?? "0"),
-    adaptiveAnswers: (raw.adaptiveAnswers ?? []).map((answer: any) => ({
+    confidence: raw.confidence?.value ?? "0",
+    confidenceByDimension: Object.entries(raw.confidenceByDimension ?? {}).map(([dimension, value]) => ({ dimension, value })),
+    adaptiveAnswers: (raw.adaptiveAnswers ?? []).map((answer) => ({
       dimension: answer.dimension,
       value: answer.optionId,
     })),
   };
 }
 
-function mapProfileSnapshot(raw: any): UserProfileSnapshot {
+function mapProfileSnapshot(raw: ApiProfile): UserProfileSnapshot {
   return {
     profile: mapProfile(raw.profile ?? raw),
     revision: String(raw.revision ?? "0"),
@@ -391,16 +460,40 @@ function mapProfileSnapshot(raw: any): UserProfileSnapshot {
   };
 }
 
-function mapRecommendation(raw: any): Recommendation {
-  const mapShare = (value: unknown) => Object.entries(record(value)).map(([code, share]) => ({ code, name: code, share: String(share) }));
-  const mapSemester = (value: unknown) => Object.entries(record(value)).map(([semester, share]) => ({ semester: Number(semester), share: String(share) }));
-  const mapReason = (value: any) => ({
+function mapRecommendation(raw: components["schemas"]["RecommendationResponse"]): Recommendation {
+  const mapShare = (value: Record<string, string>) => Object.entries(value).map(([code, share]) => ({ code, name: code, share }));
+  const mapSemester = (value: Record<string, string>) => Object.entries(value).map(([semester, share]) => ({ semester: Number(semester), share }));
+  const mapReason = (value: ApiRecommendationReason) => ({
     area: value.area ?? null,
     activity: value.activity ?? null,
     text: value.text,
     workload: numberOrNull(value.workload),
     share: value.share ?? null,
     sourceNames: value.sourceNames ?? [],
+    provenance: value.provenance.map(mapProvenance),
+  });
+  const mapMetric = (value: ApiRecommendationMetric | undefined) => ({
+    value: value?.value ?? null,
+    status: value?.status ?? "not_available",
+  });
+  const mapEvidence = (value: ApiRecommendationEvidence | null | undefined) => ({
+    profileConfidence: mapMetric(value?.profileConfidence),
+    catalogCompleteness: mapMetric(value?.catalogCompleteness),
+    sourceFreshness: {
+      ...mapMetric(value?.sourceFreshness),
+      latestCapturedAt: value?.sourceFreshness?.latestCapturedAt ?? null,
+      runIds: value?.sourceFreshness?.runIds ?? [],
+      snapshotConsistent: value?.sourceFreshness?.snapshotConsistent ?? null,
+    },
+    reliability: mapMetric(value?.reliability),
+    signalsUsed: value?.signalsUsed ?? [],
+    inferredSignals: value?.inferredSignals ?? [],
+    missingData: (value?.missingData ?? []).map(mapSourceGap),
+    policyVersion: value?.policyVersion ?? "content-fit.v1",
+    taxonomyVersion: value?.taxonomyVersion ?? "taxonomy-22.v1",
+    questionSetVersion: value?.questionSetVersion ?? null,
+    profileRevision: value?.profileRevision ?? null,
+    catalogRunIds: value?.catalogRunIds ?? [],
   });
   return {
     programId: raw.programId,
@@ -419,18 +512,21 @@ function mapRecommendation(raw: any): Recommendation {
         rawContentFit: String(raw.contentFit ?? 0),
       },
     },
-    reasons: (raw.reasons ?? []).map(mapReason),
-    antiFitReasons: (raw.antiFitReasons ?? []).map(mapReason),
+    reasons: raw.reasons.map(mapReason),
+    antiFitReasons: raw.antiFitReasons.map(mapReason),
     areaShare: mapShare(raw.areaShare),
     semesterDistribution: mapSemester(raw.semesterDistribution),
-    distinctiveSubjects: raw.distinctiveSubjects ?? [],
+    distinctiveSubjects: raw.distinctiveSubjects,
     admissionFit: raw.admissionFit
       ? { status: raw.admissionFit.status ?? null, score: raw.admissionFit.value ?? null }
       : null,
+    provenance: raw.provenance.map(mapProvenance),
+    sourceGaps: raw.sourceGaps.map(mapSourceGap),
+    evidence: mapEvidence(raw.evidence),
   };
 }
 
-function mapRecommendations(raw: any): RecommendationsResponse {
+function mapRecommendations(raw: ApiRecommendations): RecommendationsResponse {
   return {
     profile: mapProfile(raw.profile),
     recommendations: (raw.recommendations ?? []).map(mapRecommendation),
@@ -468,10 +564,11 @@ function mapProftestSession(raw: ApiProftestSession): ProftestSessionResponse {
     adaptive: raw.adaptive ?? null,
     preliminary: raw.preliminary ?? null,
     results: raw.results ? mapRecommendations(raw.results) : null,
+    profileRevision: raw.profileRevision ?? null,
   };
 }
 
-function mapEvent(raw: any): EventItem {
+function mapEvent(raw: ApiEventPayload): EventItem {
   return {
     id: raw.id,
     title: raw.title,
@@ -491,11 +588,11 @@ function mapEvent(raw: any): EventItem {
       latitude: numberOrNull(raw.venue.latitude),
       longitude: numberOrNull(raw.venue.longitude),
     } : null,
-    provenance: (raw.provenance ?? []).map(mapProvenance),
+    provenance: raw.provenance.map(mapProvenance),
   };
 }
 
-function mapPoint(raw: any): CampusPoint {
+function mapPoint(raw: ApiCampusPointPayload): CampusPoint {
   return {
     id: raw.id,
     name: raw.name,
@@ -506,13 +603,13 @@ function mapPoint(raw: any): CampusPoint {
     universityIds: raw.universityIds ?? [],
     departmentIds: raw.departmentIds ?? [],
     programIds: raw.programIds ?? [],
-    provenance: (raw.provenance ?? []).map(mapProvenance),
+    provenance: raw.provenance.map(mapProvenance),
   };
 }
 
-function mapRoute(raw: any): PersonalRouteResponse {
-  const recommendations = (raw.recommendations ?? []).map(mapRecommendation);
-  const steps: PersonalRouteStep[] = (raw.steps ?? []).map((step: any) => {
+function mapRoute(raw: ApiRoute): PersonalRouteResponse {
+  const recommendations = raw.recommendations.map(mapRecommendation);
+  const steps: PersonalRouteStep[] = raw.steps.map((step: ApiRouteStepPayload) => {
     const point = step.point ? mapPoint(step.point) : null;
     return {
       position: step.position,
@@ -529,24 +626,24 @@ function mapRoute(raw: any): PersonalRouteResponse {
   return { status: raw.status, summary: raw.summary, recommendations, steps };
 }
 
-function mapSession(raw: any): AuthSession {
-  const account = record(raw.account) as AccountInfo & { accountId?: string };
+function mapSession(raw: ApiAuthSession | ApiAuthState | ApiSession | ApiImportedAuthSession): AuthSession {
+  const account = raw.account as ApiAccountPayload | null | undefined;
   return {
-    authenticated: Boolean(raw.authenticated),
-    decisionTransfer: raw.decisionTransfer ?? null,
-    account: raw.account ? {
-      id: account.accountId ?? account.id,
+    authenticated: raw.authenticated,
+    decisionTransfer: "decisionTransfer" in raw ? raw.decisionTransfer as AuthSession["decisionTransfer"] : null,
+    account: account ? {
+      id: account.accountId,
       email: account.email,
-      displayName: account.displayName ?? null,
+      displayName: null,
       createdAt: account.createdAt,
     } : null,
   };
 }
 
-function mapRun(raw: any): IngestionRunDetail {
+function mapRun(raw: components["schemas"]["IngestionRunDetailResponse"]): IngestionRunDetail {
   return {
     id: raw.id,
-    source: raw.source ?? ((raw.sourceKinds ?? []).join(", ") || "bmstu_live"),
+    source: raw.sourceProfile ?? ((raw.sourceKinds ?? []).join(", ") || "bmstu_live"),
     status: raw.status,
     startedAt: raw.startedAt,
     finishedAt: raw.finishedAt ?? null,
@@ -555,19 +652,53 @@ function mapRun(raw: any): IngestionRunDetail {
     curriculumItemCount: raw.curriculumItemCount ?? 0,
     eventCount: raw.eventCount ?? 0,
     campusPointCount: raw.campusPointCount ?? 0,
+    sourceGapCount: raw.sourceGapCount ?? 0,
+    criticalGapCount: raw.criticalGapCount ?? 0,
+    qualityStatus: raw.qualityStatus,
+    driftStatus: raw.driftStatus,
+    sourceProfile: raw.sourceProfile ?? null,
+    universityId: raw.universityId ?? null,
+    durationMs: raw.durationMs ?? null,
+    projectionStatus: raw.projectionStatus,
     insertedCount: raw.insertedCount ?? 0,
     updatedCount: raw.updatedCount ?? 0,
     unchangedCount: raw.unchangedCount ?? 0,
     removedCount: raw.removedCount ?? 0,
     errorMessage: raw.errorMessage ?? null,
+    errorCode: raw.errorCode ?? null,
+    previousGoodRunId: raw.previousGoodRunId ?? null,
+    sourceRevision: raw.sourceRevision ?? null,
+    configurationVersion: raw.configurationVersion ?? null,
+    retryOfRunId: raw.retryOfRunId ?? null,
+    projectionTarget: raw.projectionTarget ?? null,
+    heartbeatAt: raw.heartbeatAt ?? null,
+    recoveryReason: raw.recoveryReason ?? null,
     sourceHashes: raw.sourceHashes ?? [],
     sourceKinds: raw.sourceKinds ?? [],
   };
 }
 
-function mapRunSummary(raw: any): IngestionRunSummary {
-  const run = mapRun(raw);
-  return run;
+function mapRunSummary(raw: components["schemas"]["IngestionRunSummaryResponse"]): IngestionRunSummary {
+  return {
+    id: raw.id,
+    status: raw.status,
+    startedAt: raw.startedAt,
+    finishedAt: raw.finishedAt ?? null,
+    source: raw.sourceProfile,
+    sourceCount: raw.sourceCount,
+    programCount: raw.programCount,
+    curriculumItemCount: raw.curriculumItemCount,
+    eventCount: raw.eventCount,
+    campusPointCount: raw.campusPointCount,
+    sourceGapCount: raw.sourceGapCount,
+    criticalGapCount: raw.criticalGapCount,
+    qualityStatus: raw.qualityStatus,
+    driftStatus: raw.driftStatus,
+    sourceProfile: raw.sourceProfile ?? null,
+    universityId: raw.universityId ?? null,
+    durationMs: raw.durationMs ?? null,
+    projectionStatus: raw.projectionStatus,
+  };
 }
 
 export function getPrograms(): Promise<ProgramListResponse> {
@@ -606,19 +737,21 @@ export function getDisciplineAreas(): Promise<{ items: DisciplineArea[] }> {
   }));
 }
 
+/** @deprecated Use startProftestSession and the version-pinned session API. */
 export function getProftestQuestions(): Promise<QuestionnaireResponse> {
   return requestJson<ApiQuestions>("/proftest/questions");
 }
 
+/** @deprecated Use the session API; retained for one compatibility release. */
 export function previewProftest(request: ProftestSubmissionRequest): Promise<ProftestPreviewResponse> {
-  return requestJson<ApiPreview>("/proftest/preview", { method: "POST", body: JSON.stringify(request) }).then((raw: any) => ({
+  return requestJson<ApiPreview>("/proftest/preview", { method: "POST", body: JSON.stringify(request) }).then((raw) => ({
     profile: mapProfile(raw.profile),
     adaptiveDecision: {
-      dimension: raw.adaptive?.dimensions?.[0]?.code ?? "",
-      decided: raw.adaptive?.status === "skipped",
+      dimension: raw.adaptive.dimensions[0]?.code ?? "",
+      decided: raw.adaptive.status === "skipped",
       nextQuestion: raw.question ?? null,
     },
-    candidates: (raw.candidates ?? []).map((candidate: any) => ({
+    candidates: raw.candidates.map((candidate) => ({
       programId: candidate.programId,
       programName: candidate.programCode,
       contentFit: candidate.contentFit,
@@ -626,6 +759,7 @@ export function previewProftest(request: ProftestSubmissionRequest): Promise<Pro
   }));
 }
 
+/** @deprecated Use completeProftestSession after the session flow. */
 export function getProftestResults(request: ProftestSubmissionRequest): Promise<ProftestResultsResponse> {
   return requestJson<ApiResults>("/proftest/results", { method: "POST", body: JSON.stringify(request) }).then(mapRecommendations);
 }
@@ -883,19 +1017,19 @@ export type RegisterRequest = ApiRegisterRequest;
 export type LoginRequest = ApiLoginRequest;
 
 export function registerAccount(request: RegisterRequest): Promise<AuthSession> {
-  return requestJson<ApiSession>("/auth/register", { method: "POST", body: JSON.stringify(request) }).then(mapSession);
+  return requestJson<ApiAuthSession>("/auth/register", { method: "POST", body: JSON.stringify(request) }).then(mapSession);
 }
 
 export function loginAccount(request: LoginRequest): Promise<AuthSession> {
-  return requestJson<ApiSession>("/auth/login", { method: "POST", body: JSON.stringify(request) }).then(mapSession);
+  return requestJson<ApiAuthSession>("/auth/login", { method: "POST", body: JSON.stringify(request) }).then(mapSession);
 }
 
 export function logoutAccount(): Promise<AuthSession> {
-  return requestJson<ApiSession>("/auth/logout", { method: "POST" }).then(mapSession);
+  return requestJson<ApiAuthState>("/auth/logout", { method: "POST" }).then(mapSession);
 }
 
 export function importGuestDecision(): Promise<AuthSession> {
-  return requestJson<ApiSession>("/auth/decision/import-guest", { method: "POST" }).then(mapSession);
+  return requestJson<ApiImportedAuthSession>("/auth/decision/import-guest", { method: "POST" }).then(mapSession);
 }
 
 function opsHeaders(opsKey: string): HeadersInit {

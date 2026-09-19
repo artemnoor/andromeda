@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 
 from andromeda.api.dependencies import get_curriculum_reader, get_discipline_reader, get_program_reader, get_university_reader
-from andromeda.api.schemas.common import CurriculumItemResponse, CurriculumResponse, ProgramListResponse, ProgramResponse, ProgramSummaryResponse
+from andromeda.api.schemas.common import CurriculumItemResponse, CurriculumResponse, ProgramListResponse, ProgramResponse, ProgramSummaryResponse, SourceAttributionResponse, SourceGapReferenceResponse
 from andromeda.api.schemas.disciplines import discipline_response
 from andromeda.modules.curricula.repository.ports import CurriculumReader
 from andromeda.modules.disciplines.repository.ports import DisciplineReader
@@ -94,4 +94,6 @@ def get_curriculum(
         source_url=curriculum.source_url,
         captured_at=curriculum.captured_at,
         items=tuple(items),
+        provenance=tuple(SourceAttributionResponse.model_validate(item.model_dump()) for item in curriculum.provenance),
+        source_gaps=tuple(SourceGapReferenceResponse.model_validate(item.model_dump()) for item in curriculum.source_gaps),
     )

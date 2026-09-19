@@ -8,9 +8,10 @@ from typing import Literal
 from pydantic import Field
 
 from andromeda.modules.admission_fit.contracts.public import AdmissionFitResult, AdmissionFitStatus
-from andromeda.modules.proftest.contracts.public import MatchScore
+from andromeda.modules.proftest.contracts.public import MatchScore, RecommendationEvidence
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.ids import NonEmptyText, ProgramCode, ProgramId, ShortText, SourceHash
+from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 
 from ..domain.entities import DecisionContext
 from ..domain.values import AdmissionGate, DecisionId, ShortlistEntryState, ShortlistRole
@@ -22,6 +23,25 @@ class DecisionCandidatePartition(StrEnum):
     PRIMARY = "primary"
     ALTERNATIVE = "alternative"
     INELIGIBLE = "ineligible"
+    INSUFFICIENT_DATA = "insufficient_data"
+
+
+class DecisionConstraintDimension(StrEnum):
+    """User-entered decision dimensions that can be checked per candidate."""
+
+    APPLICANT_SCORES = "applicant_scores"
+    ADMISSION_YEAR = "admission_year"
+    FUNDING = "funding"
+    STUDY_FORM = "study_form"
+    MAX_TUITION = "max_tuition"
+    LOCATION = "location"
+
+
+class DecisionConstraintApplicability(StrEnum):
+    """Whether a candidate constraint was compared against source facts."""
+
+    APPLIED = "applied"
+    NOT_APPLICABLE = "not_applicable"
     INSUFFICIENT_DATA = "insufficient_data"
 
 
@@ -58,6 +78,16 @@ class DecisionSuggestionReasons(ContractModel):
     missing_data: tuple[NonEmptyText, ...] = Field(default=(), max_length=8)
 
 
+class DecisionConstraintOutcome(ContractModel):
+    """Typed, candidate-level result for one explicit user constraint."""
+
+    dimension: DecisionConstraintDimension
+    applicability: DecisionConstraintApplicability
+    satisfied: bool | None = None
+    message: NonEmptyText
+    source_gaps: tuple[ShortText, ...] = Field(default=(), max_length=4)
+
+
 class DecisionSuggestion(ContractModel):
     """System-derived candidate proposal, never persisted as user choice."""
 
@@ -69,9 +99,13 @@ class DecisionSuggestion(ContractModel):
     admission_risk: AdmissionGate = AdmissionGate.NOT_EVALUATED
     admission_fit: AdmissionFitResult | None = None
     content_fit: MatchScore | None = None
+    evidence: RecommendationEvidence | None = None
+    constraint_outcomes: tuple[DecisionConstraintOutcome, ...] = Field(default=(), max_length=8)
     reasons: DecisionSuggestionReasons
     source_gaps: tuple[NonEmptyText, ...] = Field(default=(), max_length=16)
     source_hashes: tuple[SourceHash, ...] = Field(default=(), max_length=8)
+    provenance: tuple[SourceAttribution, ...] = ()
+    source_gap_details: tuple[SourceGapReference, ...] = ()
 
 
 class DecisionShortlistItem(ContractModel):
@@ -90,9 +124,13 @@ class DecisionShortlistItem(ContractModel):
     admission_risk: AdmissionGate = AdmissionGate.NOT_EVALUATED
     admission_fit: AdmissionFitResult | None = None
     content_fit: MatchScore | None = None
+    evidence: RecommendationEvidence | None = None
+    constraint_outcomes: tuple[DecisionConstraintOutcome, ...] = Field(default=(), max_length=8)
     reasons: DecisionSuggestionReasons
     source_gaps: tuple[NonEmptyText, ...] = Field(default=(), max_length=16)
     source_hashes: tuple[SourceHash, ...] = Field(default=(), max_length=8)
+    provenance: tuple[SourceAttribution, ...] = ()
+    source_gap_details: tuple[SourceGapReference, ...] = ()
 
 
 class DecisionRefinementOption(ContractModel):
@@ -140,6 +178,9 @@ class DecisionRefinementResult(ContractModel):
 
 __all__ = [
     "DecisionCandidatePartition",
+    "DecisionConstraintApplicability",
+    "DecisionConstraintDimension",
+    "DecisionConstraintOutcome",
     "DecisionContextResult",
     "DecisionDataCompleteness",
     "DecisionMutationResult",

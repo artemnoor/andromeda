@@ -36,6 +36,18 @@ class IngestionRunSummary(ContractModel):
     source_gap_count: int = Field(default=0, strict=True, ge=0)
     critical_gap_count: int = Field(default=0, strict=True, ge=0)
     drift_status: str = Field(default="not_checked", pattern=r"^(not_checked|passed|rejected)$")
+    quality_status: str = Field(default="not_checked", pattern=r"^(not_checked|passed|degraded|rejected)$")
+    previous_good_run_id: IngestRunId | None = None
+    source_profile: str = Field(default="legacy", min_length=1, max_length=128)
+    source_revision: str = Field(default="legacy", min_length=1, max_length=64)
+    configuration_version: str = Field(default="legacy", min_length=1, max_length=64)
+    retry_of_run_id: IngestRunId | None = None
+    projection_target: str = Field(default="canonical", min_length=1, max_length=64)
+    heartbeat_at: datetime | None = None
+    projection_status: str = Field(
+        default="not_started", pattern=r"^(not_started|running|committed|reconciled|failed)$"
+    )
+    recovery_reason: str | None = Field(default=None, min_length=1, max_length=128)
 
     @model_validator(mode="after")
     def validate_lifecycle(self) -> "IngestionRunSummary":

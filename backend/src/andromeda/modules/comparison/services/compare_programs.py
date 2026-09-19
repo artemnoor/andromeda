@@ -65,6 +65,8 @@ class CompareProgramsService:
             totals_b=totals_b,
             area_breakdown_a=area_breakdown_a,
             area_breakdown_b=area_breakdown_b,
+            provenance=(*program_a.provenance, *curriculum_a.provenance, *program_b.provenance, *curriculum_b.provenance),
+            source_gap_details=(*program_a.source_gaps, *curriculum_a.source_gaps, *program_b.source_gaps, *curriculum_b.source_gaps),
         )
 
     def _require_program(self, program_id: ProgramId) -> Program:

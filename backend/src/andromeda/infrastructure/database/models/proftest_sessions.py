@@ -36,6 +36,7 @@ class ProftestAnswerSessionModel(Base):
             postgresql_where=text("status = 'draft'"),
         ),
         Index("ix_proftest_sessions_owner_status", "owner_key", "status"),
+        Index("ix_proftest_sessions_owner_status_updated", "owner_key", "status", "updated_at"),
         Index("ix_proftest_sessions_expiry", "expires_at"),
         CheckConstraint("length(session_id) > 0", name="ck_proftest_session_id_non_empty"),
         CheckConstraint("length(owner_key) > 0", name="ck_proftest_owner_key_non_empty"),

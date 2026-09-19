@@ -8,6 +8,8 @@ from typing import Protocol
 
 from andromeda.modules.proftest.contracts.public import ProfileScope
 from andromeda.modules.proftest.contracts.public import ProgramFingerprint
+from andromeda.modules.admissions.contracts.public import ProgramAdmissions
+from andromeda.modules.universities.contracts.public import University
 from andromeda.modules.programs.contracts.public import Program
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.ids import AccountId
@@ -63,10 +65,12 @@ class DecisionAnalyticsReader(Protocol):
 
 
 class ProgramCandidateSnapshot(ContractModel):
-    """One canonical program with its optional curriculum fingerprint."""
+    """One canonical program and the facts needed for decision comparison."""
 
     program: Program
     fingerprint: ProgramFingerprint | None = None
+    admissions: ProgramAdmissions | None = None
+    university: University | None = None
 
     def model_post_init(self, __context: object) -> None:
         if self.fingerprint is not None:
@@ -74,6 +78,8 @@ class ProgramCandidateSnapshot(ContractModel):
                 raise ValueError("candidate fingerprint must belong to program")
             if self.fingerprint.program_code != self.program.code:
                 raise ValueError("candidate fingerprint code must match program")
+        if self.admissions is not None and self.admissions.program_id != self.program.id:
+            raise ValueError("candidate admissions must belong to program")
 
 
 class ProgramCandidateSource(Protocol):

@@ -33,7 +33,7 @@ from .ids import (
     UniversityId,
     VenueId,
 )
-from .provenance import SourceAttribution
+from .provenance import GapSeverity, SourceAttribution, SourceGapReference
 
 __all__ = [
     "AndromedaError",
@@ -51,6 +51,7 @@ __all__ = [
     "DirectionId",
     "DisciplineId",
     "EducationLevel",
+    "GapSeverity",
     "EventId",
     "EducationYear",
     "ErrorCode",
@@ -66,6 +67,7 @@ __all__ = [
     "SourcePosition",
     "Semester",
     "SourceAttribution",
+    "SourceGapReference",
     "SourceKind",
     "ValidationError",
     "UniversityId",

@@ -16,6 +16,8 @@ class ProgramModel(Base):
     education_year: Mapped[int] = mapped_column(Integer, nullable=False)
     study_plan_url: Mapped[str] = mapped_column(Text, nullable=False)
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    provenance_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    source_gaps_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
 
     __table_args__ = (
         UniqueConstraint("direction_id", "code", name="uq_program_direction_code"),

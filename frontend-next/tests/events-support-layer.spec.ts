@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("events remain optional and expose only source-backed program relations", async ({ page }) => {
   await page.goto("/?view=events");
-  await expect(page.getByText("События МГТУ")).toBeVisible();
+  await expect(page.getByText("События университетов")).toBeVisible();
 
   // The fixture contains an official event without a program relation. The UI
   // explains the source gap instead of inventing an add-to-shortlist action.

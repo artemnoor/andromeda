@@ -17,13 +17,13 @@ from .fetch import FetchConfig, Fetcher
 from .source_models import FetchedResource
 from .pdf import is_pdf
 from andromeda.ingestion.contracts.constraints import http_url
-from andromeda.ingestion.contracts.raw import JsonValue, RawSourceSnapshot
-from andromeda.ingestion.contracts.source import CapturedSources
+from andromeda.ingestion.contracts.raw import JsonValue, RawSourceGap, RawSourceSnapshot
+from andromeda.ingestion.contracts.source import CapturedSources, source_fetch_gap
 from andromeda.shared.contracts.errors import ContractError, ErrorCode, ErrorDetail
 
 JsonObject = dict[str, JsonValue]
-logger = logging.getLogger("tracer.source.fetch")
-selection_logger = logging.getLogger("tracer.source.select")
+logger = logging.getLogger("andromeda.ingestion.bmstu.source.fetch")
+selection_logger = logging.getLogger("andromeda.ingestion.bmstu.source.select")
 
 S01_URL = "https://bmstu.ru/sveden/common/"
 S06_CATALOG_URL = "https://bmstu.ru/bachelor/majors"
@@ -87,6 +87,7 @@ class BmstuSource:
     def __init__(self, fetcher: Fetcher | None = None) -> None:
         self.fetcher = fetcher or Fetcher(FetchConfig(browser_mode="auto"))
         self._owns_fetcher = fetcher is None
+        self._capture_gaps: list[RawSourceGap] = []
 
     def close(self) -> None:
         if self._owns_fetcher:
@@ -94,6 +95,7 @@ class BmstuSource:
 
     def capture(self, mode: str = "fixture", fixture_dir: Path | None = None) -> CapturedSources:
         logger.info("source_capture_start mode=%s", mode)
+        self._capture_gaps = []
         if mode == "fixture":
             captured = self._load_fixture(fixture_dir or DEFAULT_FIXTURE_DIR)
         elif mode == "live":
@@ -171,11 +173,12 @@ class BmstuSource:
             sum(len(_detail_profiles(snapshot.body)) for snapshot in detail_snapshots),
             len(set(plan_urls)),
         )
-        return CapturedSources(tuple(snapshots))
+        return CapturedSources(tuple(snapshots), source_gaps=tuple(self._capture_gaps))
 
     def _fetch_public_documents(self, public_url: str) -> tuple[RawSourceSnapshot, ...]:
         if not _is_supported_public_plan_url(public_url):
             selection_logger.warning("study_plan_host_rejected plan_url=%s", public_url)
+            self._capture_gaps.append(source_fetch_gap("bmstu_curriculum_metadata", public_url, "unsupported_source_host"))
             return ()
         if "disk.yandex.ru/" in public_url:
             resolved_url = public_url.split("?", 1)[0]
@@ -187,6 +190,7 @@ class BmstuSource:
         metadata = self.fetcher.fetch_http(metadata_url)
         if metadata.error or not metadata.body:
             selection_logger.warning("study_plan_metadata_unavailable plan_url=%s", public_url)
+            self._capture_gaps.append(source_fetch_gap("bmstu_curriculum_metadata", public_url, metadata.error_code or "source_unavailable"))
             return ()
         payload = _json_object(metadata.body)
         embedded = _object(payload.get("_embedded"))
@@ -205,15 +209,18 @@ class BmstuSource:
         metadata_snapshot = self._snapshot("bmstu_curriculum_metadata", public_url, metadata)
         if not direct_urls:
             selection_logger.warning("study_plan_document_unavailable plan_url=%s resource_type=%s", public_url, payload.get("type"))
+            self._capture_gaps.append(source_fetch_gap("bmstu_curriculum_document", public_url, "document_missing"))
             return (metadata_snapshot,)
         snapshots = [metadata_snapshot]
         for direct_url in dict.fromkeys(direct_urls):
             if not _is_supported_download_url(direct_url):
                 selection_logger.warning("study_plan_download_host_rejected plan_url=%s", public_url)
+                self._capture_gaps.append(source_fetch_gap("bmstu_curriculum_document", public_url, "download_host_rejected"))
                 continue
             resource = self.fetcher.fetch_http(direct_url)
             if resource.error or not resource.body:
                 selection_logger.warning("study_plan_download_failed plan_url=%s", public_url)
+                self._capture_gaps.append(source_fetch_gap("bmstu_curriculum_document", public_url, resource.error_code or "download_unavailable"))
                 continue
             snapshots.append(self._snapshot("bmstu_curriculum_document", public_url, resource))
         return tuple(snapshots)
@@ -232,8 +239,8 @@ class BmstuSource:
         if resource.error or resource.status_code is None or not resource.body:
             raise ContractError(
                 ErrorCode.SOURCE_CONTRACT_ERROR,
-                f"Source fetch failed for {public_url}",
-                [ErrorDetail(path="source", message="source returned no valid body", type="source_fetch")],
+                f"Source fetch failed for {public_url}: {resource.error_code or resource.error or 'unknown'}",
+                [ErrorDetail(path="source", message=resource.error_code or resource.error or "source returned no valid body", type="source_fetch")],
             )
         digest = sha256(resource.body).hexdigest()
         logger.info(
@@ -254,6 +261,9 @@ class BmstuSource:
             captured_at=datetime.fromisoformat(resource.fetched_at),
             content_sha256=digest,
             body=resource.body,
+            response_class="success",
+            access_mode=resource.access_mode,
+            truncated=resource.truncated,
         )
 
     @staticmethod

@@ -30,3 +30,14 @@ def test_environment_examples_use_distinct_postgresql_databases() -> None:
     assert "andromeda_staging" in staging
     assert "andromeda_dev" not in staging
     assert "andromeda_staging" not in development
+
+
+def test_production_like_runtime_uses_the_8020_internal_contract() -> None:
+    compose = (REPOSITORY_ROOT / "deploy" / "yc" / "compose.yaml").read_text(encoding="utf-8")
+    server_api = (REPOSITORY_ROOT / "frontend-next" / "src" / "lib" / "server-api.ts").read_text(encoding="utf-8")
+    dockerignore = (REPOSITORY_ROOT / "backend" / ".dockerignore").read_text(encoding="utf-8")
+
+    assert "ANDROMEDA_INTERNAL_API_URL: http://backend:8020" in compose
+    assert "ANDROMEDA_OPS_API_KEY: ${ANDROMEDA_OPS_API_KEY}" in compose
+    assert "backend:8000" not in server_api
+    assert "!data/tracer.db" not in dockerignore

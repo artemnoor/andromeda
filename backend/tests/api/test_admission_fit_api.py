@@ -62,6 +62,7 @@ def test_admission_fit_returns_real_source_backed_facts(tmp_path: Path) -> None:
     assert payload["dataGaps"]
     assert "contentFit" not in payload
     assert payload["reasons"][0]["provenance"][0]["sourceKind"] == "bmstu_major_detail"
+    assert payload["reasons"][0]["provenance"][0]["universityId"] == "university:bmstu"
 
 
 def test_below_real_minimum_is_unlikely_with_an_anti_reason(tmp_path: Path) -> None:

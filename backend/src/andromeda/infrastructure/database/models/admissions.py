@@ -27,6 +27,11 @@ class AdmissionOfferingModel(Base):
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     source_locator: Mapped[str | None] = mapped_column(String(256), nullable=True)
     source_name: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    university_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    run_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    field: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    record_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    inferred: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
         UniqueConstraint(
@@ -62,6 +67,11 @@ class AdmissionExamRequirementModel(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     source_locator: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    university_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    run_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    field: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    record_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    inferred: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
         UniqueConstraint("offering_id", "subject", "source_name", name="uq_admission_exam_identity"),
@@ -85,6 +95,11 @@ class AdmissionQuotaModel(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     source_locator: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    university_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    run_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    field: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    record_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    inferred: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
         UniqueConstraint("offering_id", "quota_type", "source_name", name="uq_admission_quota_identity"),
@@ -109,6 +124,11 @@ class AdmissionPassingScoreModel(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     source_locator: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    university_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    run_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    field: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    record_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    inferred: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
         UniqueConstraint(
@@ -152,6 +172,11 @@ class AdmissionTuitionModel(Base):
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     source_locator: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    university_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    run_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    field: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    record_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    inferred: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
         UniqueConstraint("offering_id", "amount", "is_discounted", "study_form", name="uq_admission_tuition_identity"),

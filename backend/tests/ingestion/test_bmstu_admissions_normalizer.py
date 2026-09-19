@@ -11,6 +11,7 @@ from andromeda.ingestion.contracts.raw import (
     SourceLocator,
 )
 from andromeda.ingestion.contracts.source import CapturedSources
+from andromeda.ingestion.universities.bmstu.adapter import _canonicalize_admission_records
 from andromeda.ingestion.universities.bmstu.normalizers.admissions import normalize_admissions
 from andromeda.modules.programs.domain.entities import Program
 
@@ -125,3 +126,26 @@ def test_normalizer_fans_direction_fact_out_to_all_profiles() -> None:
 
     assert {item.program_id for item in result} == {"program:09.03.01-02", "program:09.03.01-12"}
     assert all(item.offerings[0].passing_scores[0].competition_type.value == "targeted" for item in result)
+
+
+def test_adapter_quarantines_unknown_admission_identity_without_fabricating_projection() -> None:
+    unknown = _record(
+        url="https://bmstu.ru/detail/01.03.02",
+        year=2026,
+        score=Decimal("210"),
+    ).model_copy(update={"program_code": "01.03.02"})
+    known = _record(
+        url="https://bmstu.ru/detail/09.03.01",
+        year=2026,
+        score=Decimal("220"),
+    )
+
+    records, gaps = _canonicalize_admission_records(
+        (unknown, known),
+        (_raw_program("09.03.01-02"),),
+    )
+
+    assert tuple(record.program_code for record in records) == ("09.03.01",)
+    assert len(gaps) == 1
+    assert gaps[0].reason == "admission-program-identity-unknown"
+    assert gaps[0].entity_type == "admission"

@@ -19,6 +19,11 @@ class FetchedResource:
     fetched_at: str
     access_mode: str = "http"
     error: str | None = None
+    error_code: str | None = None
+    truncated: bool = False
+    attempts: int = 1
+    retry_class: str | None = None
+    redirects: tuple[str, ...] = ()
 
     @property
     def content_hash(self) -> str:

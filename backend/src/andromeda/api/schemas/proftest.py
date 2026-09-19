@@ -10,9 +10,9 @@ from typing import Annotated, Literal
 from pydantic import BeforeValidator, Field, model_validator
 
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
-from andromeda.modules.proftest.contracts.public import ActivityCode, AdaptiveAnswer, AdaptiveSelection, AdaptiveStatus, AnalyticsEventType, Answer, AnswerSet, AnswerStatus, AntiInterest, Confidence, MatchReason, MatchScore, ProftestAnalyticsEvent, ProftestPreview, ProftestResults, ProftestSessionView, Question, Questionnaire, QuestionBlock, QuestionComponentType, Recommendation, ReasonKind, SessionAnswer, SessionProgress, SessionStatus, UserProfile, UserProfileSnapshot
+from andromeda.modules.proftest.contracts.public import ActivityCode, AdaptiveAnswer, AdaptiveSelection, AdaptiveStatus, AnalyticsEventType, Answer, AnswerSet, AnswerStatus, AntiInterest, Confidence, EvidenceSignal, EvidenceStatus, MatchReason, MatchScore, ProftestAnalyticsEvent, ProftestPreview, ProftestResults, ProftestSessionView, Question, Questionnaire, QuestionBlock, QuestionComponentType, Recommendation, RecommendationEvidence, ReasonKind, SessionAnswer, SessionProgress, SessionStatus, UserProfile, UserProfileSnapshot
 
-from .common import ApiModel
+from .common import ApiModel, SourceAttributionResponse, SourceGapReferenceResponse
 
 
 def _decimal_from_json(value: object) -> object:
@@ -301,11 +301,38 @@ class ReasonResponse(ApiModel):
     workload: Decimal
     share: Decimal
     source_names: tuple[str, ...]
+    provenance: tuple[SourceAttributionResponse, ...] = ()
 
 
 class OptionalMetricResponse(ApiModel):
     status: str
     value: int | None = None
+
+
+class EvidenceMetricResponse(ApiModel):
+    value: Decimal | None = Field(default=None, ge=Decimal("0"), le=Decimal("1"), max_digits=5, decimal_places=4)
+    status: EvidenceStatus
+
+
+class SourceFreshnessResponse(EvidenceMetricResponse):
+    latest_captured_at: datetime | None = None
+    run_ids: tuple[str, ...] = ()
+    snapshot_consistent: bool | None = None
+
+
+class RecommendationEvidenceResponse(ApiModel):
+    profile_confidence: EvidenceMetricResponse
+    catalog_completeness: EvidenceMetricResponse
+    source_freshness: SourceFreshnessResponse
+    reliability: EvidenceMetricResponse
+    signals_used: tuple[EvidenceSignal, ...] = ()
+    inferred_signals: tuple[EvidenceSignal, ...] = ()
+    missing_data: tuple[SourceGapReferenceResponse, ...] = ()
+    policy_version: str
+    taxonomy_version: str
+    question_set_version: str | None = Field(default=None, alias="questionSetVersion")
+    profile_revision: int | None = Field(default=None, ge=1)
+    catalog_run_ids: tuple[str, ...] = ()
 
 
 class RecommendationResponse(ApiModel):
@@ -320,6 +347,9 @@ class RecommendationResponse(ApiModel):
     semester_distribution: dict[str, Decimal]
     distinctive_subjects: tuple[str, ...]
     admission_fit: OptionalMetricResponse
+    provenance: tuple[SourceAttributionResponse, ...] = ()
+    source_gaps: tuple[SourceGapReferenceResponse, ...] = ()
+    evidence: RecommendationEvidenceResponse
 
 
 class ProftestResultsResponse(ApiModel):
@@ -479,11 +509,40 @@ def recommendation_response(recommendation: Recommendation) -> RecommendationRes
         semester_distribution=recommendation.semester_distribution,
         distinctive_subjects=recommendation.distinctive_subjects,
         admission_fit=OptionalMetricResponse.model_validate(recommendation.admission_fit.model_dump()),
+        provenance=tuple(SourceAttributionResponse.model_validate(item.model_dump()) for item in recommendation.provenance),
+        source_gaps=tuple(SourceGapReferenceResponse.model_validate(item.model_dump()) for item in recommendation.source_gaps),
+        evidence=recommendation_evidence_response(recommendation.evidence),
+    )
+
+
+def recommendation_evidence_response(value: RecommendationEvidence) -> RecommendationEvidenceResponse:
+    return RecommendationEvidenceResponse(
+        profile_confidence=EvidenceMetricResponse.model_validate(value.profile_confidence.model_dump()),
+        catalog_completeness=EvidenceMetricResponse.model_validate(value.catalog_completeness.model_dump()),
+        source_freshness=SourceFreshnessResponse.model_validate(value.source_freshness.model_dump()),
+        reliability=EvidenceMetricResponse.model_validate(value.reliability.model_dump()),
+        signals_used=value.signals_used,
+        inferred_signals=value.inferred_signals,
+        missing_data=tuple(SourceGapReferenceResponse.model_validate(item.model_dump()) for item in value.missing_data),
+        policy_version=value.policy_version,
+        taxonomy_version=value.taxonomy_version,
+        questionSetVersion=value.question_set_version,
+        profile_revision=value.profile_revision,
+        catalog_run_ids=value.catalog_run_ids,
     )
 
 
 def _reason_response(reason: MatchReason) -> ReasonResponse:
-    return ReasonResponse(kind=reason.kind, area=reason.area, activity=reason.activity, text=reason.text, workload=reason.workload, share=reason.share, source_names=reason.source_names)
+    return ReasonResponse(
+        kind=reason.kind,
+        area=reason.area,
+        activity=reason.activity,
+        text=reason.text,
+        workload=reason.workload,
+        share=reason.share,
+        source_names=reason.source_names,
+        provenance=tuple(SourceAttributionResponse.model_validate(item.model_dump()) for item in reason.provenance),
+    )
 
 
 _profile_response = profile_response
@@ -501,6 +560,7 @@ __all__ = [
     "ProftestPreviewResponse",
     "ProftestResultsResponse",
     "QuestionnaireResponse",
+    "RecommendationEvidenceResponse",
     "SessionProgressResponse",
     "UserProfileCreateRequest",
     "UserProfileResponse",
@@ -514,4 +574,5 @@ __all__ = [
     "profile_response",
     "snapshot_response",
     "recommendation_response",
+    "recommendation_evidence_response",
 ]

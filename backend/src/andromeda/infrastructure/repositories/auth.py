@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import logging
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -91,6 +91,19 @@ class SqlAlchemyAccountRepository(AccountRepository):
             )
         )
         return _to_account(model) if model is not None else None
+
+    def purge_expired_sessions(self, *, now: datetime) -> int:
+        try:
+            result = self._session.execute(delete(AuthSessionModel).where(AuthSessionModel.expires_at <= _utc(now)))
+            self._session.commit()
+            deleted = int(getattr(result, "rowcount", 0) or 0)
+            if deleted:
+                logger.info("auth_expired_sessions_purged count=%d", deleted)
+            return deleted
+        except SQLAlchemyError as exc:
+            self._session.rollback()
+            logger.error("auth_repository_write_failed operation=purge_expired_sessions")
+            raise RuntimeError("Expired session cleanup failed") from exc
 
     def revoke_session(self, token_hash: SessionTokenHash, *, now: datetime) -> None:
         model = self._session.scalar(select(AuthSessionModel).where(AuthSessionModel.token_hash == token_hash))

@@ -5,8 +5,6 @@ __pycache__/
 pipeline_runs/
 tests/
 data/*
-!data/
-!data/tracer.db
 .env
 .env.*
 !.env.example

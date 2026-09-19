@@ -16,7 +16,7 @@ from andromeda.modules.admission_fit.contracts.public import (
     BatchAdmissionFitOutcome,
     BatchAdmissionFitRequest,
 )
-from andromeda.modules.proftest.contracts.public import MatchScore, ProgramFingerprint, UserProfile
+from andromeda.modules.proftest.contracts.public import MatchScore, ProgramFingerprint, RecommendationEvidence, UserProfile
 from andromeda.modules.recommendations.contracts.public import (
     CandidateRankingRequest,
     RecommendationServicePort,
@@ -27,6 +27,8 @@ from andromeda.shared.contracts.ids import ProgramId
 from ..contracts.public import (
     AdmissionConstraints,
     DecisionCandidatePartition,
+    DecisionConstraintApplicability,
+    DecisionConstraintOutcome,
     DecisionContext,
     DecisionDataCompleteness,
     DecisionRefinementOption,
@@ -38,6 +40,7 @@ from ..contracts.public import (
 from ..domain.values import AdmissionGate, ShortlistRole
 from ..repository.ports import ProgramCandidateSnapshot, ProgramCandidateSource
 from .explanations import DecisionExplanationBuilder, admission_gate
+from .constraints import DecisionConstraintEvaluator
 
 
 logger = logging.getLogger("andromeda.modules.decision.candidates")
@@ -55,6 +58,8 @@ class _CandidateEvidence:
     source: ProgramCandidateSnapshot | None
     admission: BatchAdmissionFitOutcome | None
     content_fit: MatchScore | None
+    evidence: RecommendationEvidence | None
+    constraint_outcomes: tuple[DecisionConstraintOutcome, ...] = ()
 
 
 class DecisionCandidatePipeline:
@@ -78,6 +83,7 @@ class DecisionCandidatePipeline:
         self._recommendations = recommendations
         self._admission_fit = admission_fit
         self._explanations = explanations or DecisionExplanationBuilder()
+        self._constraint_evaluator = DecisionConstraintEvaluator()
         self._primary_limit = primary_limit
         self._alternative_limit = alternative_limit
 
@@ -96,11 +102,20 @@ class DecisionCandidatePipeline:
             if item.program.id not in active_ids and item.program.id not in excluded_ids
         )
         admission_outcomes = self._evaluate_admission(sources, state.admission_constraints)
+        constraint_outcomes = {
+            item.program.id: self._constraint_evaluator.evaluate(
+                item,
+                state.admission_constraints,
+                admission_outcomes.get(item.program.id),
+            )
+            for item in sources
+        }
         content_scores = self._rank_content(
             sources,
             active_ids=active_ids,
             excluded_ids=excluded_ids,
             admission_outcomes=admission_outcomes,
+            constraint_outcomes=constraint_outcomes,
             profile=context.preferences,
         )
         evidence = {
@@ -108,6 +123,12 @@ class DecisionCandidatePipeline:
                 source=item,
                 admission=admission_outcomes.get(item.program.id),
                 content_fit=content_scores.get(item.program.id),
+                evidence=self._recommendations.build_evidence(
+                    context.preferences,
+                    item.fingerprint,
+                    profile_revision=context.profile_revision,
+                ),
+                constraint_outcomes=constraint_outcomes[item.program.id],
             )
             for item in sources
         }
@@ -118,7 +139,10 @@ class DecisionCandidatePipeline:
             profile=context.preferences,
         )
         ineligible_sources = tuple(
-            item for item in candidate_sources if _status_for(evidence[item.program.id]) is AdmissionFitStatus.UNLIKELY
+            item
+            for item in candidate_sources
+            if _status_for(evidence[item.program.id]) is AdmissionFitStatus.UNLIKELY
+            or _has_constraint_mismatch(evidence[item.program.id].constraint_outcomes)
         )
         insufficient_sources = tuple(
             item
@@ -176,7 +200,7 @@ class DecisionCandidatePipeline:
             self._shortlist_item(
                 entry.program_id,
                 role=entry.role,
-                evidence=evidence.get(entry.program_id, _CandidateEvidence(None, None, None)),
+                evidence=evidence.get(entry.program_id, _CandidateEvidence(None, None, None, None)),
                 profile=context.preferences,
                 extra_missing=global_missing,
             )
@@ -255,6 +279,7 @@ class DecisionCandidatePipeline:
         active_ids: set[ProgramId],
         excluded_ids: set[ProgramId],
         admission_outcomes: dict[ProgramId, BatchAdmissionFitOutcome],
+        constraint_outcomes: dict[ProgramId, tuple[DecisionConstraintOutcome, ...]],
         profile: UserProfile | None,
     ) -> dict[ProgramId, MatchScore]:
         if profile is None:
@@ -264,6 +289,7 @@ class DecisionCandidatePipeline:
             for item in sources
             if item.program.id not in excluded_ids
             and item.fingerprint is not None
+            and not _has_constraint_mismatch(constraint_outcomes.get(item.program.id, ()))
             and (
                 item.program.id in active_ids
                 or _status_for(admission_outcomes.get(item.program.id)) not in {
@@ -300,9 +326,13 @@ class DecisionCandidatePipeline:
             content_fit=evidence.content_fit,
             profile_present=profile is not None,
             partition=partition,
+            constraint_outcomes=evidence.constraint_outcomes,
             extra_missing=extra_missing,
         )
         status = _status_for(evidence.admission)
+        fingerprint = evidence.source.fingerprint
+        provenance = fingerprint.provenance if fingerprint is not None else ()
+        source_gap_details = fingerprint.source_gaps if fingerprint is not None else ()
         return DecisionSuggestion(
             program_id=evidence.source.program.id,
             program_code=evidence.source.program.code,
@@ -312,8 +342,13 @@ class DecisionCandidatePipeline:
             admission_risk=admission_gate(status),
             admission_fit=evidence.admission.result if evidence.admission is not None else None,
             content_fit=evidence.content_fit,
+            evidence=evidence.evidence,
+            constraint_outcomes=evidence.constraint_outcomes,
             reasons=reasons,
             source_gaps=source_gaps,
+            source_hashes=tuple(dict.fromkeys(item.content_sha256 for item in provenance)),
+            provenance=provenance,
+            source_gap_details=source_gap_details,
         )
 
     def _shortlist_item(
@@ -335,9 +370,12 @@ class DecisionCandidatePipeline:
             content_fit=evidence.content_fit,
             profile_present=profile is not None,
             partition=DecisionCandidatePartition.PRIMARY if role is ShortlistRole.PRIMARY else DecisionCandidatePartition.ALTERNATIVE,
+            constraint_outcomes=evidence.constraint_outcomes,
             extra_missing=extra,
         )
         status = _status_for(evidence.admission)
+        provenance = fingerprint.provenance if fingerprint is not None else ()
+        source_gap_details = fingerprint.source_gaps if fingerprint is not None else ()
         return DecisionShortlistItem(
             program_id=program_id,
             program_code=program.code if program is not None else _code_from_id(program_id),
@@ -347,8 +385,13 @@ class DecisionCandidatePipeline:
             admission_risk=admission_gate(status),
             admission_fit=evidence.admission.result if evidence.admission is not None else None,
             content_fit=evidence.content_fit,
+            evidence=evidence.evidence,
+            constraint_outcomes=evidence.constraint_outcomes,
             reasons=reasons,
             source_gaps=source_gaps,
+            source_hashes=tuple(dict.fromkeys(item.content_sha256 for item in provenance)),
+            provenance=provenance,
+            source_gap_details=source_gap_details,
         )
 
     def _refinement(
@@ -438,13 +481,6 @@ class DecisionCandidatePipeline:
             missing.append("Профиль предпочтений не заполнен")
         if constraints is None:
             missing.append("Ограничения поступления не указаны; Admission Fit не оценивался")
-        else:
-            if constraints.max_tuition is not None:
-                missing.append("Максимальная стоимость не применена: batch-источник не вернул сопоставимую стоимость")
-                source_gaps.append("tuition_constraint_not_available_in_candidate_source")
-            if constraints.location is not None:
-                missing.append("Ограничение по месту обучения не применено: источник не содержит сопоставимой географии")
-                source_gaps.append("location_constraint_not_available_in_candidate_source")
         if not sources:
             source_gaps.append("catalog_empty")
         return _unique(missing, limit=32), _unique(source_gaps, limit=32)
@@ -456,6 +492,8 @@ class DecisionCandidatePipeline:
         profile: UserProfile | None,
     ) -> bool:
         if _status_for(evidence) is AdmissionFitStatus.INSUFFICIENT_DATA:
+            return True
+        if any(item.applicability is DecisionConstraintApplicability.INSUFFICIENT_DATA for item in evidence.constraint_outcomes):
             return True
         return profile is not None and source.fingerprint is None
 
@@ -492,6 +530,14 @@ def _status_for(evidence: _CandidateEvidence | BatchAdmissionFitOutcome | None) 
     if isinstance(evidence, _CandidateEvidence):
         return evidence.admission.status if evidence.admission is not None else None
     return evidence.status if evidence is not None else None
+
+
+def _has_constraint_mismatch(outcomes: tuple[DecisionConstraintOutcome, ...]) -> bool:
+    return any(
+        outcome.applicability is not DecisionConstraintApplicability.NOT_APPLICABLE
+        and outcome.satisfied is False
+        for outcome in outcomes
+    )
 
 
 def _missing_admission_outcome(program_id: ProgramId, message: str) -> BatchAdmissionFitOutcome:

@@ -50,6 +50,8 @@ def test_program_selector_and_comparison_are_openapi_backed(tmp_path: Path) -> N
     assert "hoursDelta" in payload["rows"][0]
     assert payload["areaBreakdownA"]
     assert sum((Decimal(row["share"]) for row in payload["areaBreakdownA"]), Decimal("0")) == 1
+    assert payload["provenance"]
+    assert payload["provenance"][0]["contentSha256"]
 
 
 def test_discipline_area_catalog_and_curriculum_vectors_are_exposed(tmp_path: Path) -> None:
@@ -64,6 +66,7 @@ def test_discipline_area_catalog_and_curriculum_vectors_are_exposed(tmp_path: Pa
     assert discipline["areaWeights"]
     assert discipline["primaryArea"]
     assert sum((Decimal(item["weight"]) for item in discipline["areaWeights"]), Decimal("0")) == 1
+    assert curriculum.json()["provenance"]
 
 
 def test_program_admissions_are_exposed_with_source_backed_offerings(tmp_path: Path) -> None:

@@ -36,3 +36,18 @@ def test_bmstu_classification_is_deterministic_and_keeps_multidisciplinary_signa
         DisciplineAreaCode.SOCIETY_SOCIAL_SCIENCES,
         DisciplineAreaCode.UNIVERSAL_INTERDISCIPLINARY,
     }
+
+
+def test_bmstu_canonical_snapshot_carries_classification_outcomes() -> None:
+    from andromeda.ingestion.universities.bmstu.adapter import BmstuUniversityAdapter
+
+    adapter = BmstuUniversityAdapter()
+    try:
+        _, canonical = adapter.parse_sources(mode="fixture")
+    finally:
+        adapter.close()
+
+    assert len(canonical.classification_outcomes) == len(canonical.disciplines)
+    assert {item.discipline_id for item in canonical.classification_outcomes} == {item.id for item in canonical.disciplines}
+    assert all(item.taxonomy_version == "taxonomy-22.v1" for item in canonical.classification_outcomes)
+    assert all(sum((weight.weight for weight in item.area_weights), Decimal("0")) == Decimal("1.0000") for item in canonical.classification_outcomes)

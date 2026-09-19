@@ -19,6 +19,11 @@ class EventProvenanceResponse(ApiModel):
     captured_at: datetime
     content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     locator: str | None = None
+    university_id: str | None = None
+    run_id: str | None = None
+    field: str | None = None
+    record_key: str | None = None
+    inferred: bool = False
 
 
 class VenueResponse(ApiModel):

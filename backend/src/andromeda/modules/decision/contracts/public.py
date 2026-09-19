@@ -16,6 +16,9 @@ from .analytics import (
 from .requests import DecisionConstraintsUpdate, DecisionRefinementAnswer, ProgramCommand, ShortlistCommand, ShortlistRoleCommand, SuggestionDecisionCommand
 from .results import (
     DecisionCandidatePartition,
+    DecisionConstraintApplicability,
+    DecisionConstraintDimension,
+    DecisionConstraintOutcome,
     DecisionContextResult,
     DecisionDataCompleteness,
     DecisionMutationResult,
@@ -44,6 +47,9 @@ __all__ = [
     "AdmissionConstraints",
     "AdmissionGate",
     "DecisionCandidatePartition",
+    "DecisionConstraintApplicability",
+    "DecisionConstraintDimension",
+    "DecisionConstraintOutcome",
     "DecisionBindingOutcome",
     "DecisionBindingPort",
     "DecisionAnalyticsAction",

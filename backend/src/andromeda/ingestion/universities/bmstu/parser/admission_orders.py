@@ -16,6 +16,7 @@ from andromeda.ingestion.universities.bmstu.source_metadata import (
     BmstuOrderFunding,
     classify_competition_heading,
 )
+from andromeda.ingestion.pdf_policy import PdfResourceError, validate_page_count, validate_pdf_payload, validate_text_size
 
 
 logger = logging.getLogger("andromeda.ingestion.bmstu.parser.admission_orders")
@@ -98,18 +99,28 @@ def parse_admission_order_document(
 def iter_pdf_pages(body: bytes) -> tuple[str, ...]:
     """Extract text page-by-page while keeping a deterministic fallback."""
 
+    validate_pdf_payload(body)
     try:
         import fitz  # type: ignore[import-untyped]
 
         document = fitz.open(stream=body, filetype="pdf")
-        return tuple((page.get_text() or "").strip() for page in document)
+        try:
+            validate_page_count(document.page_count)
+            return tuple(validate_text_size((page.get_text() or "").strip()) for page in document)
+        finally:
+            document.close()
+    except PdfResourceError:
+        raise
     except Exception:
         pass
     try:
         from pypdf import PdfReader
 
         reader = PdfReader(io.BytesIO(body))
+        validate_page_count(len(reader.pages))
         return tuple((page.extract_text() or "").strip() for page in reader.pages)
+    except PdfResourceError:
+        raise
     except Exception:
         return ()
 

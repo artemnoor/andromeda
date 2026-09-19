@@ -19,12 +19,14 @@ class Settings:
     log_level: str = "INFO"
     request_timeout_seconds: float = 15.0
     render_timeout_seconds: float = 20.0
+    request_retry_attempts: int = 2
+    request_retry_backoff_seconds: float = 0.25
     session_cookie_name: str = "andromeda_profile_session"
 
     @classmethod
     def from_env(cls) -> "Settings":
         bot_token = _required("TELEGRAM_BOT_TOKEN")
-        backend_url = _url("ANDROMEDA_BACKEND_URL", "http://backend:8000")
+        backend_url = _url("ANDROMEDA_BACKEND_URL", "http://backend:8020")
         renderer_url = _url("ANDROMEDA_RENDERER_URL", "http://frontend:3000")
         render_hmac_secret = _required("ANDROMEDA_RENDER_HMAC_SECRET")
         session_encryption_key = _required("ANDROMEDA_SESSION_ENCRYPTION_KEY")
@@ -33,8 +35,12 @@ class Settings:
         log_level = os.getenv("LOG_LEVEL", "INFO").upper()
         request_timeout = float(os.getenv("ANDROMEDA_REQUEST_TIMEOUT_SECONDS", "15"))
         render_timeout = float(os.getenv("ANDROMEDA_RENDER_TIMEOUT_SECONDS", "20"))
+        request_retry_attempts = int(os.getenv("ANDROMEDA_REQUEST_RETRY_ATTEMPTS", "2"))
+        request_retry_backoff = float(os.getenv("ANDROMEDA_REQUEST_RETRY_BACKOFF_SECONDS", "0.25"))
         if request_timeout <= 0 or render_timeout <= 0:
             raise ValueError("HTTP timeouts must be positive")
+        if not 1 <= request_retry_attempts <= 3 or not 0 <= request_retry_backoff <= 5:
+            raise ValueError("HTTP retry policy must be bounded")
         return cls(
             bot_token=bot_token,
             backend_url=backend_url,
@@ -46,6 +52,8 @@ class Settings:
             log_level=log_level,
             request_timeout_seconds=request_timeout,
             render_timeout_seconds=render_timeout,
+            request_retry_attempts=request_retry_attempts,
+            request_retry_backoff_seconds=request_retry_backoff,
         )
 
 

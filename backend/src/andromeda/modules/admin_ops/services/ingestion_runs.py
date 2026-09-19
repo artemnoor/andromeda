@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import logging
 
-from andromeda.shared.contracts.errors import ConflictError, ContractError, ErrorCode, NotFoundError
+from andromeda.shared.contracts.errors import ContractError, ErrorCode, NotFoundError
 from andromeda.shared.contracts.ids import IngestRunId
 
-from ..contracts.public import IngestionRetryRequest, IngestionRunFilters, IngestionRunStatus
+from ..contracts.public import IngestionRetryRequest, IngestionRunFilters
 from ..contracts.results import IngestionRetryResult, IngestionRunDetailResult, IngestionRunListResult
-from ..repository.ports import IngestionRetryExecutor, IngestionRunReader
+from ..repository.ports import IngestionRetryExecutor, IngestionRunReader, IngestionRunRecovery
 
 
 logger = logging.getLogger("andromeda.admin_ops")
@@ -16,9 +16,17 @@ logger = logging.getLogger("andromeda.admin_ops")
 class IngestionRunService:
     """Application service for bounded ingestion audit views and retry commands."""
 
-    def __init__(self, reader: IngestionRunReader, executor: IngestionRetryExecutor | None = None) -> None:
+    def __init__(
+        self,
+        reader: IngestionRunReader,
+        executor: IngestionRetryExecutor | None = None,
+        recovery: IngestionRunRecovery | None = None,
+        stale_timeout_seconds: int = 30 * 60,
+    ) -> None:
         self._reader = reader
         self._executor = executor
+        self._recovery = recovery
+        self._stale_timeout_seconds = stale_timeout_seconds
 
     def list(self, filters: IngestionRunFilters) -> IngestionRunListResult:
         logger.debug("ingestion_runs_use_case_start status=%s limit=%d", filters.status, filters.limit)
@@ -38,10 +46,15 @@ class IngestionRunService:
     def retry(self, request: IngestionRetryRequest) -> IngestionRetryResult:
         if self._executor is None:
             raise NotFoundError("Resource was not found")
-        running = self._reader.list(IngestionRunFilters(status=IngestionRunStatus.RUNNING, limit=1))
-        if running.total > 0:
-            logger.warning("ingestion_retry_rejected_running_run")
-            raise ConflictError("An ingestion run is already in progress")
+        if self._recovery is not None:
+            recovered = self._recovery.recover_stale(timeout_seconds=self._stale_timeout_seconds)
+            if recovered:
+                logger.warning("ingestion_stale_runs_recovered count=%d run_ids=%s", len(recovered), ",".join(recovered))
+        logger.info(
+            "ingestion_retry_requested operator=ops_api_key source_profile=%s retry_of=%s",
+            request.profile.profile_id,
+            request.retry_of_run_id or "latest-profile-run",
+        )
         outcome = self._executor.execute(request)
         result = self._reader.get(outcome.run_id)
         if result is None:

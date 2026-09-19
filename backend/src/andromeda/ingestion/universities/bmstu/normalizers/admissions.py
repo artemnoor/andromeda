@@ -69,6 +69,9 @@ def normalize_admissions(
             captured_at=source_snapshot.captured_at,
             content_sha256=source_snapshot.content_sha256,
             locator=_locator(record),
+            university_id="university:bmstu",
+            field="admission_offering",
+            record_key=record.program_code,
         )
         for program in targets:
             offering = _offering(record, program.id, provenance)

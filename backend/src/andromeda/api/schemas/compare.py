@@ -11,7 +11,7 @@ from andromeda.modules.comparison.contracts.results import ComparisonSourceGap, 
 from andromeda.shared.contracts.enums import ComparisonScope
 from andromeda.shared.contracts.ids import ProgramId, Semester
 
-from .common import ApiModel, ComparisonResponse, ComparisonTotalsResponse, ProgramSummaryResponse, DisciplineAreaSummaryResponse
+from .common import ApiModel, ComparisonResponse, ComparisonTotalsResponse, ProgramSummaryResponse, DisciplineAreaSummaryResponse, SourceAttributionResponse, SourceGapReferenceResponse
 from .disciplines import area_summary_response, discipline_response
 
 
@@ -98,6 +98,8 @@ def comparison_response(result: ComparisonResult) -> ComparisonResponse:
             "totals_b": result.totals_b.model_dump(),
             "area_breakdown_a": tuple(area_summary_response(item.area, item.share) for item in result.area_breakdown_a),
             "area_breakdown_b": tuple(area_summary_response(item.area, item.share) for item in result.area_breakdown_b),
+            "provenance": tuple(SourceAttributionResponse.model_validate(item.model_dump()) for item in result.provenance),
+            "source_gap_details": tuple(SourceGapReferenceResponse.model_validate(item.model_dump()) for item in result.source_gap_details),
         }
     )
 

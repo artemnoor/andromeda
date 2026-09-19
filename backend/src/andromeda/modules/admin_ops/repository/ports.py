@@ -18,4 +18,8 @@ class IngestionRetryExecutor(Protocol):
     def execute(self, request: IngestionRetryRequest) -> IngestionRetryOutcome: ...
 
 
-__all__ = ["IngestionRetryExecutor", "IngestionRunReader"]
+class IngestionRunRecovery(Protocol):
+    def recover_stale(self, *, timeout_seconds: int) -> tuple[IngestRunId, ...]: ...
+
+
+__all__ = ["IngestionRetryExecutor", "IngestionRunReader", "IngestionRunRecovery"]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -92,3 +93,46 @@ def test_database_stores_only_password_and_session_hashes(tmp_path: Path) -> Non
         assert len(session.token_hash) == 64
         assert session.token_hash != client.cookies.get("andromeda_auth_session")
     client.close()
+
+
+def test_expired_auth_session_is_unauthenticated_and_cookie_is_cleared(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    registered = client.post("/auth/register", json={"email": "expired@example.com", "password": "a-secure-password"})
+    assert registered.status_code == 201
+    token = client.cookies.get("andromeda_auth_session")
+    assert token is not None
+
+    with Session(client.app.state.engine) as db_session:
+        session = db_session.scalar(select(AuthSessionModel).where(AuthSessionModel.token_hash.is_not(None)))
+        assert session is not None
+        session.created_at = datetime.now(timezone.utc) - timedelta(seconds=2)
+        session.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        db_session.commit()
+
+    response = client.get("/auth/session")
+
+    assert response.status_code == 200
+    assert response.json() == {"authenticated": False, "account": None}
+    assert "andromeda_auth_session=" in response.headers.get("set-cookie", "")
+    client.close()
+
+
+def test_logout_revokes_one_session_without_invalidating_a_concurrent_session(tmp_path: Path) -> None:
+    first = _client(tmp_path)
+    registered = first.post("/auth/register", json={"email": "sessions@example.com", "password": "a-secure-password"})
+    assert registered.status_code == 201
+    account_id = registered.json()["account"]["accountId"]
+
+    second = _client(tmp_path)
+    logged_in = second.post("/auth/login", json={"email": "sessions@example.com", "password": "a-secure-password"})
+    assert logged_in.status_code == 200
+    assert logged_in.json()["account"]["accountId"] == account_id
+    first_token = first.cookies.get("andromeda_auth_session")
+    second_token = second.cookies.get("andromeda_auth_session")
+    assert first_token and second_token and first_token != second_token
+
+    assert first.post("/auth/logout").status_code == 200
+    assert first.get("/auth/session").json() == {"authenticated": False, "account": None}
+    assert second.get("/auth/session").json()["authenticated"] is True
+    first.close()
+    second.close()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from hashlib import sha256
 import logging
 import re
@@ -8,7 +8,7 @@ from pathlib import Path
 
 from andromeda.ingestion.contracts.constraints import http_url
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
-from andromeda.ingestion.contracts.raw import RawAdmissionPassingScore, RawAdmissionRecord, RawCurriculumRow, RawDirectionRecord, RawProgramRecord, RawSourceGap, RawSourceSnapshot, RawTracerBundle, RawUniversityRecord, SourceLocator
+from andromeda.ingestion.contracts.raw import RawAdmissionPassingScore, RawAdmissionRecord, RawCurriculumRow, RawDirectionRecord, RawParserDiagnostic, RawProgramRecord, RawSourceGap, RawSourceSnapshot, RawTracerBundle, RawUniversityRecord, SourceLocator
 from andromeda.ingestion.contracts.source import CapturedSources
 from andromeda.modules.disciplines.contracts.public import Discipline
 from andromeda.modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
@@ -22,7 +22,7 @@ from .mappings.discipline_areas import HSE_DISCIPLINE_AREA_OVERRIDES
 from .normalizers.admissions import normalize_admissions
 from .normalizers.canonical import normalize_bundle
 from .parser.admissions import FactObservation, parse_enrollment_document, parse_historical_passing, parse_minimum_exams, parse_places, parse_tuition
-from .parser.catalog import parse_program_detail
+from .parser.catalog import canonical_url, parse_program_detail, study_plan_urls
 from .parser.curriculum import CurriculumObservation, parse_work_plan
 
 
@@ -54,7 +54,7 @@ class HseUniversityAdapter:
         direction_by_name = _catalog_direction_map(captured, work_plan_observations)
         raw_programs: list[RawProgramRecord] = []
         raw_directions: list[RawDirectionRecord] = []
-        gaps: list[RawSourceGap] = []
+        gaps: list[RawSourceGap] = list(captured.source_gaps)
         for snapshot in detail_snapshots:
             try:
                 page = parse_program_detail(snapshot)
@@ -66,6 +66,10 @@ class HseUniversityAdapter:
             if not direction_code:
                 gaps.append(_gap("program", str(snapshot.requested_url), "program-detail-does-not-publish-code-and-no-official-admission-or-plan-mapping", snapshot))
                 parse_logger.warning("[FIX:source-gap] hse_program_code_missing url=%s name=%s", snapshot.requested_url, page.name)
+                continue
+            if page.education_year is None:
+                gaps.append(_gap("program", str(snapshot.requested_url), "program-education-year-missing-from-official-source", snapshot))
+                parse_logger.warning("[FIX:source-gap] hse_program_education_year_missing url=%s", snapshot.requested_url)
                 continue
             locator = SourceLocator(source_url=snapshot.requested_url)
             education_level = "специалитет" if ".05." in direction_code or page.education_level == "специалитет" else "бакалавриат"
@@ -87,7 +91,8 @@ class HseUniversityAdapter:
         raw_directions = list(_dedupe_directions(raw_directions))
         if not raw_directions:
             raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "HSE details contain no valid directions")
-        rows = list(_parse_curricula(captured, raw_programs, gaps, work_plan_observations))
+        curriculum_plan_programs = _curriculum_plan_programs(captured, raw_programs)
+        rows = list(_parse_curricula(captured, raw_programs, gaps, work_plan_observations, curriculum_plan_programs))
         for program in raw_programs:
             if not any(row.program_code == program.code for row in rows):
                 gaps.append(_gap("program", program.code, "published study plans contain no parseable work-plan rows", _source_for_program(captured, program)))
@@ -101,11 +106,16 @@ class HseUniversityAdapter:
             curriculum_rows=tuple(rows),
             admissions=tuple(admissions),
             source_gaps=tuple(_dedupe_gaps(gaps)),
+            diagnostics=tuple(_diagnostics_from_gaps(_dedupe_gaps(gaps))),
         )
         parse_logger.info("stage=raw_complete university=hse directions=%d programs=%d curriculum_rows=%d admissions=%d gaps=%d", len(raw.directions), len(raw.programs), len(raw.curriculum_rows), len(raw.admissions), len(raw.source_gaps))
         canonical = normalize_bundle(raw)
         classified = tuple(Discipline.model_validate({**discipline.model_dump(), "area_weights": self._classifier.classify(discipline.name)}) for discipline in canonical.disciplines)
-        canonical = canonical.model_copy(update={"disciplines": classified, "admissions": normalize_admissions(raw.admissions, programs=canonical.programs, snapshots=raw.snapshots)})
+        classification_outcomes = tuple(
+            self._classifier.classify_with_outcome(discipline.name, discipline_id=discipline.id)
+            for discipline in canonical.disciplines
+        )
+        canonical = canonical.model_copy(update={"disciplines": classified, "classification_outcomes": classification_outcomes, "admissions": normalize_admissions(raw.admissions, programs=canonical.programs, snapshots=raw.snapshots)})
         area_count = len({weight.area for discipline in classified for weight in discipline.area_weights})
         normalize_logger.info("stage=canonical_complete university=hse programs=%d disciplines=%d curricula=%d areas=%d", len(canonical.programs), len(canonical.disciplines), len(canonical.curricula), area_count)
         return raw, canonical
@@ -132,7 +142,13 @@ def _parse_university(snapshot: object) -> RawUniversityRecord:
     return RawUniversityRecord(name="Национальный исследовательский университет «Высшая школа экономики»", city="Москва", address=address, official_site=http_url("https://www.hse.ru/"), locator=SourceLocator(source_url=typed.requested_url))
 
 
-def _parse_curricula(captured: CapturedSources, programs: Sequence[RawProgramRecord], gaps: list[RawSourceGap], observations_by_url: dict[str, tuple[CurriculumObservation, ...]]) -> tuple[RawCurriculumRow, ...]:
+def _parse_curricula(
+    captured: CapturedSources,
+    programs: Sequence[RawProgramRecord],
+    gaps: list[RawSourceGap],
+    observations_by_url: dict[str, tuple[CurriculumObservation, ...]],
+    curriculum_plan_programs: Mapping[str, tuple[RawProgramRecord, ...]],
+) -> tuple[RawCurriculumRow, ...]:
     result: list[RawCurriculumRow] = []
     for snapshot in captured.by_kind("hse_curriculum_document"):
         if "workplan" not in str(snapshot.requested_url).casefold() and "work_plan" not in str(snapshot.requested_url).casefold():
@@ -142,11 +158,24 @@ def _parse_curricula(captured: CapturedSources, programs: Sequence[RawProgramRec
             gaps.append(_gap("curriculum", str(snapshot.requested_url), "work-plan-document-produced-no-rows", snapshot))
             continue
         for observation in observations:
-            program = _match_raw_program(observation.direction_code, observation.program_name, programs)
-            if program is None:
+            mapped_programs = curriculum_plan_programs.get(_source_key(snapshot.requested_url), ())
+            if observation.direction_code and mapped_programs:
+                compatible = tuple(
+                    program
+                    for program in mapped_programs
+                    if observation.direction_code in direction_codes(program.direction_code)
+                )
+                mapped_programs = compatible
+            if mapped_programs:
+                target_programs = mapped_programs
+            else:
+                matched = _match_raw_program(observation.direction_code, observation.program_name, programs)
+                target_programs = (matched,) if matched is not None else ()
+            if not target_programs:
                 gaps.append(_gap("curriculum", str(snapshot.requested_url), "work-plan-program-identity-ambiguous", snapshot))
                 continue
-            result.append(RawCurriculumRow(program_code=program.code, discipline=observation.discipline, semester=None, hours=observation.hours, credits=observation.credits, assessment=None, source_position=observation.source_position, source_url=snapshot.requested_url, locator=SourceLocator(source_url=snapshot.requested_url, row=observation.source_position), source_program_code=program.source_code or program.code))
+            for program in target_programs:
+                result.append(RawCurriculumRow(program_code=program.code, discipline=observation.discipline, semester=None, hours=observation.hours, credits=observation.credits, assessment=None, source_position=observation.source_position, source_url=snapshot.requested_url, locator=SourceLocator(source_url=snapshot.requested_url, row=observation.source_position), source_program_code=program.source_code or program.code))
     return tuple(result)
 
 
@@ -188,7 +217,7 @@ def _program_aliases(value: str) -> tuple[str, ...]:
 
 def _parse_admissions(captured: CapturedSources, programs: Sequence[RawProgramRecord], gaps: list[RawSourceGap]) -> tuple[RawAdmissionRecord, ...]:
     facts: list[tuple[str, FactObservation, RawSourceSnapshot]] = []
-    minimum_year = max((program.education_year for program in programs), default=2026)
+    minimum_year = max(program.education_year for program in programs)
     for snapshot in captured.by_kind("hse_admission_rules"):
         for exam_observation in parse_minimum_exams(snapshot):
             facts.append((str(snapshot.requested_url), FactObservation(exam_observation.direction_code, exam_observation.program_name, minimum_year, "full_time", "budget", None, exam_observation.exams, (), (), (), "hse_admission_rules", exam_observation.row), snapshot))
@@ -302,6 +331,71 @@ def _dedupe_gaps(values: Sequence[RawSourceGap]) -> tuple[RawSourceGap, ...]:
             seen.add(value.id)
             result.append(value)
     return tuple(result)
+
+
+def _curriculum_plan_programs(
+    captured: CapturedSources,
+    programs: Sequence[RawProgramRecord],
+) -> dict[str, tuple[RawProgramRecord, ...]]:
+    """Recover the official index-to-plan relationship lost by flat capture.
+
+    HSE exposes several historical work plans for one programme and reuses
+    direction codes across programmes. The ``learn_plans`` index is the
+    adapter-owned source of truth for associating a plan with its programme.
+    A plan linked by more than one programme is intentionally left unmapped;
+    the parser's identity resolver then remains fail-closed for that case.
+    """
+
+    programs_by_root: dict[str, tuple[RawProgramRecord, ...]] = {}
+    grouped_programs: dict[str, list[RawProgramRecord]] = {}
+    for program in programs:
+        grouped_programs.setdefault(_program_root_url(str(program.source_url)), []).append(program)
+    programs_by_root = {root: tuple(values) for root, values in grouped_programs.items()}
+
+    owners_by_plan: dict[str, set[str]] = {}
+    for index_snapshot in captured.by_kind("hse_curriculum_index"):
+        owner_root = _program_root_url(str(index_snapshot.requested_url))
+        if len(programs_by_root.get(owner_root, ())) != 1:
+            continue
+        for plan_url in study_plan_urls(index_snapshot.body, str(index_snapshot.final_url)):
+            owners_by_plan.setdefault(_source_key(plan_url), set()).add(owner_root)
+
+    result: dict[str, tuple[RawProgramRecord, ...]] = {}
+    for plan_snapshot in captured.by_kind("hse_curriculum_document"):
+        roots = owners_by_plan.get(_source_key(plan_snapshot.requested_url), set())
+        program_values = tuple(
+            program
+            for root in sorted(roots)
+            for program in programs_by_root.get(root, ())
+        )
+        if program_values:
+            result[_source_key(plan_snapshot.requested_url)] = program_values
+    return result
+
+
+def _program_root_url(value: str) -> str:
+    result = canonical_url(value)
+    for suffix in ("/admission/", "/learn_plans/"):
+        if result.endswith(suffix):
+            return result[: -len(suffix)] + "/"
+    return result
+
+
+def _source_key(value: object) -> str:
+    return canonical_url(str(value))
+
+
+def _diagnostics_from_gaps(gaps: Sequence[RawSourceGap]) -> tuple[RawParserDiagnostic, ...]:
+    return tuple(
+        RawParserDiagnostic(
+            code=gap.reason[:128],
+            stage="capture" if gap.entity_type == "source" else "parse",
+            message=gap.reason[:512],
+            severity="ambiguous" if "ambig" in gap.reason.casefold() else "warning",
+            source_url=gap.source_url,
+        )
+        for gap in gaps
+    )
 
 
 def _stable_id(*parts: str) -> str:

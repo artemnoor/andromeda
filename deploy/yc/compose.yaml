@@ -18,6 +18,7 @@ services:
       ANDROMEDA_ENV: staging
       ANDROMEDA_DATABASE_URL: postgresql+psycopg://${ANDROMEDA_STAGING_DB_USER}:${ANDROMEDA_STAGING_DB_PASSWORD}@postgres:5432/${ANDROMEDA_STAGING_DB}
       FRONTEND_ORIGIN: https://${ANDROMEDA_DOMAIN}
+      ANDROMEDA_OPS_API_KEY: ${ANDROMEDA_OPS_API_KEY}
       LOG_LEVEL: INFO
       ANDROMEDA_DB_POOL_SIZE: 5
       ANDROMEDA_DB_MAX_OVERFLOW: 10
@@ -29,6 +30,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      ANDROMEDA_INTERNAL_API_URL: http://backend:8020
 
   telegram-bot:
     image: ${TELEGRAM_BOT_IMAGE}

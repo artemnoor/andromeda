@@ -1,6 +1,8 @@
 # Andromeda
 
-> Stage: MVP / Private Alpha. Tracer bullet phase: completed.
+> Stage: Private Alpha → MVP Production Level transition. The production
+> promotion gate is evidence-based and is not complete until the release
+> checklist passes.
 
 Andromeda — multi-university data-driven система поддержки выбора образовательной программы. Основной объект продукта — `DecisionContext` и пользовательский shortlist: система объединяет source-backed сведения о программах, содержании учебных планов и поступлении, а пользователь сам принимает финальное решение.
 
@@ -11,13 +13,30 @@ BMSTU — первый полноценный источник, HSE — втор
 ## Быстрый старт
 
 ```powershell
-python -m pip install -e "backend[dev]"
+python -m pip install uv
+uv sync --project backend --locked --extra dev --extra browser
+npm --prefix frontend-next ci
 python backend/scripts/run_andromeda_demo.py --mode fixture --check
 ```
 
 После запуска API доступен на `http://127.0.0.1:8000/docs`, UI — на `http://127.0.0.1:3000/`. Для ручной работы уберите `--check`.
 
 Для обычной dev-работы используйте PostgreSQL: инструкции находятся в [руководстве PostgreSQL](docs/postgresql.md). SQLite остаётся быстрым test fallback.
+
+## Canonical verification
+
+Команды не требуют знания внутреннего дерева тестов:
+
+```powershell
+python scripts/andromeda.py fast              # быстрые boundary/type/docs checks
+python scripts/andromeda.py production-smoke # disposable fixture runtime smoke
+python scripts/andromeda.py full              # локальные проверки без live source/PostgreSQL
+```
+
+`backend`, `frontend`, `postgres`, `playwright`, `telegram`, `migrations`,
+`backend-coverage`, `frontend-coverage`, `deployment` и `security` являются
+отдельными целевыми проверками. Полная карта, prerequisites и безопасные
+артефакты находятся в [матрице тестирования](docs/test-matrix.md).
 
 ## Что уже работает
 
@@ -31,10 +50,14 @@ python backend/scripts/run_andromeda_demo.py --mode fixture --check
 - Persistence профиля: completed `UserProfile` хранится по anonymous HttpOnly session cookie и восстанавливается после перезагрузки UI.
 - Recommendation vertical slice: готовый `UserProfile` → детерминированный Content Fit → reasons/anti-reasons по реальному fingerprint.
 - Admissions vertical slice: реальные BMSTU данные поступления по canonical `program_id` — места, ЕГЭ и минимумы, квоты, проходные баллы, стоимость и форма обучения.
+- Production scope ограничен source-backed BMSTU/HSE coverage и single-instance
+  operational layout. Career Fit, validated Workload Readiness, ML ranking,
+  отзывы, массовое университетское покрытие и guaranteed admission claims не
+  входят в текущий MVP.
 
 ### Подбор и профиль содержания
 
-Профиль предпочтений — один из способов уточнить `DecisionContext`, а не обязательный первый этап. В UI выберите «Подобрать». Compact adaptive v3 получает вопросы и результаты только через API: `GET /proftest/questions`, `POST /proftest/preview` и `POST /proftest/results`; session-вариант сохраняется через `/proftest/sessions/*`. Финальный результат сохраняется в Andromeda по anonymous HttpOnly cookie; после reload UI использует `GET /proftest/profile` и `GET /recommendations/current`. Профиль обновляет предложения, но не меняет shortlist без явного действия пользователя. После изменения API обновите frontend-контракт:
+Профиль предпочтений — один из способов уточнить `DecisionContext`, а не обязательный первый этап. В UI выберите «Подобрать». Canonical compact adaptive v3 использует version-pinned session API: `POST /proftest/sessions`, `GET /proftest/sessions/current`, `POST /proftest/sessions/current/next`, `PATCH /proftest/sessions/current` и `POST /proftest/sessions/current/complete`. Старые `/proftest/questions`, `/proftest/preview` и `/proftest/results` сохранены как явно deprecated compatibility adapters на один release cycle и не используются новым frontend flow. Финальный результат сохраняется в Andromeda по anonymous HttpOnly cookie; после reload UI использует `GET /proftest/profile` и `GET /recommendations/current`. Профиль обновляет предложения, но не меняет shortlist без явного действия пользователя. После изменения API обновите frontend-контракт:
 
 ```powershell
 python backend/scripts/export_openapi.py --out frontend-next/openapi.json

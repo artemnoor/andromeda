@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Self, TypeAlias
+from typing import Literal, Self, TypeAlias
 
 from pydantic import Field, HttpUrl, model_validator
 
@@ -23,6 +23,9 @@ class RawSourceSnapshot(ContractModel):
     captured_at: datetime
     content_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     body: bytes = Field(min_length=1)
+    response_class: str = Field(default="success", min_length=1, max_length=64)
+    access_mode: str = Field(default="http", min_length=1, max_length=32)
+    truncated: bool = False
 
 
 class SourceLocator(ContractModel):
@@ -56,6 +59,18 @@ class RawSourceGap(ContractModel):
     reason: str = Field(min_length=1, max_length=512)
     source_url: HttpUrl
     locator: SourceLocator
+
+
+class RawParserDiagnostic(ContractModel):
+    """Structured parser warning retained alongside raw source evidence."""
+
+    code: str = Field(min_length=1, max_length=128)
+    stage: str = Field(min_length=1, max_length=64)
+    message: str = Field(min_length=1, max_length=512)
+    severity: Literal["info", "warning", "ambiguous"] = "warning"
+    source_url: HttpUrl | None = None
+    candidates: tuple[str, ...] = ()
+    count: int = Field(default=1, strict=True, ge=1, le=100_000)
 
 
 class RawProgramRecord(ContractModel):
@@ -204,6 +219,7 @@ class RawTracerBundle(ContractModel):
     curriculum_rows: tuple[RawCurriculumRow, ...] = ()
     directions: tuple[RawDirectionRecord, ...] = ()
     source_gaps: tuple[RawSourceGap, ...] = ()
+    diagnostics: tuple[RawParserDiagnostic, ...] = ()
     admissions: tuple[RawAdmissionRecord, ...] = ()
     events: tuple[RawEventRecord, ...] = ()
     campus_points: tuple[RawCampusPointRecord, ...] = ()

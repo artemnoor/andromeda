@@ -19,7 +19,11 @@ DEFAULT_AUTH_COOKIE_NAME = "andromeda_auth_session"
 DEFAULT_AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 DEFAULT_AUTH_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30
 DEFAULT_AUTH_PASSWORD_MIN_LENGTH = 12
-VALID_ENVIRONMENTS = frozenset(("test", "development", "staging"))
+DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60
+DEFAULT_AUTH_RATE_LIMIT_MAX = 10
+DEFAULT_SENSITIVE_RATE_LIMIT_MAX = 120
+DEFAULT_OPS_RATE_LIMIT_MAX = 10
+VALID_ENVIRONMENTS = frozenset(("test", "development", "staging", "production"))
 VALID_SAMESITE_VALUES = frozenset(("lax", "strict", "none"))
 
 logger = logging.getLogger("andromeda.infrastructure.config")
@@ -46,14 +50,19 @@ class Settings:
     auth_cookie_samesite: str = "lax"
     auth_session_ttl_seconds: int = DEFAULT_AUTH_SESSION_TTL_SECONDS
     auth_password_min_length: int = DEFAULT_AUTH_PASSWORD_MIN_LENGTH
+    rate_limit_window_seconds: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS
+    auth_rate_limit_max: int = DEFAULT_AUTH_RATE_LIMIT_MAX
+    sensitive_rate_limit_max: int = DEFAULT_SENSITIVE_RATE_LIMIT_MAX
+    ops_rate_limit_max: int = DEFAULT_OPS_RATE_LIMIT_MAX
     ops_api_key: str | None = None
     ingestion_min_relative_count: float = 0.25
+    ingestion_run_timeout_seconds: int = 30 * 60
 
     @classmethod
     def from_environment(cls, database_url: str | None = None) -> Settings:
         environment = os.environ.get("ANDROMEDA_ENV", DEFAULT_ENVIRONMENT).strip().lower()
         if environment not in VALID_ENVIRONMENTS:
-            raise ValueError("ANDROMEDA_ENV must be one of: test, development, staging")
+            raise ValueError("ANDROMEDA_ENV must be one of: test, development, staging, production")
         selected_database_url = database_url or _environment_with_legacy_fallback(
             "ANDROMEDA_DATABASE_URL",
             "BMSTU_DATABASE_URL",
@@ -61,10 +70,22 @@ class Settings:
         )
         if environment in {"development", "staging"} and not is_postgresql_url(selected_database_url):
             raise ValueError(f"ANDROMEDA_ENV={environment} requires a PostgreSQL ANDROMEDA_DATABASE_URL")
+        if environment == "production" and not is_postgresql_url(selected_database_url):
+            raise ValueError("ANDROMEDA_ENV=production requires a PostgreSQL ANDROMEDA_DATABASE_URL")
+
+        configured_frontend_origin = os.environ.get("FRONTEND_ORIGIN")
+        ops_api_key = _optional_secret_from_environment("ANDROMEDA_OPS_API_KEY")
+        if environment in {"staging", "production"}:
+            if not configured_frontend_origin or not configured_frontend_origin.strip():
+                raise ValueError(f"ANDROMEDA_ENV={environment} requires an explicit FRONTEND_ORIGIN")
+            if ops_api_key is None:
+                raise ValueError(f"ANDROMEDA_ENV={environment} requires ANDROMEDA_OPS_API_KEY")
+            if len(ops_api_key) < 16:
+                raise ValueError("ANDROMEDA_OPS_API_KEY must contain at least 16 characters")
 
         settings = cls(
             database_url=selected_database_url,
-            frontend_origin=os.environ.get("FRONTEND_ORIGIN", DEFAULT_FRONTEND_ORIGIN),
+            frontend_origin=configured_frontend_origin or DEFAULT_FRONTEND_ORIGIN,
             log_level=os.environ.get("LOG_LEVEL", DEFAULT_LOG_LEVEL).upper(),
             environment=environment,
             pool_size=_int_from_environment_with_legacy("ANDROMEDA_DB_POOL_SIZE", "BMSTU_DB_POOL_SIZE", 5),
@@ -73,20 +94,34 @@ class Settings:
             pool_recycle=_int_from_environment_with_legacy("ANDROMEDA_DB_POOL_RECYCLE", "BMSTU_DB_POOL_RECYCLE", 1800),
             profile_cookie_name=os.environ.get("ANDROMEDA_PROFILE_COOKIE_NAME", DEFAULT_PROFILE_COOKIE_NAME),
             profile_cookie_max_age=_positive_int_from_environment("ANDROMEDA_PROFILE_COOKIE_MAX_AGE", DEFAULT_PROFILE_COOKIE_MAX_AGE),
-            profile_cookie_secure=_bool_from_environment("ANDROMEDA_PROFILE_COOKIE_SECURE", environment == "staging"),
+            profile_cookie_secure=_bool_from_environment("ANDROMEDA_PROFILE_COOKIE_SECURE", environment in {"staging", "production"}),
             profile_cookie_samesite=_samesite_from_environment("ANDROMEDA_PROFILE_COOKIE_SAMESITE"),
             profile_ttl_seconds=_positive_int_from_environment("ANDROMEDA_PROFILE_TTL_SECONDS", DEFAULT_PROFILE_TTL_SECONDS),
             auth_cookie_name=os.environ.get("ANDROMEDA_AUTH_COOKIE_NAME", DEFAULT_AUTH_COOKIE_NAME),
             auth_cookie_max_age=_positive_int_from_environment("ANDROMEDA_AUTH_COOKIE_MAX_AGE", DEFAULT_AUTH_COOKIE_MAX_AGE),
-            auth_cookie_secure=_bool_from_environment("ANDROMEDA_AUTH_COOKIE_SECURE", environment == "staging"),
+            auth_cookie_secure=_bool_from_environment("ANDROMEDA_AUTH_COOKIE_SECURE", environment in {"staging", "production"}),
             auth_cookie_samesite=_samesite_from_environment("ANDROMEDA_AUTH_COOKIE_SAMESITE"),
             auth_session_ttl_seconds=_positive_int_from_environment("ANDROMEDA_AUTH_SESSION_TTL_SECONDS", DEFAULT_AUTH_SESSION_TTL_SECONDS),
             auth_password_min_length=_positive_int_from_environment("ANDROMEDA_AUTH_PASSWORD_MIN_LENGTH", DEFAULT_AUTH_PASSWORD_MIN_LENGTH),
-            ops_api_key=_optional_secret_from_environment("ANDROMEDA_OPS_API_KEY"),
+            rate_limit_window_seconds=_positive_int_from_environment("ANDROMEDA_RATE_LIMIT_WINDOW_SECONDS", DEFAULT_RATE_LIMIT_WINDOW_SECONDS),
+            auth_rate_limit_max=_positive_int_from_environment("ANDROMEDA_AUTH_RATE_LIMIT_MAX", DEFAULT_AUTH_RATE_LIMIT_MAX),
+            sensitive_rate_limit_max=_positive_int_from_environment("ANDROMEDA_SENSITIVE_RATE_LIMIT_MAX", DEFAULT_SENSITIVE_RATE_LIMIT_MAX),
+            ops_rate_limit_max=_positive_int_from_environment("ANDROMEDA_OPS_RATE_LIMIT_MAX", DEFAULT_OPS_RATE_LIMIT_MAX),
+            ops_api_key=ops_api_key,
             ingestion_min_relative_count=_ratio_from_environment("ANDROMEDA_INGEST_MIN_RELATIVE_COUNT", 0.25),
+            ingestion_run_timeout_seconds=_positive_int_from_environment("ANDROMEDA_INGEST_RUN_TIMEOUT_SECONDS", 30 * 60),
         )
         _validate_cookie_settings(settings.profile_cookie_name, settings.profile_cookie_samesite, settings.profile_cookie_secure, "ANDROMEDA_PROFILE_COOKIE_NAME")
         _validate_cookie_settings(settings.auth_cookie_name, settings.auth_cookie_samesite, settings.auth_cookie_secure, "ANDROMEDA_AUTH_COOKIE_NAME")
+        if environment in {"staging", "production"}:
+            if not settings.profile_cookie_secure or not settings.auth_cookie_secure:
+                raise ValueError(f"ANDROMEDA_ENV={environment} requires secure profile and auth cookies")
+            if environment == "production" and any(
+                not origin.strip().lower().startswith("https://")
+                for origin in settings.frontend_origin.split(",")
+                if origin.strip()
+            ):
+                raise ValueError("ANDROMEDA_ENV=production requires HTTPS FRONTEND_ORIGIN values")
         logger.debug(
             "settings_loaded environment=%s dialect=%s database_target=%s log_level=%s profile_cookie_secure=%s profile_cookie_samesite=%s profile_ttl_seconds=%d",
             settings.environment,

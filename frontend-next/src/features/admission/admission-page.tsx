@@ -32,7 +32,7 @@ export function AdmissionPage({ navigate }: { navigate: (route: Route) => void }
     { subject: "Русский язык", score: "" },
     { subject: "Информатика и ИКТ", score: "" },
   ]);
-  const [admissionYear, setAdmissionYear] = useState("2026");
+  const [admissionYear, setAdmissionYear] = useState("");
   const [funding, setFunding] = useState("all");
   const [studyForm, setStudyForm] = useState("all");
   const [maxTuition, setMaxTuition] = useState("");
@@ -76,6 +76,7 @@ export function AdmissionPage({ navigate }: { navigate: (route: Route) => void }
   const submit = async () => {
     setFormError(null);
     const parsedScores: { subject: string; score: number }[] = [];
+    const normalizedSubjects = new Set<string>();
     for (const row of scores) {
       const subject = row.subject.trim();
       const rawScore = row.score.trim();
@@ -89,6 +90,12 @@ export function AdmissionPage({ navigate }: { navigate: (route: Route) => void }
         setFormError("Баллы ЕГЭ должны быть в диапазоне от 0 до 100.");
         return;
       }
+      const normalizedSubject = subject.toLocaleLowerCase("ru-RU");
+      if (normalizedSubjects.has(normalizedSubject)) {
+        setFormError("Укажите каждый предмет только один раз.");
+        return;
+      }
+      normalizedSubjects.add(normalizedSubject);
       parsedScores.push({ subject, score });
     }
     const year = admissionYear.trim() ? Number(admissionYear) : null;
@@ -140,7 +147,7 @@ export function AdmissionPage({ navigate }: { navigate: (route: Route) => void }
           <div className="space-y-2"><Label htmlFor="location">Город или ограничение по месту <span className="font-normal text-muted-foreground">(необязательно)</span></Label><Input id="location" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Например, Москва" /></div>
           <div className="space-y-2">
             <div className="flex items-center justify-between"><Label>Баллы ЕГЭ</Label><span className="text-xs text-muted-foreground">можно оставить пустым</span></div>
-            {scores.map((row, index) => <div key={index} className="flex gap-2"><Input value={row.subject} onChange={(event) => setScores((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, subject: event.target.value } : item))} placeholder="Предмет" /><Input type="number" min={0} max={100} value={row.score} onChange={(event) => setScores((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, score: event.target.value } : item))} placeholder="0–100" className="w-28" /><Button type="button" variant="ghost" size="icon" onClick={() => setScores((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Удалить предмет"><Trash2 className="h-4 w-4" /></Button></div>)}
+            {scores.map((row, index) => <div key={index} className="flex gap-2"><Input aria-label={`Предмет ${index + 1}`} value={row.subject} onChange={(event) => setScores((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, subject: event.target.value } : item))} placeholder="Предмет" /><Input aria-label="0–100" type="number" min={0} max={100} value={row.score} onChange={(event) => setScores((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, score: event.target.value } : item))} placeholder="0–100" className="w-28" /><Button type="button" variant="ghost" size="icon" onClick={() => setScores((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="Удалить предмет"><Trash2 className="h-4 w-4" /></Button></div>)}
             <Button type="button" size="sm" variant="outline" onClick={() => setScores((current) => [...current, { subject: "", score: "" }])} className="gap-1"><Plus className="h-4 w-4" /> Добавить предмет</Button>
           </div>
           {formError && <p className="flex items-center gap-2 text-sm text-destructive" role="alert"><CircleAlert className="h-4 w-4" />{formError}</p>}
@@ -150,14 +157,14 @@ export function AdmissionPage({ navigate }: { navigate: (route: Route) => void }
       </Card>
 
       {submitted && suggestions && (
-        <AdmissionOutcomes suggestions={outcomes} isLoading={isSuggestionsLoading} navigate={navigate} pendingProgram={pendingProgram} onSave={saveProgram} />
+        <AdmissionOutcomes suggestions={outcomes} missingData={suggestions.missingData} isLoading={isSuggestionsLoading} navigate={navigate} pendingProgram={pendingProgram} onSave={saveProgram} />
       )}
-      {!submitted && context?.state.admissionConstraints && suggestions && <AdmissionOutcomes suggestions={outcomes} isLoading={isSuggestionsLoading} navigate={navigate} pendingProgram={pendingProgram} onSave={saveProgram} />}
+      {!submitted && context?.state.admissionConstraints && suggestions && <AdmissionOutcomes suggestions={outcomes} missingData={suggestions.missingData} isLoading={isSuggestionsLoading} navigate={navigate} pendingProgram={pendingProgram} onSave={saveProgram} />}
     </div>
   );
 }
 
-function AdmissionOutcomes({ suggestions, isLoading, navigate, pendingProgram, onSave }: { suggestions: { primary: DecisionSuggestion[]; alternative: DecisionSuggestion[]; ineligible: DecisionSuggestion[]; insufficient: DecisionSuggestion[] }; isLoading: boolean; navigate: (route: Route) => void; pendingProgram: string | null; onSave: (programId: string, role: "primary" | "alternative") => Promise<void> }) {
+function AdmissionOutcomes({ suggestions, missingData, isLoading, navigate, pendingProgram, onSave }: { suggestions: { primary: DecisionSuggestion[]; alternative: DecisionSuggestion[]; ineligible: DecisionSuggestion[]; insufficient: DecisionSuggestion[] }; missingData: string[]; isLoading: boolean; navigate: (route: Route) => void; pendingProgram: string | null; onSave: (programId: string, role: "primary" | "alternative") => Promise<void> }) {
   if (isLoading) return <Loading label="Считаем варианты поступления…" />;
   const sections = [
     { key: "primary", title: "Реалистичные варианты", items: suggestions.primary, tone: "good" },
@@ -168,6 +175,7 @@ function AdmissionOutcomes({ suggestions, isLoading, navigate, pendingProgram, o
   return (
     <div className="space-y-4" data-testid="admission-outcomes">
       <div className="rounded-xl border border-amber-300/60 bg-amber-50 p-4 text-sm text-amber-950"><p className="font-medium">Важно про результат</p><p className="mt-1">Это оценка риска по доступным источникам и историческим ориентирам. Она не гарантирует поступление и не заменяет правила приёмной кампании.</p></div>
+      {missingData.length > 0 && <div className="rounded-xl border border-border/70 bg-card p-4 text-sm"><p className="font-medium">Что ещё не удалось проверить</p><ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">{missingData.slice(0, 8).map((item) => <li key={item}>{item}</li>)}</ul></div>}
       {sections.map((section) => <OutcomeSection key={section.key} title={section.title} items={section.items} tone={section.tone} navigate={navigate} pendingProgram={pendingProgram} onSave={onSave} />)}
     </div>
   );
@@ -180,8 +188,17 @@ function OutcomeSection({ title, items, tone, navigate, pendingProgram, onSave }
       <CardHeader className="pb-3"><SectionTitle hint={`${items.length}`}>{title}</SectionTitle></CardHeader>
       <CardContent className="space-y-3">
         {items.length === 0 && <p className="text-sm text-muted-foreground">В этой группе пока нет программ.</p>}
-        {items.map((item) => <div key={item.programId} className="rounded-xl border border-border/70 bg-background/80 p-4"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><div className="min-w-0"><p className="font-mono text-xs text-primary">{item.programCode}</p><button type="button" className="mt-1 text-left font-serif text-lg font-semibold hover:text-primary" onClick={() => navigate({ view: "program", id: item.programId })}>{item.programName}</button><div className="mt-2 flex flex-wrap gap-1.5"><Tag tone="muted">Риск: {item.admissionRisk}</Tag>{item.admissionStatus && <Tag tone="muted">Статус: {item.admissionStatus}</Tag>}</div>{item.sourceGaps.length > 0 && <p className="mt-2 text-xs text-muted-foreground">{item.sourceGaps.map(explainSourceGap).join(" ")}</p>}</div><div className="text-right text-xs text-muted-foreground">{item.admissionFit ? `оценка ${item.admissionFit.score}/100` : "оценка неизвестна"}</div></div><p className="mt-3 text-sm text-muted-foreground">{item.reasons.admissionRisk.join("; ") || "Причины и источник риска не указаны."}</p><div className="mt-3 flex flex-wrap gap-2"><Button type="button" size="sm" onClick={() => void onSave(item.programId, "primary")} disabled={pendingProgram !== null}>Добавить в основные</Button><Button type="button" size="sm" variant="outline" onClick={() => void onSave(item.programId, "alternative")} disabled={pendingProgram !== null}>Оставить альтернативой</Button><Button type="button" size="sm" variant="ghost" onClick={() => navigate({ view: "program", id: item.programId })}>Посмотреть почему</Button><Button type="button" size="sm" variant="ghost" onClick={() => navigate({ view: "compare" })}>Сравнить</Button></div></div>)}
+        {items.map((item) => <div key={item.programId} className="rounded-xl border border-border/70 bg-background/80 p-4"><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><div className="min-w-0"><p className="font-mono text-xs text-primary">{item.programCode}</p><button type="button" className="mt-1 text-left font-serif text-lg font-semibold hover:text-primary" onClick={() => navigate({ view: "program", id: item.programId })}>{item.programName}</button><div className="mt-2 flex flex-wrap gap-1.5"><Tag tone="muted">Риск: {item.admissionRisk}</Tag>{item.admissionStatus && <Tag tone="muted">Статус: {item.admissionStatus}</Tag>}</div>{item.sourceGaps.length > 0 && <p className="mt-2 text-xs text-muted-foreground">{item.sourceGaps.map(explainSourceGap).join(" ")}</p>}</div><div className="text-right text-xs text-muted-foreground">{item.admissionFit ? `оценка ${item.admissionFit.score}/100` : "оценка неизвестна"}</div></div><p className="mt-3 text-sm text-muted-foreground">{item.reasons.admissionRisk.join("; ") || "Причины и источник риска не указаны."}</p><ConstraintOutcomeList outcomes={item.constraintOutcomes} /><div className="mt-3 flex flex-wrap gap-2"><Button type="button" size="sm" onClick={() => void onSave(item.programId, "primary")} disabled={pendingProgram !== null}>Добавить в основные</Button><Button type="button" size="sm" variant="outline" onClick={() => void onSave(item.programId, "alternative")} disabled={pendingProgram !== null}>Оставить альтернативой</Button><Button type="button" size="sm" variant="ghost" onClick={() => navigate({ view: "program", id: item.programId })}>Посмотреть почему</Button><Button type="button" size="sm" variant="ghost" onClick={() => navigate({ view: "compare" })}>Сравнить</Button></div></div>)}
       </CardContent>
     </Card>
   );
+}
+
+function ConstraintOutcomeList({ outcomes }: { outcomes: DecisionSuggestion["constraintOutcomes"] }) {
+  if (outcomes.length === 0) return null;
+  return <div className="mt-3 rounded-lg border border-border/60 bg-card/70 p-3 text-xs"><p className="font-medium">Проверка ваших условий</p><ul className="mt-1 space-y-1 text-muted-foreground">{outcomes.map((outcome) => <li key={outcome.dimension} className={outcome.satisfied === false ? "text-orange-800" : outcome.applicability === "insufficient_data" ? "text-amber-800" : undefined}>{constraintLabel(outcome.dimension)}: {outcome.message}</li>)}</ul></div>;
+}
+
+function constraintLabel(dimension: string): string {
+  return { applicant_scores: "Баллы", admission_year: "Год", funding: "Финансирование", study_form: "Форма", max_tuition: "Стоимость", location: "Место" }[dimension] ?? dimension;
 }

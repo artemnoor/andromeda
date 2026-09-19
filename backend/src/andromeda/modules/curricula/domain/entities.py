@@ -9,6 +9,7 @@ from pydantic import Field, HttpUrl, model_validator
 from ....shared.contracts.base import ContractModel
 from ....shared.contracts.enums import AssessmentType
 from ....shared.contracts.ids import Credits, CurriculumId, CurriculumItemId, DisciplineId, EducationYear, HourCount, ProgramId, Semester, SourcePosition
+from ....shared.contracts.provenance import SourceAttribution, SourceGapReference
 
 
 logger = logging.getLogger("andromeda.contracts.validation")
@@ -46,6 +47,8 @@ class Curriculum(ContractModel):
     source_url: HttpUrl
     captured_at: datetime
     items: tuple[CurriculumItem, ...] = Field(min_length=1)
+    provenance: tuple[SourceAttribution, ...] = ()
+    source_gaps: tuple[SourceGapReference, ...] = ()
 
     @model_validator(mode="after")
     def validate_identity(self) -> Self:

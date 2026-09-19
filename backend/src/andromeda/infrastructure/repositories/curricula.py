@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
+import json
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,6 +12,7 @@ from andromeda.modules.curricula.repository.ports import CurriculumReader, Curri
 from andromeda.shared.contracts.enums import AssessmentType
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
 from andromeda.shared.contracts.ids import ProgramId, canonical_program_id
+from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 
 from ..database.models import AssessmentTypeModel, CurriculumItemAssessmentModel, CurriculumItemModel, CurriculumModel
 
@@ -37,10 +39,11 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
                 CurriculumItemModel.source_name,
             )
         ).scalars().all()
+        assessments_by_item = _assessments_by_item(self._session, tuple(item.id for item in items))
         return self._to_curriculum(
             model,
             items,
-            {item.id: tuple(self._session.execute(select(CurriculumItemAssessmentModel).where(CurriculumItemAssessmentModel.curriculum_item_id == item.id)).scalars().all()) for item in items},
+            assessments_by_item,
         )
 
     def list_for_programs(self, program_ids: tuple[ProgramId, ...]) -> dict[ProgramId, Curriculum]:
@@ -74,13 +77,7 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
             )
         ).scalars().all()
         item_ids = tuple(item.id for item in items)
-        assessment_rows = self._session.execute(
-            select(CurriculumItemAssessmentModel)
-            .where(CurriculumItemAssessmentModel.curriculum_item_id.in_(item_ids))
-        ).scalars().all() if item_ids else []
-        assessments_by_item: dict[str, list[CurriculumItemAssessmentModel]] = defaultdict(list)
-        for row in assessment_rows:
-            assessments_by_item[row.curriculum_item_id].append(row)
+        assessments_by_item = _assessments_by_item(self._session, item_ids)
         items_by_curriculum: dict[str, list[CurriculumItemModel]] = defaultdict(list)
         for item in items:
             items_by_curriculum[item.curriculum_id].append(item)
@@ -107,6 +104,8 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
                 "education_year": model.education_year,
                 "source_url": model.source_url,
                 "captured_at": model.captured_at,
+                "provenance": _provenance_values(model.provenance_json),
+                "source_gaps": _gap_values(model.source_gaps_json),
                 "items": tuple(self._to_item(item, assessments_by_item.get(item.id, ())) for item in items),
             }
         )
@@ -119,6 +118,8 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
             "education_year": curriculum.education_year,
             "source_url": str(curriculum.source_url),
             "captured_at": curriculum.captured_at,
+            "provenance_json": _provenance_json(curriculum.provenance),
+            "source_gaps_json": _gap_json(curriculum.source_gaps),
         }
         if existing is None:
             self._session.add(CurriculumModel(**values))
@@ -150,3 +151,37 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
                 "source_position": model.source_position,
             }
         )
+
+
+def _provenance_json(values: tuple[SourceAttribution, ...]) -> str:
+    return json.dumps([value.model_dump(mode="json") for value in values], ensure_ascii=False, separators=(",", ":"))
+
+
+def _assessments_by_item(session: Session, item_ids: tuple[str, ...]) -> dict[str, tuple[CurriculumItemAssessmentModel, ...]]:
+    if not item_ids:
+        return {}
+    rows = session.execute(
+        select(CurriculumItemAssessmentModel).where(CurriculumItemAssessmentModel.curriculum_item_id.in_(item_ids))
+    ).scalars().all()
+    grouped: dict[str, list[CurriculumItemAssessmentModel]] = defaultdict(list)
+    for row in rows:
+        grouped[row.curriculum_item_id].append(row)
+    return {key: tuple(value) for key, value in grouped.items()}
+
+
+def _gap_json(values: tuple[SourceGapReference, ...]) -> str:
+    return json.dumps([value.model_dump(mode="json") for value in values], ensure_ascii=False, separators=(",", ":"))
+
+
+def _provenance_values(value: str) -> tuple[SourceAttribution, ...]:
+    parsed = json.loads(value)
+    if not isinstance(parsed, list):
+        raise ValueError("persisted curriculum provenance must be a list")
+    return tuple(SourceAttribution.model_validate(item, strict=False) for item in parsed)
+
+
+def _gap_values(value: str) -> tuple[SourceGapReference, ...]:
+    parsed = json.loads(value)
+    if not isinstance(parsed, list):
+        raise ValueError("persisted curriculum source gaps must be a list")
+    return tuple(SourceGapReference.model_validate(item, strict=False) for item in parsed)

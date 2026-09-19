@@ -58,7 +58,7 @@ class BmstuUniversityAdapter:
             event_snapshot = load_event_fixture(event_fixture_dir or DEFAULT_EVENT_FIXTURE_DIR)
             campus_snapshot = load_campus_fixture(campus_fixture_dir or DEFAULT_CAMPUS_FIXTURE_DIR)
             snapshots += (event_snapshot, campus_snapshot)
-        result = CapturedSources(snapshots=snapshots)
+        result = CapturedSources(snapshots=snapshots, source_gaps=captured.source_gaps)
         fetch_logger.info(
             "stage=capture_complete mode=%s snapshots=%d event_source=%s campus_source=%s",
             mode,
@@ -80,7 +80,7 @@ class BmstuUniversityAdapter:
             for snapshot in captured.snapshots
             if snapshot.source_kind != campus_source_kind
         )
-        parser_captured = CapturedSources(snapshots=parser_snapshots)
+        parser_captured = CapturedSources(snapshots=parser_snapshots, source_gaps=captured.source_gaps)
         select_logger.debug("stage=selected source_snapshots=%d programs=%s", len(parser_snapshots), len(selected) if selected is not None else "discovery")
         parse_logger.debug("stage=parse source_snapshots=%d programs=%s", len(parser_snapshots), len(selected) if selected is not None else "discovery")
         raw = parse_captured(parser_captured, program_codes=selected).model_copy(
@@ -92,9 +92,9 @@ class BmstuUniversityAdapter:
             for record in parse_detail_admissions(detail_snapshot, selected)
         )
         order_records, order_gaps = _parse_order_admissions(captured, raw.programs)
-        admission_records = tuple(
-            _canonicalize_admission_code(record, raw.programs)
-            for record in (*admission_records, *order_records)
+        admission_records, admission_gaps = _canonicalize_admission_records(
+            (*admission_records, *order_records),
+            raw.programs,
         )
         event_snapshots = captured.by_kind("bmstu_events")
         if len(event_snapshots) > 1:
@@ -107,7 +107,7 @@ class BmstuUniversityAdapter:
         raw = raw.model_copy(
             update={
                 "admissions": admission_records,
-                "source_gaps": (*raw.source_gaps, *order_gaps),
+                "source_gaps": (*raw.source_gaps, *order_gaps, *admission_gaps),
                 "events": event_records,
                 "campus_points": campus_records,
             }
@@ -172,10 +172,18 @@ class BmstuUniversityAdapter:
             )
             for discipline in canonical.disciplines
         )
+        classification_outcomes = tuple(
+            self._classifier.classify_with_outcome(
+                discipline.name,
+                discipline_id=discipline.id,
+            )
+            for discipline in canonical.disciplines
+        )
         canonical = CanonicalSnapshot.model_validate(
             {
                 **canonical.model_dump(),
                 "disciplines": classified_disciplines,
+                "classification_outcomes": classification_outcomes,
                 "source_gaps": raw.source_gaps,
                 "admissions": normalize_admissions(
                     raw.admissions,
@@ -248,6 +256,75 @@ def _canonicalize_admission_code(record: RawAdmissionRecord, programs: Sequence[
         )
     )
     return record.model_copy(update={"program_code": canonical, "source_program_code": source_code})
+
+
+def _canonicalize_admission_records(
+    records: Sequence[RawAdmissionRecord],
+    programs: Sequence[RawProgramRecord],
+) -> tuple[tuple[RawAdmissionRecord, ...], tuple[RawSourceGap, ...]]:
+    """Canonicalize source rows and quarantine identities outside this catalog.
+
+    BMSTU publishes historical and cross-catalog admission rows together with
+    the current detail payload.  An unknown direction/profile must not be
+    projected to a current program, but it is still useful source evidence.
+    Ambiguous mappings continue to raise from ``_canonicalize_admission_code``
+    so a parser change cannot silently guess a target.
+    """
+
+    known_program_codes = {_canonical_code(program.code) for program in programs}
+    known_direction_codes = {
+        direction
+        for program in programs
+        for direction in (
+            extract_direction_codes(program.direction_code)
+            or extract_direction_codes(program.code)
+            or (_canonical_code(program.direction_code),)
+        )
+    }
+    accepted: list[RawAdmissionRecord] = []
+    gaps: list[RawSourceGap] = []
+    for source_record in records:
+        record = _canonicalize_admission_code(source_record, programs)
+        code = _canonical_code(record.program_code)
+        if record.scope == "direction":
+            known = code in known_direction_codes or any(
+                program_code.startswith(f"{code}-") for program_code in known_program_codes
+            )
+        else:
+            known = code in known_program_codes
+        if known:
+            accepted.append(record)
+            continue
+        gap = _admission_identity_gap(record)
+        gaps.append(gap)
+        parse_logger.warning(
+            "admission_source_gap reason=%s program_code=%s source_url=%s locator=%s",
+            gap.reason,
+            record.program_code,
+            record.source_url,
+            record.locator.field or record.locator.page or record.locator.row,
+        )
+    return tuple(accepted), tuple(gaps)
+
+
+def _admission_identity_gap(record: RawAdmissionRecord) -> RawSourceGap:
+    stable = "|".join(
+        (
+            record.id,
+            record.program_code,
+            str(record.admission_year),
+            str(record.source_url),
+            record.locator.field or "",
+        )
+    )
+    return RawSourceGap(
+        id=f"source-gap:bmstu-admission-identity:{sha256(stable.encode('utf-8')).hexdigest()}",
+        entity_type="admission",
+        entity_key=f"{record.program_code}:{record.admission_year}:{record.id}",
+        reason="admission-program-identity-unknown",
+        source_url=record.source_url,
+        locator=record.locator,
+    )
 
 
 def _parse_order_admissions(

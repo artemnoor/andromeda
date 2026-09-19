@@ -91,7 +91,7 @@ class _Recommendations:
         )
         return ranked[:limit] if limit is not None else ranked
 
-    def recommend_from_fingerprints(self, request, fingerprints):
+    def recommend_from_fingerprints(self, request, fingerprints, *, profile_revision=None, question_set_version=None):
         raise AssertionError("completion is not part of the session policy fixture")
 
 

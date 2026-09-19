@@ -28,6 +28,7 @@ from andromeda.modules.decision.contracts.public import (
     DecisionConstraintsUpdate,
     DecisionContext,
     DecisionContextResult,
+    DecisionConstraintOutcome,
     DecisionMutationResult,
     DecisionRefinementAnswer,
     DecisionRefinementResult,
@@ -42,8 +43,8 @@ from andromeda.modules.decision.contracts.public import (
 from andromeda.shared.contracts.ids import EducationYear, ProgramId
 
 from .admission_fit import AdmissionFitResponse, admission_fit_response
-from .common import ApiModel
-from .proftest import MatchScoreResponse, UserProfileResponse, profile_response
+from .common import ApiModel, SourceAttributionResponse, SourceGapReferenceResponse
+from .proftest import MatchScoreResponse, RecommendationEvidenceResponse, UserProfileResponse, profile_response, recommendation_evidence_response
 
 
 def _decimal_from_json(value: object) -> object:
@@ -354,6 +355,14 @@ class DecisionSuggestionReasonsResponse(ApiModel):
     missing_data: tuple[str, ...]
 
 
+class DecisionConstraintOutcomeResponse(ApiModel):
+    dimension: str
+    applicability: str
+    satisfied: bool | None = None
+    message: str
+    source_gaps: tuple[str, ...]
+
+
 class DecisionSuggestionResponse(ApiModel):
     program_id: ProgramId
     program_code: str
@@ -363,9 +372,13 @@ class DecisionSuggestionResponse(ApiModel):
     admission_risk: str
     admission_fit: AdmissionFitResponse | None = None
     content_fit: MatchScoreResponse | None = None
+    evidence: RecommendationEvidenceResponse | None = None
+    constraint_outcomes: tuple[DecisionConstraintOutcomeResponse, ...]
     reasons: DecisionSuggestionReasonsResponse
     source_gaps: tuple[str, ...]
     source_hashes: tuple[str, ...]
+    provenance: tuple[SourceAttributionResponse, ...] = ()
+    source_gap_details: tuple[SourceGapReferenceResponse, ...] = ()
 
 
 class DecisionShortlistItemResponse(ApiModel):
@@ -377,9 +390,13 @@ class DecisionShortlistItemResponse(ApiModel):
     admission_risk: str
     admission_fit: AdmissionFitResponse | None = None
     content_fit: MatchScoreResponse | None = None
+    evidence: RecommendationEvidenceResponse | None = None
+    constraint_outcomes: tuple[DecisionConstraintOutcomeResponse, ...]
     reasons: DecisionSuggestionReasonsResponse
     source_gaps: tuple[str, ...]
     source_hashes: tuple[str, ...]
+    provenance: tuple[SourceAttributionResponse, ...] = ()
+    source_gap_details: tuple[SourceGapReferenceResponse, ...] = ()
     role: str
     state: str
 
@@ -523,9 +540,13 @@ def _suggestion_response(value: DecisionSuggestion) -> DecisionSuggestionRespons
         admission_risk=value.admission_risk.value,
         admission_fit=admission_fit_response(value.admission_fit) if value.admission_fit is not None else None,
         content_fit=MatchScoreResponse.model_validate(value.content_fit.model_dump()) if value.content_fit is not None else None,
+        evidence=recommendation_evidence_response(value.evidence) if value.evidence is not None else None,
+        constraint_outcomes=tuple(_constraint_outcome_response(item) for item in value.constraint_outcomes),
         reasons=DecisionSuggestionReasonsResponse.model_validate(value.reasons.model_dump()),
         source_gaps=value.source_gaps,
         source_hashes=value.source_hashes,
+        provenance=tuple(SourceAttributionResponse.model_validate(item.model_dump()) for item in value.provenance),
+        source_gap_details=tuple(SourceGapReferenceResponse.model_validate(item.model_dump()) for item in value.source_gap_details),
     )
 
 
@@ -539,11 +560,25 @@ def _shortlist_item_response(value: DecisionShortlistItem) -> DecisionShortlistI
         admission_risk=value.admission_risk.value,
         admission_fit=admission_fit_response(value.admission_fit) if value.admission_fit is not None else None,
         content_fit=MatchScoreResponse.model_validate(value.content_fit.model_dump()) if value.content_fit is not None else None,
+        evidence=recommendation_evidence_response(value.evidence) if value.evidence is not None else None,
+        constraint_outcomes=tuple(_constraint_outcome_response(item) for item in value.constraint_outcomes),
         reasons=DecisionSuggestionReasonsResponse.model_validate(value.reasons.model_dump()),
         source_gaps=value.source_gaps,
         source_hashes=value.source_hashes,
+        provenance=tuple(SourceAttributionResponse.model_validate(item.model_dump()) for item in value.provenance),
+        source_gap_details=tuple(SourceGapReferenceResponse.model_validate(item.model_dump()) for item in value.source_gap_details),
         role=value.role.value,
         state=value.state.value,
+    )
+
+
+def _constraint_outcome_response(value: DecisionConstraintOutcome) -> DecisionConstraintOutcomeResponse:
+    return DecisionConstraintOutcomeResponse(
+        dimension=value.dimension.value,
+        applicability=value.applicability.value,
+        satisfied=value.satisfied,
+        message=value.message,
+        source_gaps=value.source_gaps,
     )
 
 

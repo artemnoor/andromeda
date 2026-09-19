@@ -24,7 +24,7 @@ export function explainSourceGap(code: string): string {
 
 export function Loading({ label = "Загружаем данные…" }: { label?: string }) {
   return (
-    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-muted-foreground">
+    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-muted-foreground" role="status" aria-live="polite">
       <Loader2 className="h-7 w-7 animate-spin text-primary" />
       <p className="text-sm">{label}</p>
     </div>
@@ -41,7 +41,7 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <Card className="border-destructive/30 bg-destructive/5">
+    <Card className="border-destructive/30 bg-destructive/5" role="alert" aria-live="assertive">
       <CardContent className="flex flex-col items-start gap-3 p-6">
         <div className="flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-5 w-5" />
@@ -158,14 +158,15 @@ export function Stat({ label, value, hint }: { label: string; value: React.React
 
 export function ProvenanceChip({ prov }: { prov?: Provenance | null }) {
   if (!prov) return null;
+  const sourceHref = safeExternalHref(prov.sourceUrl ?? prov.url);
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
       <FileText className="h-3.5 w-3.5" />
       <span className="font-medium">{prov.sourceName ?? prov.sourceKind ?? "Источник"}</span>
       {prov.capturedAt && <span>· снят {formatDate(prov.capturedAt)}</span>}
-      {prov.sourceUrl && (
+      {sourceHref && (
         <a
-          href={prov.sourceUrl}
+          href={sourceHref}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-primary hover:underline"
@@ -175,6 +176,16 @@ export function ProvenanceChip({ prov }: { prov?: Provenance | null }) {
       )}
     </div>
   );
+}
+
+export function safeExternalHref(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
 }
 
 export function Tag({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "primary" | "muted" }) {

@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation
 
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawTracerBundle
+from andromeda.ingestion.contracts.source import source_gap_reference
 from andromeda.modules.curricula.contracts.public import Curriculum, CurriculumItem
 from andromeda.modules.disciplines.contracts.public import Discipline
 from andromeda.modules.programs.contracts.public import Program
@@ -15,6 +16,7 @@ from andromeda.modules.universities.contracts.public import Direction, Universit
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel, SourceKind
 from andromeda.shared.contracts.errors import ContractError, ErrorCode, ErrorDetail
 from andromeda.shared.contracts.provenance import SourceAttribution
+from andromeda.shared.contracts.provenance import SourceGapReference
 from ..identity import direction_codes
 
 
@@ -70,6 +72,8 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
             education_year=program.education_year,
             study_plan_url=program.study_plan_url,
             source_url=program.source_url,
+            provenance=_source_attribution(raw, str(program.source_url), ("bmstu_major_detail", "bmstu_major_catalog"), field="program", record_key=_code(program.code)),
+            source_gaps=_source_gaps(raw, _code(program.code), str(program.source_url), field="program"),
         )
         for program in raw.programs
     )
@@ -115,6 +119,8 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
             source_url=program.study_plan_url,
             captured_at=_captured_at(raw, program.code),
             items=tuple(items_by_program[program.code]),
+            provenance=_source_attribution(raw, str(program.study_plan_url), ("bmstu_curriculum_document", "bmstu_curriculum_metadata"), field="curriculum", record_key=program.id),
+            source_gaps=_source_gaps(raw, program.code, str(program.study_plan_url), field="curriculum"),
         )
         for program in programs
         if items_by_program[program.code]
@@ -218,6 +224,45 @@ def _captured_at(raw: RawTracerBundle, program_code: str) -> datetime:
         and str(snapshot.requested_url) == str(program.study_plan_url)
     ]
     return matching[0] if matching else raw.snapshots[0].captured_at
+
+
+def _source_attribution(
+    raw: RawTracerBundle,
+    source_url: str,
+    source_kinds: tuple[str, ...],
+    *,
+    field: str,
+    record_key: str,
+) -> tuple[SourceAttribution, ...]:
+    snapshot = next(
+        (
+            item
+            for item in raw.snapshots
+            if item.source_kind in source_kinds and str(item.requested_url) == source_url
+        ),
+        next((item for item in raw.snapshots if item.source_kind in source_kinds), None),
+    )
+    if snapshot is None:
+        return ()
+    return (
+        SourceAttribution(
+            kind=SourceKind(snapshot.source_kind),
+            url=snapshot.requested_url,
+            captured_at=snapshot.captured_at,
+            content_sha256=snapshot.content_sha256,
+            university_id="university:bmstu",
+            field=field,
+            record_key=record_key,
+        ),
+    )
+
+
+def _source_gaps(raw: RawTracerBundle, record_key: str, source_url: str, *, field: str) -> tuple[SourceGapReference, ...]:
+    return tuple(
+        source_gap_reference(gap, field=field, record_key=record_key)
+        for gap in raw.source_gaps
+        if record_key in gap.entity_key or source_url in str(gap.source_url)
+    )
 
 
 def _program_direction(program: object, directions: dict[str, Direction], fallback: str) -> str:

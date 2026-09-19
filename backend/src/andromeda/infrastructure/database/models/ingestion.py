@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, LargeBinary, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, LargeBinary, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..base import Base
@@ -28,11 +28,30 @@ class IngestRunModel(Base):
     removed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     source_hashes_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
     source_kinds_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
-    university_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    university_id: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="university:legacy", server_default="university:legacy"
+    )
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source_gap_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     critical_gap_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     drift_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_checked", server_default="not_checked")
+    quality_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_checked", server_default="not_checked")
+    quality_metrics_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}", server_default="{}")
+    previous_good_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    program_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    source_profile: Mapped[str] = mapped_column(String(128), nullable=False, default="legacy", server_default="legacy")
+    source_revision: Mapped[str] = mapped_column(String(64), nullable=False, default="legacy", server_default="legacy")
+    configuration_version: Mapped[str] = mapped_column(String(64), nullable=False, default="legacy", server_default="legacy")
+    retry_of_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    projection_target: Mapped[str] = mapped_column(String(64), nullable=False, default="canonical", server_default="canonical")
+    heartbeat_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), server_default=text("CURRENT_TIMESTAMP")
+    )
+    projection_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="not_started", server_default="not_started"
+    )
+    recovery_reason: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     __table_args__ = (
         CheckConstraint("status IN ('running', 'completed', 'failed')", name="ck_ingest_run_status"),
@@ -49,6 +68,29 @@ class IngestRunModel(Base):
         CheckConstraint("source_gap_count >= 0", name="ck_ingest_run_source_gap_count"),
         CheckConstraint("critical_gap_count >= 0", name="ck_ingest_run_critical_gap_count"),
         CheckConstraint("drift_status IN ('not_checked', 'passed', 'rejected')", name="ck_ingest_run_drift_status"),
+        CheckConstraint("quality_status IN ('not_checked', 'passed', 'degraded', 'rejected')", name="ck_ingest_run_quality_status"),
+        CheckConstraint("length(university_id) > 0", name="ck_ingest_run_university_id"),
+        CheckConstraint("length(projection_target) > 0", name="ck_ingest_run_projection_target"),
+        CheckConstraint(
+            "projection_status IN ('not_started', 'running', 'committed', 'reconciled', 'failed')",
+            name="ck_ingest_run_projection_status",
+        ),
+        CheckConstraint("length(quality_metrics_json) > 0", name="ck_ingest_run_quality_metrics_json"),
+        CheckConstraint("length(source_profile) > 0", name="ck_ingest_run_source_profile"),
+        CheckConstraint("length(source_revision) > 0", name="ck_ingest_run_source_revision"),
+        CheckConstraint("length(configuration_version) > 0", name="ck_ingest_run_configuration_version"),
+        Index("ix_ingest_runs_source_profile_started_at", "source_profile", "started_at"),
+        Index("ix_ingest_runs_status_started_at", "status", "started_at"),
+        Index(
+            "uq_ingest_runs_active_identity",
+            "university_id",
+            "source_profile",
+            "projection_target",
+            unique=True,
+            sqlite_where=text("status = 'running'"),
+            postgresql_where=text("status = 'running'"),
+        ),
+        Index("uq_ingest_runs_idempotency_key", "idempotency_key", unique=True, sqlite_where=text("idempotency_key IS NOT NULL"), postgresql_where=text("idempotency_key IS NOT NULL")),
     )
 
 
@@ -68,6 +110,7 @@ class SourceSnapshotModel(Base):
     __table_args__ = (
         CheckConstraint("length(content_sha256) = 64", name="ck_source_snapshot_sha256_length"),
         CheckConstraint("status_code >= 200 AND status_code <= 599", name="ck_source_snapshot_status"),
+        Index("ix_source_snapshots_ingest_run_id", "ingest_run_id"),
     )
 
 
@@ -78,3 +121,5 @@ class RawSourceRecordModel(Base):
     snapshot_sha256: Mapped[str] = mapped_column(ForeignKey("source_snapshots.content_sha256"), nullable=False)
     record_type: Mapped[str] = mapped_column(String(128), nullable=False)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (Index("ix_raw_source_records_snapshot_hash", "snapshot_sha256"),)

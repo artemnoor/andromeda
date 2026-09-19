@@ -1,3 +1,4 @@
 # Hash-addressed source snapshots must have identical bytes on every checkout.
 backend/tests/fixtures/**/*.json text eol=lf
+backend/tests/fixtures/**/*.html text eol=lf
 backend/tests/fixtures/**/*.pdf binary

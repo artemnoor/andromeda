@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 import logging
 from typing import Any, Generic, TypeVar
@@ -26,9 +27,15 @@ class BackendResult(Generic[ModelT]):
 class BackendHttpClient:
     """Call only public HTTP endpoints; no backend package imports are allowed."""
 
-    def __init__(self, base_url: str, *, timeout_seconds: float = 15.0, client: httpx.AsyncClient | None = None) -> None:
+    def __init__(self, base_url: str, *, timeout_seconds: float = 15.0, retry_attempts: int = 2, retry_backoff_seconds: float = 0.25, client: httpx.AsyncClient | None = None) -> None:
+        if not 1 <= retry_attempts <= 3:
+            raise ValueError("retry_attempts must be between 1 and 3")
+        if not 0 <= retry_backoff_seconds <= 5:
+            raise ValueError("retry_backoff_seconds must be between 0 and 5")
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout_seconds
+        self._retry_attempts = retry_attempts
+        self._retry_backoff_seconds = retry_backoff_seconds
         self._client = client
 
     async def close(self) -> None:
@@ -96,15 +103,27 @@ class BackendHttpClient:
         headers = {"Accept": "application/json"}
         if session_cookie:
             headers["Cookie"] = f"andromeda_profile_session={session_cookie}"
-        try:
-            if self._client is not None:
-                response = await self._client.request(method, f"{self._base_url}{path}", params=params, json=json, headers=headers, timeout=self._timeout)
-            else:
-                async with httpx.AsyncClient(follow_redirects=True) as client:
-                    response = await client.request(method, f"{self._base_url}{path}", params=params, json=json, headers=headers, timeout=self._timeout)
-        except httpx.HTTPError as exc:
-            logger.warning("backend_request_failed path=%s error_type=%s", path, type(exc).__name__)
-            raise BackendTransportError() from exc
+        response: httpx.Response | None = None
+        for attempt in range(1, self._retry_attempts + 1):
+            try:
+                if self._client is not None:
+                    response = await self._client.request(method, f"{self._base_url}{path}", params=params, json=json, headers=headers, timeout=self._timeout)
+                else:
+                    async with httpx.AsyncClient(follow_redirects=True) as client:
+                        response = await client.request(method, f"{self._base_url}{path}", params=params, json=json, headers=headers, timeout=self._timeout)
+            except httpx.HTTPError as exc:
+                if attempt == self._retry_attempts:
+                    logger.warning("backend_request_failed path=%s error_type=%s", path, type(exc).__name__)
+                    raise BackendTransportError() from exc
+                await asyncio.sleep(self._retry_backoff_seconds * (2 ** (attempt - 1)))
+                logger.warning("backend_request_retry path=%s attempt=%d reason=transport", path, attempt)
+                continue
+            if response.status_code not in {429, 502, 503, 504} or attempt == self._retry_attempts:
+                break
+            retry_after = _retry_after_seconds(response)
+            await asyncio.sleep(retry_after if retry_after is not None else self._retry_backoff_seconds * (2 ** (attempt - 1)))
+            logger.warning("backend_request_retry path=%s attempt=%d status=%d", path, attempt, response.status_code)
+        assert response is not None
         if response.status_code >= 400:
             raise BackendError(response.status_code, _safe_error_message(response))
         try:
@@ -131,6 +150,17 @@ def _safe_error_message(response: httpx.Response) -> str:
     if response.status_code == 409:
         return "backend state is stale"
     return f"backend request failed with status {response.status_code}"
+
+
+def _retry_after_seconds(response: httpx.Response) -> float | None:
+    value = response.headers.get("retry-after")
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except ValueError:
+        return None
+    return min(max(parsed, 0.0), 5.0)
 
 
 __all__ = ["BackendHttpClient", "BackendResult"]

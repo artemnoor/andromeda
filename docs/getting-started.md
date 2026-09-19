@@ -12,12 +12,19 @@
 ## Установка
 
 ```powershell
-python -m pip install -e "backend[dev]"
-cd frontend-next
-npm ci
-npx playwright install chromium
+python -m pip install uv
+uv sync --project backend --locked --extra dev --extra browser
+npm --prefix frontend-next ci
+npx --prefix frontend-next playwright install chromium
+npm --prefix frontend-next run build
+npm --prefix frontend-next run check-api-drift
 cd ..
 ```
+
+Для обычного перехода от установки к проверяемому запуску используйте
+`python scripts/andromeda.py production-smoke`; полная карта target-ов — в
+[матрице тестирования](test-matrix.md). Повторную установку Chromium можно
+не выполнять, если он уже установлен.
 
 ## Fixture-запуск
 
@@ -37,7 +44,10 @@ python backend/scripts/run_andromeda_ingestion.py --university hse --mode fixtur
 python backend/scripts/run_andromeda_ingestion.py --university all --mode fixture
 ```
 
-Официальные raw fixtures находятся в `backend/tests/fixtures/tracer/raw` (BMSTU) и `backend/tests/fixtures/hse/raw` (HSE); production live режим не подменяется fixtures.
+Официальные raw fixtures находятся в `backend/tests/fixtures/tracer/raw` (BMSTU)
+и `backend/tests/fixtures/hse/raw` (HSE). Название BMSTU fixture namespace
+сохранено как совместимый raw-contract boundary; production live режим не
+подменяется fixtures.
 
 ## Проверка результата
 
@@ -59,6 +69,11 @@ python backend/scripts/run_andromeda_ingestion.py --university all --mode fixtur
 ```powershell
 python backend/scripts/run_andromeda_demo.py --mode live
 ```
+
+Live mode — explicit operational action: он обращается к официальным
+источникам, поэтому не входит в deterministic PR/full локальный gate. Для
+staging/production используется PostgreSQL и внутренний backend port `8020`;
+локальный demo runner по умолчанию оставляет API на `8000`.
 
 ## PostgreSQL dev
 

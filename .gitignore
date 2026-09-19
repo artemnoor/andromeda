@@ -5,9 +5,12 @@ __pycache__/
 frontend-next/test-results/
 backend/data/*.db
 backend/pipeline_runs/
+*.egg-info/
 output/
 frontend-next/node_modules/
 frontend-next/.next/
+frontend-next/coverage/
+.coverage
 frontend-next/tsconfig.tsbuildinfo
 frontend-next/openapi.ci.json
 frontend-next/.tmp-openapi.json
@@ -15,3 +18,4 @@ frontend-next/playwright-report/
 .env.development
 .env.staging
 ops/postgres/.env
+artifacts/

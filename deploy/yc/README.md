@@ -19,6 +19,9 @@ the deployment environment, never in this repository.
 environment inputs. It has no public port and uses long polling.
 The frontend is built with `NEXT_PUBLIC_API_BASE_URL=/api`, so the public site
 does not expose an internal VM address or need CORS for normal same-origin use.
+Server-side OG routes use the explicit runtime variable
+`ANDROMEDA_INTERNAL_API_URL=http://backend:8020`; they never use the public
+browser path or a `backend:8000` fallback.
 
 The local/demo compose profile may use SQLite for a cheap single-process run,
 but it is not the staging target. Staging requires a domain configured in

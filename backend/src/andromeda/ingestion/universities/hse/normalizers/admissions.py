@@ -26,7 +26,7 @@ def normalize_admissions(records: Iterable[RawAdmissionRecord], *, programs: Seq
         program = resolve_program(record.program_code, record.program_name, programs)
         if program is None:
             raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"HSE admission row has unknown program: {record.program_code}/{record.program_name}")
-        provenance = AdmissionProvenance(source_kind=record.source_kind, source_url=record.source_url, captured_at=snapshot.captured_at, content_sha256=snapshot.content_sha256, locator=_locator(record))
+        provenance = AdmissionProvenance(source_kind=record.source_kind, source_url=record.source_url, captured_at=snapshot.captured_at, content_sha256=snapshot.content_sha256, locator=_locator(record), university_id="university:hse", field="admission_offering", record_key=record.program_code)
         offering = _offering(record, program.id, provenance)
         key = (offering.admission_year, offering.study_form, offering.funding_type, offering.scope)
         current = grouped[program.id].get(key)

@@ -18,7 +18,7 @@ from andromeda.infrastructure.database.models import (
 
 sys.path.insert(0, str(Path(__file__).parents[2] / "scripts"))
 
-from run_tracer_bullet import run_ingest  # noqa: E402
+from run_andromeda_bmstu import run_ingest  # noqa: E402
 
 
 FIXTURE_DIR = Path(__file__).parents[1] / "fixtures" / "tracer" / "raw"

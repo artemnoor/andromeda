@@ -140,6 +140,13 @@ def test_session_can_complete_compact_flow_and_resume_completed_result(tmp_path:
     assert completed.status_code == 200, completed.text
     assert completed.json()["status"] == "completed"
     assert completed.json()["results"]["recommendations"]
+    completed_payload = completed.json()
+    first_evidence = completed_payload["results"]["recommendations"][0]["evidence"]
+    assert completed_payload["profileRevision"] is not None
+    assert first_evidence["profileRevision"] == completed_payload["profileRevision"]
+    assert first_evidence["questionSetVersion"] == "proftest-v3"
+    assert first_evidence["signalsUsed"] or first_evidence["inferredSignals"]
+    assert "missingData" in first_evidence
     assert resumed.status_code == 200
     assert resumed.json()["status"] == "completed"
     assert resumed.json()["results"]["recommendations"]

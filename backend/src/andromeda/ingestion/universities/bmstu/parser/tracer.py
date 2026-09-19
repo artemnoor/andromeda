@@ -17,6 +17,7 @@ from andromeda.ingestion.contracts.raw import (
     RawCurriculumRow,
     RawDirectionRecord,
     RawProgramRecord,
+    RawParserDiagnostic,
     RawSourceSnapshot,
     RawSourceGap,
     RawTracerBundle,
@@ -33,7 +34,7 @@ from ..capture import CapturedSources, BmstuSource, _detail_data, _json_object
 from ..normalizers.canonical import normalize_bundle
 from ..identity import canonicalize_program_records, direction_codes
 
-logger = logging.getLogger("tracer.parser")
+logger = logging.getLogger("andromeda.ingestion.bmstu.parser")
 
 
 def parse_sources(
@@ -71,10 +72,13 @@ def parse_captured(captured: CapturedSources, program_codes: tuple[str, ...] | N
         raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU catalog has no detail snapshots")
     directions: list[RawDirectionRecord] = []
     programs: list[RawProgramRecord] = []
+    gaps: list[RawSourceGap] = list(captured.source_gaps)
+    source_years = _source_education_years(captured)
     for detail_snapshot in detail_snapshots:
-        direction, detail_programs = _parse_detail(detail_snapshot, program_codes)
+        direction, detail_programs, detail_gaps = _parse_detail(detail_snapshot, program_codes, source_years)
         directions.append(direction)
         programs.extend(detail_programs)
+        gaps.extend(detail_gaps)
     if not programs:
         raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "BMSTU details contain no selected programs")
     programs = list(canonicalize_program_records(programs))
@@ -85,7 +89,6 @@ def parse_captured(captured: CapturedSources, program_codes: tuple[str, ...] | N
     if selected_codes is not None and {program.code for program in programs} != selected_codes:
         raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "Selected programs are incomplete")
     rows: list[RawCurriculumRow] = []
-    gaps: list[RawSourceGap] = []
     dynamic_discovery = len(detail_snapshots) > 1
     for program in programs:
         documents = _documents_for_program(captured, program)
@@ -121,6 +124,7 @@ def parse_captured(captured: CapturedSources, program_codes: tuple[str, ...] | N
         curriculum_rows=tuple(rows),
         directions=tuple(normalized_directions),
         source_gaps=tuple(gaps),
+        diagnostics=tuple(_diagnostics_from_gaps(gaps)),
     )
 
 
@@ -151,7 +155,11 @@ def _parse_university(snapshot: object) -> RawUniversityRecord:
     )
 
 
-def _parse_detail(snapshot: object, program_codes: tuple[str, ...] | None) -> tuple[RawDirectionRecord, list[RawProgramRecord]]:
+def _parse_detail(
+    snapshot: object,
+    program_codes: tuple[str, ...] | None,
+    source_years: Mapping[str, int],
+) -> tuple[RawDirectionRecord, list[RawProgramRecord], list[RawSourceGap]]:
     from andromeda.ingestion.contracts.raw import RawSourceSnapshot
     typed = cast(RawSourceSnapshot, snapshot)
     data = _detail_data_from_body(typed.body)
@@ -168,6 +176,7 @@ def _parse_detail(snapshot: object, program_codes: tuple[str, ...] | None) -> tu
     )
     chairs = _obj(data.get("chairs"))
     records: list[RawProgramRecord] = []
+    gaps: list[RawSourceGap] = []
     for chair_value in _list(chairs.get("items")):
         chair = _obj(chair_value)
         educational = _obj(chair.get("educationalProgram"))
@@ -183,13 +192,17 @@ def _parse_detail(snapshot: object, program_codes: tuple[str, ...] | None) -> tu
                 continue
             if not name or not plan:
                 raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Target program {code} is missing name or plan")
+            education_year = _education_year(data) or source_years.get(plan)
+            if education_year is None:
+                gaps.append(_program_gap(code, plan, typed.requested_url, "program education year is absent from official sources"))
+                continue
             records.append(
                 RawProgramRecord(
                     code=code,
                     name=unescape(name),
                     direction_code=direction_code,
                     education_level="бакалавриат",
-                    education_year=_education_year(data, fallback=typed.captured_at.year),
+                    education_year=education_year,
                     study_plan_url=http_url(plan),
                     source_url=typed.requested_url,
                     locator=SourceLocator(source_url=typed.requested_url),
@@ -198,7 +211,39 @@ def _parse_detail(snapshot: object, program_codes: tuple[str, ...] | None) -> tu
             )
     if program_codes is not None and len(records) != len(program_codes):
         raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, "S06 detail did not contain exactly the selected programs")
-    return direction, records
+    return direction, records, gaps
+
+
+def _source_education_years(captured: CapturedSources) -> dict[str, int]:
+    """Read academic year only from official study-plan document metadata."""
+
+    result: dict[str, int] = {}
+    for snapshot in captured.by_kind("bmstu_curriculum_document"):
+        resource = FetchedResource(
+            requested_url=str(snapshot.requested_url),
+            final_url=str(snapshot.final_url),
+            status_code=snapshot.status_code,
+            content_type=snapshot.content_type,
+            body=snapshot.body,
+            fetched_at=snapshot.captured_at.isoformat(),
+        )
+        try:
+            records = _study_plan_records(
+                SourceDefinition(id="S06", name="BMSTU curriculum", url=str(snapshot.requested_url)),
+                resource,
+                snapshot.captured_at.isoformat(),
+                context={},
+            )
+        except Exception:
+            continue
+        years = {
+            int(value["education_year"])
+            for value in records
+            if isinstance(value, Mapping) and isinstance(value.get("education_year"), int)
+        }
+        if len(years) == 1:
+            result[str(snapshot.requested_url)] = next(iter(years))
+    return result
 
 
 def _parse_curriculum(snapshot: RawSourceSnapshot, program_code: str, source_program_code: str) -> list[RawCurriculumRow]:
@@ -323,13 +368,40 @@ def _city(address: str | None) -> str | None:
     return match.group(1).strip() if match else None
 
 
-def _education_year(data: Mapping[str, object], *, fallback: int) -> int:
+def _education_year(data: Mapping[str, object]) -> int | None:
     text = _text(data.get("description")) or ""
     match = re.search(r"20\d{2}", text)
     if match:
         return int(match.group(0))
-    logger.warning("[FIX:admission-year] education_year_missing fallback=capture_year:%d", fallback)
-    return fallback
+    return None
+
+
+def _program_gap(code: str, plan_url: str, source_url: object, reason: str) -> RawSourceGap:
+    from hashlib import sha256
+
+    typed_url = http_url(str(source_url))
+    key = f"program|{code}|{plan_url}|{reason}"
+    return RawSourceGap(
+        id=f"source-gap:{sha256(key.encode('utf-8')).hexdigest()[:24]}",
+        entity_type="program",
+        entity_key=f"program:{code}",
+        reason=reason,
+        source_url=typed_url,
+        locator=SourceLocator(source_url=typed_url),
+    )
+
+
+def _diagnostics_from_gaps(gaps: list[RawSourceGap]) -> list[RawParserDiagnostic]:
+    return [
+        RawParserDiagnostic(
+            code=gap.reason[:128],
+            stage="capture" if gap.entity_type == "source" else "parse",
+            message=gap.reason[:512],
+            severity="ambiguous" if "ambig" in gap.reason.casefold() else "warning",
+            source_url=gap.source_url,
+        )
+        for gap in gaps
+    ]
 
 
 def _canonical_code(value: str | None) -> str | None:

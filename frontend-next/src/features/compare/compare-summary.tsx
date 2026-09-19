@@ -3,7 +3,7 @@
 import { ArrowRight, CircleAlert, Scale } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SectionTitle, Tag } from "@/components/shared";
+import { safeExternalHref, SectionTitle, Tag } from "@/components/shared";
 import type { Route } from "@/lib/router";
 import type { ComparisonKeyDifference, ComparisonSummaryResponse, ComparisonTradeoff } from "@/lib/types";
 
@@ -37,7 +37,7 @@ export function CompareSummary({ data, navigate }: { data: ComparisonSummaryResp
                 <div key={gap.code} className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs text-amber-950">
                   <p className="font-medium">{gap.explanation ?? gap.message}</p>
                   <p className="mt-1">{gap.impact ?? "Сравнение продолжается, но этот блок нельзя считать полным."}</p>
-                  {gap.sourceUrl && <a className="mt-1 inline-block underline" href={gap.sourceUrl} target="_blank" rel="noreferrer">Официальный источник</a>}
+                  {safeExternalHref(gap.sourceUrl) && <a className="mt-1 inline-block underline" href={safeExternalHref(gap.sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer">Официальный источник</a>}
                 </div>
               ))}
             </div>

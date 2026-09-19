@@ -10,6 +10,8 @@ test("guest proftest hands off to the shared decision context", async ({ page })
   await expect(handoff).toBeVisible();
   await expect(handoff).toContainText("Профиль уточнён");
   await expect(handoff).toContainText("Сохранённые варианты не изменены автоматически");
+  await expect(page.getByTestId("proftest-evidence")).toContainText("Набор вопросов: proftest-v3");
+  await expect(page.getByTestId("proftest-recommendation-evidence").first()).toBeVisible();
 
   await handoff.getByRole("button", { name: "Открыть «Мой выбор»" }).click();
   await expect(page.getByTestId("decision-page")).toBeVisible();
@@ -22,9 +24,11 @@ test("proftest completion never changes an existing shortlist", async ({ page })
   await page.goto("/?view=catalog");
   await expect(page.getByTestId("catalog-page")).toBeVisible();
   const addButtons = page.getByRole("button", { name: "Добавить в shortlist" });
-  await expect(addButtons).toHaveCount(2, { timeout: 30_000 });
+  const availablePrograms = await addButtons.count();
+  expect(availablePrograms).toBeGreaterThanOrEqual(2);
   await addButtons.nth(0).click();
   await expect(page.getByRole("button", { name: "Убрать из shortlist" })).toHaveCount(1);
+  await expect.poll(() => addButtons.count(), { timeout: 30_000 }).toBe(availablePrograms - 1);
   await page.getByRole("button", { name: "Добавить в shortlist" }).first().click();
   await expect(page.getByRole("button", { name: "Убрать из shortlist" })).toHaveCount(2);
 

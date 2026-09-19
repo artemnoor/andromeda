@@ -4,18 +4,22 @@ import json
 import logging
 from datetime import datetime, timezone
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawSourceSnapshot, RawTracerBundle
 from andromeda.ingestion.contracts.source import CapturedSources
+from andromeda.ingestion.quality import PreviousProjection, QualityOutcome, is_critical_gap
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaWeight, area_catalog
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel
-from andromeda.shared.contracts.errors import AndromedaError, ContractError, ErrorCode
+from andromeda.shared.contracts.errors import AndromedaError, ConflictError, ContractError, ErrorCode, ErrorDetail
+from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 
 from ..database.models import (
     AssessmentTypeModel,
@@ -40,6 +44,8 @@ from .campus import SqlAlchemyCampusPointRepository
 
 
 logger = logging.getLogger("andromeda.infrastructure.repositories.ingestion")
+_LEGACY_UNIVERSITY_ID = "university:legacy"
+_DEFAULT_PROJECTION_TARGET = "canonical"
 
 
 @dataclass(slots=True)
@@ -64,24 +70,106 @@ class SqlAlchemyIngestionRepository:
     def __init__(self, engine: Any) -> None:
         self._factory = session_factory(engine)
 
-    def start_run(self, run_id: str | None = None) -> str:
+    def start_run(
+        self,
+        run_id: str | None = None,
+        *,
+        source_profile: str = "legacy",
+        source_revision: str = "legacy",
+        configuration_version: str = "legacy",
+        retry_of_run_id: str | None = None,
+        idempotency_key: str | None = None,
+        university_id: str = _LEGACY_UNIVERSITY_ID,
+        projection_target: str = _DEFAULT_PROJECTION_TARGET,
+    ) -> str:
         resolved_run_id = run_id or f"ingest:{uuid4().hex}"
-        self._create_run(
-            resolved_run_id,
-            datetime.now(timezone.utc),
-            source_count=0,
-            source_hashes=(),
-            source_kinds=(),
-            program_count=0,
-            curriculum_item_count=0,
-            event_count=0,
-            campus_point_count=0,
-        )
+        if idempotency_key:
+            existing_id = self.find_run_by_idempotency_key(idempotency_key)
+            if existing_id is not None:
+                return existing_id
+        try:
+            self._create_run(
+                resolved_run_id,
+                datetime.now(timezone.utc),
+                source_count=0,
+                source_hashes=(),
+                source_kinds=(),
+                program_count=0,
+                curriculum_item_count=0,
+                event_count=0,
+                campus_point_count=0,
+                source_profile=source_profile,
+                source_revision=source_revision,
+                configuration_version=configuration_version,
+                retry_of_run_id=retry_of_run_id,
+                idempotency_key=idempotency_key,
+                university_id=university_id,
+                projection_target=projection_target,
+            )
+        except IntegrityError as exc:
+            existing_id = self.find_run_by_idempotency_key(idempotency_key) if idempotency_key else None
+            if existing_id is not None:
+                return existing_id
+            running_id = self._active_run_id(
+                university_id=university_id,
+                source_profile=source_profile,
+                projection_target=projection_target,
+            )
+            if running_id is not None:
+                raise ConflictError(
+                    "An ingestion run is already in progress",
+                    (ErrorDetail(path="run_id", message=running_id, type="ingestion_in_progress"),),
+                ) from exc
+            raise
         logger.info("ingest_audit_started run_id=%s", resolved_run_id)
         return resolved_run_id
 
+    def find_run_by_idempotency_key(self, idempotency_key: str | None) -> str | None:
+        if not idempotency_key:
+            return None
+        with self._factory() as session:
+            return session.scalar(
+                select(IngestRunModel.id)
+                .where(IngestRunModel.idempotency_key == idempotency_key)
+                .limit(1)
+            )
+
+    def latest_run_id(self, source_profile: str) -> str | None:
+        with self._factory() as session:
+            return session.scalar(
+                select(IngestRunModel.id)
+                .where(IngestRunModel.source_profile == source_profile)
+                .order_by(IngestRunModel.started_at.desc(), IngestRunModel.id.desc())
+                .limit(1)
+            )
+
+    def _active_run_id(self, *, university_id: str, source_profile: str, projection_target: str) -> str | None:
+        with self._factory() as session:
+            return session.scalar(
+                select(IngestRunModel.id)
+                .where(
+                    IngestRunModel.status == "running",
+                    IngestRunModel.university_id == university_id,
+                    IngestRunModel.source_profile == source_profile,
+                    IngestRunModel.projection_target == projection_target,
+                )
+                .order_by(IngestRunModel.started_at.asc(), IngestRunModel.id.asc())
+                .limit(1)
+            )
+
+    def heartbeat(self, run_id: str) -> None:
+        """Refresh the lease without changing ingestion metadata."""
+        self._update_run_metadata(run_id)
+
     def record_source_metadata(self, run_id: str, raw: RawTracerBundle) -> None:
         self.record_captured_metadata(run_id, raw.snapshots)
+        logger.info(
+            "ingest_source_batch_observed run_id=%s snapshots=%d source_bytes=%d records=%d",
+            run_id,
+            len(raw.snapshots),
+            sum(len(snapshot.body) for snapshot in raw.snapshots),
+            len(raw.programs) + len(raw.curriculum_rows) + len(raw.admissions) + len(raw.events) + len(raw.campus_points),
+        )
         self._update_run_metadata(
             run_id,
             source_count=len(raw.snapshots),
@@ -93,6 +181,14 @@ class SqlAlchemyIngestionRepository:
             campus_point_count=len(raw.campus_points),
             source_gap_count=len(raw.source_gaps),
             critical_gap_count=_critical_gap_count(raw.source_gaps),
+            quality_metrics_json=json.dumps(
+                {
+                    "source_gap_reasons": [gap.reason for gap in raw.source_gaps],
+                    "diagnostic_count": len(raw.diagnostics),
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
         )
 
     def record_captured_metadata(self, run_id: str, captured: CapturedSources | tuple[RawSourceSnapshot, ...]) -> None:
@@ -105,7 +201,7 @@ class SqlAlchemyIngestionRepository:
         )
 
     def ingest(self, raw: RawTracerBundle, canonical: CanonicalSnapshot, *, run_id: str | None = None) -> str:
-        resolved_run_id = run_id or self.start_run()
+        resolved_run_id = run_id or self.start_run(university_id=str(canonical.university.id))
         source_hashes = tuple(snapshot.content_sha256 for snapshot in raw.snapshots)
         source_kinds = tuple(snapshot.source_kind for snapshot in raw.snapshots)
         self._update_run_metadata(
@@ -121,9 +217,12 @@ class SqlAlchemyIngestionRepository:
             source_gap_count=len(canonical.source_gaps),
             critical_gap_count=_critical_gap_count(canonical.source_gaps),
             drift_status="passed",
+            program_ids=tuple(str(program.id) for program in canonical.programs),
+            projection_status="running",
         )
         logger.info("ingest_transaction_start run_id=%s", resolved_run_id)
         stats = _SyncStats()
+        projection_started = perf_counter()
         with self._factory() as session:
             try:
                 with session.begin():
@@ -139,10 +238,26 @@ class SqlAlchemyIngestionRepository:
                         event_source_present=any(snapshot.source_kind == "bmstu_events" for snapshot in raw.snapshots),
                         campus_source_present=any(snapshot.source_kind == "bmstu_campus_points" for snapshot in raw.snapshots),
                     )
+                    run = session.get(IngestRunModel, resolved_run_id)
+                    if run is None or run.status != "running":
+                        raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest audit row is not running")
+                    run.projection_status = "committed"
+                    run.heartbeat_at = datetime.now(timezone.utc)
             except Exception as exc:
-                logger.warning("ingest_transaction_rollback run_id=%s error_code=%s", resolved_run_id, _safe_error_code(exc))
+                logger.warning(
+                    "ingest_transaction_rollback run_id=%s error_code=%s projection_duration_ms=%d",
+                    resolved_run_id,
+                    _safe_error_code(exc),
+                    _elapsed_ms(projection_started),
+                )
                 self._mark_failed(resolved_run_id, exc)
                 raise
+        logger.info(
+            "ingest_projection_commit_observed run_id=%s projection_duration_ms=%d source_bytes=%d",
+            resolved_run_id,
+            _elapsed_ms(projection_started),
+            sum(len(snapshot.body) for snapshot in raw.snapshots),
+        )
         try:
             self._mark_completed(resolved_run_id, stats)
         except Exception:
@@ -160,13 +275,56 @@ class SqlAlchemyIngestionRepository:
         )
         return resolved_run_id
 
+    def record_quality(
+        self,
+        run_id: str,
+        outcome: QualityOutcome,
+        *,
+        university_id: str,
+        program_ids: tuple[str, ...],
+    ) -> None:
+        self._update_run_metadata(
+            run_id,
+            university_id=university_id,
+            quality_status=outcome.status,
+            quality_metrics_json=json.dumps(dict(outcome.metrics), ensure_ascii=False, separators=(",", ":")),
+            previous_good_run_id=outcome.previous_good_run_id,
+            program_ids=program_ids,
+            drift_status="rejected" if outcome.status == "rejected" else "passed",
+        )
+
+    def previous_projection(self, university_id: str) -> PreviousProjection | None:
+        with self._factory() as session:
+            row = session.scalar(
+                select(IngestRunModel)
+                .where(IngestRunModel.university_id == university_id, IngestRunModel.status == "completed")
+                .order_by(IngestRunModel.finished_at.desc(), IngestRunModel.id.desc())
+                .limit(1)
+            )
+            if row is None:
+                return None
+            try:
+                program_ids = json.loads(row.program_ids_json)
+            except json.JSONDecodeError:
+                program_ids = []
+            if not isinstance(program_ids, list) or not all(isinstance(item, str) for item in program_ids):
+                program_ids = []
+            return PreviousProjection(
+                run_id=row.id,
+                university_id=university_id,
+                program_count=row.program_count,
+                curriculum_item_count=row.curriculum_item_count,
+                source_count=row.source_count,
+                program_ids=frozenset(program_ids),
+            )
+
     def _update_run_metadata(
         self,
         run_id: str,
         *,
-        source_count: int,
-        source_hashes: tuple[str, ...],
-        source_kinds: tuple[str, ...],
+        source_count: int | None = None,
+        source_hashes: tuple[str, ...] | None = None,
+        source_kinds: tuple[str, ...] | None = None,
         program_count: int | None = None,
         curriculum_item_count: int | None = None,
         event_count: int | None = None,
@@ -175,15 +333,24 @@ class SqlAlchemyIngestionRepository:
         source_gap_count: int | None = None,
         critical_gap_count: int | None = None,
         drift_status: str | None = None,
+        quality_status: str | None = None,
+        quality_metrics_json: str | None = None,
+        previous_good_run_id: str | None = None,
+        program_ids: tuple[str, ...] | None = None,
+        projection_status: str | None = None,
     ) -> None:
         with self._factory() as session:
             with session.begin():
                 run = session.get(IngestRunModel, run_id)
                 if run is None or run.status != "running":
                     raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest audit row is not running")
-                run.source_count = source_count
-                run.source_hashes_json = json.dumps(source_hashes, separators=(",", ":"))
-                run.source_kinds_json = json.dumps(source_kinds, separators=(",", ":"))
+                run.heartbeat_at = datetime.now(timezone.utc)
+                if source_count is not None:
+                    run.source_count = source_count
+                if source_hashes is not None:
+                    run.source_hashes_json = json.dumps(source_hashes, separators=(",", ":"))
+                if source_kinds is not None:
+                    run.source_kinds_json = json.dumps(source_kinds, separators=(",", ":"))
                 if program_count is not None:
                     run.program_count = program_count
                 if curriculum_item_count is not None:
@@ -200,6 +367,16 @@ class SqlAlchemyIngestionRepository:
                     run.critical_gap_count = critical_gap_count
                 if drift_status is not None:
                     run.drift_status = drift_status
+                if quality_status is not None:
+                    run.quality_status = quality_status
+                if quality_metrics_json is not None:
+                    run.quality_metrics_json = quality_metrics_json
+                if previous_good_run_id is not None:
+                    run.previous_good_run_id = previous_good_run_id
+                if program_ids is not None:
+                    run.program_ids_json = json.dumps(program_ids, separators=(",", ":"))
+                if projection_status is not None:
+                    run.projection_status = projection_status
 
     def _create_run(
         self,
@@ -213,6 +390,13 @@ class SqlAlchemyIngestionRepository:
         curriculum_item_count: int,
         event_count: int,
         campus_point_count: int,
+        source_profile: str,
+        source_revision: str,
+        configuration_version: str,
+        retry_of_run_id: str | None,
+        idempotency_key: str | None,
+        university_id: str,
+        projection_target: str,
     ) -> None:
         with self._factory() as session:
             with session.begin():
@@ -227,12 +411,20 @@ class SqlAlchemyIngestionRepository:
                         program_count=program_count,
                         curriculum_item_count=curriculum_item_count,
                         event_count=event_count,
-                campus_point_count=campus_point_count,
-                university_id=None,
-                duration_ms=None,
-                source_gap_count=0,
-                critical_gap_count=0,
-                drift_status="not_checked",
+                        campus_point_count=campus_point_count,
+                        university_id=university_id,
+                        duration_ms=None,
+                        source_gap_count=0,
+                        critical_gap_count=0,
+                        drift_status="not_checked",
+                        source_profile=source_profile,
+                        source_revision=source_revision,
+                        configuration_version=configuration_version,
+                        retry_of_run_id=retry_of_run_id,
+                        idempotency_key=idempotency_key,
+                        projection_target=projection_target,
+                        heartbeat_at=started_at,
+                        projection_status="not_started",
                     )
                 )
 
@@ -242,6 +434,9 @@ class SqlAlchemyIngestionRepository:
                 run = session.get(IngestRunModel, run_id)
                 if run is None:
                     raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest audit row disappeared")
+                if run.status != "running":
+                    raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest audit row is not running")
+                previous_status = run.projection_status
                 run.status = "completed"
                 run.finished_at = datetime.now(timezone.utc)
                 run.duration_ms = _duration_ms(run.started_at, run.finished_at)
@@ -249,6 +444,14 @@ class SqlAlchemyIngestionRepository:
                 run.updated_count = stats.updated
                 run.unchanged_count = stats.unchanged
                 run.removed_count = stats.removed
+                run.projection_status = "reconciled"
+                run.recovery_reason = None
+                run.heartbeat_at = run.finished_at
+                logger.info(
+                    "ingest_run_transition run_id=%s from=running to=completed projection=%s",
+                    run_id,
+                    previous_status,
+                )
 
     def _mark_failed(self, run_id: str, error: Exception) -> None:
         error_code = _safe_error_code(error)
@@ -266,6 +469,18 @@ class SqlAlchemyIngestionRepository:
                     run.drift_status = "rejected" if error_code == "INGESTION_DRIFT_REJECTED" else run.drift_status
                     run.error_code = error_code
                     run.error_message = error_message
+                    if run.projection_status == "committed":
+                        run.recovery_reason = "terminal_update_failed"
+                    else:
+                        run.projection_status = "failed"
+                        run.recovery_reason = "projection_transaction_failed"
+                    run.heartbeat_at = run.finished_at
+                    logger.info(
+                        "ingest_run_transition run_id=%s from=running to=failed projection=%s error_code=%s",
+                        run_id,
+                        run.projection_status,
+                        error_code,
+                    )
         except Exception:
             logger.exception("ingest_audit_failure_update_failed run_id=%s error_code=%s", run_id, error_code)
 
@@ -332,7 +547,14 @@ class SqlAlchemyIngestionRepository:
         records.extend(("Admission", admission.model_dump_json(), str(admission.source_url)) for admission in raw.admissions)
         records.extend(("Event", event.model_dump_json(), str(event.source_url)) for event in raw.events)
         records.extend(("CampusPoint", point.model_dump_json(), str(point.source_url)) for point in raw.campus_points)
-        records.extend(("SourceGap", gap.model_dump_json(), str(gap.locator.source_url)) for gap in raw.source_gaps)
+        records.extend(
+            ("SourceGap", gap.model_dump_json(), str(gap.locator.source_url))
+            for gap in raw.source_gaps
+            if str(gap.locator.source_url) in hashes_by_url
+        )
+        skipped_gaps = sum(1 for gap in raw.source_gaps if str(gap.locator.source_url) not in hashes_by_url)
+        if skipped_gaps:
+            logger.warning("ingest_unlinked_source_gaps count=%d", skipped_gaps)
         for index, (record_type, payload, source_url) in enumerate(records):
             snapshot_hash = hashes_by_url.get(source_url)
             if snapshot_hash is None:
@@ -399,6 +621,8 @@ class SqlAlchemyIngestionRepository:
                         "education_year": program.education_year,
                         "study_plan_url": str(program.study_plan_url),
                         "source_url": str(program.source_url),
+                        "provenance_json": _provenance_json(program.provenance),
+                        "source_gaps_json": _source_gaps_json(program.source_gaps),
                     },
                     immutable_fields=("direction_id", "code"),
                 )
@@ -453,6 +677,8 @@ class SqlAlchemyIngestionRepository:
                         "education_year": curriculum.education_year,
                         "source_url": str(curriculum.source_url),
                         "captured_at": curriculum.captured_at,
+                        "provenance_json": _provenance_json(curriculum.provenance),
+                        "source_gaps_json": _source_gaps_json(curriculum.source_gaps),
                     },
                     immutable_fields=("program_id", "education_year"),
                 )
@@ -594,6 +820,14 @@ def _semester_identity(semester: int | None) -> str:
     return "unassigned" if semester is None else f"semester:{semester}"
 
 
+def _provenance_json(values: tuple[SourceAttribution, ...]) -> str:
+    return json.dumps([value.model_dump(mode="json") for value in values], ensure_ascii=False, separators=(",", ":"))
+
+
+def _source_gaps_json(values: tuple[SourceGapReference, ...]) -> str:
+    return json.dumps([value.model_dump(mode="json") for value in values], ensure_ascii=False, separators=(",", ":"))
+
+
 def _values_equal(actual: object, expected: object) -> bool:
     """Compare persisted values without treating SQLite's timezone loss as drift."""
     if expected == "unassigned" and isinstance(actual, str) and actual.startswith("legacy:"):
@@ -622,11 +856,14 @@ def _safe_error_message(error: Exception) -> str:
 
 
 def _critical_gap_count(gaps: tuple[Any, ...]) -> int:
-    critical_tokens = ("direction", "program", "curriculum", "study-plan", "admission")
-    return sum(1 for gap in gaps if any(token in gap.reason.lower() for token in critical_tokens))
+    return sum(1 for gap in gaps if is_critical_gap(gap.reason))
 
 
 def _duration_ms(started_at: datetime, finished_at: datetime) -> int:
     started = started_at if started_at.tzinfo is not None else started_at.replace(tzinfo=timezone.utc)
     finished = finished_at if finished_at.tzinfo is not None else finished_at.replace(tzinfo=timezone.utc)
     return max(0, int((finished - started).total_seconds() * 1000))
+
+
+def _elapsed_ms(started: float) -> int:
+    return max(0, int((perf_counter() - started) * 1000))

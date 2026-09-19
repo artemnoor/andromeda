@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PageHeader, Tag, Loading, ErrorState } from "@/components/shared";
+import { PageHeader, Tag, Loading, ErrorState, EmptyState } from "@/components/shared";
 import { directionLabel } from "@/lib/labels";
 import type { ProgramSummary } from "@/lib/types";
 import type { Route } from "@/lib/router";
 import { ProgramShortlistActions } from "@/features/decision/program-shortlist-actions";
+import { useDecisionContext } from "@/features/decision/decision-context";
 
 export function CatalogPage({
   programs,
@@ -29,10 +30,15 @@ export function CatalogPage({
   const [direction, setDirection] = useState("all");
   const [year, setYear] = useState("all");
   const [university, setUniversity] = useState("all");
+  const { activeShortlist } = useDecisionContext();
 
   const directions = useMemo(() => [...new Set(programs.map((p) => p.directionId))].sort(), [programs]);
   const years = useMemo(() => [...new Set(programs.map((p) => p.educationYear))].sort().reverse(), [programs]);
   const universities = useMemo(() => [...new Set(programs.map((p) => p.universityId).filter((value): value is string => Boolean(value)))].sort(), [programs]);
+  const universityNames = useMemo(
+    () => [...new Set(programs.map((program) => program.universityName).filter((value): value is string => Boolean(value)))].sort(),
+    [programs],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -58,7 +64,18 @@ export function CatalogPage({
       <PageHeader
         eyebrow="Каталог"
         title="Каталог образовательных программ"
-        description="Программы BMSTU и HSE с привязкой к учебным планам, поступлению и сравнению. Источник — официальные открытые данные университетов."
+        description={`${universityNames.length > 0 ? `Программы ${universityNames.join(" и ")}` : "Программы поддерживаемых университетов"} с привязкой к учебным планам, поступлению и сравнению. Источник — официальные открытые данные.`}
+        actions={activeShortlist.length >= 2 ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="catalog-shortlist-next"
+            onClick={() => navigate({ view: "compare" })}
+          >
+            Сравнить мой shortlist <ArrowRight className="h-4 w-4" />
+          </Button>
+        ) : undefined}
       />
 
       <Card className="mb-6 border-border/70 bg-card/80">
@@ -156,12 +173,15 @@ export function CatalogPage({
         ))}
       </div>
 
-      {filtered.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="p-10 text-center text-sm text-muted-foreground">
-            Ничего не нашлось. Попробуйте изменить запрос или сбросить фильтры.
-          </CardContent>
-        </Card>
+      {filtered.length === 0 && programs.length > 0 && (
+        <EmptyState
+          title="По этим фильтрам программ нет"
+          message="Измените запрос или сбросьте фильтры, чтобы вернуться ко всему поддерживаемому каталогу."
+          action={<Button type="button" variant="outline" onClick={() => { setQuery(""); setDirection("all"); setYear("all"); setUniversity("all"); }}>Сбросить фильтры</Button>}
+        />
+      )}
+      {filtered.length === 0 && programs.length === 0 && (
+        <EmptyState title="Каталог пока пуст" message="В текущем срезе нет опубликованных программ. Попробуйте обновить данные позже или обратитесь к администратору источника." />
       )}
     </div>
   );

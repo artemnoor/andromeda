@@ -30,7 +30,7 @@ read-only projection, а не копия profile JSON.
 | Метод | Endpoint | Request | Ответ и side effect |
 |---|---|---|---|
 | GET | `/decision/context` | — | Текущий context, profile projection, `missingData` и metadata; read-only, при первом обращении создаётся owner-bound context. |
-| GET | `/decision/suggestions` | — | Derived candidate set: до 3 primary и 2 alternative, active shortlist, ineligible/insufficient-data, reasons, Admission Fit, Content Fit, trade-offs/source gaps и optional refinement question; shortlist не меняется. |
+| GET | `/decision/suggestions` | — | Derived candidate set: до 3 primary и 2 alternative, active shortlist, ineligible/insufficient-data, reasons, Admission Fit, Content Fit, typed `constraintOutcomes`, trade-offs/source gaps и optional refinement question; shortlist не меняется. |
 | POST | `/decision/refinement/answer` | `{questionId, optionId, expectedRevision}` | Проверяет текущий вопрос и revision, уточняет только derived profile/suggestions и возвращает новый профиль и candidate set; shortlist не меняется. |
 | PUT | `/decision/constraints` | `{constraints, expectedRevision?}`; `constraints: null` — явная очистка | Сохраняет явно введённые admissions constraints и возвращает новую revision; не удаляет и не демотирует shortlist. |
 | POST | `/decision/considered` | `{programId, expectedRevision?}` | Отмечает одну программу как рассмотренную после явного действия пользователя. |
@@ -61,6 +61,14 @@ hard constraints → batch Admission Fit → preference/Content Fit
 Batch Admission Fit используется для candidate set внутри
 `DecisionCandidatePipeline`; отдельный public endpoint одного варианта
 `POST /programs/{id}/admission-fit` остаётся без изменений.
+
+`constraintOutcomes` содержит отдельное typed-состояние для каждого явно
+введённого условия: `applied` с `satisfied=true/false`, `not_applicable` или
+`insufficient_data` с `sourceGaps`. Год, форма и финансирование сопоставляются
+с тем же offering, который используется Admission Fit; максимальная стоимость
+сравнивается только с опубликованной суммой в поддержанной валюте, а location —
+только с canonical city университета. Неизвестный факт не считается совпадением
+и не удаляет explicit shortlist.
 
 ## Сравнение
 
@@ -114,14 +122,14 @@ Auth cookie не читается frontend JavaScript и имеет `Path=/`, `H
 
 | Метод | Endpoint | Назначение |
 |---|---|---|
-| GET | `/proftest/questions` | Versioned bank scenario-based вопросов без внутренних весов |
-| POST | `/proftest/preview` | Строит `UserProfile`, первичный ranking и adaptive selection |
-| POST | `/proftest/results` | Строит финальный профиль и TOP рекомендаций с fit/anti-fit evidence |
+| GET | `/proftest/questions` | **Deprecated compatibility**: versioned bank scenario-based вопросов без внутренних весов |
+| POST | `/proftest/preview` | **Deprecated compatibility**: строит `UserProfile`, первичный ranking и adaptive selection |
+| POST | `/proftest/results` | **Deprecated compatibility**: строит финальный профиль и TOP рекомендаций с fit/anti-fit evidence |
 | GET | `/proftest/profile` | Читает current completed profile по account scope или anonymous session |
 | POST | `/proftest/profile` | Создаёт current profile; повторное создание возвращает `409 CONFLICT` |
 | PUT | `/proftest/profile` | Обновляет профиль по optimistic `expectedRevision` |
 
-Оба POST endpoint принимают strict `answers` и optional `adaptiveAnswers`. `UserProfile` строится до matching, а response содержит integer `contentFit`, breakdown компонентов, реальные workload/share и исходные названия отличительных дисциплин. В этих Content Fit responses optional metrics (`workloadReadiness`, `careerFit`, `admissionFit`) возвращаются с `status: "not_available"` и не влияют на scoring. Отдельный endpoint Admission Fit описан ниже и также не меняет этот ranking.
+Эти compatibility POST endpoints принимают strict `answers` и optional `adaptiveAnswers`; они делегируют единственным `UserProfileBuilder` и `RecommendationService` и не являются вторым scoring path. Новые clients должны использовать session flow ниже. `UserProfile` строится до matching, а response содержит integer `contentFit`, breakdown компонентов, реальные workload/share и исходные названия отличительных дисциплин. Каждая рекомендация также содержит typed `evidence`: confidence профиля, completeness каталога, deterministic source-snapshot freshness, reliability, использованные/выведенные сигналы, версии policy/taxonomy и field-level missing data. `reliability` — это полнота и согласованность evidence, а не вероятность поступления или predictive accuracy. В этих Content Fit responses optional metrics (`workloadReadiness`, `careerFit`, `admissionFit`) возвращаются с `status: "not_available"` и не влияют на scoring. Отдельный endpoint Admission Fit описан ниже и также не меняет этот ranking.
 
 После изменения API frontend-контракт регенерируется из OpenAPI:
 
@@ -179,6 +187,11 @@ rows имеют уникальный `eventId` и expiry 180 дней. Infrastru
 предоставляет deterministic aggregates для operator use (completion rate,
 uncertainty, changed answers, top-3 changes, adaptive count и median response
 time), но не публикует профили или сырые ответы.
+
+Legacy routes остаются только для уже выпущенных клиентов и помечены
+`deprecated: true` в OpenAPI. Условие удаления: все tracked clients используют
+session API, а за один полный release cycle нет обращений к compatibility
+routes; до этого они сохраняют parity по profile/ranking contracts.
 
 Единственный frontend-клиент генерируется из `frontend-next/openapi.json` в
 `frontend-next/src/lib/generated.ts`. При изменении session schema сначала

@@ -15,7 +15,7 @@ from andromeda.modules.admission_fit.contracts.public import (
     BatchAdmissionFitOutcome,
     BatchAdmissionFitResult,
 )
-from andromeda.modules.admissions.contracts.public import FundingType
+from andromeda.modules.admissions.contracts.public import AdmissionOffering, AdmissionProvenance, AdmissionScope, FundingType, ProgramAdmissions, StudyForm
 from andromeda.modules.decision.contracts.public import (
     AdmissionConstraints,
     DecisionCandidatePartition,
@@ -31,7 +31,7 @@ from andromeda.modules.decision.repository.ports import ProgramCandidateSnapshot
 from andromeda.modules.decision.services.candidates import DecisionCandidatePipeline
 from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode
 from andromeda.modules.programs.contracts.public import Program
-from andromeda.modules.proftest.contracts.public import ActivityCode, Confidence, ProgramFingerprint, UserProfile
+from andromeda.modules.proftest.contracts.public import ActivityCode, Confidence, ProgramFingerprint, RecommendationEvidence, UserProfile
 from andromeda.modules.recommendations.contracts.public import CandidateRankingRequest, CandidateRankingResult
 from andromeda.modules.recommendations.services.recommendations import RecommendationService
 
@@ -70,7 +70,28 @@ def _candidate(code: str, *, computer: str = "0.8", mathematics: str = "0.2") ->
         semester_distribution={"1": Decimal("1")},
         activity_signals={ActivityCode.SOFTWARE_CREATION: Decimal("1")},
     )
-    return ProgramCandidateSnapshot(program=_program(code), fingerprint=item)
+    program = _program(code)
+    provenance = AdmissionProvenance(
+        source_kind="fixture",
+        source_url="https://example.test/admissions",
+        captured_at=NOW,
+        content_sha256="a" * 64,
+    )
+    admissions = ProgramAdmissions(
+        program_id=program.id,
+        offerings=(
+            AdmissionOffering(
+                id=f"admission-offering:{code}:2026:full_time:budget",
+                program_id=program.id,
+                admission_year=2026,
+                study_form=StudyForm.FULL_TIME,
+                funding_type=FundingType.BUDGET,
+                scope=AdmissionScope.PROGRAM,
+                provenance=(provenance,),
+            ),
+        ),
+    )
+    return ProgramCandidateSnapshot(program=program, fingerprint=item, admissions=admissions)
 
 
 class Source:
@@ -89,6 +110,15 @@ class RecordingRecommendations:
     def rank_candidates(self, request: CandidateRankingRequest) -> CandidateRankingResult:
         self.calls.append(tuple(item.program_id for item in request.fingerprints))
         return self.inner.rank_candidates(request)
+
+    def build_evidence(
+        self,
+        profile: UserProfile | None,
+        fingerprint: ProgramFingerprint | None,
+        *,
+        profile_revision: int | None = None,
+    ) -> RecommendationEvidence:
+        return self.inner.build_evidence(profile, fingerprint, profile_revision=profile_revision)
 
 
 class SourceReader:

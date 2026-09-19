@@ -113,10 +113,16 @@ ranking или shortlist.
 Copy-Item telegram-bot/.env.example telegram-bot/.env
 # заполнить TELEGRAM_BOT_TOKEN и Fernet key
 python -m pip install -e "telegram-bot[dev]"
-$env:ANDROMEDA_BOT_BACKEND_URL = "http://127.0.0.1:8000"
-$env:ANDROMEDA_BOT_RENDERER_URL = "http://127.0.0.1:3000"
+$env:ANDROMEDA_BACKEND_URL = "http://127.0.0.1:8000"
+$env:ANDROMEDA_RENDERER_URL = "http://127.0.0.1:3000"
 python -m andromeda_telegram
 ```
+
+Переменная backend называется `ANDROMEDA_BACKEND_URL`; `ANDROMEDA_BOT_BACKEND_URL`
+не является поддерживаемой настройкой. Внутри YC compose используется
+`http://backend:8020`, а локальный demo runner остаётся на `8000`. Для
+временных сетевых сбоев доступны bounded `ANDROMEDA_REQUEST_RETRY_ATTEMPTS`
+и `ANDROMEDA_REQUEST_RETRY_BACKOFF_SECONDS`.
 
 Для автоматических проверок Telegram token не нужен: используются mocked
 aiogram flows, HTTP adapters и fixture demo. PNG smoke проверяет подпись,

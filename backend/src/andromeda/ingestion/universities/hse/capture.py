@@ -8,8 +8,8 @@ from pathlib import Path
 from urllib.parse import urljoin
 
 from andromeda.ingestion.contracts.constraints import http_url
-from andromeda.ingestion.contracts.raw import JsonObject, JsonValue, RawSourceSnapshot
-from andromeda.ingestion.contracts.source import CapturedSources
+from andromeda.ingestion.contracts.raw import JsonObject, JsonValue, RawSourceGap, RawSourceSnapshot
+from andromeda.ingestion.contracts.source import CapturedSources, source_fetch_gap
 from andromeda.shared.contracts.errors import ContractError, ErrorCode, ErrorDetail
 
 from .fetch import Fetcher
@@ -41,6 +41,7 @@ class HseSource:
     def __init__(self, fetcher: Fetcher | None = None) -> None:
         self.fetcher = fetcher or Fetcher()
         self._owns_fetcher = fetcher is None
+        self._capture_gaps: list[RawSourceGap] = []
 
     def close(self) -> None:
         if self._owns_fetcher:
@@ -48,6 +49,7 @@ class HseSource:
 
     def capture(self, mode: str = "fixture", fixture_dir: Path | None = None) -> CapturedSources:
         logger.info("source_capture_start university=hse mode=%s", mode)
+        self._capture_gaps = []
         if mode == "fixture":
             captured = self._load_fixture(fixture_dir or DEFAULT_FIXTURE_DIR)
         elif mode == "live":
@@ -128,7 +130,7 @@ class HseSource:
             len(plan_urls),
             len(snapshots),
         )
-        return CapturedSources(tuple(snapshots))
+        return CapturedSources(tuple(snapshots), source_gaps=tuple(self._capture_gaps))
 
     def _required_snapshot(self, kind: str, url: str) -> RawSourceSnapshot:
         snapshot = self._optional_snapshot(kind, url)
@@ -139,6 +141,7 @@ class HseSource:
     def _optional_snapshot(self, kind: str, url: str) -> RawSourceSnapshot | None:
         if not official_hse_url(url):
             logger.warning("source_url_rejected kind=%s url=%s", kind, url)
+            self._capture_gaps.append(source_fetch_gap(kind, url, "unsupported_source_host"))
             return None
         fetch_http = getattr(self.fetcher, "fetch_http", None)
         resource = fetch_http(url) if fetch_http is not None else self.fetcher.fetch(url)
@@ -149,6 +152,7 @@ class HseSource:
         acceptable_error_page = kind == "hse_common" and resource.status_code == 404 and bool(resource.body)
         if (resource.error and not acceptable_error_page) or resource.status_code is None or not resource.body or (resource.status_code >= 400 and not acceptable_error_page):
             logger.warning("source_fetch_gap kind=%s url=%s error=%s", kind, url, resource.error or resource.status_code)
+            self._capture_gaps.append(source_fetch_gap(kind, url, resource.error_code or "source_unavailable"))
             return None
         if acceptable_error_page:
             logger.warning("[FIX:source-gap] official_contacts_payload_preserved status=404 url=%s", url)
@@ -171,6 +175,9 @@ class HseSource:
             captured_at=datetime.fromisoformat(resource.fetched_at),
             content_sha256=digest,
             body=resource.body,
+            response_class="success",
+            access_mode=resource.access_mode,
+            truncated=resource.truncated,
         )
 
     @staticmethod
@@ -180,8 +187,21 @@ class HseSource:
             raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Source fixture manifest not found: {manifest_path}")
         payload = json.loads(manifest_path.read_text(encoding="utf-8"))
         snapshots: list[RawSourceSnapshot] = []
-        for item in payload.get("snapshots", []):
-            body = (fixture_dir / str(item["body_path"])).read_bytes()
+        fixture_root = fixture_dir.resolve()
+        for index, item in enumerate(payload.get("snapshots", [])):
+            body_path = str(item["body_path"])
+            body_file = (fixture_root / body_path).resolve()
+            if fixture_root not in body_file.parents:
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"HSE fixture body path escapes fixture directory: {body_path}")
+            body = body_file.read_bytes()
+            expected_hash = str(item.get("content_sha256", ""))
+            actual_hash = sha256(body).hexdigest()
+            if expected_hash != actual_hash:
+                raise ContractError(
+                    ErrorCode.SOURCE_CONTRACT_ERROR,
+                    f"HSE fixture body hash does not match manifest at index {index}",
+                    (ErrorDetail(path=f"snapshots[{index}].content_sha256", message="hash mismatch", type="source_fixture"),),
+                )
             snapshots.append(RawSourceSnapshot(
                 source_kind=str(item["source_kind"]),
                 requested_url=http_url(str(item["requested_url"])),
@@ -189,7 +209,7 @@ class HseSource:
                 status_code=int(item.get("status_code", 200)),
                 content_type=item.get("content_type"),
                 captured_at=datetime.fromisoformat(str(item["captured_at"])),
-                content_sha256=sha256(body).hexdigest(),
+                content_sha256=actual_hash,
                 body=body,
             ))
         if not snapshots:

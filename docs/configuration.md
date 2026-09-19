@@ -6,7 +6,7 @@
 
 | Переменная | Компонент | По умолчанию | Назначение |
 |---|---|---|---|
-| `ANDROMEDA_ENV` | backend | `test` | Окружение: `test`, `development` или `staging`; non-test требует PostgreSQL |
+| `ANDROMEDA_ENV` | backend | `test` | Окружение: `test`, `development`, `staging` или `production`; non-test требует PostgreSQL |
 | `ANDROMEDA_DATABASE_URL` | backend | SQLite fallback | Единый SQLAlchemy storage target для API, Alembic и generic ingestion; имеет приоритет |
 | `ANDROMEDA_DB_POOL_SIZE` | backend | `5` | PostgreSQL connection pool size |
 | `ANDROMEDA_DB_MAX_OVERFLOW` | backend | `10` | Дополнительные PostgreSQL connections |
@@ -17,15 +17,21 @@
 | `ANDROMEDA_PROFILE_COOKIE_NAME` | backend | `andromeda_profile_session` | Anonymous profile cookie name |
 | `ANDROMEDA_PROFILE_COOKIE_MAX_AGE` | backend | `2592000` | Browser cookie lifetime, seconds |
 | `ANDROMEDA_PROFILE_TTL_SECONDS` | backend | `2592000` | Persisted profile retention, seconds |
-| `ANDROMEDA_PROFILE_COOKIE_SECURE` | backend | `false` in test/dev, `true` in staging | Require HTTPS for the profile cookie |
+| `ANDROMEDA_PROFILE_COOKIE_SECURE` | backend | `false` in test/dev, `true` in staging/production | Require HTTPS for the profile cookie |
 | `ANDROMEDA_PROFILE_COOKIE_SAMESITE` | backend | `lax` | Cookie SameSite policy (`lax`, `strict`, `none`; `none` requires Secure) |
 | `ANDROMEDA_AUTH_COOKIE_NAME` | backend | `andromeda_auth_session` | Auth session cookie name |
 | `ANDROMEDA_AUTH_COOKIE_MAX_AGE` | backend | `2592000` | Auth cookie lifetime, seconds |
 | `ANDROMEDA_AUTH_SESSION_TTL_SECONDS` | backend | `2592000` | Server-side session expiry, seconds |
-| `ANDROMEDA_AUTH_COOKIE_SECURE` | backend | `false` in test/dev, `true` in staging | Require HTTPS for auth cookie |
+| `ANDROMEDA_AUTH_COOKIE_SECURE` | backend | `false` in test/dev, `true` in staging/production | Require HTTPS for auth cookie |
 | `ANDROMEDA_AUTH_COOKIE_SAMESITE` | backend | `lax` | Auth cookie SameSite policy; `none` requires Secure |
 | `ANDROMEDA_AUTH_PASSWORD_MIN_LENGTH` | backend | `12` | Registration password minimum |
+| `ANDROMEDA_OPS_API_KEY` | backend | — | Required secret for protected Ops endpoints in staging/production; never log it |
+| `ANDROMEDA_RATE_LIMIT_WINDOW_SECONDS` | backend | `60` | Process-local sliding-window duration for abuse controls |
+| `ANDROMEDA_AUTH_RATE_LIMIT_MAX` | backend | `10` | Requests per window for login/register/guest import per client key |
+| `ANDROMEDA_SENSITIVE_RATE_LIMIT_MAX` | backend | `120` | Requests per window for decision/proftest state mutations |
+| `ANDROMEDA_OPS_RATE_LIMIT_MAX` | backend | `10` | Requests per window for Ops endpoints per client key |
 | `NEXT_PUBLIC_API_BASE_URL` | frontend-next | `/api` | Browser API base URL; local demo runner overrides it with the API origin |
+| `ANDROMEDA_INTERNAL_API_URL` | frontend-next | `http://backend:8020` in YC compose | Server-side Next.js → backend URL; browser calls remain same-origin `/api` |
 | `NEXT_PUBLIC_DEBUG_API` | frontend-next | `0` | Client diagnostics toggle; production remains quiet |
 | `TELEGRAM_BOT_TOKEN` | telegram-bot | — | Bot secret; required for long polling |
 | `ANDROMEDA_BACKEND_URL` | telegram-bot | `http://backend:8020` | Internal canonical API URL in YC compose |
@@ -34,6 +40,8 @@
 | `ANDROMEDA_SESSION_ENCRYPTION_KEY` | telegram-bot | — | Fernet key for bot-local opaque session cookies |
 | `ANDROMEDA_SESSION_DB` | telegram-bot | `./data/telegram.sqlite3` | Bot-local encrypted transport state |
 | `ANDROMEDA_WEB_APP_URL` | telegram-bot | `http://localhost:3000` | Canonical link target shown below images |
+| `ANDROMEDA_REQUEST_RETRY_ATTEMPTS` | telegram-bot | `2` | Bounded retries for transport/429/5xx responses |
+| `ANDROMEDA_REQUEST_RETRY_BACKOFF_SECONDS` | telegram-bot | `0.25` | Bounded exponential retry backoff |
 
 Для повторяемого fixture-запуска database URL можно передать явно:
 
@@ -44,7 +52,7 @@ python backend/scripts/run_andromeda_ingestion.py --university all --mode fixtur
 `BMSTU_DATABASE_URL` и `BMSTU_DB_*` временно поддерживаются как deprecated fallback для обратной совместимости.
 `LOG_LEVEL=DEBUG` включает технические stage-сообщения, но raw response body, PDF text и signed query strings в логах не выводятся.
 
-В development/staging credentials передаются только через environment. Database URL в логах редактируется до `dialect://host:port/database`; password и query parameters не выводятся. SQLite fallback предназначен для быстрых тестов и старых локальных команд, не для staging.
+В development/staging/production credentials передаются только через environment или secret manager. Staging/production требуют явный `FRONTEND_ORIGIN`, PostgreSQL, `ANDROMEDA_OPS_API_KEY` и secure cookies; production дополнительно принимает только HTTPS origins. Database URL в логах редактируется до `dialect://host:port/database`; password и query parameters не выводятся. SQLite fallback предназначен только для быстрых тестов.
 
 Profile persistence is anonymous by default: the server creates an opaque HttpOnly cookie, stores only its SHA-256 hash, and expires the profile after `ANDROMEDA_PROFILE_TTL_SECONDS`. The browser must not copy this cookie into LocalStorage or JavaScript state. Use `Secure=true` with HTTPS in staging; local HTTP development keeps it `false`.
 

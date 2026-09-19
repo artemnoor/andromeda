@@ -90,7 +90,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -183,7 +183,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -276,7 +276,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -369,7 +369,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -472,7 +472,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -546,7 +546,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -672,7 +672,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -791,7 +791,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -811,7 +811,8 @@
         "tags": [
           "proftest"
         ],
-        "summary": "Get Questions",
+        "summary": "Legacy questionnaire compatibility adapter",
+        "description": "Compatibility read path for clients that have not migrated to /proftest/sessions. The canonical user flow is the version-pinned session API.",
         "operationId": "get_questions_proftest_questions_get",
         "responses": {
           "200": {
@@ -865,7 +866,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -884,7 +885,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/proftest/preview": {
@@ -892,7 +894,8 @@
         "tags": [
           "proftest"
         ],
-        "summary": "Preview",
+        "summary": "Legacy proftest preview compatibility adapter",
+        "description": "Compatibility adapter over the existing profile/ranking services. New clients must use /proftest/sessions.",
         "operationId": "preview_proftest_preview_post",
         "requestBody": {
           "content": {
@@ -956,7 +959,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -975,7 +978,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/proftest/results": {
@@ -983,7 +987,8 @@
         "tags": [
           "proftest"
         ],
-        "summary": "Results",
+        "summary": "Legacy proftest results compatibility adapter",
+        "description": "Compatibility adapter that delegates to the canonical profile builder and recommendation service. New clients must complete /proftest/sessions.",
         "operationId": "results_proftest_results_post",
         "requestBody": {
           "content": {
@@ -1047,7 +1052,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1066,7 +1071,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/proftest/sessions": {
@@ -1128,7 +1134,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1209,7 +1215,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1298,7 +1304,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1389,7 +1395,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1470,7 +1476,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1561,7 +1567,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1642,7 +1648,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1731,7 +1737,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1820,7 +1826,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1911,7 +1917,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -2013,7 +2019,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -2235,7 +2241,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -2328,7 +2334,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -2490,7 +2496,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -2585,7 +2591,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -2678,7 +2684,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -2827,7 +2833,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -2922,7 +2928,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -3031,7 +3037,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -3158,7 +3164,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -3267,7 +3273,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -3366,7 +3372,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -3465,7 +3471,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -3549,7 +3555,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -3640,7 +3646,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -3721,7 +3727,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -3802,7 +3808,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -3883,7 +3889,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -3974,7 +3980,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4055,7 +4061,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4136,7 +4142,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4227,7 +4233,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4318,7 +4324,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4409,7 +4415,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4500,7 +4506,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4610,7 +4616,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -4718,7 +4724,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -4802,7 +4808,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4898,7 +4904,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -5015,7 +5021,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -5125,7 +5131,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -5233,7 +5239,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -5343,7 +5349,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -5453,7 +5459,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "500": {
             "content": {
@@ -5531,7 +5537,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -5610,7 +5616,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -5716,10 +5722,12 @@
           },
           "spread": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Spread"
           },
           "significance": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Significance"
           }
         },
@@ -5863,7 +5871,8 @@
           "value": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -5927,7 +5936,8 @@
           "applicantScore": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,6}0*$)\\d{0,3}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -5938,7 +5948,8 @@
           "applicantTotalScore": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -5949,7 +5960,8 @@
           "referenceScore": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -6059,7 +6071,8 @@
           "applicantTotalScore": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -6259,6 +6272,55 @@
               }
             ],
             "title": "Sourcename"
+          },
+          "universityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Universityid"
+          },
+          "runId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runid"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "recordKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recordkey"
+          },
+          "inferred": {
+            "type": "boolean",
+            "title": "Inferred",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -6315,7 +6377,8 @@
                 "type": "number"
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               }
             ],
             "title": "Intensity",
@@ -6340,6 +6403,7 @@
           },
           "intensity": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Intensity",
             "decimal_places": 4,
             "ge": 0,
@@ -6389,7 +6453,8 @@
                 "type": "number"
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               }
             ],
             "title": "Score",
@@ -6525,7 +6590,8 @@
           "latitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -6536,7 +6602,8 @@
           "longitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -6705,7 +6772,8 @@
           "latitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -6716,7 +6784,8 @@
           "longitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -6878,6 +6947,55 @@
               }
             ],
             "title": "Locator"
+          },
+          "universityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Universityid"
+          },
+          "runId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runid"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "recordKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recordkey"
+          },
+          "inferred": {
+            "type": "boolean",
+            "title": "Inferred",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -7100,6 +7218,22 @@
             "type": "array",
             "title": "Areabreakdownb",
             "default": []
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/SourceAttributionResponse"
+            },
+            "type": "array",
+            "title": "Provenance",
+            "default": []
+          },
+          "sourceGapDetails": {
+            "items": {
+              "$ref": "#/components/schemas/SourceGapReferenceResponse"
+            },
+            "type": "array",
+            "title": "Sourcegapdetails",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -7167,7 +7301,8 @@
           "creditsDelta": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -7314,6 +7449,7 @@
           },
           "credits": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Credits"
           }
         },
@@ -7333,7 +7469,8 @@
                 "type": "number"
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               }
             ],
             "title": "Value",
@@ -7364,6 +7501,7 @@
         "properties": {
           "value": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Value",
             "decimal_places": 4,
             "ge": 0,
@@ -7419,7 +7557,8 @@
           "credits": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -7494,6 +7633,22 @@
             },
             "type": "array",
             "title": "Items"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/SourceAttributionResponse"
+            },
+            "type": "array",
+            "title": "Provenance",
+            "default": []
+          },
+          "sourceGaps": {
+            "items": {
+              "$ref": "#/components/schemas/SourceGapReferenceResponse"
+            },
+            "type": "array",
+            "title": "Sourcegaps",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -7879,7 +8034,8 @@
                 "type": "number"
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               }
             ],
             "title": "Score",
@@ -7907,6 +8063,7 @@
           },
           "score": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Score",
             "decimal_places": 2,
             "ge": "0",
@@ -7956,6 +8113,49 @@
           "excludedProgramIds"
         ],
         "title": "DecisionChoiceResponse"
+      },
+      "DecisionConstraintOutcomeResponse": {
+        "properties": {
+          "dimension": {
+            "type": "string",
+            "title": "Dimension"
+          },
+          "applicability": {
+            "type": "string",
+            "title": "Applicability"
+          },
+          "satisfied": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satisfied"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "sourceGaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcegaps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dimension",
+          "applicability",
+          "message",
+          "sourceGaps"
+        ],
+        "title": "DecisionConstraintOutcomeResponse"
       },
       "DecisionConstraintsRequest": {
         "properties": {
@@ -8016,7 +8216,8 @@
                     "type": "number"
                   },
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                   }
                 ],
                 "decimal_places": 2,
@@ -8098,7 +8299,8 @@
           "maxTuition": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -8626,6 +8828,23 @@
               }
             ]
           },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationEvidenceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "constraintOutcomes": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionConstraintOutcomeResponse"
+            },
+            "type": "array",
+            "title": "Constraintoutcomes"
+          },
           "reasons": {
             "$ref": "#/components/schemas/DecisionSuggestionReasonsResponse"
           },
@@ -8643,6 +8862,22 @@
             "type": "array",
             "title": "Sourcehashes"
           },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/SourceAttributionResponse"
+            },
+            "type": "array",
+            "title": "Provenance",
+            "default": []
+          },
+          "sourceGapDetails": {
+            "items": {
+              "$ref": "#/components/schemas/SourceGapReferenceResponse"
+            },
+            "type": "array",
+            "title": "Sourcegapdetails",
+            "default": []
+          },
           "role": {
             "type": "string",
             "title": "Role"
@@ -8658,6 +8893,7 @@
           "programId",
           "partition",
           "admissionRisk",
+          "constraintOutcomes",
           "reasons",
           "sourceGaps",
           "sourceHashes",
@@ -8878,6 +9114,23 @@
               }
             ]
           },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationEvidenceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "constraintOutcomes": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionConstraintOutcomeResponse"
+            },
+            "type": "array",
+            "title": "Constraintoutcomes"
+          },
           "reasons": {
             "$ref": "#/components/schemas/DecisionSuggestionReasonsResponse"
           },
@@ -8894,6 +9147,22 @@
             },
             "type": "array",
             "title": "Sourcehashes"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/SourceAttributionResponse"
+            },
+            "type": "array",
+            "title": "Provenance",
+            "default": []
+          },
+          "sourceGapDetails": {
+            "items": {
+              "$ref": "#/components/schemas/SourceGapReferenceResponse"
+            },
+            "type": "array",
+            "title": "Sourcegapdetails",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -8904,6 +9173,7 @@
           "programName",
           "partition",
           "admissionRisk",
+          "constraintOutcomes",
           "reasons",
           "sourceGaps",
           "sourceHashes"
@@ -9106,6 +9376,7 @@
           },
           "weight": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,1}|(?=[\\d.]{1,6}0*$)\\d{0,1}\\.\\d{0,4}0*$)",
             "title": "Weight"
           }
         },
@@ -9132,6 +9403,7 @@
           },
           "share": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,1}|(?=[\\d.]{1,6}0*$)\\d{0,1}\\.\\d{0,4}0*$)",
             "title": "Share"
           }
         },
@@ -9184,6 +9456,7 @@
         "type": "string",
         "enum": [
           "VALIDATION_ERROR",
+          "RATE_LIMITED",
           "UNAUTHORIZED",
           "NOT_FOUND",
           "CONFLICT",
@@ -9340,6 +9613,55 @@
               }
             ],
             "title": "Locator"
+          },
+          "universityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Universityid"
+          },
+          "runId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runid"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "recordKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recordkey"
+          },
+          "inferred": {
+            "type": "boolean",
+            "title": "Inferred",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -9474,6 +9796,53 @@
         ],
         "title": "EventResponse"
       },
+      "EvidenceMetricResponse": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,1}|(?=[\\d.]{1,6}0*$)\\d{0,1}\\.\\d{0,4}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EvidenceStatus"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "EvidenceMetricResponse"
+      },
+      "EvidenceSignal": {
+        "type": "string",
+        "enum": [
+          "profile_subject_preference",
+          "profile_activity_preference",
+          "profile_anti_interest",
+          "curriculum_area_share",
+          "curriculum_activity_mapping",
+          "distinctive_subject",
+          "semester_distribution"
+        ],
+        "title": "EvidenceSignal"
+      },
+      "EvidenceStatus": {
+        "type": "string",
+        "enum": [
+          "available",
+          "partial",
+          "not_available"
+        ],
+        "title": "EvidenceStatus"
+      },
       "ExamRequirementResponse": {
         "properties": {
           "subject": {
@@ -9487,7 +9856,8 @@
           "minimumScore": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -9528,16 +9898,53 @@
         ],
         "title": "FundingType"
       },
+      "GapSeverity": {
+        "type": "string",
+        "enum": [
+          "blocking",
+          "degradable",
+          "informational"
+        ],
+        "title": "GapSeverity"
+      },
       "IngestionRetryRequestBody": {
         "properties": {
           "source": {
             "type": "string",
             "enum": [
               "bmstu_fixture",
-              "bmstu_live"
+              "bmstu_live",
+              "hse_fixture",
+              "hse_live"
             ],
             "title": "Source",
             "default": "bmstu_fixture"
+          },
+          "idempotencyKey": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 96,
+                "minLength": 8,
+                "pattern": "^[A-Za-z0-9._:-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotencykey"
+          },
+          "retryOfRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^ingest:[a-f0-9]{32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retryofrunid"
           }
         },
         "additionalProperties": false,
@@ -9700,6 +10107,95 @@
             "title": "Driftstatus",
             "default": "not_checked"
           },
+          "qualityStatus": {
+            "type": "string",
+            "enum": [
+              "not_checked",
+              "passed",
+              "degraded",
+              "rejected"
+            ],
+            "title": "Qualitystatus",
+            "default": "not_checked"
+          },
+          "previousGoodRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^ingest:[a-f0-9]{32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previousgoodrunid"
+          },
+          "sourceProfile": {
+            "type": "string",
+            "title": "Sourceprofile"
+          },
+          "sourceRevision": {
+            "type": "string",
+            "title": "Sourcerevision"
+          },
+          "configurationVersion": {
+            "type": "string",
+            "title": "Configurationversion"
+          },
+          "retryOfRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^ingest:[a-f0-9]{32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retryofrunid"
+          },
+          "projectionTarget": {
+            "type": "string",
+            "title": "Projectiontarget",
+            "default": "canonical"
+          },
+          "heartbeatAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeatat"
+          },
+          "projectionStatus": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "running",
+              "committed",
+              "reconciled",
+              "failed"
+            ],
+            "title": "Projectionstatus",
+            "default": "not_started"
+          },
+          "recoveryReason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recoveryreason"
+          },
           "sourceHashes": {
             "items": {
               "type": "string",
@@ -9732,7 +10228,10 @@
           "insertedCount",
           "updatedCount",
           "unchangedCount",
-          "removedCount"
+          "removedCount",
+          "sourceProfile",
+          "sourceRevision",
+          "configurationVersion"
         ],
         "title": "IngestionRunDetailResponse"
       },
@@ -9910,6 +10409,95 @@
             ],
             "title": "Driftstatus",
             "default": "not_checked"
+          },
+          "qualityStatus": {
+            "type": "string",
+            "enum": [
+              "not_checked",
+              "passed",
+              "degraded",
+              "rejected"
+            ],
+            "title": "Qualitystatus",
+            "default": "not_checked"
+          },
+          "previousGoodRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^ingest:[a-f0-9]{32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previousgoodrunid"
+          },
+          "sourceProfile": {
+            "type": "string",
+            "title": "Sourceprofile"
+          },
+          "sourceRevision": {
+            "type": "string",
+            "title": "Sourcerevision"
+          },
+          "configurationVersion": {
+            "type": "string",
+            "title": "Configurationversion"
+          },
+          "retryOfRunId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^ingest:[a-f0-9]{32}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retryofrunid"
+          },
+          "projectionTarget": {
+            "type": "string",
+            "title": "Projectiontarget",
+            "default": "canonical"
+          },
+          "heartbeatAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeatat"
+          },
+          "projectionStatus": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "running",
+              "committed",
+              "reconciled",
+              "failed"
+            ],
+            "title": "Projectionstatus",
+            "default": "not_started"
+          },
+          "recoveryReason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recoveryreason"
           }
         },
         "additionalProperties": false,
@@ -9926,7 +10514,10 @@
           "insertedCount",
           "updatedCount",
           "unchangedCount",
-          "removedCount"
+          "removedCount",
+          "sourceProfile",
+          "sourceRevision",
+          "configurationVersion"
         ],
         "title": "IngestionRunSummaryResponse"
       },
@@ -10088,7 +10679,8 @@
           "score": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -10496,7 +11088,8 @@
                     "type": "number"
                   },
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                   }
                 ],
                 "decimal_places": 4,
@@ -10602,7 +11195,8 @@
                     "type": "number"
                   },
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                   }
                 ],
                 "decimal_places": 4,
@@ -10665,7 +11259,8 @@
                     "type": "number"
                   },
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                   }
                 ],
                 "decimal_places": 4,
@@ -10971,6 +11566,22 @@
               }
             ],
             "title": "Universityname"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/SourceAttributionResponse"
+            },
+            "type": "array",
+            "title": "Provenance",
+            "default": []
+          },
+          "sourceGaps": {
+            "items": {
+              "$ref": "#/components/schemas/SourceGapReferenceResponse"
+            },
+            "type": "array",
+            "title": "Sourcegaps",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -11234,10 +11845,12 @@
           },
           "workload": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Workload"
           },
           "share": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Share"
           },
           "sourceNames": {
@@ -11246,6 +11859,14 @@
             },
             "type": "array",
             "title": "Sourcenames"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/SourceAttributionResponse"
+            },
+            "type": "array",
+            "title": "Provenance",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -11258,6 +11879,96 @@
           "sourceNames"
         ],
         "title": "ReasonResponse"
+      },
+      "RecommendationEvidenceResponse": {
+        "properties": {
+          "profileConfidence": {
+            "$ref": "#/components/schemas/EvidenceMetricResponse"
+          },
+          "catalogCompleteness": {
+            "$ref": "#/components/schemas/EvidenceMetricResponse"
+          },
+          "sourceFreshness": {
+            "$ref": "#/components/schemas/SourceFreshnessResponse"
+          },
+          "reliability": {
+            "$ref": "#/components/schemas/EvidenceMetricResponse"
+          },
+          "signalsUsed": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceSignal"
+            },
+            "type": "array",
+            "title": "Signalsused",
+            "default": []
+          },
+          "inferredSignals": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceSignal"
+            },
+            "type": "array",
+            "title": "Inferredsignals",
+            "default": []
+          },
+          "missingData": {
+            "items": {
+              "$ref": "#/components/schemas/SourceGapReferenceResponse"
+            },
+            "type": "array",
+            "title": "Missingdata",
+            "default": []
+          },
+          "policyVersion": {
+            "type": "string",
+            "title": "Policyversion"
+          },
+          "taxonomyVersion": {
+            "type": "string",
+            "title": "Taxonomyversion"
+          },
+          "questionSetVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionsetversion"
+          },
+          "profileRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profilerevision"
+          },
+          "catalogRunIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Catalogrunids",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profileConfidence",
+          "catalogCompleteness",
+          "sourceFreshness",
+          "reliability",
+          "policyVersion",
+          "taxonomyVersion"
+        ],
+        "title": "RecommendationEvidenceResponse"
       },
       "RecommendationRequest": {
         "properties": {
@@ -11316,7 +12027,8 @@
           },
           "areaShare": {
             "additionalProperties": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
             },
             "propertyNames": {
               "$ref": "#/components/schemas/DisciplineAreaCode"
@@ -11326,7 +12038,8 @@
           },
           "semesterDistribution": {
             "additionalProperties": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
             },
             "type": "object",
             "title": "Semesterdistribution"
@@ -11340,6 +12053,25 @@
           },
           "admissionFit": {
             "$ref": "#/components/schemas/OptionalMetricResponse"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/SourceAttributionResponse"
+            },
+            "type": "array",
+            "title": "Provenance",
+            "default": []
+          },
+          "sourceGaps": {
+            "items": {
+              "$ref": "#/components/schemas/SourceGapReferenceResponse"
+            },
+            "type": "array",
+            "title": "Sourcegaps",
+            "default": []
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/RecommendationEvidenceResponse"
           }
         },
         "additionalProperties": false,
@@ -11355,7 +12087,8 @@
           "areaShare",
           "semesterDistribution",
           "distinctiveSubjects",
-          "admissionFit"
+          "admissionFit",
+          "evidence"
         ],
         "title": "RecommendationResponse"
       },
@@ -11409,22 +12142,27 @@
         "properties": {
           "subjectFit": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Subjectfit"
           },
           "activityFit": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Activityfit"
           },
           "distinctiveFit": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Distinctivefit"
           },
           "antiPenalty": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Antipenalty"
           },
           "rawContentFit": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Rawcontentfit"
           }
         },
@@ -11496,6 +12234,219 @@
         ],
         "title": "ShortlistRole",
         "description": "Explicit role assigned by the user to an active shortlist entry."
+      },
+      "SourceAttributionResponse": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SourceKind"
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Capturedat"
+          },
+          "contentSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Contentsha256"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locator"
+          },
+          "universityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Universityid"
+          },
+          "runId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runid"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "recordKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recordkey"
+          },
+          "inferred": {
+            "type": "boolean",
+            "title": "Inferred",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "url",
+          "capturedAt",
+          "contentSha256"
+        ],
+        "title": "SourceAttributionResponse"
+      },
+      "SourceFreshnessResponse": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,1}|(?=[\\d.]{1,6}0*$)\\d{0,1}\\.\\d{0,4}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EvidenceStatus"
+          },
+          "latestCapturedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latestcapturedat"
+          },
+          "runIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Runids",
+            "default": []
+          },
+          "snapshotConsistent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshotconsistent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "SourceFreshnessResponse"
+      },
+      "SourceGapReferenceResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/GapSeverity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2083,
+                "minLength": 1,
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceurl"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "recordKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recordkey"
+          },
+          "canContinue": {
+            "type": "boolean",
+            "title": "Cancontinue",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "severity",
+          "message"
+        ],
+        "title": "SourceGapReferenceResponse"
       },
       "SourceHealthItemResponse": {
         "properties": {
@@ -11673,6 +12624,7 @@
         "properties": {
           "amount": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Amount"
           },
           "currency": {
@@ -11777,7 +12729,8 @@
                   "type": "number"
                 },
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                 }
               ],
               "decimal_places": 4,
@@ -11798,7 +12751,8 @@
                   "type": "number"
                 },
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                 }
               ],
               "decimal_places": 4,
@@ -11819,7 +12773,8 @@
                   "type": "number"
                 },
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                 }
               ],
               "decimal_places": 4,
@@ -11872,7 +12827,8 @@
                     "type": "number"
                   },
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                   }
                 ],
                 "decimal_places": 4,
@@ -11893,7 +12849,8 @@
                   "type": "number"
                 },
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                 }
               ],
               "decimal_places": 4,
@@ -11958,6 +12915,7 @@
           "preferredSubjectWeights": {
             "additionalProperties": {
               "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "decimal_places": 4,
               "ge": 0,
               "le": 1,
@@ -11972,6 +12930,7 @@
           "preferredActivityWeights": {
             "additionalProperties": {
               "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "decimal_places": 4,
               "ge": 0,
               "le": 1,
@@ -11986,6 +12945,7 @@
           "negativeWeights": {
             "additionalProperties": {
               "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "decimal_places": 4,
               "ge": 0,
               "le": 1,
@@ -12032,6 +12992,7 @@
             "anyOf": [
               {
                 "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "decimal_places": 4,
                 "ge": 0,
                 "le": 1,
@@ -12046,6 +13007,7 @@
           "confidenceByDimension": {
             "additionalProperties": {
               "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "decimal_places": 4,
               "ge": 0,
               "le": 1,
@@ -12169,7 +13131,8 @@
           "latitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -12180,7 +13143,8 @@
           "longitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -12217,7 +13181,8 @@
           "credits": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"

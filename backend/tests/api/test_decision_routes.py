@@ -78,6 +78,41 @@ def test_shortlist_mutations_use_revision_and_never_hide_explicit_choice(tmp_pat
     assert entry["state"] == "active"
 
 
+def test_decision_suggestions_report_source_backed_constraint_outcomes(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+
+    updated = client.put(
+        "/decision/constraints",
+        json={
+            "constraints": {
+                "admissionYear": 2026,
+                "fundingPreference": "paid",
+                "studyForm": "full_time",
+                "maxTuition": 100000,
+                "location": "Москва",
+            },
+            "expectedRevision": 1,
+        },
+    )
+    assert updated.status_code == 200, updated.text
+
+    suggestions = client.get("/decision/suggestions")
+    assert suggestions.status_code == 200, suggestions.text
+    candidates = (
+        suggestions.json()["primaryCandidates"]
+        + suggestions.json()["alternativeCandidates"]
+        + suggestions.json()["ineligibleCandidates"]
+        + suggestions.json()["insufficientDataCandidates"]
+    )
+    assert candidates
+    outcomes = {item["dimension"]: item for item in candidates[0]["constraintOutcomes"]}
+    assert outcomes["admission_year"]["applicability"] == "applied"
+    assert outcomes["funding"]["applicability"] == "applied"
+    assert outcomes["study_form"]["applicability"] == "applied"
+    assert outcomes["max_tuition"]["applicability"] == "applied"
+    assert outcomes["location"]["satisfied"] is True
+
+
 def test_final_choice_requires_explicit_shortlist_entry_and_survives_reopen(tmp_path: Path) -> None:
     client = _client(tmp_path)
     rejected = client.post("/decision/final-choice", json={"programId": PROGRAM_A, "expectedRevision": 1})

@@ -12,6 +12,7 @@ from andromeda.modules.disciplines.contracts.public import DisciplineAreaCode, D
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.enums import AssessmentType
 from andromeda.shared.contracts.ids import Credits, HourCount, NonEmptyText, ProgramCode, ProgramId, Semester, ShortText
+from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 
 from .values import ONE, ZERO
 
@@ -237,6 +238,8 @@ class CurriculumEvidence(ContractModel):
     assessment_types: tuple[AssessmentType, ...] | None = None
     workload: Decimal = Field(strict=True, ge=ZERO)
     area_weights: tuple[DisciplineAreaWeight, ...] = Field(min_length=1)
+    provenance: tuple[SourceAttribution, ...] = ()
+    source_gaps: tuple[SourceGapReference, ...] = ()
 
     @model_validator(mode="after")
     def validate_area_weights(self) -> Self:
@@ -269,6 +272,8 @@ class ProgramFingerprint(ContractModel):
     activity_signals: dict[ActivityCode, Decimal] = Field(default_factory=dict)
     evidence: tuple[CurriculumEvidence, ...] = ()
     distinctive_subjects: tuple[DistinctiveSubject, ...] = ()
+    provenance: tuple[SourceAttribution, ...] = ()
+    source_gaps: tuple[SourceGapReference, ...] = ()
 
     @model_validator(mode="after")
     def validate_vectors(self) -> Self:

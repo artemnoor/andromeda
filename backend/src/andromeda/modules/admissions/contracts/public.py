@@ -71,6 +71,11 @@ class AdmissionProvenance(ContractModel):
     content_sha256: SourceHash
     locator: ShortText | None = None
     source_name: NonEmptyText | None = None
+    university_id: str | None = None
+    run_id: str | None = None
+    field: ShortText | None = None
+    record_key: ShortText | None = None
+    inferred: bool = False
 
 
 class ExamRequirement(ContractModel):

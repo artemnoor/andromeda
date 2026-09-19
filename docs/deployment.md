@@ -15,7 +15,13 @@ environment file or secret manager):
 | `ANDROMEDA_DATABASE_URL=postgresql+psycopg://...` | PostgreSQL connection. |
 | `ANDROMEDA_DOMAIN=andromeda.example.org` | Caddy hostname and HTTPS. |
 | `ANDROMEDA_OPS_API_KEY` | Protected Ops endpoints. |
-| `ANDROMEDA_SECRET_KEY` | Session and application secret. |
+| `BACKEND_IMAGE` | Immutable backend image tag or digest. |
+| `FRONTEND_IMAGE` | Immutable Next standalone image tag or digest. |
+| `TELEGRAM_BOT_IMAGE` | Immutable Telegram transport image tag or digest. |
+
+`ANDROMEDA_OPS_API_KEY` must be at least 16 characters and is supplied through
+the deployment secret manager. Never copy real values into `.env` committed to
+the repository.
 
 The `deploy/yc/compose.yaml` stack runs PostgreSQL, the backend, the Next
 frontend and Caddy. Caddy obtains and renews the certificate automatically
@@ -28,11 +34,24 @@ docker compose --env-file /etc/andromeda/backend.env -f deploy/yc/compose.yaml r
 docker compose --env-file /etc/andromeda/backend.env -f deploy/yc/compose.yaml up -d
 ```
 
+Before a release, validate the resolved compose contract without starting
+services:
+
+```bash
+docker compose --env-file /etc/andromeda/backend.env -f deploy/yc/compose.yaml config --quiet
+```
+
+The tracked packaging gate also checks the backend `8020` contract, Next
+`/app/server.js` Docker runner, VM/systemd
+`frontend-runtime/.next/standalone/server.js`, Caddy `/api` routing, and the
+Telegram internal URL. The VM release must copy the complete Next standalone
+directory, not only `.next/static`.
+
 ## Smoke checks
 
-`/health/live` checks that the process is running. `/health/ready` checks only
-database reachability and migration compatibility; it intentionally does not
-depend on BMSTU/HSE availability.
+`/health/live` checks that the process is running. `/health/ready` checks
+database reachability and exact compatibility with the image's Alembic head;
+it intentionally does not depend on BMSTU/HSE availability.
 
 ```bash
 curl --fail https://andromeda.example.org/health/live
@@ -44,6 +63,16 @@ Then check one program, curriculum/admissions, a comparison and an anonymous
 DecisionContext session in the browser. The scheduled `source-health` workflow
 is a separate operational check and does not block pull requests during a
 temporary university-site outage.
+
+The disposable fixture smoke is:
+
+```bash
+python scripts/andromeda.py production-smoke
+```
+
+It does not use an untracked SQLite seed and does not mutate the staging
+database. A real staging release additionally requires a PostgreSQL backup,
+the current Alembic head, and a restore smoke against an isolated database.
 
 ## Backup and restore
 
@@ -69,3 +98,9 @@ check against the restored database.
    rollback procedure.
 4. Do not edit or delete an applied Alembic revision. Forward-fix with a new
    migration and record the compatibility boundary in the release notes.
+
+For VM/systemd rollback, retain the previous extracted release directory and
+image/runtime commit. Switch the symlink only after the previous image is
+known to be compatible with the already-applied schema; otherwise restore the
+database backup into an isolated target and run the readiness/catalog smoke
+before redirecting traffic.

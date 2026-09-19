@@ -42,6 +42,7 @@ class AuthSessionModel(Base):
         CheckConstraint("expires_at > created_at", name="ck_auth_sessions_expiry_after_creation"),
         Index("ix_auth_sessions_token_hash", "token_hash"),
         Index("ix_auth_sessions_account_id", "account_id"),
+        Index("ix_auth_sessions_expiry", "expires_at", "revoked_at"),
     )
 
 

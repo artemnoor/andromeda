@@ -55,7 +55,7 @@ catalog / compare / admission / proftest / saved choice
                   ↓
   explicit constraints + considered programs + shortlist
                   ↓
-  candidate suggestions: Admission Fit → Content Fit → trade-offs
+       candidate suggestions: Admission Fit → constraint outcomes → Content Fit → trade-offs
                   ↓
        explicit user add/remove/restore/role commands
 ```
@@ -65,7 +65,8 @@ constraints, considered canonical program IDs, active/removed shortlist entries,
 roles (`primary`/`alternative`) и explicit exclusions. Profile preferences не
 копируются в `decision_contexts`: `UserProfile` остаётся владельцем
 предпочтений, а DecisionContext получает его read-only projection и revision.
-Suggestions, candidate partitions, Admission Fit outcomes, Content Fit evidence,
+Suggestions, candidate partitions, Admission Fit outcomes, typed constraint
+applicability, Content Fit evidence,
 refinement question и source gaps никогда не становятся implicit user choice.
 
 Каждая mutation проверяет optional `expectedRevision` и возвращает новую
@@ -82,14 +83,14 @@ programs / curricula / disciplines public readers
   → ProgramFingerprint
   → UserProfile
   → recommendations scoring/ranking/explanations
-  → /proftest/preview|results или /recommendations
+  → canonical /proftest/sessions/* → /recommendations
   → generated frontend types
 ```
 
 После завершения профтеста application flow сохраняет финальный профиль через отдельный persistence port:
 
 ```text
-POST /proftest/results
+POST /proftest/sessions/current/complete
   → UserProfilePersistenceService
   → UserProfileRepository
   → user_profiles (session hash + JSON snapshot + revision/TTL)
@@ -117,6 +118,11 @@ ranking остаются внутри `RecommendationService`. Поэтому se
 раннего ответа adaptive answers инвалидируются через
 `stale_question_ids`, а source gap/insufficient spread возвращается как
 явная причина остановки, без выдуманных workload-сигналов.
+
+`/proftest/questions`, `/proftest/preview` и `/proftest/results` остаются
+deprecated compatibility adapters для уже выпущенных клиентов. Они делегируют
+общие profile-builder/recommendation services и не содержат отдельного scoring
+или ranking path; удалить их можно после одного release cycle без calls.
 
 Anonymous identity — это случайный HttpOnly cookie, а в domain/infrastructure boundary передаётся только typed `ProfileScope` с SHA-256 hash. `UserProfile` не содержит storage metadata; revision и timestamps находятся в `UserProfileSnapshot`. Admission Fit остаётся отдельным score и не влияет на Content Fit.
 
@@ -169,7 +175,19 @@ backend/src/andromeda/
 
 `proftest` использует те же публичные reader-контракты через собственный typed catalog port; его domain/services не знают об ORM, HTTP schemas или BMSTU parser. `ProgramFingerprint` и `UserProfile` остаются application contracts, а API routes только связывают их с HTTP.
 
-`recommendations` получает только публичные `UserProfile` и `ProgramFingerprint`, а для каталога использует `RecommendationCatalogReader`. Его scoring policy фиксирует Content Fit как сумму subject, activity и distinctive fit с отдельным anti-interest penalty. `Career Fit`, `Admission Fit` и `Workload readiness` typed как `not_available` и не меняют score. Старые proftest matching/ranking/explanation paths остаются compatibility facades.
+### Canonical composition root
+
+`andromeda.composition.container.AndromedaContainer` — единственный активный
+composition graph для API и generic ingestion runner. `create_app()` создаёт
+один `Engine`, передаёт его вместе с теми же `Settings` в `build_container()`
+и сохраняет root в `app.state.container`; API dependency providers только
+делегируют ему создание readers, repositories и application services.
+`app.state.engine` остаётся совместимым alias того же объекта для outer-layer
+health/session boundaries, а не вторым engine. Subject modules не импортируют
+composition root. Новые runtime entrypoints должны получать этот root, а не
+собирать параллельный service graph или читать environment defaults повторно.
+
+`recommendations` получает только публичные `UserProfile` и `ProgramFingerprint`, а для каталога использует `RecommendationCatalogReader`. Его scoring policy фиксирует Content Fit как сумму subject, activity и distinctive fit с отдельным anti-interest penalty. Отдельный `RecommendationEvidence` envelope переносит profile confidence, catalog completeness, source snapshot identity, reliability, signal usage, inferred activity mapping и typed source gaps; он не меняет ranking. `Career Fit`, `Admission Fit` и `Workload readiness` typed как `not_available` и не меняют score. Старые proftest matching/ranking/explanation paths остаются compatibility facades.
 
 `admission_fit` — отдельный application/domain-модуль для оценки одного явно выбранного admission offering. Он публикует `ApplicantAdmissionProfile`, `AdmissionFitRequest` и `AdmissionFitResult`, а свой `AdmissionFitDataReader` получает snapshot через публичные `ProgramReader` и `AdmissionReader`. Внутри модуля нет SQLAlchemy, FastAPI, parser или recommendation imports:
 
@@ -201,6 +219,14 @@ personal route/events не мутирует `DecisionContext`; программ�
 shortlist только отдельной explicit-командой из UI.
 
 Старые пути `proftest.services.ranking`, `proftest.services.matching` и `proftest.services.explanations` сохранены как точечные compatibility facades. Они не являются разрешением импортировать recommendation internals в новый runtime-код и перечислены в architecture test как единственные переходные aliases.
+
+Исполняемый BMSTU runner теперь принадлежит `backend/scripts/run_andromeda_bmstu.py`,
+а полный fixture/live demo — `backend/scripts/run_andromeda_demo.py`. Старые
+`run_tracer_bullet.py` и `run_tracer_demo.py` оставлены на один migration cycle
+как thin wrappers с parity tests; новые docs/CI/runtime paths не должны их
+импортировать. `RawTracerBundle`, parser module `parser/tracer.py` и
+`tests/fixtures/tracer/raw` — намеренно сохранённые raw-contract/fixture
+идентификаторы, а не отдельный runtime.
 
 BMSTU URL, catalog pagination, detail/API shape, public study-plan resolver, PDF parser, mappings и browser fallback находятся в BMSTU adapter. Live ingestion начинает с официального catalog API, обнаруживает все detail slugs/profiles и связывает curriculum/admissions по сохранённому source code и study-plan URL; ручной список программ не является production input. Добавление нового вуза должно создавать новый adapter без зависимости comparison от структуры сайта.
 
@@ -249,7 +275,7 @@ account owner — canonical account ID. Partial unique index не допуска
 
 Каждая дисциплина получает не единственный ярлык, а нормализованный вектор `area_weights`: веса по 22 верхнеуровневым областям Andromeda. Веса строго положительны, не дублируют область и в сумме дают `1.0000`. Поэтому междисциплинарные предметы не теряют вторичную область: например, машинное обучение хранится как компьютерные науки + математика.
 
-Для BMSTU явные сопоставления находятся в `ingestion/universities/bmstu/mappings/discipline_areas.py`. Это часть university-specific ingestion adapter, а не core comparison. На входе сохраняется исходное название, затем adapter применяет точное сопоставление по нормализованному имени; прозрачные keyword rules и универсальная область являются fallback только для новых или неизвестных предметов. В полном live audit все 2 582 обнаруженные дисциплины получили vector без `fallback_unclassified`; отсутствующая в каталоге 22-я область не подменяется искусственными предметами.
+Для BMSTU явные сопоставления находятся в `ingestion/universities/bmstu/mappings/discipline_areas.py`. Это часть university-specific ingestion adapter, а не core comparison. На входе сохраняется исходное название, затем adapter применяет точное сопоставление по нормализованному имени; прозрачные keyword rules остаются автоматическим сигналом, а unresolved outcome не маскируется под reviewed Universal. Каждый canonical snapshot carries typed classification outcomes с rule ID и taxonomy version; quality metadata сохраняет воспроизводимые coverage/unknown metrics, source hashes и affected programs. Исторический live-аудит на 2 582 дисциплины не считается доказательством текущего состояния и не используется как claim.
 
 Распределение содержания программы считается в `comparison` по часам позиций учебного плана (при отсутствии часов используется ЗЕТ). Вектор предмета умножается на долю его нагрузки, после чего веса агрегируются по программе и выбранному семестру. Один предмет может влиять на несколько профилей, но исходная дисциплина и её workload остаются отдельной строкой сравнения.
 

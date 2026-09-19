@@ -460,8 +460,9 @@ function SuggestionCard({
       </div>
       <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
         <ReasonList icon={<Check className="h-4 w-4 text-emerald-600" />} title="Почему включено" items={candidate.reasons.whyIncluded} empty="Недостаточно данных для объяснения" />
-        <ReasonList icon={<Eye className="h-4 w-4 text-orange-600" />} title="Что может не подойти" items={candidate.reasons.whyMayNotFit} empty="Явных противопоказаний не найдено" />
+        <ReasonList icon={<Eye className="h-4 w-4 text-orange-600" />} title="Что может не подойти" items={candidate.reasons.whyMayNotFit} empty="Доказательств для этого вывода пока недостаточно." />
       </div>
+      <ConstraintOutcomeList outcomes={candidate.constraintOutcomes} />
       {candidate.sourceGaps.length > 0 && <p className="mt-3 text-xs text-muted-foreground">{candidate.sourceGaps.map(explainSourceGap).join(" ")}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
         <Button type="button" size="sm" disabled={disabledFor(pendingAction, `accept:${candidate.programId}`, disabled)} onClick={() => onAccept(candidate.programId)}>Добавить в shortlist</Button>
@@ -469,6 +470,15 @@ function SuggestionCard({
       </div>
     </div>
   );
+}
+
+function ConstraintOutcomeList({ outcomes }: { outcomes: DecisionSuggestion["constraintOutcomes"] }) {
+  if (outcomes.length === 0) return null;
+  return <div className="mt-3 rounded-lg border border-border/60 bg-card/70 p-3 text-xs"><p className="font-medium">Проверка ваших условий</p><ul className="mt-1 space-y-1 text-muted-foreground">{outcomes.map((outcome) => <li key={outcome.dimension} className={outcome.satisfied === false ? "text-orange-800" : outcome.applicability === "insufficient_data" ? "text-amber-800" : undefined}>{constraintLabel(outcome.dimension)}: {outcome.message}</li>)}</ul></div>;
+}
+
+function constraintLabel(dimension: string): string {
+  return { applicant_scores: "Баллы", admission_year: "Год", funding: "Финансирование", study_form: "Форма", max_tuition: "Стоимость", location: "Место" }[dimension] ?? dimension;
 }
 
 function ReasonList({ icon, title, items, empty }: { icon: React.ReactNode; title: string; items: string[]; empty: string }) {

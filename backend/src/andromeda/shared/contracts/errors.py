@@ -9,6 +9,7 @@ from .base import ContractModel
 
 class ErrorCode(StrEnum):
     VALIDATION_ERROR = "VALIDATION_ERROR"
+    RATE_LIMITED = "RATE_LIMITED"
     UNAUTHORIZED = "UNAUTHORIZED"
     NOT_FOUND = "NOT_FOUND"
     CONFLICT = "CONFLICT"
@@ -64,6 +65,11 @@ class ValidationError(AndromedaError):
 class UnauthorizedError(AndromedaError):
     def __init__(self, message: str = "Authentication required", details: Sequence[ErrorDetail] = ()) -> None:
         super().__init__(ErrorCode.UNAUTHORIZED, message, details)
+
+
+class RateLimitError(AndromedaError):
+    def __init__(self, message: str = "Too many requests") -> None:
+        super().__init__(ErrorCode.RATE_LIMITED, message)
 
 
 def details_from_validation(errors: Sequence[Mapping[str, object]]) -> tuple[ErrorDetail, ...]:

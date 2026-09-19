@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
+from hashlib import sha256
 from typing import Protocol
 
+from ..contracts.classification import ClassificationMethod, ClassificationOutcome, ClassificationReviewStatus, TAXONOMY_VERSION
 from ..domain.areas import AreaVector, DisciplineAreaCode, DisciplineAreaWeight, area_vector, default_area_weights
-from ..domain.identity import normalize_discipline_name
+from ..domain.identity import discipline_id_for, normalize_classification_name, normalize_discipline_name
 
 
 logger = logging.getLogger("andromeda.disciplines.classifier")
@@ -13,6 +15,8 @@ logger = logging.getLogger("andromeda.disciplines.classifier")
 
 class DisciplineClassifier(Protocol):
     def classify(self, source_name: str) -> tuple[DisciplineAreaWeight, ...]: ...
+
+    def classify_with_outcome(self, source_name: str, *, discipline_id: str | None = None) -> ClassificationOutcome: ...
 
 
 class RuleBasedDisciplineClassifier:
@@ -23,25 +27,88 @@ class RuleBasedDisciplineClassifier:
     fallback for a new university or a newly encountered subject.
     """
 
-    def __init__(self, overrides: Mapping[str, AreaVector] | None = None) -> None:
-        self._overrides = dict(overrides or {})
+    def __init__(
+        self,
+        overrides: Mapping[str, AreaVector] | None = None,
+        aliases: Mapping[str, str] | None = None,
+        *,
+        taxonomy_version: str = TAXONOMY_VERSION,
+    ) -> None:
+        self._overrides = {
+            normalize_classification_name(name): vector
+            for name, vector in (overrides or {}).items()
+        }
+        self._aliases = {
+            normalize_classification_name(alias): normalize_classification_name(target)
+            for alias, target in (aliases or {}).items()
+        }
+        self._taxonomy_version = taxonomy_version
 
     def classify(self, source_name: str) -> tuple[DisciplineAreaWeight, ...]:
-        normalized_name = normalize_discipline_name(source_name)
-        vector = self._overrides.get(normalized_name)
+        return self.classify_with_outcome(source_name).area_weights
+
+    def classify_with_outcome(self, source_name: str, *, discipline_id: str | None = None) -> ClassificationOutcome:
+        normalized_name = normalize_classification_name(source_name)
+        identity_name = normalize_discipline_name(source_name)
+        method: ClassificationMethod = "unresolved"
+        review_status: ClassificationReviewStatus = "needs_review"
+        rule_id: str | None = None
+        lookup_name = normalized_name
+        vector = self._overrides.get(lookup_name)
+        if vector is not None:
+            method = "explicit_universal" if _is_explicit_universal(vector) else "exact_override"
+            review_status = "reviewed"
+            rule_id = _override_rule_id(lookup_name)
+        else:
+            alias_target = self._aliases.get(lookup_name)
+            if alias_target is not None:
+                vector = self._overrides.get(alias_target)
+                if vector is not None:
+                    method = "alias"
+                    review_status = "reviewed"
+                    rule_id = f"alias:{_short_hash(lookup_name + '->' + alias_target)}"
+            if vector is None:
+                rule = self._classify_by_rules(normalized_name)
+                if rule is not None:
+                    rule_id, vector = rule
+                    method = "explicit_universal" if _is_explicit_universal(vector) else "keyword_rule"
+                    review_status = "automatic"
         if vector is None:
-            vector = self._classify_by_rules(normalized_name)
-        if vector is None:
-            logger.debug("discipline_classification_fallback area=%s", DisciplineAreaCode.UNIVERSAL_INTERDISCIPLINARY.value)
-            return default_area_weights()
-        return tuple(DisciplineAreaWeight(area=area, weight=weight) for area, weight in vector)
+            logger.info(
+                "discipline_classification_unresolved normalized_name=%s taxonomy_version=%s",
+                normalized_name,
+                self._taxonomy_version,
+            )
+        weights = default_area_weights() if vector is None else tuple(DisciplineAreaWeight(area=area, weight=weight) for area, weight in vector)
+        return ClassificationOutcome(
+            discipline_id=discipline_id or discipline_id_for(identity_name),
+            source_name=source_name,
+            normalized_name=normalized_name,
+            method=method,
+            rule_id=rule_id,
+            taxonomy_version=self._taxonomy_version,
+            area_weights=weights,
+            review_status=review_status,
+        )
 
     @staticmethod
-    def _classify_by_rules(normalized_name: str) -> AreaVector | None:
+    def _classify_by_rules(normalized_name: str) -> tuple[str, AreaVector] | None:
         for keywords, vector in _DEFAULT_RULES:
             if any(keyword in normalized_name for keyword in keywords):
-                return vector
+                return f"keyword:{_short_hash('|'.join(keywords))}", vector
         return None
+
+
+def _short_hash(value: str) -> str:
+    return sha256(value.encode("utf-8")).hexdigest()[:12]
+
+
+def _override_rule_id(normalized_name: str) -> str:
+    return f"override:{_short_hash(normalized_name)}"
+
+
+def _is_explicit_universal(vector: AreaVector) -> bool:
+    return len(vector) == 1 and vector[0][0] is DisciplineAreaCode.UNIVERSAL_INTERDISCIPLINARY
 
 
 _DEFAULT_RULES: tuple[tuple[tuple[str, ...], AreaVector], ...] = (

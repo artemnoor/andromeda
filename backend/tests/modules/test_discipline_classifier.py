@@ -34,3 +34,40 @@ def test_classifier_falls_back_to_universal_without_false_precision() -> None:
     result = RuleBasedDisciplineClassifier().classify("Неизвестный предмет")
     assert result[0].area is DisciplineAreaCode.UNIVERSAL_INTERDISCIPLINARY
     assert result[0].weight == Decimal("1.0000")
+
+
+def test_classifier_outcome_records_method_rule_and_taxonomy_version() -> None:
+    classifier = RuleBasedDisciplineClassifier(
+        {"Каноническое имя": ((DisciplineAreaCode.MATHEMATICS_STATISTICS, Decimal("1.00")),)},
+        {"Историческое имя": "Каноническое имя"},
+    )
+
+    exact = classifier.classify_with_outcome("Каноническое имя")
+    alias = classifier.classify_with_outcome("Историческое имя")
+    keyword = classifier.classify_with_outcome("Машинное обучение")
+    explicit = RuleBasedDisciplineClassifier(
+        {"Практика": ((DisciplineAreaCode.UNIVERSAL_INTERDISCIPLINARY, Decimal("1.00")),)},
+    ).classify_with_outcome("Практика")
+    unresolved = classifier.classify_with_outcome("Совершенно неизвестный предмет")
+
+    assert exact.method == "exact_override"
+    assert exact.review_status == "reviewed"
+    assert exact.rule_id is not None and exact.rule_id.startswith("override:")
+    assert alias.method == "alias"
+    assert alias.area_weights == exact.area_weights
+    assert keyword.method == "keyword_rule"
+    assert keyword.review_status == "automatic"
+    assert explicit.method == "explicit_universal"
+    assert unresolved.method == "unresolved"
+    assert unresolved.review_status == "needs_review"
+    assert unresolved.area_weights[0].area is DisciplineAreaCode.UNIVERSAL_INTERDISCIPLINARY
+    assert unresolved.taxonomy_version == "taxonomy-22.v1"
+
+
+def test_classifier_matching_normalizes_safe_spelling_variants_without_changing_identity() -> None:
+    classifier = RuleBasedDisciplineClassifier({"Теория вероятностей - и статистика": ((DisciplineAreaCode.MATHEMATICS_STATISTICS, Decimal("1.00")),)})
+
+    outcome = classifier.classify_with_outcome("ТЕОРИЯ ВЕРОЯТНОСТЕЙ — И СТАТИСТИКА")
+
+    assert outcome.method == "exact_override"
+    assert outcome.normalized_name == "теория вероятностей - и статистика"

@@ -49,6 +49,11 @@ class FetchedResource:
     encoding: str | None = None
     network_payloads: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
+    error_code: str | None = None
+    truncated: bool = False
+    attempts: int = 1
+    retry_class: str | None = None
+    redirects: tuple[str, ...] = ()
 
     @property
     def content_hash(self) -> str:
@@ -72,6 +77,11 @@ class FetchedResource:
             "path": path,
             "network_payload_count": len(self.network_payloads),
             "error": self.error,
+            "error_code": self.error_code,
+            "truncated": self.truncated,
+            "attempts": self.attempts,
+            "retry_class": self.retry_class,
+            "redirect_count": len(self.redirects),
         }
 
 

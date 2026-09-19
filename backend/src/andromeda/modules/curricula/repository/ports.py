@@ -17,8 +17,4 @@ class CurriculumWriter(Protocol):
     def save(self, curriculum: Curriculum) -> None: ...
 
 
-class CurriculumRepository(CurriculumReader, CurriculumWriter, Protocol):
-    """Combined storage port used only by infrastructure composition."""
-
-
-__all__ = ["CurriculumReader", "CurriculumRepository", "CurriculumWriter"]
+__all__ = ["CurriculumReader", "CurriculumWriter"]
