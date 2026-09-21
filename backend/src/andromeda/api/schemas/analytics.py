@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from pydantic import Field
-
 from andromeda.modules.admissions.contracts.public import FundingType, StudyForm
 from andromeda.modules.analytics.contracts.metrics import (
     MetricAggregation,
@@ -21,11 +19,21 @@ from andromeda.modules.analytics.contracts.query import (
 )
 from andromeda.shared.contracts.enums import EducationLevel
 from andromeda.shared.contracts.ids import EducationYear, Semester
+from pydantic import ConfigDict, Field
 
-from .common import ApiModel
+from .common import ApiModel, to_camel
+
+_ANALYTICS_API_CONFIG = ConfigDict(
+    strict=False,
+    extra="forbid",
+    populate_by_name=True,
+    alias_generator=to_camel,
+)
 
 
 class AnalyticsFilterRequest(ApiModel):
+    model_config = _ANALYTICS_API_CONFIG
+
     kind: FilterKind
     ids: list[str] = Field(default_factory=list, max_length=100)
     education_level: EducationLevel | None = None
@@ -37,7 +45,7 @@ class AnalyticsFilterRequest(ApiModel):
     metric_code: str | None = None
     feature_code: str | None = None
     operator: FilterOperator = FilterOperator.EQ
-    threshold: Decimal | None = Field(default=None, ge=Decimal("0"))
+    threshold: Decimal | None = Field(default=None, ge=Decimal(0))
 
     def to_contract(self) -> QueryFilter:
         return QueryFilter(
@@ -57,6 +65,8 @@ class AnalyticsFilterRequest(ApiModel):
 
 
 class AnalyticsSortRequest(ApiModel):
+    model_config = _ANALYTICS_API_CONFIG
+
     metric_code: str
     descending: bool = True
 
@@ -65,6 +75,8 @@ class AnalyticsSortRequest(ApiModel):
 
 
 class AnalyticsQueryRequest(ApiModel):
+    model_config = _ANALYTICS_API_CONFIG
+
     entity: MetricEntityType
     metrics: list[str] = Field(min_length=1, max_length=8)
     scope: QueryScope = QueryScope.ALL

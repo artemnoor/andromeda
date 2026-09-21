@@ -4,8 +4,6 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from sqlalchemy.orm import Session
-
 from andromeda.infrastructure.database import Base, create_engine_for_url
 from andromeda.infrastructure.repositories.query_sessions import (
     SqlAlchemyQuerySessionRepository,
@@ -14,8 +12,9 @@ from andromeda.modules.conversation.contracts.public import QuerySession
 from andromeda.modules.conversation.services.engine import ConversationEngine
 from andromeda.modules.proftest.contracts.public import ProfileScope
 from andromeda.shared.contracts.errors import ConflictError
+from sqlalchemy.orm import Session
 
-NOW = datetime(2026, 9, 21, 14, 0, tzinfo=UTC)
+NOW = datetime.now(UTC) - timedelta(minutes=1)
 
 
 def _session(scope: ProfileScope) -> QuerySession:
