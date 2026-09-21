@@ -12,6 +12,14 @@
       "commit": "3d997fc76593036655c28d4964de43b55f81fe2c",
       "role": "DEV/EVAL_TOOL",
       "runtime_dependency": false
+    },
+    "jev-tree": {
+      "source": "https://github.com/reachjalil/jev-tree",
+      "commit": "95bff63bd653fee4dc71f33f9431dce0f81e2ca3",
+      "package": "jev-tree@0.1.0",
+      "role": "ISOLATED_OPTIONAL_RUNTIME",
+      "runtime_dependency": true,
+      "node": ">=22 <23"
     }
   }
 }

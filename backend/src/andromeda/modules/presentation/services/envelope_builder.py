@@ -16,6 +16,7 @@ def build_response_envelope(
     actions: tuple[ResponseActionItem, ...] = (),
     query_reference: str | None = None,
     result_reference: str | None = None,
+    metadata: dict[str, object] | None = None,
 ) -> ResponseEnvelope:
     evidence_by_metric: dict[str, int] = {}
     for row in result.rows:
@@ -41,7 +42,7 @@ def build_response_envelope(
             EvidenceSummary(metric_code=metric.code, evidence_count=evidence_by_metric.get(metric.code, 0), coverage=str(result.coverage))
             for metric in result.metric_definitions
         ),
-        metadata={"status": result.status.value, "reason": policy.reason},
+        metadata={"status": result.status.value, "reason": policy.reason, **(metadata or {})},
         plan=plan,
     )
 

@@ -19,3 +19,5 @@ frontend-next/playwright-report/
 .env.staging
 ops/postgres/.env
 artifacts/
+# Optional isolated Node bridge dependencies are installed locally, never committed.
+/backend/jev-tree-bridge/node_modules/

@@ -16,6 +16,14 @@ from .public import (
     ResolutionEntityType,
     ResolutionStatus,
 )
+from .hierarchical import (
+    HierarchicalSelectionPort,
+    SelectionFailureReason,
+    SelectionNode,
+    SelectionRequest,
+    SelectionResult,
+    SelectionTree,
+)
 
 __all__ = [
     "CandidateMatchReason",
@@ -24,10 +32,16 @@ __all__ = [
     "EntityResolverGateway",
     "EntityResolutionCandidate",
     "EntityResolutionResult",
+    "HierarchicalSelectionPort",
     "MetricResolver",
     "ProgramResolver",
     "ResolutionContext",
     "ResolutionEntityType",
     "ResolutionStatus",
+    "SelectionFailureReason",
+    "SelectionNode",
+    "SelectionRequest",
+    "SelectionResult",
+    "SelectionTree",
     "UniversityResolver",
 ]

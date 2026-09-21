@@ -9,12 +9,14 @@ from .contracts.public import (
     ResolutionStatus,
 )
 from .services.resolvers import EntityResolverService
+from .services.hierarchical import HierarchicalResolutionService
 
 __all__ = [
     "CandidateMatchReason",
     "EntityResolutionCandidate",
     "EntityResolutionResult",
     "EntityResolverService",
+    "HierarchicalResolutionService",
     "ResolutionContext",
     "ResolutionEntityType",
     "ResolutionStatus",

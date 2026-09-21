@@ -108,7 +108,13 @@ class AssistantService:
             response_policy = self._response_policy.choose(
                 ResponseRequest(result=result, comparison_requested=decision.action is DecisionAction.COMPARE)
             )
-            envelope = build_response_envelope(result, response_policy, text=f"Найдено результатов: {len(result.rows)}", result_reference=updated.session_id)
+            envelope = build_response_envelope(
+                result,
+                response_policy,
+                text=f"Найдено результатов: {len(result.rows)}",
+                result_reference=updated.session_id,
+                metadata={"resolution_evidence": updated.frame.resolution_evidence},
+            )
             return AssistantResult(
                 state=AssistantState.COMPLETE,
                 session_id=updated.session_id,
@@ -141,6 +147,8 @@ class AssistantService:
         if self._entity_resolver is None:
             return session
         resolved = {key: tuple(values) for key, values in session.entities.items()}
+        resolution_cache = dict(session.resolution_cache)
+        resolution_evidence = dict(session.frame.resolution_evidence)
         unresolved: list[str] = []
         for entity_type in (
             ResolutionEntityType.UNIVERSITY,
@@ -159,19 +167,39 @@ class AssistantService:
             )
             context = ResolutionContext(university_id=context_university) if context_university else None
             for query in queries:
+                cache_key = f"{entity_type.value}:{query}"
+                cached_id = resolution_cache.get(cache_key)
+                if cached_id:
+                    selected.append(cached_id)
+                    resolution_evidence[cache_key] = "strategy=deterministic;source=session_cache"
+                    continue
                 result = self._entity_resolver.resolve(entity_type, query, context=context, limit=10)
-                if result.status in {ResolutionStatus.EXACT, ResolutionStatus.RESOLVED} and result.selected_id:
+                if (
+                    result.resolution_strategy == "deterministic"
+                    and result.status in {ResolutionStatus.EXACT, ResolutionStatus.RESOLVED}
+                    and result.selected_id
+                ):
                     selected.append(result.selected_id)
+                    resolution_cache[cache_key] = result.selected_id
+                    resolution_evidence[cache_key] = (
+                        f"strategy={result.resolution_strategy};candidate_hash={result.candidate_hash or 'none'}"
+                    )
                 else:
                     unresolved.append(f"{entity_type.value}:{query}")
+                    resolution_evidence[cache_key] = (
+                        f"strategy={result.resolution_strategy};candidate_hash={result.candidate_hash or 'none'}"
+                    )
             if selected:
                 resolved[entity_type] = tuple(dict.fromkeys(selected))
         if not unresolved:
             return session.model_copy(
                 update={
                     "entities": resolved,
+                    "resolution_cache": resolution_cache,
                     "unresolved_entities": (),
-                    "frame": session.frame.model_copy(update={"entities": resolved}),
+                    "frame": session.frame.model_copy(
+                        update={"entities": resolved, "resolution_evidence": resolution_evidence}
+                    ),
                 }
             )
         university_unresolved = any(item.startswith("university:") for item in unresolved)
@@ -180,11 +208,18 @@ class AssistantService:
         return session.model_copy(
             update={
                 "entities": resolved,
+                "resolution_cache": resolution_cache,
                 "unresolved_entities": tuple(unresolved),
                 "missing_slots": missing,
                 "next_action": next_action,
                 "last_action": next_action,
-                "frame": session.frame.model_copy(update={"entities": resolved, "missing_fields": missing}),
+                "frame": session.frame.model_copy(
+                    update={
+                        "entities": resolved,
+                        "missing_fields": missing,
+                        "resolution_evidence": resolution_evidence,
+                    }
+                ),
             }
         )
 

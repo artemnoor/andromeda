@@ -55,8 +55,11 @@ class EntityResolutionResult(ContractModel):
     entity_type: ResolutionEntityType
     query: str = Field(min_length=1, max_length=512)
     status: ResolutionStatus
-    candidates: tuple[EntityResolutionCandidate, ...] = Field(default=(), max_length=20)
+    candidates: tuple[EntityResolutionCandidate, ...] = Field(default=(), max_length=1000)
     selected_id: str | None = Field(default=None, min_length=1, max_length=256)
+    resolution_strategy: str = Field(default="deterministic", min_length=1, max_length=64)
+    candidate_hash: str | None = Field(default=None, min_length=1, max_length=128)
+    resolution_evidence: dict[str, str] = Field(default_factory=dict, max_length=16)
 
     @model_validator(mode="after")
     def validate_selection(self) -> EntityResolutionResult:

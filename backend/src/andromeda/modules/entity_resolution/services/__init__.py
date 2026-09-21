@@ -8,6 +8,7 @@ from .resolvers import (
     ProgramResolverService,
     UniversityResolverService,
 )
+from .hierarchical import HierarchicalResolutionService
 
 __all__ = [
     "CachedEntityCatalog",
@@ -16,4 +17,5 @@ __all__ = [
     "MetricResolverService",
     "ProgramResolverService",
     "UniversityResolverService",
+    "HierarchicalResolutionService",
 ]

@@ -88,6 +88,7 @@ class QueryFrame(ContractModel):
     semester: Semester | None = None
     course_year: int | None = Field(default=None, strict=True, ge=1, le=12)
     missing_fields: tuple[ConversationSlot, ...] = Field(default=(), max_length=8)
+    resolution_evidence: dict[str, str] = Field(default_factory=dict, max_length=32)
 
 
 class ExamScore(ContractModel):
@@ -127,6 +128,7 @@ class QuerySession(ContractModel):
     known_slots: dict[str, object] = Field(default_factory=dict, max_length=32)
     confirmed_parameters: dict[str, QueryFact] = Field(default_factory=dict, max_length=32)
     inferred_parameters: dict[str, QueryFact] = Field(default_factory=dict, max_length=32)
+    resolution_cache: dict[str, str] = Field(default_factory=dict, max_length=32)
     unresolved_entities: tuple[str, ...] = Field(default=(), max_length=20)
     missing_slots: tuple[ConversationSlot, ...] = Field(default=(), max_length=8)
     assumptions: tuple[str, ...] = Field(default=(), max_length=16)

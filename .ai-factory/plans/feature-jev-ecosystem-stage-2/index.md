@@ -1639,9 +1639,9 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 
 ### Phase 06 — jev-tree
 
-- [ ] T15 — Define hierarchical selection port
-- [ ] T16 — Add isolated jev-tree adapter
-- [ ] T17 — Integrate hierarchical resolution into QueryFrame
+- [x] T15 — Define hierarchical selection port
+- [x] T16 — Add isolated jev-tree adapter
+- [x] T17 — Integrate hierarchical resolution into QueryFrame
 
 ### Phase 07 — Runtime wiring
 
