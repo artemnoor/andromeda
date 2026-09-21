@@ -1616,8 +1616,8 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 
 ### Phase 02 — Evaluation baseline
 
-- [ ] T04 — Изолировать official System One Adapter
-- [ ] T05 — Создать canonical decision corpus и replay protocol
+- [x] T04 — Изолировать official System One Adapter
+- [x] T05 — Создать canonical decision corpus и replay protocol
 
 ### Phase 03 — Jevcal
 
