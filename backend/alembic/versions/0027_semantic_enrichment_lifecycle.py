@@ -6,8 +6,8 @@ import sqlalchemy as sa
 from alembic import op
 
 
-revision = "0027_semantic_enrichment_lifecycle"
-down_revision = "0026_semantic_contracts"
+revision = "0027_sem_enrich"
+down_revision = "0026_semantic"
 branch_labels = None
 depends_on = None
 

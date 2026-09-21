@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from alembic import op
 
 
-revision = "0023_university_admin_memberships"
+revision = "0023_uni_admin"
 down_revision = "0022_ingestion_concurrency"
 branch_labels = None
 depends_on = None

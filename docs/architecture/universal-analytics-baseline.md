@@ -9,7 +9,7 @@
 Рабочее дерево на момент baseline было dirty. Вне scope этой реализации остаются:
 
 - существующие изменения university-admin в backend/frontend/docs;
-- незакоммиченные Alembic revisions `0023_university_admin_memberships`, `0024_university_catalog_editorial`, `0025_university_editorial_events` и их тесты;
+- Alembic revisions `0023_uni_admin`, `0024_uni_catalog`, `0025_uni_events` и их тесты;
 - `proftest-spike/` и прочие pre-existing untracked artifacts.
 
 Analytics migrations должны продолжить подтверждённую линейную цепочку и не переписывать эти файлы.
@@ -20,14 +20,14 @@ Analytics migrations должны продолжить подтверждённ�
 
 ```text
 alembic heads
-0025_university_editorial_events (head)
+0025_uni_events (head)
 
 alembic current
-Rev: 0025_university_editorial_events (head)
-Parent: 0024_university_catalog_editorial
+Rev: 0025_uni_events (head)
+Parent: 0024_uni_catalog
 ```
 
-История перед analytics начинается с `0022_ingestion_concurrency → 0023_university_admin_memberships → 0024_university_catalog_editorial → 0025_university_editorial_events`. Фактический следующий revision ID выбирается только после повторной проверки head непосредственно перед первой migration.
+История перед analytics начинается с `0022_ingestion_concurrency → 0023_uni_admin → 0024_uni_catalog → 0025_uni_events`. Короткие revision ID удерживают значения в пределах PostgreSQL `alembic_version.version_num` (`varchar(32)`).
 
 ## API baseline
 

@@ -131,7 +131,7 @@ def test_semantic_migration_round_trip_keeps_previous_canonical_schema(tmp_path:
     finally:
         engine.dispose()
 
-    command.downgrade(config, "0025_university_editorial_events")
+    command.downgrade(config, "0025_uni_events")
     engine = create_engine(database_url)
     try:
         tables = set(inspect(engine).get_table_names())

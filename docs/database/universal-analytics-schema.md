@@ -4,11 +4,11 @@ The additive Alembic chain is currently:
 
 | Migration | Purpose |
 |---|---|
-| `0026_semantic_contracts` | versioned semantic features, defaults and item values |
-| `0027_semantic_enrichment_lifecycle` | derived semantic runs and audit evidence |
-| `0028_program_analytics_projections` | materialized program projections, metrics and evidence |
-| `0029_query_sessions` | owner-bound conversation state |
-| `0030_semantic_changed_items` | incremental rebuild change-set |
+| `0026_semantic` | versioned semantic features, defaults and item values |
+| `0027_sem_enrich` | derived semantic runs and audit evidence |
+| `0028_prog_proj` | materialized program projections, metrics and evidence |
+| `0029_query` | owner-bound conversation state |
+| `0030_sem_changes` | incremental rebuild change-set |
 
 Canonical tables remain the source of truth. Derived tables are rebuildable:
 

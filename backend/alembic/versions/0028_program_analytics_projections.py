@@ -6,8 +6,8 @@ import sqlalchemy as sa
 from alembic import op
 
 
-revision = "0028_program_analytics_projections"
-down_revision = "0027_semantic_enrichment_lifecycle"
+revision = "0028_prog_proj"
+down_revision = "0027_sem_enrich"
 branch_labels = None
 depends_on = None
 

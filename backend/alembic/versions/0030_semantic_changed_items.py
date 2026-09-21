@@ -5,8 +5,8 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0030_semantic_changed_items"
-down_revision = "0029_query_sessions"
+revision = "0030_sem_changes"
+down_revision = "0029_query"
 branch_labels = None
 depends_on = None
 
