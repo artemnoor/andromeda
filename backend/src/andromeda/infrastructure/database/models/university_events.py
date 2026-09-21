@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..base import Base
@@ -77,6 +86,8 @@ class UniversityEditorialEventUnitLinkModel(Base):
     event_id: Mapped[str] = mapped_column(ForeignKey("university_editorial_events.event_id", ondelete="CASCADE"), primary_key=True)
     unit_id: Mapped[str] = mapped_column(ForeignKey("university_units.unit_id"), primary_key=True)
 
+    __table_args__ = (Index("ix_university_editorial_event_unit_links_unit_id", "unit_id"),)
+
 
 class UniversityEditorialEventProgramLinkModel(Base):
     __tablename__ = "university_editorial_event_program_links"
@@ -84,12 +95,16 @@ class UniversityEditorialEventProgramLinkModel(Base):
     event_id: Mapped[str] = mapped_column(ForeignKey("university_editorial_events.event_id", ondelete="CASCADE"), primary_key=True)
     program_id: Mapped[str] = mapped_column(String(96), primary_key=True)
 
+    __table_args__ = (Index("ix_university_editorial_event_program_links_program_id", "program_id"),)
+
 
 class UniversityEditorialEventCategoryLinkModel(Base):
     __tablename__ = "university_editorial_event_category_links"
 
     event_id: Mapped[str] = mapped_column(ForeignKey("university_editorial_events.event_id", ondelete="CASCADE"), primary_key=True)
     category_id: Mapped[str] = mapped_column(ForeignKey("university_categories.category_id"), primary_key=True)
+
+    __table_args__ = (Index("ix_university_editorial_event_category_links_category_id", "category_id"),)
 
 
 __all__ = [

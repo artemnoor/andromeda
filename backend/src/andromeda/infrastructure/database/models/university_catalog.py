@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..base import Base
@@ -35,6 +44,7 @@ class UniversityUnitModel(Base):
         CheckConstraint("revision >= 1", name="ck_university_unit_revision"),
         CheckConstraint("length(slug) > 0", name="ck_university_unit_slug"),
         CheckConstraint("length(name) > 0", name="ck_university_unit_name"),
+        Index("ix_university_units_public", "university_id", "status", "sort_order"),
     )
 
 
@@ -64,6 +74,7 @@ class UniversityCategoryModel(Base):
         CheckConstraint("revision >= 1", name="ck_university_category_revision"),
         CheckConstraint("length(slug) > 0", name="ck_university_category_slug"),
         CheckConstraint("length(name) > 0", name="ck_university_category_name"),
+        Index("ix_university_categories_public", "university_id", "status", "sort_order"),
     )
 
 
@@ -110,6 +121,8 @@ class UniversityCategoryProgramLinkModel(Base):
     category_id: Mapped[str] = mapped_column(ForeignKey("university_categories.category_id"), primary_key=True)
     program_id: Mapped[str] = mapped_column(String(96), primary_key=True)
 
+    __table_args__ = (Index("ix_university_category_program_links_university_id", "university_id"),)
+
 
 class UniversityCategoryDisciplineLinkModel(Base):
     __tablename__ = "university_category_discipline_links"
@@ -117,6 +130,8 @@ class UniversityCategoryDisciplineLinkModel(Base):
     university_id: Mapped[str] = mapped_column(ForeignKey("universities.id"), primary_key=True)
     category_id: Mapped[str] = mapped_column(ForeignKey("university_categories.category_id"), primary_key=True)
     discipline_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+
+    __table_args__ = (Index("ix_university_category_discipline_links_university_id", "university_id"),)
 
 
 class UniversityUnitProgramLinkModel(Base):
@@ -126,6 +141,8 @@ class UniversityUnitProgramLinkModel(Base):
     unit_id: Mapped[str] = mapped_column(ForeignKey("university_units.unit_id"), primary_key=True)
     program_id: Mapped[str] = mapped_column(String(96), primary_key=True)
 
+    __table_args__ = (Index("ix_university_unit_program_links_university_id", "university_id"),)
+
 
 class UniversityUnitDisciplineLinkModel(Base):
     __tablename__ = "university_unit_discipline_links"
@@ -133,6 +150,8 @@ class UniversityUnitDisciplineLinkModel(Base):
     university_id: Mapped[str] = mapped_column(ForeignKey("universities.id"), primary_key=True)
     unit_id: Mapped[str] = mapped_column(ForeignKey("university_units.unit_id"), primary_key=True)
     discipline_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+
+    __table_args__ = (Index("ix_university_unit_discipline_links_university_id", "university_id"),)
 
 
 __all__ = [

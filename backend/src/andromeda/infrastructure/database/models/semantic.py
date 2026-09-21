@@ -39,7 +39,13 @@ class SemanticFeatureModel(Base):
 class DisciplineSemanticFeatureModel(Base):
     __tablename__ = "discipline_semantic_features"
 
-    discipline_id: Mapped[str] = mapped_column(ForeignKey("disciplines.id", ondelete="CASCADE"), primary_key=True)
+    # Keep this length aligned with the historical 0026 migration. Discipline
+    # identities are currently bounded to 64 characters by the canonical model.
+    discipline_id: Mapped[str] = mapped_column(
+        String(256),
+        ForeignKey("disciplines.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
     feature_id: Mapped[str] = mapped_column(ForeignKey("semantic_features.id"), primary_key=True)
     semantic_version: Mapped[str] = mapped_column(String(64), primary_key=True)
     classifier_version: Mapped[str] = mapped_column(String(64), primary_key=True)
