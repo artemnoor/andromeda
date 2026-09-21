@@ -146,6 +146,21 @@ class ProgramProjection(ContractModel):
         return self
 
 
+__all__ = [
+    "ACTIVITY_SIGNAL_WEIGHTS",
+    "ActivitySignalCode",
+    "AssessmentSummary",
+    "ProgramProjection",
+    "ProjectionBuild",
+    "ProjectionDataQuality",
+    "ProjectionDataQualityStatus",
+    "ProjectionMetric",
+    "ProjectionMetricEvidence",
+    "ProjectionTimeline",
+    "WorkloadSummary",
+]
+
+
 class ProjectionBuild(ContractModel):
     projection: ProgramProjection
     evidence: tuple[ProjectionMetricEvidence, ...] = Field(default=(), max_length=100_000)

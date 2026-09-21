@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from andromeda.shared.contracts.versions import DECISION_POLICY_VERSION
+from andromeda.modules.analytics.contracts.results import AnalyticsResult
 
 from ..contracts.policy import (
     DataCapabilities,
@@ -21,7 +22,7 @@ class RuleBasedDecisionPolicy:
         *,
         available_actions: tuple[DecisionAction, ...] = tuple(DecisionAction),
         capabilities: DataCapabilities | None = None,
-        last_result=None,
+        last_result: AnalyticsResult | None = None,
     ) -> DecisionPolicyResult:
         del capabilities
         if last_result is not None and DecisionAction.SHOW_RESULT in available_actions:

@@ -17,6 +17,7 @@ from andromeda.modules.conversation.contracts.policy import (
 )
 from andromeda.modules.conversation.contracts.ports import QuerySessionRepository
 from andromeda.modules.conversation.contracts.public import QuerySession, QuerySessionId
+from andromeda.modules.entity_resolution.contracts.public import ResolutionEntityType
 from andromeda.modules.presentation.contracts.envelope import ResponseEnvelope
 from andromeda.modules.presentation.contracts.policy import (
     ResponseFormat,
@@ -123,11 +124,11 @@ class AssistantService:
         raise ContractError(ErrorCode.INSUFFICIENT_DATA, "Admission search has no bounded candidate programs")
 
     def _candidate_program_ids(self, session: QuerySession) -> tuple[ProgramId, ...]:
-        programs = tuple(session.entities.get("program", ()))
+        programs = tuple(session.entities.get(ResolutionEntityType.PROGRAM, ()))
         if programs:
             return programs[:50]
-        university_ids = tuple(session.entities.get("university", ()))
-        direction_ids = set(session.entities.get("direction", ()))
+        university_ids = tuple(session.entities.get(ResolutionEntityType.UNIVERSITY, ()))
+        direction_ids = set(session.entities.get(ResolutionEntityType.DIRECTION, ()))
         if university_ids:
             values = tuple(program for university_id in university_ids for program in self._programs.list(university_id=university_id))
             return tuple(program.id for program in values if not direction_ids or program.direction_id in direction_ids)[:50]

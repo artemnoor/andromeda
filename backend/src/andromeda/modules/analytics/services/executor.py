@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from decimal import Decimal
 from hashlib import sha256
 
-from andromeda.modules.admissions.contracts.public import FundingType
+from andromeda.modules.admissions.contracts.public import AdmissionOffering, FundingType
 from andromeda.shared.contracts.versions import ANALYTICS_PROJECTION_SCHEMA_VERSION
 
 from ..contracts.metrics import MetricAggregation, MetricDefinition, MetricEntityType
@@ -150,7 +150,7 @@ def _metric_for_projection(projection: ProgramProjection, definition: MetricDefi
     return ProjectionMetric(code=code, unit=definition.unit)
 
 
-def _scalar_metric(code: str, unit: str, value, projection: ProgramProjection) -> ProjectionMetric:
+def _scalar_metric(code: str, unit: str, value: int | Decimal | None, projection: ProgramProjection) -> ProjectionMetric:
     if value is None:
         return ProjectionMetric(code=code, unit=unit)
     return ProjectionMetric(code=code, value=Decimal(value), unit=unit, basis=projection.workload.basis, coverage=Decimal("1"), confidence=projection.quality.confidence, status=ProjectionDataQualityStatus.AVAILABLE, provenance=projection.provenance)
@@ -158,7 +158,7 @@ def _scalar_metric(code: str, unit: str, value, projection: ProgramProjection) -
 
 def _admission_metric(code: str, unit: str, projection: ProgramProjection, filters: tuple[QueryFilter, ...]) -> ProjectionMetric:
     offerings = tuple(offering for offering in projection.admission_offerings if _offering_matches(offering, filters))
-    values = []
+    values: list[Decimal] = []
     for offering in offerings:
         if code == "passing_score":
             values.extend(score.score for score in offering.passing_scores if score.score is not None)
@@ -199,7 +199,7 @@ def _matches_filters(projection: ProgramProjection, filters: tuple[QueryFilter, 
     return True
 
 
-def _offering_matches(offering, filters: tuple[QueryFilter, ...]) -> bool:
+def _offering_matches(offering: AdmissionOffering, filters: tuple[QueryFilter, ...]) -> bool:
     for query_filter in filters:
         if query_filter.kind is FilterKind.ADMISSION_YEAR and offering.admission_year != query_filter.admission_year:
             return False
@@ -242,7 +242,7 @@ def _result_status(rows: tuple[AnalyticsRow, ...]) -> AnalyticsResultStatus:
     return AnalyticsResultStatus.INSUFFICIENT_DATA
 
 
-def _sort_value(row: AnalyticsRow, metric_code: str | None):
+def _sort_value(row: AnalyticsRow, metric_code: str | None) -> str | Decimal:
     if metric_code is None:
         return row.entity_id
     metric = row.metrics.get(metric_code)

@@ -6,6 +6,7 @@ import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any
 
 from andromeda.modules.analytics.domain.metric_registry import MetricRegistry
 from andromeda.modules.disciplines.contracts.public import Discipline
@@ -32,7 +33,7 @@ from .normalization import (
 class CachedEntityCatalog:
     """TTL cache preventing a catalog SQL query on every conversational turn."""
 
-    def __init__(self, reader, *, ttl_seconds: float = 300.0, clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(self, reader: Any, *, ttl_seconds: float = 300.0, clock: Callable[[], float] = time.monotonic) -> None:
         if ttl_seconds <= 0:
             raise ValueError("catalog ttl must be positive")
         self._reader = reader

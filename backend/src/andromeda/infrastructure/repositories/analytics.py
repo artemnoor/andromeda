@@ -7,6 +7,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from hashlib import sha256
+from typing import Any
 
 from sqlalchemy import delete, insert, select
 
@@ -41,7 +42,7 @@ from ..database.session import session_factory
 
 
 class SqlAlchemyProgramProjectionRepository(ProgramProjectionStore, ProgramProjectionReader, ProjectionQueryReader):
-    def __init__(self, engine) -> None:
+    def __init__(self, engine: Any) -> None:
         self._factory = session_factory(engine)
 
     def save(self, builds: Iterable[ProjectionBuild]) -> None:
@@ -93,7 +94,7 @@ class SqlAlchemyProgramProjectionRepository(ProgramProjectionStore, ProgramProje
         *,
         metric_codes: tuple[str, ...],
         schema_version: str,
-    ):
+    ) -> tuple[ProjectionMetricEvidence, ...]:
         if not program_ids or not metric_codes:
             return ()
         with self._factory() as session:
@@ -158,7 +159,7 @@ def _metric_mapping(program_id: str, projection: ProgramProjection, metric: Proj
     }
 
 
-def _evidence_mapping(build: ProjectionBuild, evidence) -> dict[str, object]:
+def _evidence_mapping(build: ProjectionBuild, evidence: ProjectionMetricEvidence) -> dict[str, object]:
     key = f"{build.projection.program_id}:{evidence.metric_code}:{evidence.curriculum_item_id}:{evidence.feature_id}:{evidence.schema_version}"
     return {
         "id": f"projection-evidence:{sha256(key.encode('utf-8')).hexdigest()[:32]}",
@@ -229,7 +230,9 @@ def _to_projection(row: ProgramProjectionModel, metrics: Iterable[ProgramMetricM
     )
 
 
-def _to_evidence(row: ProgramMetricEvidenceModel):
+def _to_evidence(row: ProgramMetricEvidenceModel) -> ProjectionMetricEvidence:
+    if row.curriculum_item_id is None or row.feature_id is None:
+        raise ValueError("projection evidence must reference a curriculum item and semantic feature")
     evidence = json.loads(row.evidence_json)
     provenance = json.loads(row.provenance_json)
     return ProjectionMetricEvidence(
@@ -245,7 +248,7 @@ def _to_evidence(row: ProgramMetricEvidenceModel):
     )
 
 
-def _dump(value: object) -> str:
+def _dump(value: Any) -> str:
     if hasattr(value, "model_dump"):
         value = value.model_dump(mode="json")
     elif isinstance(value, tuple):
@@ -253,7 +256,7 @@ def _dump(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), default=str)
 
 
-def _load_list(value: str) -> list:
+def _load_list(value: str) -> list[Any]:
     parsed = json.loads(value)
     if not isinstance(parsed, list):
         raise ValueError("projection JSON value must be a list")

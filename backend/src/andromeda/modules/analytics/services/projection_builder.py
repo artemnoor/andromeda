@@ -6,6 +6,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Mapping
 from decimal import Decimal
+from typing import TypeVar
 
 from andromeda.modules.admissions.contracts.public import ProgramAdmissions
 from andromeda.modules.curricula.contracts.public import Curriculum, CurriculumItem
@@ -16,11 +17,13 @@ from andromeda.modules.disciplines.contracts.public import (
 from andromeda.modules.programs.contracts.public import Program
 from andromeda.modules.semantic.contracts.public import (
     CurriculumItemSemanticFeature,
+    SemanticEnrichmentRun,
     SemanticValueStatus,
 )
 from andromeda.modules.semantic.repository.ports import SemanticEnrichmentStore
 from andromeda.shared.contracts.enums import AssessmentType
 from andromeda.shared.contracts.ids import DisciplineId, IngestRunId
+from andromeda.shared.contracts.provenance import SourceAttribution
 from andromeda.shared.contracts.versions import ANALYTICS_PROJECTION_SCHEMA_VERSION
 
 from ..contracts.activity import ACTIVITY_SIGNAL_WEIGHTS
@@ -38,11 +41,13 @@ from ..contracts.public import (
 )
 from ..contracts.snapshot import CanonicalAnalyticsSnapshot
 from ..domain.basis import MetricBasis, select_workload_basis
+from ..repository.ports import ProgramProjectionStore
 from .cache import AnalyticsResultCache
 
 logger = logging.getLogger("andromeda.analytics.projection")
 ZERO = Decimal("0")
 ONE = Decimal("1")
+ShareKey = TypeVar("ShareKey")
 
 
 class ProgramProjectionBuilder:
@@ -77,7 +82,7 @@ class ProgramProjectionBuilder:
         area_workload: dict[DisciplineAreaCode, Decimal] = defaultdict(lambda: ZERO)
         semester_workload: dict[str, Decimal] = defaultdict(lambda: ZERO)
         activity_workload: dict[ActivitySignalCode, Decimal] = defaultdict(lambda: ZERO)
-        assessment_counts = defaultdict(int)
+        assessment_counts: defaultdict[str, int] = defaultdict(int)
         item_workloads: dict[str, Decimal] = {}
         for item in curriculum.items:
             discipline = disciplines.get(item.discipline_id)
@@ -187,7 +192,7 @@ class ProgramProjectionBuilder:
             available_workload = ZERO
             numerator = ZERO
             confidence_numerator = ZERO
-            provenance = []
+            provenance: list[SourceAttribution] = []
             values = by_code[code]
             for item, assignment in values:
                 feature = assignment.feature
@@ -239,7 +244,7 @@ class ProgramProjectionService:
         self,
         builder: ProgramProjectionBuilder,
         semantic_reader: SemanticEnrichmentStore,
-        store,
+        store: ProgramProjectionStore,
         cache: AnalyticsResultCache | None = None,
     ) -> None:
         self._builder = builder
@@ -247,8 +252,8 @@ class ProgramProjectionService:
         self._store = store
         self._cache = cache
 
-    def refresh(self, canonical: CanonicalAnalyticsSnapshot, semantic_run) -> tuple[ProgramProjection, ...]:
-        changed_item_ids = frozenset(getattr(semantic_run, "changed_item_ids", ()))
+    def refresh(self, canonical: CanonicalAnalyticsSnapshot, semantic_run: SemanticEnrichmentRun) -> tuple[ProgramProjection, ...]:
+        changed_item_ids = frozenset(semantic_run.changed_item_ids)
         if not changed_item_ids:
             logger.info("program_projection_refresh_skipped run_id=%s reason=no_changed_curriculum_items", semantic_run.id)
             return ()
@@ -261,7 +266,7 @@ class ProgramProjectionService:
         disciplines = {discipline.id: discipline for discipline in canonical.disciplines}
         programs = {program.id: program for program in canonical.programs}
         admissions = {admission.program_id: admission for admission in canonical.admissions}
-        builds = []
+        builds: list[ProjectionBuild] = []
         affected_curricula = tuple(
             curriculum
             for curriculum in canonical.curricula
@@ -288,7 +293,7 @@ class ProgramProjectionService:
         return tuple(build.projection for build in builds)
 
 
-def _shares(values: Mapping[object, Decimal], total: Decimal | None) -> dict:
+def _shares(values: Mapping[ShareKey, Decimal], total: Decimal | None) -> dict[ShareKey, Decimal]:
     if total is None or total <= ZERO:
         return {}
     positive = {key: value for key, value in values.items() if value > ZERO}
@@ -322,8 +327,8 @@ def _semantic_confidence(metrics: Mapping[str, ProjectionMetric]) -> Decimal:
     return sum(available, ZERO) / Decimal(len(available)) if available else ZERO
 
 
-def _unique_provenance(values: list) -> tuple:
-    result = []
+def _unique_provenance(values: list[SourceAttribution]) -> tuple[SourceAttribution, ...]:
+    result: list[SourceAttribution] = []
     seen = set()
     for value in values:
         key = (str(value.url), value.content_sha256, value.locator, value.field, value.record_key)

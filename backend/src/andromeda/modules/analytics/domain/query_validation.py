@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pydantic import TypeAdapter, ValidationError
+from typing import Any
 
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
 from andromeda.shared.contracts.ids import DirectionId, ProgramId, UniversityId
@@ -40,7 +41,7 @@ def _validate_scope_ids(spec: QuerySpec) -> None:
         _validate_ids(spec.scope_ids, ProgramId)
 
 
-def _validate_filter(query_filter, registry: MetricRegistry, entity: MetricEntityType) -> None:
+def _validate_filter(query_filter: Any, registry: MetricRegistry, entity: MetricEntityType) -> None:
     if query_filter.kind is FilterKind.UNIVERSITY:
         _validate_ids(query_filter.ids, UniversityId)
     elif query_filter.kind is FilterKind.DIRECTION:
@@ -55,7 +56,7 @@ def _validate_filter(query_filter, registry: MetricRegistry, entity: MetricEntit
             raise ContractError(ErrorCode.INVALID_QUERY, "semantic threshold feature code is malformed")
 
 
-def _validate_ids(values: tuple[str, ...], annotation) -> None:
+def _validate_ids(values: tuple[str, ...], annotation: Any) -> None:
     adapter = TypeAdapter(annotation)
     for value in values:
         try:

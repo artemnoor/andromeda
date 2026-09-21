@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
+from typing import cast
 
 from ...entity_resolution.contracts.public import ResolutionEntityType
 from ..contracts.public import (
@@ -11,6 +13,7 @@ from ..contracts.public import (
     NextAction,
     ParsedQuery,
     QuerySession,
+    ExamScore,
 )
 
 
@@ -39,7 +42,15 @@ def merge_parsed_query(session: QuerySession, parsed: ParsedQuery, *, updated_at
     intent = parsed.intent if parsed.intent is not ConversationIntent.UNKNOWN else session.intent
     scope = parsed.scope or session.scope
     aggregation = parsed.aggregation or session.aggregation
-    missing_slots, next_action = _derive_slots(intent, metrics, parsed.total_score or known_slots.get("total_score"), parsed.exam_scores or known_slots.get("exam_scores", ()), entities)
+    stored_total_score = cast(Decimal | None, known_slots.get("total_score"))
+    stored_exam_scores = cast(tuple[ExamScore, ...], known_slots.get("exam_scores", ()))
+    missing_slots, next_action = _derive_slots(
+        intent,
+        metrics,
+        parsed.total_score if parsed.total_score is not None else stored_total_score,
+        parsed.exam_scores or stored_exam_scores,
+        entities,
+    )
     candidate = session.model_copy(
         update={
             "intent": intent,
@@ -59,7 +70,13 @@ def merge_parsed_query(session: QuerySession, parsed: ParsedQuery, *, updated_at
     return candidate
 
 
-def _derive_slots(intent, metrics, total_score, exam_scores, entities):
+def _derive_slots(
+    intent: ConversationIntent,
+    metrics: tuple[str, ...],
+    total_score: Decimal | None,
+    exam_scores: tuple[ExamScore, ...],
+    entities: dict[ResolutionEntityType, tuple[str, ...]],
+) -> tuple[tuple[ConversationSlot, ...], NextAction]:
     if intent is ConversationIntent.ADMISSION_SEARCH:
         if total_score is None and not exam_scores:
             return (ConversationSlot.TOTAL_SCORE, ConversationSlot.EXAMS), NextAction.ASK_FOR_EXAMS

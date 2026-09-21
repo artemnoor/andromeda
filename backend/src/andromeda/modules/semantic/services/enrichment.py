@@ -13,6 +13,7 @@ from andromeda.shared.contracts.ids import IngestRunId, UniversityId
 from ..contracts.inputs import SemanticClassificationInput
 from ..contracts.ports import SemanticClassifierPort
 from ..contracts.public import (
+    CurriculumItemSemanticFeature,
     DisciplineSemanticDefault,
     SemanticEnrichmentRun,
     SemanticEnrichmentRunStatus,
@@ -70,7 +71,7 @@ class SemanticEnrichmentService:
             )
             unchanged_count = len(items) - len(changed_items)
             defaults_by_discipline: dict[str, tuple[DisciplineSemanticDefault, ...]] = {}
-            item_features = []
+            item_features: list[CurriculumItemSemanticFeature] = []
             for item in changed_items:
                 discipline = disciplines_by_id.get(item.discipline_id)
                 if discipline is None:

@@ -563,7 +563,7 @@ class SqlAlchemyIngestionRepository:
             ):
                 raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for discipline area {definition.code.value}")
         for feature in DEFAULT_SEMANTIC_FEATURES:
-            existing = session.get(SemanticFeatureModel, feature.id)
+            semantic_existing = session.get(SemanticFeatureModel, feature.id)
             values = {
                 "id": feature.id,
                 "code": feature.code,
@@ -573,9 +573,9 @@ class SqlAlchemyIngestionRepository:
                 "value_type": feature.value_type.value,
                 "semantic_version": feature.semantic_version,
             }
-            if existing is None:
+            if semantic_existing is None:
                 session.add(SemanticFeatureModel(**values))
-            elif any(getattr(existing, key) != value for key, value in values.items() if key != "id"):
+            elif any(getattr(semantic_existing, key) != value for key, value in values.items() if key != "id"):
                 raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for semantic feature {feature.code}")
 
     @staticmethod

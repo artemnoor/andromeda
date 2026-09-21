@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy import select
 
 from andromeda.modules.disciplines.contracts.public import Discipline
@@ -20,7 +22,7 @@ from .universities import SqlAlchemyUniversityRepository
 class SqlAlchemyEntityResolutionRepository(EntityCatalogReader):
     """Load canonical identity records in bounded catalog queries."""
 
-    def __init__(self, engine) -> None:
+    def __init__(self, engine: Any) -> None:
         self._factory = session_factory(engine)
 
     def list_universities(self) -> tuple[University, ...]:

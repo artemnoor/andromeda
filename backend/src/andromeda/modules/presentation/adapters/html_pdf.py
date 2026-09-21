@@ -15,7 +15,7 @@ class HtmlPdfReportRenderer:
         if spec.output_format is ReportFormat.HTML:
             return RenderedReport(content=html.encode("utf-8"), media_type="text/html", filename=f"{spec.filename}.html", output_format=ReportFormat.HTML)
         try:
-            from weasyprint import HTML
+            from weasyprint import HTML  # type: ignore[import-not-found]
         except ImportError as exc:
             raise ContractError(ErrorCode.INTERNAL_ERROR, "PDF rendering dependency is not installed") from exc
         content = HTML(string=html).write_pdf()

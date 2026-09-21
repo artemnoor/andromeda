@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from andromeda.modules.admission_fit.contracts.public import (
     ApplicantAdmissionProfile,
     ApplicantSubjectScore,
@@ -25,6 +27,7 @@ from ..contracts.public import (
     ConversationCompilation,
     ConversationIntent,
     ConversationSlot,
+    ExamScore,
     NextAction,
     QuerySession,
 )
@@ -72,7 +75,7 @@ def _compile_analytics(session: QuerySession) -> QuerySpec:
 
 
 def _compile_admission(session: QuerySession, candidate_program_ids: tuple[ProgramId, ...]) -> ConversationCompilation:
-    exam_scores = session.known_slots.get("exam_scores", ())
+    exam_scores = cast(tuple[ExamScore, ...], session.known_slots.get("exam_scores", ()))
     if not exam_scores:
         return ConversationCompilation(next_action=NextAction.ASK_FOR_EXAMS, missing_slots=(ConversationSlot.EXAMS,))
     applicant = ApplicantAdmissionProfile(

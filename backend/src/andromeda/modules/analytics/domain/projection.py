@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Mapping
+from typing import Any, Mapping, TypeVar
+
+DistributionKey = TypeVar("DistributionKey")
 
 
-def distribution_is_complete(values: Mapping[object, Decimal], *, tolerance: Decimal = Decimal("0.001")) -> bool:
+def distribution_is_complete(values: Mapping[DistributionKey, Decimal], *, tolerance: Decimal = Decimal("0.001")) -> bool:
     """Return whether a non-empty distribution accounts for the whole workload."""
 
     return bool(values) and abs(sum(values.values(), Decimal("0")) - Decimal("1")) <= tolerance

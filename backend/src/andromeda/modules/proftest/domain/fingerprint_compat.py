@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from andromeda.modules.analytics.contracts.public import ProgramProjection
 
 from .entities import ActivityCode, ProgramFingerprint
@@ -12,6 +14,7 @@ def fingerprint_from_projection(projection: ProgramProjection) -> ProgramFingerp
 
     if projection.workload.basis.value not in {"hours", "credits"}:
         raise ValueError("legacy fingerprint requires an hours or credits projection basis")
+    basis: Literal["hours", "credits"] = "hours" if projection.workload.basis.value == "hours" else "credits"
     total_hours = projection.workload.total_hours
     total_credits = projection.workload.total_credits
     total_workload = projection.workload.total_workload
@@ -22,7 +25,7 @@ def fingerprint_from_projection(projection: ProgramProjection) -> ProgramFingerp
         program_id=projection.program_id,
         program_code=projection.program_code,
         program_name=projection.program_name,
-        basis=projection.workload.basis.value,
+        basis=basis,
         total_hours=total_hours,
         total_credits=total_credits,
         total_workload=total_workload,

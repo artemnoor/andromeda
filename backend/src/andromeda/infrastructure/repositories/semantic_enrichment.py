@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import delete, insert, select
 from sqlalchemy.orm import Session
@@ -23,6 +24,7 @@ from andromeda.shared.contracts.ids import (
     SemanticVersion,
     UniversityId,
 )
+from andromeda.shared.contracts.provenance import SourceAttribution
 
 from ..database.models import (
     CurriculumItemSemanticFeatureModel,
@@ -33,7 +35,7 @@ from ..database.session import session_factory
 
 
 class SqlAlchemySemanticEnrichmentRepository(SemanticEnrichmentStore):
-    def __init__(self, engine) -> None:
+    def __init__(self, engine: Any) -> None:
         self._factory = session_factory(engine)
 
     def start_run(
@@ -294,17 +296,15 @@ def _to_item_feature(row: CurriculumItemSemanticFeatureModel) -> CurriculumItemS
     )
 
 
-def _source_attribution(value: object):
-    from andromeda.shared.contracts.provenance import SourceAttribution
-
+def _source_attribution(value: object) -> SourceAttribution:
     if not isinstance(value, dict):
         raise ValueError("semantic provenance item must be an object")
     return SourceAttribution.model_validate(value, strict=False)
 
 
-def _json(values: object) -> str:
+def _json(values: Sequence[Any]) -> str:
     return json.dumps(
-        [value.model_dump(mode="json") for value in values],  # type: ignore[union-attr]
+        [value.model_dump(mode="json") for value in values],
         ensure_ascii=False,
         separators=(",", ":"),
     )
