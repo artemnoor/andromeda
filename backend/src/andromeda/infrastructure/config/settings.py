@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 from urllib.parse import unquote, urlsplit
 
@@ -23,8 +23,14 @@ DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60
 DEFAULT_AUTH_RATE_LIMIT_MAX = 10
 DEFAULT_SENSITIVE_RATE_LIMIT_MAX = 120
 DEFAULT_OPS_RATE_LIMIT_MAX = 10
+DEFAULT_JEV_ENDPOINT = "https://api.typesafe.ai"
+DEFAULT_JEV_TIMEOUT_SECONDS = 2.0
+DEFAULT_JEV_MAX_ROWS = 100
+DEFAULT_JEV_MAX_CHARS = 32_000
+DEFAULT_JEV_MAX_CONCURRENCY = 4
 VALID_ENVIRONMENTS = frozenset(("test", "development", "staging", "production"))
 VALID_SAMESITE_VALUES = frozenset(("lax", "strict", "none"))
+JEV_ALLOWED_HOSTS = frozenset(("api.typesafe.ai",))
 
 logger = logging.getLogger("andromeda.infrastructure.config")
 
@@ -57,6 +63,23 @@ class Settings:
     ops_api_key: str | None = None
     ingestion_min_relative_count: float = 0.25
     ingestion_run_timeout_seconds: int = 30 * 60
+    jev_enabled: bool = False
+    jev_shadow_enabled: bool = False
+    jev_calibration_enabled: bool = False
+    jev_calibration_lock_path: str | None = None
+    jev_runtime_provider: str = "typesafe"
+    jev_endpoint: str = DEFAULT_JEV_ENDPOINT
+    jev_model: str = "jev-latest"
+    jev_api_key: str | None = field(default=None, repr=False)
+    jev_align_capture_enabled: bool = False
+    jevql_enabled: bool = False
+    jevql_endpoint: str | None = None
+    jev_tree_enabled: bool = False
+    jev_tree_endpoint: str | None = None
+    jev_max_rows: int = DEFAULT_JEV_MAX_ROWS
+    jev_max_chars: int = DEFAULT_JEV_MAX_CHARS
+    jev_timeout_seconds: float = DEFAULT_JEV_TIMEOUT_SECONDS
+    jev_max_concurrency: int = DEFAULT_JEV_MAX_CONCURRENCY
 
     @classmethod
     def from_environment(cls, database_url: str | None = None) -> Settings:
@@ -110,7 +133,25 @@ class Settings:
             ops_api_key=ops_api_key,
             ingestion_min_relative_count=_ratio_from_environment("ANDROMEDA_INGEST_MIN_RELATIVE_COUNT", 0.25),
             ingestion_run_timeout_seconds=_positive_int_from_environment("ANDROMEDA_INGEST_RUN_TIMEOUT_SECONDS", 30 * 60),
+            jev_enabled=_bool_from_environment("JEV_ENABLED", False),
+            jev_shadow_enabled=_bool_from_environment("JEV_SHADOW_ENABLED", False),
+            jev_calibration_enabled=_bool_from_environment("JEV_CALIBRATION_ENABLED", False),
+            jev_calibration_lock_path=_optional_text_from_environment("JEV_CALIBRATION_LOCK_PATH"),
+            jev_runtime_provider=os.environ.get("JEV_RUNTIME_PROVIDER", "typesafe").strip().lower(),
+            jev_endpoint=os.environ.get("JEV_ENDPOINT", DEFAULT_JEV_ENDPOINT).strip(),
+            jev_model=os.environ.get("JEV_MODEL", "jev-latest").strip(),
+            jev_api_key=_optional_secret_from_environment("TYPESAFE_API_KEY"),
+            jev_align_capture_enabled=_bool_from_environment("JEV_ALIGN_CAPTURE_ENABLED", False),
+            jevql_enabled=_bool_from_environment("JEVQL_ENABLED", False),
+            jevql_endpoint=_optional_text_from_environment("JEVQL_ENDPOINT"),
+            jev_tree_enabled=_bool_from_environment("JEV_TREE_ENABLED", False),
+            jev_tree_endpoint=_optional_text_from_environment("JEV_TREE_ENDPOINT"),
+            jev_max_rows=_bounded_int_from_environment("JEV_MAX_ROWS", DEFAULT_JEV_MAX_ROWS, 1, 10_000),
+            jev_max_chars=_bounded_int_from_environment("JEV_MAX_CHARS", DEFAULT_JEV_MAX_CHARS, 1, 1_000_000),
+            jev_timeout_seconds=_bounded_float_from_environment("JEV_TIMEOUT_SECONDS", DEFAULT_JEV_TIMEOUT_SECONDS, 0.1, 30.0),
+            jev_max_concurrency=_bounded_int_from_environment("JEV_MAX_CONCURRENCY", DEFAULT_JEV_MAX_CONCURRENCY, 1, 32),
         )
+        _validate_jev_settings(settings)
         _validate_cookie_settings(settings.profile_cookie_name, settings.profile_cookie_samesite, settings.profile_cookie_secure, "ANDROMEDA_PROFILE_COOKIE_NAME")
         _validate_cookie_settings(settings.auth_cookie_name, settings.auth_cookie_samesite, settings.auth_cookie_secure, "ANDROMEDA_AUTH_COOKIE_NAME")
         if environment in {"staging", "production"}:
@@ -186,6 +227,26 @@ def _positive_int_from_environment(name: str, default: int) -> int:
     return value
 
 
+def _bounded_int_from_environment(name: str, default: int, minimum: int, maximum: int) -> int:
+    value = _int_from_environment(name, default)
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}")
+    return value
+
+
+def _bounded_float_from_environment(name: str, default: float, minimum: float, maximum: float) -> float:
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    try:
+        value = float(raw_value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number") from exc
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}")
+    return value
+
+
 def _ratio_from_environment(name: str, default: float) -> float:
     raw_value = os.environ.get(name)
     if raw_value is None:
@@ -224,6 +285,52 @@ def _optional_secret_from_environment(name: str) -> str | None:
         return None
     normalized = value.strip()
     return normalized or None
+
+
+def _optional_text_from_environment(name: str) -> str | None:
+    value = os.environ.get(name)
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _validate_jev_settings(settings: Settings) -> None:
+    if settings.jev_runtime_provider != "typesafe":
+        raise ValueError("JEV_RUNTIME_PROVIDER must be typesafe")
+    if not settings.jev_model:
+        raise ValueError("JEV_MODEL must not be empty")
+    _validate_endpoint("JEV_ENDPOINT", settings.jev_endpoint, JEV_ALLOWED_HOSTS)
+    if settings.jevql_enabled:
+        if settings.jevql_endpoint is None:
+            raise ValueError("JEVQL_ENABLED requires JEVQL_ENDPOINT")
+        _validate_endpoint("JEVQL_ENDPOINT", settings.jevql_endpoint, frozenset(("localhost", "127.0.0.1", "jevql")), allow_internal=True)
+    if settings.jev_tree_enabled and settings.jev_tree_endpoint is not None:
+        _validate_endpoint(
+            "JEV_TREE_ENDPOINT",
+            settings.jev_tree_endpoint,
+            frozenset(("localhost", "127.0.0.1", "jev-tree")),
+            allow_internal=True,
+        )
+    if settings.jev_enabled or settings.jev_shadow_enabled:
+        if settings.jev_api_key is None:
+            raise ValueError("JEV_ENABLED/JEV_SHADOW_ENABLED requires TYPESAFE_API_KEY")
+        if settings.jev_enabled and (not settings.jev_calibration_enabled or not settings.jev_calibration_lock_path):
+            raise ValueError("JEV_ENABLED requires calibration gate and lock path")
+    if settings.environment == "test" and (settings.jev_enabled or settings.jev_shadow_enabled):
+        raise ValueError("Jev runtime must remain disabled in test environment")
+
+
+def _validate_endpoint(name: str, value: str, allowed_hosts: frozenset[str], *, allow_internal: bool = False) -> None:
+    parsed = urlsplit(value)
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if parsed.scheme not in {"https", "http"} or not host or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError(f"{name} must be an absolute endpoint without credentials or query parameters")
+    allowed = host in allowed_hosts or (allow_internal and (host.endswith(".internal") or host in allowed_hosts))
+    if not allowed:
+        raise ValueError(f"{name} host is not allow-listed")
+    if parsed.scheme != "https" and not allow_internal:
+        raise ValueError(f"{name} requires HTTPS")
 
 
 def _validate_cookie_settings(name: str, samesite: str, secure: bool, env_name: str) -> None:

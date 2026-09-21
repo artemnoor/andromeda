@@ -55,6 +55,9 @@ dev = [
 evaluation = [
     { name = "system-one-adapter" },
 ]
+jev = [
+    { name = "typesafe-sdk" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -76,9 +79,10 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "sqlalchemy", specifier = ">=2.0" },
     { name = "system-one-adapter", marker = "extra == 'evaluation'", specifier = "==0.1.5" },
+    { name = "typesafe-sdk", marker = "extra == 'jev'", specifier = "==0.6.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
-provides-extras = ["browser", "evaluation", "dev"]
+provides-extras = ["browser", "evaluation", "jev", "dev"]
 
 [[package]]
 name = "annotated-doc"

@@ -1,0 +1,59 @@
+import pytest
+
+from andromeda.infrastructure.config.settings import Settings
+
+
+def _clear_jev(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in (
+        "JEV_ENABLED",
+        "JEV_SHADOW_ENABLED",
+        "JEV_CALIBRATION_ENABLED",
+        "JEV_CALIBRATION_LOCK_PATH",
+        "JEV_ENDPOINT",
+        "JEV_RUNTIME_PROVIDER",
+        "JEV_MODEL",
+        "TYPESAFE_API_KEY",
+        "JEVQL_ENABLED",
+        "JEVQL_ENDPOINT",
+        "JEV_TREE_ENABLED",
+        "JEV_TREE_ENDPOINT",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_test_defaults_keep_all_external_runtimes_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_jev(monkeypatch)
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+
+    settings = Settings.from_environment()
+
+    assert settings.jev_enabled is False
+    assert settings.jev_shadow_enabled is False
+    assert settings.jevql_enabled is False
+    assert settings.jev_tree_enabled is False
+    assert settings.jev_api_key is None
+    assert "secret" not in repr(Settings(jev_api_key="secret"))
+
+
+def test_enabled_production_jev_requires_calibration_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_jev(monkeypatch)
+    monkeypatch.setenv("ANDROMEDA_ENV", "production")
+    monkeypatch.setenv("ANDROMEDA_DATABASE_URL", "postgresql+psycopg://user:pass@example.test/andromeda")
+    monkeypatch.setenv("FRONTEND_ORIGIN", "https://app.example")
+    monkeypatch.setenv("ANDROMEDA_OPS_API_KEY", "x" * 32)
+    monkeypatch.setenv("ANDROMEDA_PROFILE_COOKIE_SECURE", "true")
+    monkeypatch.setenv("ANDROMEDA_AUTH_COOKIE_SECURE", "true")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "x" * 32)
+    monkeypatch.setenv("JEV_ENABLED", "true")
+
+    with pytest.raises(ValueError, match="calibration gate"):
+        Settings.from_environment()
+
+
+def test_jev_endpoint_is_allow_listed(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_jev(monkeypatch)
+    monkeypatch.setenv("JEV_ENDPOINT", "https://169.254.169.254/latest")
+
+    with pytest.raises(ValueError, match="allow-listed"):
+        Settings.from_environment()
+

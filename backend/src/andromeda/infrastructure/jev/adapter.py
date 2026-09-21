@@ -142,7 +142,7 @@ class JevDecisionModelAdapter(DecisionModelPort):
 
     def __init__(
         self,
-        transport: JevTransport,
+        transport: JevTransport | JevEnvelopeTransport,
         fallback: DecisionModelPort,
         *,
         config: JevAdapterConfig | None = None,
@@ -336,13 +336,15 @@ class JevDecisionModelAdapter(DecisionModelPort):
 
                 self._failures = 0
                 logger.info(
-                    "jev_request_completed operation=%s definition_version=%s source=%s latency_ms=%s retry_count=%s confidence_bucket=%s",
+                    "jev_request_completed operation=%s definition_version=%s source=%s latency_ms=%s retry_count=%s confidence_bucket=%s input_tokens=%s output_tokens=%s",
                     request.operation.value,
                     request.definition_version,
                     response.identity.source.value,
                     int((time.monotonic() - started) * 1000),
                     attempt,
                     "unknown",
+                    response.usage.input_tokens,
+                    response.usage.output_tokens,
                 )
                 return response
             except _JevBoundaryError as exc:
@@ -400,7 +402,10 @@ class JevDecisionModelAdapter(DecisionModelPort):
         request_envelope = getattr(self._transport, "request_envelope", None)
         if callable(request_envelope):
             return request_envelope(request)
-        return self._transport.request(
+        request_legacy = getattr(self._transport, "request", None)
+        if not callable(request_legacy):
+            raise TypeError("Jev transport does not implement a supported request method")
+        return request_legacy(
             request.operation.value,
             request.redacted_payload,
             timeout_seconds=request.timeout_seconds,

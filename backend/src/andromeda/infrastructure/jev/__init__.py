@@ -15,6 +15,8 @@ from .contracts import (
     ModelIdentity,
 )
 from .question_registry import QuestionRegistry, QuestionRegistryError
+from .typesafe_client import TypeSafeJevTransport
+from .runtime import JevCapabilityReport, build_decision_policy
 
 __all__ = [
     "JevAdapterConfig",
@@ -28,4 +30,7 @@ __all__ = [
     "ModelIdentity",
     "QuestionRegistry",
     "QuestionRegistryError",
+    "TypeSafeJevTransport",
+    "JevCapabilityReport",
+    "build_decision_policy",
 ]

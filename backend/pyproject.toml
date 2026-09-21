@@ -27,6 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 browser = ["playwright>=1.45"]
 evaluation = ["system-one-adapter==0.1.5"]
+jev = ["typesafe-sdk==0.6.0"]
 dev = [
   "jsonschema>=4.22",
   "mypy>=1.11",
@@ -38,7 +39,7 @@ dev = [
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = [".", "src"]
 testpaths = ["tests"]
 
 [tool.mypy]

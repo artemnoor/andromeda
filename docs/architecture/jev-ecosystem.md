@@ -29,6 +29,20 @@ Upstream references:
 - https://github.com/reachjalil/jev-tree
 - https://github.com/AnotiaWang/awesome-jev
 
+Pinned runtime/evaluation artifacts are recorded in
+`backend/evals/jev/TOOLS.lock`. The production Python provider extra pins
+`typesafe-sdk==0.6.0`; the isolated Node bridge pins `jev-tree@0.1.0` and
+requires Node `>=22 <23`. TypeSafe SDK is used only through the typed
+`TypeSafeJevTransport`; the System One Adapter remains evaluation-only.
+
+License inventory: Andromeda-owned integration code is MIT-compatible with the
+repository license; `typesafe-sdk` is consumed as an optional upstream package
+under its published license, `jev-tree` is MIT, jevcal is used as its upstream
+development tool, jev-align is used as its upstream development tool, and
+awesome-jev is documentation-only. Before production redistribution, the
+release gate must archive the exact upstream license texts/notices for the
+resolved lock versions.
+
 The project classification is intentionally stricter than a package list:
 evaluation tools do not enter production composition, and optional runtimes do
 not become mandatory for canonical ingestion or deterministic analytics.

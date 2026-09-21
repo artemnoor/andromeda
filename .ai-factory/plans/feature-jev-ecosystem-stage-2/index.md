@@ -1645,10 +1645,10 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 
 ### Phase 07 — Runtime wiring
 
-- [ ] T18 — Add settings and capability flags
-- [ ] T19 — Wire Jev and shadow policy
-- [ ] T20 — Add safe observability
-- [ ] T21 — Lock dependency packaging
+- [x] T18 — Add settings and capability flags
+- [x] T19 — Wire Jev and shadow policy
+- [x] T20 — Add safe observability
+- [x] T21 — Lock dependency packaging
 
 ### Phase 08 — Vertical slices
 

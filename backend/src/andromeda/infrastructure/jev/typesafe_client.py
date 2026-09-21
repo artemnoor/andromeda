@@ -1,0 +1,206 @@
+"""Production transport for the official TypeSafe Python SDK.
+
+The SDK is imported lazily so the core application remains installable without
+the optional provider extra.  This adapter only translates registered,
+allow-listed decision definitions into System One primitives; it never accepts
+arbitrary prompts, SQL, or provider endpoints from a request.
+"""
+
+from __future__ import annotations
+
+import time
+from collections.abc import Callable, Mapping
+from typing import Any
+
+from andromeda.modules.conversation.contracts.decision_definitions import (
+    DecisionDefinition,
+    QuestionRegistryPort,
+)
+
+from .contracts import JevRequestEnvelope, JevResponseEnvelope, JevUsage, ModelIdentity
+
+
+class TypeSafeJevTransport:
+    """Typed adapter around ``typesafe_sdk.TypeSafeClient.system_one``."""
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        endpoint: str,
+        model: str,
+        registry: QuestionRegistryPort,
+        timeout_seconds: float = 2.0,
+        client_factory: Callable[..., Any] | None = None,
+    ) -> None:
+        if not api_key.strip():
+            raise ValueError("TypeSafe API key must not be empty")
+        if not endpoint.startswith("https://"):
+            raise ValueError("TypeSafe endpoint must use HTTPS")
+        if not model.strip():
+            raise ValueError("TypeSafe model must not be empty")
+        self._api_key = api_key
+        self._endpoint = endpoint
+        self._model = model
+        self._registry = registry
+        self._timeout_seconds = timeout_seconds
+        self._client_factory = client_factory
+        self._client: Any | None = None
+
+    def request_envelope(self, request: JevRequestEnvelope) -> JevResponseEnvelope:
+        definition = self._registry.get(request.definition_id)
+        started = time.monotonic()
+        response = self._client_or_create().system_one(
+            state=_bounded_state(request.redacted_payload),
+            questions=_questions_for(definition, request.redacted_payload),
+            model=self._model,
+            timeout=request.timeout_seconds,
+        )
+        payload = _payload_for(definition, response)
+        usage = getattr(response, "usage", None)
+        return JevResponseEnvelope(
+            payload=payload,
+            identity=ModelIdentity(
+                provider="typesafe",
+                model=self._model,
+                model_version=getattr(response, "model", self._model),
+                artifact_id=f"{definition.definition_id}@{definition.version}",
+            ),
+            usage=JevUsage(
+                input_tokens=getattr(usage, "input_tokens", None),
+                output_tokens=getattr(usage, "output_tokens", None),
+                latency_ms=int((time.monotonic() - started) * 1000),
+            ),
+        )
+
+    def health_check(self) -> bool:
+        try:
+            response = self._client_or_create().models.list(timeout=self._timeout_seconds)
+            models = getattr(response, "models", ())
+            return any(getattr(item, "name", None) == self._model for item in models)
+        except Exception:
+            return False
+
+    def close(self) -> None:
+        if self._client is not None:
+            close = getattr(self._client, "close", None)
+            if callable(close):
+                close()
+            self._client = None
+
+    def _client_or_create(self) -> Any:
+        if self._client is not None:
+            return self._client
+        factory = self._client_factory or _official_client_factory
+        self._client = factory(
+            api_key=self._api_key,
+            model=self._model,
+            base_url=self._endpoint,
+            timeout=self._timeout_seconds,
+        )
+        return self._client
+
+
+def _official_client_factory(**kwargs: Any) -> Any:
+    try:
+        from typesafe_sdk import TypeSafeClient  # type: ignore[import-not-found]
+    except ImportError as exc:
+        raise RuntimeError("typesafe-sdk optional dependency is not installed") from exc
+    return TypeSafeClient(**kwargs)
+
+
+def _bounded_state(payload: Mapping[str, object]) -> dict[str, object]:
+    state: dict[str, object] = {}
+    for key, value in payload.items():
+        if len(state) >= 32:
+            break
+        if isinstance(value, str):
+            state[key] = value[:8_000]
+        elif isinstance(value, (bool, int, float)):
+            state[key] = value
+        elif isinstance(value, (tuple, list)):
+            state[key] = tuple(item[:256] if isinstance(item, str) else item for item in value[:64])
+        elif isinstance(value, Mapping):
+            state[key] = {str(inner_key): inner_value for inner_key, inner_value in list(value.items())[:32]}
+    return state
+
+
+def _questions_for(definition: DecisionDefinition, payload: Mapping[str, object]) -> dict[str, dict[str, object]]:
+    options = _dynamic_options(definition, payload)
+    if definition.operation == "classify_semantic_features":
+        feature_codes = _string_tuple(payload.get("feature_codes"))
+        return {
+            code: {
+                "type": "noul",
+                "instructions": f"{definition.instructions} Evaluate feature code {code}; return true only when supported by the supplied discipline text.",
+            }
+            for code in feature_codes[:64]
+        }
+    if not options:
+        raise ValueError(f"registered decision has no bounded options: {definition.definition_id}")
+    return {
+        "answer": {
+            "type": "choice",
+            "instructions": definition.instructions,
+            "criteria": options,
+        }
+    }
+
+
+def _dynamic_options(definition: DecisionDefinition, payload: Mapping[str, object]) -> dict[str, str]:
+    if definition.operation == "resolve_metric":
+        candidates = _string_tuple(payload.get("candidates"))
+        return {candidate: candidate for candidate in candidates[:8]}
+    if definition.operation == "choose_next_action":
+        candidates = _string_tuple(payload.get("available_actions"))
+        return {candidate: candidate for candidate in candidates[:16]}
+    if definition.operation == "choose_presentation":
+        return {value: value for value in definition.output_schema.allowed_values}
+    return {option.code: option.description for option in definition.options}
+
+
+def _payload_for(definition: DecisionDefinition, response: Any) -> dict[str, object]:
+    choices = getattr(response, "choices", {})
+    answer = choices.get("answer")
+    raw_choice = getattr(answer, "choice", None)
+    choice = raw_choice if isinstance(raw_choice, str) else ""
+    confidence = _confidence_bucket(getattr(answer, "confidence", None))
+    if definition.operation == "resolve_intent":
+        return {"intent": choice, "confidence": confidence}
+    if definition.operation == "resolve_metric":
+        return {"metric_code": choice, "candidates": (choice,) if choice else (), "confidence": confidence}
+    if definition.operation == "choose_next_action":
+        return {"decision": {"action": choice, "question": None, "options": (), "reason": "TypeSafe registered choice"}, "confidence": confidence}
+    if definition.operation == "choose_presentation":
+        template = {
+            "text": "analytics-summary",
+            "image": "metric-comparison",
+            "image_collection": "metric-cards",
+            "pdf": "analytics-report",
+            "mini_app": "analytics-explorer",
+        }.get(choice, "analytics-summary")
+        return {"response_format": choice, "template": template, "confidence": confidence}
+    # Noul answers are probabilities, but converting them into source-like
+    # semantic values would be unsafe without a feature intensity calibration.
+    # Preserve the registered call and let the semantic fallback/review path
+    # handle the result until that calibration exists.
+    return {"values": (), "confidence": confidence}
+
+
+def _string_tuple(value: object) -> tuple[str, ...]:
+    if not isinstance(value, (tuple, list)):
+        return ()
+    return tuple(item for item in value if isinstance(item, str) and item)
+
+
+def _confidence_bucket(value: object) -> str:
+    if not isinstance(value, (int, float)):
+        return "unavailable"
+    if value >= 0.8:
+        return "high"
+    if value >= 0.5:
+        return "medium"
+    return "low"
+
+
+__all__ = ["TypeSafeJevTransport"]

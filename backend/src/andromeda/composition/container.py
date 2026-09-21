@@ -75,6 +75,7 @@ from andromeda.infrastructure.repositories.university_catalog import (
     SqlAlchemyUniversityCatalogCanonicalReader,
     SqlAlchemyUniversityCatalogRepository,
 )
+from andromeda.infrastructure.jev.runtime import build_decision_policy
 from andromeda.infrastructure.repositories.university_events import (
     SqlAlchemyUniversityEditorialEventRepository,
 )
@@ -102,10 +103,8 @@ from andromeda.modules.comparison.services.compare_summary import (
     ComparisonSummaryService,
 )
 from andromeda.modules.conversation.services.assistant import AssistantService
+from andromeda.modules.conversation.contracts.policy import DecisionPolicyPort
 from andromeda.modules.conversation.services.engine import ConversationEngine
-from andromeda.modules.conversation.services.rule_decision_policy import (
-    RuleBasedDecisionPolicy,
-)
 from andromeda.modules.curricula.repository.ports import CurriculumReader
 from andromeda.modules.decision.services.analytics import DecisionAnalyticsService
 from andromeda.modules.decision.services.candidates import DecisionCandidatePipeline
@@ -176,6 +175,7 @@ class AndromedaContainer:
     engine: Engine
     settings: Settings
     analytics_cache: AnalyticsResultCache = field(default_factory=AnalyticsResultCache)
+    _decision_policy_cache: DecisionPolicyPort | None = field(default=None, init=False, repr=False, compare=False)
 
     def program_reader(self, session: Session) -> ProgramReader:
         return SqlAlchemyProgramRepository(session)
@@ -452,7 +452,7 @@ class AndromedaContainer:
         return AssistantService(
             SqlAlchemyQuerySessionRepository(session),
             ConversationEngine(),
-            RuleBasedDecisionPolicy(),
+            self.decision_policy(),
             RuleBasedResponsePolicy(),
             self.analytics_executor(),
             self.admission_fit_service(session),
@@ -460,6 +460,14 @@ class AndromedaContainer:
             entity_resolver=self.entity_resolver(),
             ttl_seconds=self.settings.profile_ttl_seconds,
         )
+
+    def decision_policy(self) -> DecisionPolicyPort:
+        if self._decision_policy_cache is None:
+            built_policy, _ = build_decision_policy(self.settings)
+            object.__setattr__(self, "_decision_policy_cache", built_policy)
+        cached_policy = self._decision_policy_cache
+        assert cached_policy is not None
+        return cached_policy
 
 
 def build_container(engine: Engine, settings: Settings | None = None) -> AndromedaContainer:
