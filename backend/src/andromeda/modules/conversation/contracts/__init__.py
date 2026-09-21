@@ -1,6 +1,15 @@
 """Conversation contracts and persistence ports."""
 
 from .assistant import AssistantResult, AssistantState
+from .decision_definitions import (
+    DecisionDefinition,
+    DecisionDefinitionKind,
+    DecisionOption,
+    DecisionOutputSchema,
+    DecisionPiiPolicy,
+    DecisionTimeoutClass,
+    QuestionRegistryPort,
+)
 from .ports import QuerySessionRepository
 from .public import (
     ConversationCompilation,
@@ -15,6 +24,12 @@ from .public import (
 __all__ = [
     "AssistantResult",
     "AssistantState",
+    "DecisionDefinition",
+    "DecisionDefinitionKind",
+    "DecisionOption",
+    "DecisionOutputSchema",
+    "DecisionPiiPolicy",
+    "DecisionTimeoutClass",
     "ConversationCompilation",
     "EvaluationCase",
     "EvaluationCaseResult",
@@ -26,5 +41,6 @@ __all__ = [
     "ParsedQuery",
     "QuerySession",
     "QuerySessionRepository",
+    "QuestionRegistryPort",
 ]
 from .evaluation import EvaluationCase, EvaluationCaseResult, EvaluationReport

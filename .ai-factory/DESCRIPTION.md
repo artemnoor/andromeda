@@ -70,7 +70,7 @@ independent catalog / compare / admission / proftest / saved choice entry
 
 ## Техническая форма
 
-Backend: Python 3.11+, FastAPI, Pydantic, SQLAlchemy и Alembic. PostgreSQL — development/staging target; SQLite остаётся test fallback. SQLAlchemy models/session и concrete repository adapters находятся в `andromeda.infrastructure`. API routes связывают transport schemas с application services; business logic остаётся в subject modules.
+Backend: Python 3.11+, FastAPI, Pydantic, SQLAlchemy, Alembic и PyYAML для versioned decision-definition artifacts. PostgreSQL — development/staging target; SQLite остаётся test fallback. SQLAlchemy models/session и concrete repository adapters находятся в `andromeda.infrastructure`. API routes связывают transport schemas с application services; business logic остаётся в subject modules.
 
 Новые университеты подключаются отдельным adapter в `ingestion/universities/<university>` и не требуют копирования BMSTU parser в core modules. Public contracts используют canonical typed IDs из `andromeda.shared.contracts.ids`; `UserProfile` является typed contract и не содержит storage metadata.
 

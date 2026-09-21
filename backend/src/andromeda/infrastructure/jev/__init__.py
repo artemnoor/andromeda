@@ -6,5 +6,12 @@ enabled; deterministic fallback remains the default.
 """
 
 from .adapter import JevAdapterConfig, JevDecisionModelAdapter, JevTransport
+from .question_registry import QuestionRegistry, QuestionRegistryError
 
-__all__ = ["JevAdapterConfig", "JevDecisionModelAdapter", "JevTransport"]
+__all__ = [
+    "JevAdapterConfig",
+    "JevDecisionModelAdapter",
+    "JevTransport",
+    "QuestionRegistry",
+    "QuestionRegistryError",
+]
