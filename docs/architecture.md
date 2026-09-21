@@ -151,11 +151,59 @@ ingestion lifecycle
 
 Run создаётся до capture и атомарной projection transaction, а failure обновляет только безопасный audit status и generic error message после rollback. `admin_ops` не читает raw snapshot bodies или `RawSourceRecord.payload_json`, не знает ORM/parser и получает retry через typed executor port. Infrastructure связывает этот port с существующим BMSTU adapter/repository; retry ограничен фиксированными профилями и не принимает URL/команды. `#ops` UI не является обычной навигацией и не реализует correction, CMS, Auth/RBAC, карту или пользовательское scoring.
 
+University-owned content использует отдельный `university_admin` bounded module,
+а не `admin_ops`. Он владеет membership `owner/editor/viewer`, редакционными
+подразделениями и категориями, overlay для канонических программ/предметов и
+событиями вуза. Канонические source projections не изменяются:
+
+```text
+account session + university membership
+  → university_admin access policy
+  → units/categories/catalog overlays + editorial events
+  → PostgreSQL tables 0023–0025
+  → protected /university-admin/* commands
+  → public /universities/{university_id}/catalog and /events
+```
+
+Событие вуза имеет lifecycle `draft → published → archived`, optimistic
+`revision`, agenda и явный audience mode: `all_university`, selected units,
+selected programs или `unaffiliated`. Public readers видят только published
+записи, а revoked membership и недостаточная роль проверяются backend.
+`FORBIDDEN` отображается как 403; неизвестный scope не перечисляет чужие
+membership и возвращается как безопасный 404.
+
 ## Границы
+
+## Universal analytics boundary
+
+Универсальные содержательные вопросы проходят через отдельные bounded
+contexts, не принадлежащие Telegram или конкретной модели:
+
+```text
+ingestion → canonical storage → semantic → projections
+          → analytics (QuerySpec) → conversation/policies
+          → ResponseEnvelope → Telegram / Web / MAX
+```
+
+`semantic`, `analytics`, `entity_resolution`, `conversation` и `presentation`
+публикуют typed contracts и Protocol-порты. `ProgramFingerprint` сохранён как
+совместимый импорт, но общая аналитическая projection теперь строится и
+читается из materialized `program_projections`/`program_metrics`. Подробные
+правила и версии находятся в [universal analytics](architecture/universal-analytics.md),
+[semantic taxonomy](architecture/semantic-taxonomy.md),
+[metric registry](architecture/metric-registry.md) и
+[integration seams](architecture/integration-seams.md).
+
+`POST /analytics/query` является прямым typed входом без NLP. `POST
+/assistant/query` добавляет owner-bound `QuerySession`, deterministic parser,
+`DecisionPolicyPort`, существующий Admission Fit и `ResponsePolicyPort`.
+Отсутствие данных остаётся quality status, а evidence связывает metric с
+curriculum item и source snapshot.
 
 ```text
 backend/src/andromeda/
 ├── modules/{universities,programs,curricula,disciplines,comparison}/
+├── modules/{semantic,analytics,entity_resolution,conversation,presentation}/
 ├── modules/decision/{domain,contracts,services,repository}/
 ├── modules/proftest/{domain,contracts,services,repository}/
 ├── modules/recommendations/{domain,contracts,services,repository}/
@@ -165,6 +213,7 @@ backend/src/andromeda/
 ├── modules/campus/{domain,contracts,services,repository}/
 ├── modules/personal_route/{domain,contracts,services,repository}/
 ├── modules/admin_ops/{domain,contracts,services,repository}/
+├── modules/university_admin/{domain,contracts,services,repository}/
 ├── ingestion/universities/bmstu/
 ├── infrastructure/{database,repositories,config,logging}/
 ├── api/{routes,schemas,dependencies}/

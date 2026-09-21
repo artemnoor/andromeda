@@ -13,6 +13,11 @@ import {
   getComparisonSummary,
   getProgram,
   getPrograms,
+  getUniversityAdminEvents,
+  getUniversityCatalog,
+  getUniversityEvents,
+  getUniversities,
+  queryAssistant,
 } from "./api";
 
 const decisionContextPayload = {
@@ -300,5 +305,106 @@ describe("canonical API client", () => {
       "/api/compare/summary?programIds=program%3A01.03.02-01%2Cprogram%3A01.03.02-02%2Cprogram%3A01.03.02-03&scope=all",
       expect.objectContaining({ credentials: "include", cache: "no-store" }),
     );
+  });
+
+  it("loads university discovery, catalog and public editorial events through the generated contract", async () => {
+    const university = { id: "university:test", name: "Тестовый университет", city: "Москва" };
+    const catalog = {
+      universityId: university.id,
+      universityName: university.name,
+      city: university.city,
+      officialSite: "https://example.test",
+      address: "Москва",
+      sourceState: "complete",
+      units: [{ unitId: "unit:test:faculty", universityId: university.id, unitType: "faculty", parentUnitId: null, slug: "faculty", name: "Факультет", description: null, status: "published", sortOrder: 0, revision: 1 }],
+      categories: [],
+      programs: [],
+      disciplines: [],
+    };
+    const event = {
+      eventId: "university-event:test:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      universityId: university.id,
+      slug: "open-day",
+      title: "День открытых дверей",
+      kind: "open_day",
+      format: "offline",
+      startsAt: "2026-10-01T10:00:00Z",
+      endsAt: null,
+      description: "План мероприятия",
+      registrationUrl: null,
+      venueId: null,
+      locationLabel: "Главный корпус",
+      locationAddress: "Москва",
+      onlineUrl: null,
+      audienceMode: "all_university",
+      origin: "university_editorial",
+      units: [],
+      programs: [],
+      categories: [],
+      agenda: [{ itemId: "agenda:1", position: 1, title: "Регистрация", description: null, startsAt: null, endsAt: null, locationLabel: null, speakerLabel: null }],
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input);
+      const body = path === "/api/universities"
+        ? { items: [university] }
+        : path.endsWith("/catalog")
+          ? catalog
+          : { items: [event], total: 1 };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getUniversities()).resolves.toEqual([university]);
+    await expect(getUniversityCatalog(university.id)).resolves.toMatchObject({
+      universityName: university.name,
+      units: [{ unitId: "unit:test:faculty", name: "Факультет" }],
+    });
+    await expect(getUniversityEvents(university.id)).resolves.toMatchObject({
+      total: 1,
+      items: [{ eventId: event.eventId, title: event.title, agenda: [{ title: "Регистрация", revision: 1 }] }],
+    });
+    await expect(getUniversityAdminEvents(university.id, "draft")).resolves.toMatchObject({ total: 1 });
+    expect(fetchMock).toHaveBeenCalledWith("/api/university-admin/universities/university%3Atest/events?status=draft", expect.objectContaining({ credentials: "include" }));
+  });
+
+  it("keeps university admin authorization errors typed for the console boundary", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      code: "FORBIDDEN",
+      message: "Недостаточно прав",
+      details: [],
+    }), { status: 403, headers: { "Content-Type": "application/json" } })));
+
+    await expect(getUniversityAdminEvents("university:test")).rejects.toEqual(expect.objectContaining({
+      constructor: ApiError,
+      status: 403,
+      payload: expect.objectContaining({ code: "FORBIDDEN" }),
+    }));
+  });
+
+  it("keeps assistant session state in the channel-neutral web adapter", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      state: "needs_clarification",
+      session_id: "query-session:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      revision: 2,
+      question: "Какие баллы по предметам?",
+      options: ["Русский язык"],
+      missing_slots: ["exams"],
+      response: null,
+      query: null,
+      admission_request: null,
+      admission_result: null,
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    await expect(queryAssistant({
+      text: "Куда я прохожу с 270?",
+      sessionId: "query-session:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      expectedRevision: 1,
+    })).resolves.toMatchObject({ state: "needs_clarification", revision: 2 });
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [RequestInfo | URL, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      text: "Куда я прохожу с 270?",
+      sessionId: "query-session:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      expectedRevision: 1,
+    });
   });
 });

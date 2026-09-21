@@ -1,16 +1,25 @@
 from __future__ import annotations
 
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import Self
 
 from pydantic import Field, HttpUrl, model_validator
 
 from ....shared.contracts.base import ContractModel
 from ....shared.contracts.enums import AssessmentType
-from ....shared.contracts.ids import Credits, CurriculumId, CurriculumItemId, DisciplineId, EducationYear, HourCount, ProgramId, Semester, SourcePosition
+from ....shared.contracts.ids import (
+    Credits,
+    CurriculumId,
+    CurriculumItemId,
+    DisciplineId,
+    EducationYear,
+    HourCount,
+    ProgramId,
+    Semester,
+    SourcePosition,
+)
 from ....shared.contracts.provenance import SourceAttribution, SourceGapReference
-
 
 logger = logging.getLogger("andromeda.contracts.validation")
 
@@ -24,6 +33,14 @@ class CurriculumItem(ContractModel):
     credits: Credits | None = None
     assessment_types: tuple[AssessmentType, ...] | None = None
     source_position: SourcePosition | None = None
+    lecture_hours: HourCount | None = None
+    practice_hours: HourCount | None = None
+    lab_hours: HourCount | None = None
+    self_study_hours: HourCount | None = None
+    is_elective: bool | None = None
+    course_block: str | None = Field(default=None, min_length=1, max_length=128)
+    practice_type: str | None = Field(default=None, min_length=1, max_length=128)
+    provenance: tuple[SourceAttribution, ...] = Field(default=(), max_length=20)
 
     @model_validator(mode="after")
     def validate_item(self) -> Self:

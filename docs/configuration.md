@@ -52,6 +52,12 @@ python backend/scripts/run_andromeda_ingestion.py --university all --mode fixtur
 `BMSTU_DATABASE_URL` и `BMSTU_DB_*` временно поддерживаются как deprecated fallback для обратной совместимости.
 `LOG_LEVEL=DEBUG` включает технические stage-сообщения, но raw response body, PDF text и signed query strings в логах не выводятся.
 
+University admin не требует новых секретов: account session передаётся через
+существующую HttpOnly auth cookie. Bootstrap membership использует уже
+настроенный `ANDROMEDA_OPS_API_KEY` и endpoint `/ops/university-admin/members`;
+ключ не передаётся в браузер и не сохраняется в frontend storage. После
+provisioning владелец назначает editor/viewer через scoped console.
+
 В development/staging/production credentials передаются только через environment или secret manager. Staging/production требуют явный `FRONTEND_ORIGIN`, PostgreSQL, `ANDROMEDA_OPS_API_KEY` и secure cookies; production дополнительно принимает только HTTPS origins. Database URL в логах редактируется до `dialect://host:port/database`; password и query parameters не выводятся. SQLite fallback предназначен только для быстрых тестов.
 
 Profile persistence is anonymous by default: the server creates an opaque HttpOnly cookie, stores only its SHA-256 hash, and expires the profile after `ANDROMEDA_PROFILE_TTL_SECONDS`. The browser must not copy this cookie into LocalStorage or JavaScript state. Use `Secure=true` with HTTPS in staging; local HTTP development keeps it `false`.

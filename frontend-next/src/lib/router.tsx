@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export type View =
   | "home"
+  | "assistant"
   | "decision"
   | "catalog"
   | "program"
@@ -16,11 +17,15 @@ export type View =
   | "personal-route"
   | "flow"
   | "account"
-  | "ops";
+  | "ops"
+  | "university-admin"
+  | "university-catalog";
 
 export type Route = {
   view: View;
   id?: string;
+  origin?: "source" | "university";
+  universityId?: string;
 };
 
 const DEFAULT_ROUTE: Route = { view: "home" };
@@ -30,7 +35,9 @@ function parseSearch(search: string): Route {
   const view = (params.get("view") as View | null) ?? "home";
   const id = params.get("id") ?? undefined;
   const eventId = params.get("eventId") ?? undefined;
-  if (view === "event") return { view, id: eventId };
+  const origin = params.get("origin") as Route["origin"] | null;
+  const universityId = params.get("universityId") ?? undefined;
+  if (view === "event") return { view, id: eventId, origin: origin ?? "source", universityId };
   return { view, id };
 }
 
@@ -39,6 +46,8 @@ export function buildHref(route: Route): string {
   params.set("view", route.view);
   if (route.view === "event" && route.id) params.set("eventId", route.id);
   else if (route.id) params.set("id", route.id);
+  if (route.view === "event" && route.origin) params.set("origin", route.origin);
+  if (route.view === "event" && route.universityId) params.set("universityId", route.universityId);
   const qs = params.toString();
   return qs ? `/?${qs}` : "/";
 }
@@ -78,4 +87,5 @@ export const NAV_ITEMS: { view: View; label: string; icon: string }[] = [
   { view: "recommendations", label: "Предложения", icon: "Sparkles" },
   { view: "events", label: "События", icon: "CalendarDays" },
   { view: "personal-route", label: "Поддержка", icon: "Route" },
+  { view: "university-catalog", label: "Вузы", icon: "Building2" },
 ];

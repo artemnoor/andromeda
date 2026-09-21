@@ -24,6 +24,12 @@ Telegram update
 Canonical IDs, admissions, curricula, discipline area weights, Content Fit,
 Admission Fit и provenance остаются owned backend-данными.
 
+Свободный текст проходит через общий `POST /assistant/query`. Бот сохраняет
+только opaque cookie и `query-session`/revision в зашифрованной локальной
+SQLite; parser, resolver, analytics, admission fit и выбор формата ответа
+остаются backend-owned. Поэтому MAX и Web могут использовать тот же endpoint и
+`ResponseEnvelope`.
+
 ## Что бот вызывает
 
 | Сценарий | Backend API | Render route | Результат |
@@ -37,6 +43,7 @@ Admission Fit и provenance остаются owned backend-данными.
 | Учебный план | данные comparison/curriculum | `/og/curriculum` | stacked-бары по семестрам и часам |
 | Дайджест | `GET /decision/suggestions` | `/og/digest` | состояние shortlist и source gaps |
 | Уточнение | `GET /decision/context`, `POST /decision/refinement/answer` | — | короткий вопрос и подтверждение |
+| Универсальный вопрос | `POST /assistant/query` | envelope-dependent | clarification, text или совместимый PNG |
 
 Изменения shortlist выполняются только явными backend-командами с
 `expectedRevision`. Бот никогда не удаляет сохранённую программу из-за
@@ -86,8 +93,9 @@ session scope и decision revision; устаревший shortlist не пере
 ## Команды и естественный ввод
 
 Доступны `/start`, `/catalog`, `/compare`, `/shortlist`, `/admission` и
-`/digest`. Фразы `сравни ... и ...` и `сопоставь ...` проходят через live
-`GET /programs`; коды и названия не зашиты в бота. Если resolver видит
+`/digest`. Фразы `сравни ... и ...` и `сопоставь ...` сохраняют legacy flow
+через live `GET /programs`; остальные свободные вопросы проходят через
+`POST /assistant/query`. Коды и названия не зашиты в бота. Если resolver видит
 несколько совпадений, пользователь получает короткий вопрос с кнопками.
 
 `/admission` принимает только bounded формат `предмет=балл`, например

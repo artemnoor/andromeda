@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from hashlib import sha256
 from time import perf_counter
 from typing import Any
 from uuid import uuid4
@@ -15,33 +16,50 @@ from sqlalchemy.orm import Session
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawSourceSnapshot, RawTracerBundle
 from andromeda.ingestion.contracts.source import CapturedSources
-from andromeda.ingestion.quality import PreviousProjection, QualityOutcome, is_critical_gap
-from andromeda.modules.disciplines.contracts.public import DisciplineAreaWeight, area_catalog
+from andromeda.ingestion.quality import (
+    PreviousProjection,
+    QualityOutcome,
+    is_critical_gap,
+)
+from andromeda.modules.disciplines.contracts.public import (
+    DisciplineAreaWeight,
+    area_catalog,
+)
+from andromeda.modules.analytics.services.projection_builder import ProgramProjectionService
+from andromeda.modules.semantic.domain import DEFAULT_SEMANTIC_FEATURES
+from andromeda.modules.semantic.services.enrichment import SemanticEnrichmentService
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel
-from andromeda.shared.contracts.errors import AndromedaError, ConflictError, ContractError, ErrorCode, ErrorDetail
+from andromeda.shared.contracts.errors import (
+    AndromedaError,
+    ConflictError,
+    ContractError,
+    ErrorCode,
+    ErrorDetail,
+)
 from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 
 from ..database.models import (
     AssessmentTypeModel,
     CurriculumItemAssessmentModel,
     CurriculumItemModel,
+    CurriculumItemSourceLinkModel,
     CurriculumModel,
+    DirectionModel,
     DisciplineAreaModel,
     DisciplineAreaWeightModel,
-    DirectionModel,
     DisciplineModel,
     EducationLevelModel,
     IngestRunModel,
     ProgramModel,
     RawSourceRecordModel,
+    SemanticFeatureModel,
     SourceSnapshotModel,
     UniversityModel,
 )
 from ..database.session import session_factory
 from .admissions import SqlAlchemyAdmissionRepository
-from .events import SqlAlchemyEventRepository
 from .campus import SqlAlchemyCampusPointRepository
-
+from .events import SqlAlchemyEventRepository
 
 logger = logging.getLogger("andromeda.infrastructure.repositories.ingestion")
 _LEGACY_UNIVERSITY_ID = "university:legacy"
@@ -67,8 +85,16 @@ class _SyncStats:
 class SqlAlchemyIngestionRepository:
     """Atomic write adapter from canonical DTOs to infrastructure models."""
 
-    def __init__(self, engine: Any) -> None:
+    def __init__(
+        self,
+        engine: Any,
+        *,
+        semantic_enrichment: SemanticEnrichmentService | None = None,
+        projection_service: ProgramProjectionService | None = None,
+    ) -> None:
         self._factory = session_factory(engine)
+        self._semantic_enrichment = semantic_enrichment
+        self._projection_service = projection_service
 
     def start_run(
         self,
@@ -235,6 +261,7 @@ class SqlAlchemyIngestionRepository:
                     stats = self._insert_domain(
                         session,
                         canonical,
+                        run_id=resolved_run_id,
                         event_source_present=any(snapshot.source_kind == "bmstu_events" for snapshot in raw.snapshots),
                         campus_source_present=any(snapshot.source_kind == "bmstu_campus_points" for snapshot in raw.snapshots),
                     )
@@ -263,6 +290,29 @@ class SqlAlchemyIngestionRepository:
         except Exception:
             logger.exception("ingest_audit_complete_failed run_id=%s", resolved_run_id)
             raise
+        if self._semantic_enrichment is not None:
+            try:
+                derived_run = self._semantic_enrichment.enrich(
+                    university_id=canonical.university.id,
+                    ingest_run_id=resolved_run_id,
+                    curricula=canonical.curricula,
+                    disciplines=canonical.disciplines,
+                )
+                logger.info(
+                    "ingest_semantic_enrichment_observed ingest_run_id=%s semantic_run_id=%s status=%s",
+                    resolved_run_id,
+                    derived_run.id,
+                    derived_run.status,
+                )
+                if self._projection_service is not None:
+                    projections = self._projection_service.refresh(canonical, derived_run)
+                    logger.info(
+                        "ingest_program_projection_observed ingest_run_id=%s program_count=%d",
+                        resolved_run_id,
+                        len(projections),
+                    )
+            except Exception:
+                logger.exception("ingest_derived_projection_failed ingest_run_id=%s", resolved_run_id)
         logger.info(
             "ingest_transaction_commit run_id=%s programs=%d curriculum_items=%d inserted=%d updated=%d unchanged=%d removed=%d",
             resolved_run_id,
@@ -512,6 +562,21 @@ class SqlAlchemyIngestionRepository:
                 or existing.position != definition.position
             ):
                 raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for discipline area {definition.code.value}")
+        for feature in DEFAULT_SEMANTIC_FEATURES:
+            existing = session.get(SemanticFeatureModel, feature.id)
+            values = {
+                "id": feature.id,
+                "code": feature.code,
+                "name": feature.name,
+                "description": feature.description,
+                "feature_group": feature.feature_group.value,
+                "value_type": feature.value_type.value,
+                "semantic_version": feature.semantic_version,
+            }
+            if existing is None:
+                session.add(SemanticFeatureModel(**values))
+            elif any(getattr(existing, key) != value for key, value in values.items() if key != "id"):
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for semantic feature {feature.code}")
 
     @staticmethod
     def _insert_snapshot(session: Session, run_id: str, snapshot: RawSourceSnapshot) -> None:
@@ -569,6 +634,7 @@ class SqlAlchemyIngestionRepository:
         session: Session,
         canonical: CanonicalSnapshot,
         *,
+        run_id: str,
         event_source_present: bool = False,
         campus_source_present: bool = False,
     ) -> _SyncStats:
@@ -708,6 +774,13 @@ class SqlAlchemyIngestionRepository:
                             "hours": item.hours,
                             "credits": item.credits,
                             "source_position": item.source_position,
+                            "lecture_hours": item.lecture_hours,
+                            "practice_hours": item.practice_hours,
+                            "lab_hours": item.lab_hours,
+                            "self_study_hours": item.self_study_hours,
+                            "is_elective": item.is_elective,
+                            "course_block": item.course_block,
+                            "practice_type": item.practice_type,
                         },
                         immutable_fields=("curriculum_id", "discipline_id", "semester", "semester_identity"),
                     )
@@ -716,8 +789,42 @@ class SqlAlchemyIngestionRepository:
         session.flush()
         cls._remove_stale_items(session, expected_item_ids, stats)
         session.flush()
+        cls._sync_item_source_links(session, canonical, run_id)
+        session.flush()
         cls._sync_assessments(session, pending_assessments, stats)
         return stats
+
+    @staticmethod
+    def _sync_item_source_links(session: Session, canonical: CanonicalSnapshot, run_id: str) -> None:
+        inserted = 0
+        updated = 0
+        for curriculum in canonical.curricula:
+            for item in curriculum.items:
+                for attribution in item.provenance:
+                    link_id = _curriculum_item_source_link_id(item.id, attribution)
+                    existing = session.get(CurriculumItemSourceLinkModel, link_id)
+                    link_run_id = attribution.run_id or run_id
+                    if existing is None:
+                        session.add(
+                            CurriculumItemSourceLinkModel(
+                                link_id=link_id,
+                                curriculum_item_id=item.id,
+                                source_sha256=attribution.content_sha256,
+                                source_url=str(attribution.url),
+                                locator=attribution.locator,
+                                university_id=attribution.university_id,
+                                field=attribution.field,
+                                record_key=attribution.record_key,
+                                inferred=attribution.inferred,
+                                ingest_run_id=link_run_id,
+                                created_at=datetime.now(timezone.utc),
+                            )
+                        )
+                        inserted += 1
+                    elif existing.ingest_run_id != link_run_id:
+                        existing.ingest_run_id = link_run_id
+                        updated += 1
+        logger.info("ingest_curriculum_source_links_sync run_id=%s inserted=%d updated=%d", run_id, inserted, updated)
 
     @staticmethod
     def _upsert(
@@ -818,6 +925,22 @@ class SqlAlchemyIngestionRepository:
 
 def _semester_identity(semester: int | None) -> str:
     return "unassigned" if semester is None else f"semester:{semester}"
+
+
+def _curriculum_item_source_link_id(item_id: str, attribution: SourceAttribution) -> str:
+    identity = "|".join(
+        (
+            item_id,
+            attribution.content_sha256,
+            str(attribution.url),
+            attribution.locator or "",
+            attribution.university_id or "",
+            attribution.field or "",
+            attribution.record_key or "",
+            str(attribution.inferred),
+        )
+    )
+    return f"curriculum-item-source:{sha256(identity.encode('utf-8')).hexdigest()}"
 
 
 def _provenance_json(values: tuple[SourceAttribution, ...]) -> str:

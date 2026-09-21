@@ -1,20 +1,29 @@
 from __future__ import annotations
 
+import json
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
-import json
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from andromeda.modules.curricula.contracts.public import Curriculum, CurriculumItem
-from andromeda.modules.curricula.repository.ports import CurriculumReader, CurriculumWriter
-from andromeda.shared.contracts.enums import AssessmentType
+from andromeda.modules.curricula.repository.ports import (
+    CurriculumReader,
+    CurriculumWriter,
+)
+from andromeda.shared.contracts.enums import AssessmentType, SourceKind
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
 from andromeda.shared.contracts.ids import ProgramId, canonical_program_id
 from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 
-from ..database.models import AssessmentTypeModel, CurriculumItemAssessmentModel, CurriculumItemModel, CurriculumModel
+from ..database.models import (
+    CurriculumItemAssessmentModel,
+    CurriculumItemModel,
+    CurriculumItemSourceLinkModel,
+    CurriculumModel,
+    SourceSnapshotModel,
+)
 
 
 class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
@@ -40,10 +49,12 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
             )
         ).scalars().all()
         assessments_by_item = _assessments_by_item(self._session, tuple(item.id for item in items))
+        provenance_by_item = _provenance_by_item(self._session, tuple(item.id for item in items))
         return self._to_curriculum(
             model,
             items,
             assessments_by_item,
+            provenance_by_item,
         )
 
     def list_for_programs(self, program_ids: tuple[ProgramId, ...]) -> dict[ProgramId, Curriculum]:
@@ -78,6 +89,7 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
         ).scalars().all()
         item_ids = tuple(item.id for item in items)
         assessments_by_item = _assessments_by_item(self._session, item_ids)
+        provenance_by_item = _provenance_by_item(self._session, item_ids)
         items_by_curriculum: dict[str, list[CurriculumItemModel]] = defaultdict(list)
         for item in items:
             items_by_curriculum[item.curriculum_id].append(item)
@@ -87,6 +99,7 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
                 model,
                 items_by_curriculum[model.id],
                 assessments_by_item,
+                provenance_by_item,
             )
             for program_id, model in latest_by_program.items()
         }
@@ -96,6 +109,7 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
         model: CurriculumModel,
         items: Iterable[CurriculumItemModel],
         assessments_by_item: Mapping[str, Iterable[CurriculumItemAssessmentModel]],
+        provenance_by_item: Mapping[str, tuple[SourceAttribution, ...]],
     ) -> Curriculum:
         return Curriculum.model_validate(
             {
@@ -106,7 +120,14 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
                 "captured_at": model.captured_at,
                 "provenance": _provenance_values(model.provenance_json),
                 "source_gaps": _gap_values(model.source_gaps_json),
-                "items": tuple(self._to_item(item, assessments_by_item.get(item.id, ())) for item in items),
+                "items": tuple(
+                    self._to_item(
+                        item,
+                        assessments_by_item.get(item.id, ()),
+                        provenance_by_item.get(item.id, ()),
+                    )
+                    for item in items
+                ),
             }
         )
 
@@ -130,6 +151,7 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
         self,
         model: CurriculumItemModel,
         assessment_rows: Iterable[CurriculumItemAssessmentModel] | None = None,
+        provenance: tuple[SourceAttribution, ...] = (),
     ) -> CurriculumItem:
         if assessment_rows is None:
             assessment_rows = self._session.execute(
@@ -149,6 +171,14 @@ class SqlAlchemyCurriculumRepository(CurriculumReader, CurriculumWriter):
                 "credits": model.credits,
                 "assessment_types": assessments or None,
                 "source_position": model.source_position,
+                "lecture_hours": model.lecture_hours,
+                "practice_hours": model.practice_hours,
+                "lab_hours": model.lab_hours,
+                "self_study_hours": model.self_study_hours,
+                "is_elective": model.is_elective,
+                "course_block": model.course_block,
+                "practice_type": model.practice_type,
+                "provenance": provenance,
             }
         )
 
@@ -166,6 +196,36 @@ def _assessments_by_item(session: Session, item_ids: tuple[str, ...]) -> dict[st
     grouped: dict[str, list[CurriculumItemAssessmentModel]] = defaultdict(list)
     for row in rows:
         grouped[row.curriculum_item_id].append(row)
+    return {key: tuple(value) for key, value in grouped.items()}
+
+
+def _provenance_by_item(session: Session, item_ids: tuple[str, ...]) -> dict[str, tuple[SourceAttribution, ...]]:
+    if not item_ids:
+        return {}
+    rows = session.execute(
+        select(CurriculumItemSourceLinkModel, SourceSnapshotModel)
+        .join(SourceSnapshotModel, SourceSnapshotModel.content_sha256 == CurriculumItemSourceLinkModel.source_sha256)
+        .where(CurriculumItemSourceLinkModel.curriculum_item_id.in_(item_ids))
+        .order_by(CurriculumItemSourceLinkModel.curriculum_item_id, CurriculumItemSourceLinkModel.link_id)
+    ).all()
+    grouped: dict[str, list[SourceAttribution]] = defaultdict(list)
+    for link, snapshot in rows:
+        try:
+            attribution = SourceAttribution(
+                kind=SourceKind(snapshot.source_kind),
+                url=link.source_url,
+                captured_at=snapshot.captured_at,
+                content_sha256=link.source_sha256,
+                locator=link.locator,
+                university_id=link.university_id,
+                run_id=link.ingest_run_id,
+                field=link.field,
+                record_key=link.record_key,
+                inferred=link.inferred,
+            )
+        except ValueError as exc:
+            raise ContractError(ErrorCode.CONTRACT_ERROR, "Persisted source kind is not canonical") from exc
+        grouped[link.curriculum_item_id].append(attribution)
     return {key: tuple(value) for key, value in grouped.items()}
 
 

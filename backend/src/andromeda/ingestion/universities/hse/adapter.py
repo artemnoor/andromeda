@@ -1,30 +1,48 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from hashlib import sha256
 import logging
 import re
+from collections.abc import Mapping, Sequence
+from hashlib import sha256
 from pathlib import Path
 
 from andromeda.ingestion.contracts.constraints import http_url
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
-from andromeda.ingestion.contracts.raw import RawAdmissionPassingScore, RawAdmissionRecord, RawCurriculumRow, RawDirectionRecord, RawParserDiagnostic, RawProgramRecord, RawSourceGap, RawSourceSnapshot, RawTracerBundle, RawUniversityRecord, SourceLocator
+from andromeda.ingestion.contracts.raw import (
+    RawAdmissionPassingScore,
+    RawAdmissionRecord,
+    RawCurriculumRow,
+    RawDirectionRecord,
+    RawParserDiagnostic,
+    RawProgramRecord,
+    RawSourceGap,
+    RawSourceSnapshot,
+    RawTracerBundle,
+    RawUniversityRecord,
+    SourceLocator,
+)
 from andromeda.ingestion.contracts.source import CapturedSources
 from andromeda.modules.disciplines.contracts.public import Discipline
-from andromeda.modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
-from andromeda.shared.contracts.enums import SourceKind
+from andromeda.modules.disciplines.services.classifier import (
+    RuleBasedDisciplineClassifier,
+)
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
-from andromeda.shared.contracts.provenance import SourceAttribution
 
 from .capture import DEFAULT_FIXTURE_DIR, HseSource
 from .identity import canonicalize_program_records, direction_codes, normalize_name
 from .mappings.discipline_areas import HSE_DISCIPLINE_AREA_OVERRIDES
 from .normalizers.admissions import normalize_admissions
 from .normalizers.canonical import normalize_bundle
-from .parser.admissions import FactObservation, parse_enrollment_document, parse_historical_passing, parse_minimum_exams, parse_places, parse_tuition
+from .parser.admissions import (
+    FactObservation,
+    parse_enrollment_document,
+    parse_historical_passing,
+    parse_minimum_exams,
+    parse_places,
+    parse_tuition,
+)
 from .parser.catalog import canonical_url, parse_program_detail, study_plan_urls
 from .parser.curriculum import CurriculumObservation, parse_work_plan
-
 
 fetch_logger = logging.getLogger("andromeda.ingestion.hse.fetch")
 parse_logger = logging.getLogger("andromeda.ingestion.hse.parse")
@@ -160,10 +178,11 @@ def _parse_curricula(
         for observation in observations:
             mapped_programs = curriculum_plan_programs.get(_source_key(snapshot.requested_url), ())
             if observation.direction_code and mapped_programs:
+                observation_directions = observation.direction_code_candidates or direction_codes(observation.direction_code)
                 compatible = tuple(
                     program
                     for program in mapped_programs
-                    if observation.direction_code in direction_codes(program.direction_code)
+                    if any(code in direction_codes(program.direction_code) for code in observation_directions)
                 )
                 mapped_programs = compatible
             if mapped_programs:
@@ -175,7 +194,7 @@ def _parse_curricula(
                 gaps.append(_gap("curriculum", str(snapshot.requested_url), "work-plan-program-identity-ambiguous", snapshot))
                 continue
             for program in target_programs:
-                result.append(RawCurriculumRow(program_code=program.code, discipline=observation.discipline, semester=None, hours=observation.hours, credits=observation.credits, assessment=None, source_position=observation.source_position, source_url=snapshot.requested_url, locator=SourceLocator(source_url=snapshot.requested_url, row=observation.source_position), source_program_code=program.source_code or program.code))
+                result.append(RawCurriculumRow(program_code=program.code, discipline=observation.discipline, semester=None, hours=observation.hours, credits=observation.credits, assessment=None, source_position=observation.source_position, source_url=snapshot.requested_url, locator=SourceLocator(source_url=snapshot.requested_url, row=observation.source_position), source_program_code=program.source_code or program.code, lecture_hours=observation.lecture_hours, practice_hours=observation.practice_hours, lab_hours=observation.lab_hours, self_study_hours=observation.self_study_hours, is_elective=observation.is_elective, course_block=observation.course_block, practice_type=observation.practice_type))
     return tuple(result)
 
 

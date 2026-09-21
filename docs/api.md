@@ -17,6 +17,37 @@ FastAPI-приложение `andromeda.api.main` публикует OpenAPI н�
 
 `DisciplineResponse` сохраняет `name`/`sourceName` и дополнительно отдаёт `areaWeights` — вектор областей с весами — и `primaryArea`. Каталог областей доступен через `GET /discipline-areas`; он содержит 22 стабильных кода, название, описание и позицию для сортировки.
 
+## University admin, public catalog and editorial events
+
+University console работает только в рамках account session и активной
+membership. `GET /university-admin/memberships` возвращает доступные scopes;
+роль `owner` управляет участниками, `owner/editor` меняют контент, `viewer`
+читает его без mutation controls. Первого владельца добавляет только
+ops-key-protected `POST /ops/university-admin/members`; email-домен не даёт
+доступа автоматически.
+
+| Метод | Endpoint | Назначение |
+|---|---|---|
+| GET | `/universities` | Безопасный список поддерживаемых вузов для public selector |
+| GET | `/universities/{university_id}/catalog` | Published units/categories и видимые program/discipline overlays |
+| GET/POST/PATCH/DELETE | `/university-admin/universities/{university_id}/units` | Faculty/department hierarchy с archive и revision |
+| GET/POST/PATCH/DELETE | `/university-admin/universities/{university_id}/categories` | Editorial categories с archive и revision |
+| PUT | `/university-admin/universities/{university_id}/catalog-links` | Связи unit/category с каноническими program/discipline IDs |
+| PATCH | `/university-admin/universities/{university_id}/programs|disciplines/{id}` | Public name/summary/visibility overlay |
+| GET/POST/PATCH/DELETE | `/university-admin/universities/{university_id}/events` | Draft/list/update/archive editorial events |
+| POST/PUT | `/university-admin/universities/{university_id}/events/{id}/publish|agenda` | Публикация и замена упорядоченного плана |
+| GET | `/universities/{university_id}/events[/{event_id}]` | Public published event feed/detail |
+
+Editorial events хранятся отдельно от source `/events`. Они поддерживают
+`kind=open_day` наряду с lecture/career/competition/other, описание,
+регистрацию, venue/location, agenda и связи с факультетами, кафедрами,
+программами и категориями. `all_university` означает весь вуз,
+`selected_units/programs` ограничивает аудиторию, а `unaffiliated` означает
+явное отсутствие факультетской/программной связи. Draft и archived не попадают
+в public feed; stale selected targets скрываются, если больше не активны.
+Все enum/datetime payloads проходят strict JSON boundary, а mutation требуют
+`expectedRevision`; недостаточная роль даёт 403, неизвестный scope — 404.
+
 ## DecisionContext и shortlist
 
 `DecisionContext` — owner-bound application state для пользовательского выбора.

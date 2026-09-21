@@ -11,11 +11,17 @@ class ErrorCode(StrEnum):
     VALIDATION_ERROR = "VALIDATION_ERROR"
     RATE_LIMITED = "RATE_LIMITED"
     UNAUTHORIZED = "UNAUTHORIZED"
+    FORBIDDEN = "FORBIDDEN"
     NOT_FOUND = "NOT_FOUND"
     CONFLICT = "CONFLICT"
     SOURCE_CONTRACT_ERROR = "SOURCE_CONTRACT_ERROR"
     CONTRACT_ERROR = "CONTRACT_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"
+    UNSUPPORTED_METRIC = "UNSUPPORTED_METRIC"
+    UNSUPPORTED_AGGREGATION = "UNSUPPORTED_AGGREGATION"
+    INVALID_QUERY = "INVALID_QUERY"
+    AMBIGUOUS_ENTITY = "AMBIGUOUS_ENTITY"
+    INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
 
 
 class ErrorDetail(ContractModel):
@@ -65,6 +71,11 @@ class ValidationError(AndromedaError):
 class UnauthorizedError(AndromedaError):
     def __init__(self, message: str = "Authentication required", details: Sequence[ErrorDetail] = ()) -> None:
         super().__init__(ErrorCode.UNAUTHORIZED, message, details)
+
+
+class ForbiddenError(AndromedaError):
+    def __init__(self, message: str = "Insufficient permissions", details: Sequence[ErrorDetail] = ()) -> None:
+        super().__init__(ErrorCode.FORBIDDEN, message, details)
 
 
 class RateLimitError(AndromedaError):

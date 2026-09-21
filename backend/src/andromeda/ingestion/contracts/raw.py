@@ -96,6 +96,13 @@ class RawCurriculumRow(ContractModel):
     source_url: HttpUrl
     locator: SourceLocator
     source_program_code: str | None = Field(default=None, min_length=1, max_length=256)
+    lecture_hours: int | None = Field(default=None, strict=True, ge=0, le=2_000)
+    practice_hours: int | None = Field(default=None, strict=True, ge=0, le=2_000)
+    lab_hours: int | None = Field(default=None, strict=True, ge=0, le=2_000)
+    self_study_hours: int | None = Field(default=None, strict=True, ge=0, le=2_000)
+    is_elective: bool | None = None
+    course_block: str | None = Field(default=None, min_length=1, max_length=128)
+    practice_type: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class RawAdmissionExamRequirement(ContractModel):

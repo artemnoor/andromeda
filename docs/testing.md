@@ -117,6 +117,31 @@ python -m mypy
 
 Проверки покрывают lifecycle `running → completed|failed`, сохранение failed audit после rollback, deterministic list/detail, bounded fixture retry, running conflict, staging-only live boundary, malformed audit data, explicit key guard, отсутствие raw source fields и OpenAPI operation IDs. Admin/Ops endpoint выключен без `ANDROMEDA_OPS_API_KEY`; ключ не попадает в логи или ответы. Browser check открывает только `/#ops`, проверяет safe detail, unavailable conflict notice, confirmation перед retry и wrong-key error state.
 
+University admin/catalog/events slice проверяется так:
+
+```powershell
+cd backend
+python -m pytest -q tests/modules/university_admin tests/api/test_university_admin_access.py tests/api/test_university_catalog_api.py tests/api/test_university_events_api.py tests/infrastructure/test_university_admin_repository.py tests/infrastructure/test_university_catalog_repository.py tests/infrastructure/test_university_catalog_query_count.py tests/infrastructure/test_university_events_repository.py tests/infrastructure/test_university_events_query_count.py tests/integration/test_university_event_projection.py tests/architecture/test_module_boundaries.py tests/infrastructure/test_alembic_migrations.py
+python -m mypy src/andromeda
+python scripts/export_openapi.py --out ../frontend-next/openapi.json
+cd ../frontend-next
+$env:OPENAPI_FILE = "openapi.json"
+npm run generate-api
+npm run check-api-drift
+npx tsc --noEmit
+npm run lint
+npm run test:unit
+npm run build
+```
+
+Focused checks cover ops-only first-owner provisioning, owner/editor/viewer
+role matrix, cross-university denial, 401/403/404 semantics, draft/public/
+archived event lifecycle, explicit audience modes, agenda, source/editorial
+ID separation and bounded public reads. Public browser surfaces use the
+existing anonymous demo flow: `/?view=university-catalog`, `/?view=events`
+with a university selector and `/?view=university-admin` for an authenticated
+membership. The browser never stores an ops key, password or auth token.
+
 Personal Route проверяется отдельными contract/API и vertical tests как
 совместимый optional support layer:
 

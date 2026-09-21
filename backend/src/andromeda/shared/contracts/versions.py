@@ -1,0 +1,22 @@
+"""Version identifiers for rebuildable derived contracts."""
+
+from __future__ import annotations
+
+from .ids import SemanticVersion
+
+
+SEMANTIC_TAXONOMY_VERSION: SemanticVersion = "semantic-taxonomy.v1"
+SEMANTIC_CLASSIFIER_VERSION: SemanticVersion = "semantic-classifier.v1"
+ANALYTICS_PROJECTION_SCHEMA_VERSION: SemanticVersion = "analytics-projection.v1"
+METRIC_REGISTRY_VERSION: SemanticVersion = "metric-registry.v1"
+DECISION_POLICY_VERSION: SemanticVersion = "decision-policy.v1"
+RESPONSE_POLICY_VERSION: SemanticVersion = "response-policy.v1"
+
+__all__ = [
+    "ANALYTICS_PROJECTION_SCHEMA_VERSION",
+    "DECISION_POLICY_VERSION",
+    "METRIC_REGISTRY_VERSION",
+    "RESPONSE_POLICY_VERSION",
+    "SEMANTIC_CLASSIFIER_VERSION",
+    "SEMANTIC_TAXONOMY_VERSION",
+]

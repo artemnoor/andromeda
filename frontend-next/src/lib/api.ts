@@ -12,6 +12,8 @@ import type {
   AdmissionFitRequest,
   AdmissionFitResponse,
   AdmissionOffering,
+  AssistantQueryInput,
+  AssistantQueryResponse,
   DecisionConstraintsUpdateRequest,
   DecisionContextData,
   DecisionMutationResponse,
@@ -55,6 +57,19 @@ import type {
   SourceGapReference,
   UserProfile,
   UserProfileSnapshot,
+  UniversityAdminRole,
+  UniversityAudienceMode,
+  UniversityCatalog,
+  UniversityCatalogLinks,
+  UniversityCategory,
+  UniversityCategoryKind,
+  UniversityDiscovery,
+  UniversityEvent,
+  UniversityEventListResponse,
+  UniversityEventStatus,
+  UniversityMembership,
+  UniversityUnit,
+  UniversityUnitType,
 } from "./types";
 
 type ApiProgramList = paths["/programs"]["get"]["responses"][200]["content"]["application/json"];
@@ -132,6 +147,30 @@ type ApiRecommendationReason = components["schemas"]["ReasonResponse"];
 type ApiRecommendationMetric = components["schemas"]["EvidenceMetricResponse"];
 type ApiRecommendationEvidence = components["schemas"]["RecommendationEvidenceResponse"];
 type ApiEventPayload = components["schemas"]["EventResponse"];
+type ApiUniversityMemberships = paths["/university-admin/memberships"]["get"]["responses"][200]["content"]["application/json"];
+type ApiUniversities = paths["/universities"]["get"]["responses"][200]["content"]["application/json"];
+type ApiUniversityCatalog = paths["/universities/{university_id}/catalog"]["get"]["responses"][200]["content"]["application/json"];
+type ApiUniversityUnits = paths["/university-admin/universities/{university_id}/units"]["get"]["responses"][200]["content"]["application/json"];
+type ApiUniversityUnit = paths["/university-admin/universities/{university_id}/units/{unit_id}"]["patch"]["responses"][200]["content"]["application/json"];
+type ApiUniversityCategories = paths["/university-admin/universities/{university_id}/categories"]["get"]["responses"][200]["content"]["application/json"];
+type ApiUniversityCategory = paths["/university-admin/universities/{university_id}/categories/{category_id}"]["patch"]["responses"][200]["content"]["application/json"];
+type ApiUniversityProgramEditorial = paths["/university-admin/universities/{university_id}/programs/{program_id}"]["patch"]["responses"][200]["content"]["application/json"];
+type ApiUniversityDisciplineEditorial = paths["/university-admin/universities/{university_id}/disciplines/{discipline_id}"]["patch"]["responses"][200]["content"]["application/json"];
+type ApiUniversityAdminEvents = paths["/university-admin/universities/{university_id}/events"]["get"]["responses"][200]["content"]["application/json"];
+type ApiUniversityAdminEvent = paths["/university-admin/universities/{university_id}/events/{event_id}"]["get"]["responses"][200]["content"]["application/json"];
+type ApiUniversityPublicEvents = paths["/universities/{university_id}/events"]["get"]["responses"][200]["content"]["application/json"];
+type ApiUniversityPublicEvent = paths["/universities/{university_id}/events/{event_id}"]["get"]["responses"][200]["content"]["application/json"];
+type ApiProvisionMembership = NonNullable<paths["/ops/university-admin/members"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiOwnerMembershipRequest = NonNullable<paths["/university-admin/universities/{university_id}/members"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiUnitRequest = NonNullable<paths["/university-admin/universities/{university_id}/units"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiUnitUpdateRequest = NonNullable<paths["/university-admin/universities/{university_id}/units/{unit_id}"]["patch"]["requestBody"]>["content"]["application/json"];
+type ApiCategoryRequest = NonNullable<paths["/university-admin/universities/{university_id}/categories"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiCategoryUpdateRequest = NonNullable<paths["/university-admin/universities/{university_id}/categories/{category_id}"]["patch"]["requestBody"]>["content"]["application/json"];
+type ApiCatalogLinksRequest = NonNullable<paths["/university-admin/universities/{university_id}/catalog-links"]["put"]["requestBody"]>["content"]["application/json"];
+type ApiEditorialOverlayRequest = NonNullable<paths["/university-admin/universities/{university_id}/programs/{program_id}"]["patch"]["requestBody"]>["content"]["application/json"];
+type ApiEventRequest = NonNullable<paths["/university-admin/universities/{university_id}/events"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiEventUpdateRequest = NonNullable<paths["/university-admin/universities/{university_id}/events/{event_id}"]["patch"]["requestBody"]>["content"]["application/json"];
+type ApiAgendaRequest = NonNullable<paths["/university-admin/universities/{university_id}/events/{event_id}/agenda"]["put"]["requestBody"]>["content"]["application/json"];
 type ApiCampusPointPayload = components["schemas"]["CampusPointResponse"] | components["schemas"]["CampusPointDetailResponse"];
 type ApiRouteStepPayload = components["schemas"]["PersonalRouteStepResponse"];
 type ApiAccountPayload = components["schemas"]["AccountResponse"];
@@ -589,6 +628,115 @@ function mapEvent(raw: ApiEventPayload): EventItem {
       longitude: numberOrNull(raw.venue.longitude),
     } : null,
     provenance: raw.provenance.map(mapProvenance),
+  };
+}
+
+function mapUniversityMembership(raw: components["schemas"]["UniversityMembershipResponse"]): UniversityMembership {
+  return {
+    membershipId: raw.membershipId,
+    accountId: raw.accountId,
+    universityId: raw.universityId,
+    universityName: raw.universityName ?? null,
+    role: raw.role,
+    status: raw.status,
+    revision: raw.revision,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+    revokedAt: raw.revokedAt ?? null,
+  };
+}
+
+function mapUniversityUnit(raw: components["schemas"]["UniversityUnitResponse"]): UniversityUnit {
+  return {
+    unitId: raw.unitId,
+    universityId: raw.universityId,
+    unitType: raw.unitType,
+    parentUnitId: raw.parentUnitId ?? null,
+    slug: raw.slug,
+    name: raw.name,
+    description: raw.description ?? null,
+    status: raw.status,
+    sortOrder: raw.sortOrder,
+    revision: raw.revision,
+  };
+}
+
+function mapUniversityCategory(raw: components["schemas"]["UniversityCategoryResponse"]): UniversityCategory {
+  return {
+    categoryId: raw.categoryId,
+    universityId: raw.universityId,
+    slug: raw.slug,
+    name: raw.name,
+    description: raw.description ?? null,
+    categoryKind: raw.categoryKind,
+    status: raw.status,
+    sortOrder: raw.sortOrder,
+    revision: raw.revision,
+  };
+}
+
+function mapUniversityEvent(raw: components["schemas"]["UniversityEditorialEventAdminResponse"] | components["schemas"]["UniversityEditorialEventPublicResponse"]): UniversityEvent {
+  return {
+    eventId: raw.eventId,
+    universityId: raw.universityId,
+    slug: raw.slug,
+    title: raw.title,
+    kind: raw.kind,
+    format: raw.format,
+    startsAt: raw.startsAt,
+    endsAt: raw.endsAt ?? null,
+    description: raw.description ?? null,
+    registrationUrl: raw.registrationUrl ?? null,
+    venueId: raw.venueId ?? null,
+    locationLabel: raw.locationLabel ?? null,
+    locationAddress: raw.locationAddress ?? null,
+    onlineUrl: raw.onlineUrl ?? null,
+    ...("status" in raw ? { status: raw.status, revision: raw.revision } : {}),
+    audienceMode: raw.audienceMode,
+    origin: raw.origin,
+    units: raw.units.map((item) => ({ id: item.id, label: item.name })),
+    programs: raw.programs.map((item) => ({ id: item.id, label: item.name })),
+    categories: raw.categories.map((item) => ({ id: item.id, label: item.name })),
+    agenda: raw.agenda.map((item) => ({
+      itemId: item.itemId,
+      position: item.position,
+      title: item.title,
+      description: item.description ?? null,
+      startsAt: item.startsAt ?? null,
+      endsAt: item.endsAt ?? null,
+      locationLabel: item.locationLabel ?? null,
+      speakerLabel: item.speakerLabel ?? null,
+      revision: "revision" in item ? item.revision : 1,
+    })),
+  };
+}
+
+function mapUniversityCatalog(raw: ApiUniversityCatalog): UniversityCatalog {
+  return {
+    universityId: raw.universityId,
+    universityName: raw.universityName,
+    city: raw.city,
+    officialSite: raw.officialSite,
+    address: raw.address,
+    sourceState: raw.sourceState,
+    units: raw.units.map(mapUniversityUnit),
+    categories: raw.categories.map(mapUniversityCategory),
+    programs: raw.programs.map((item) => ({
+      programId: item.programId,
+      name: item.name,
+      displayName: item.displayName ?? null,
+      publicSummary: item.publicSummary ?? null,
+      categoryIds: item.categoryIds,
+      unitIds: item.unitIds,
+    })),
+    disciplines: raw.disciplines.map((item) => ({
+      disciplineId: item.disciplineId,
+      name: item.name,
+      displayName: item.displayName ?? null,
+      publicSummary: item.publicSummary ?? null,
+      categoryIds: item.categoryIds,
+      unitIds: item.unitIds,
+    })),
   };
 }
 
@@ -1053,4 +1201,202 @@ export function retryIngestion(request: IngestionRetryRequest, opsKey: string): 
     headers: opsHeaders(opsKey),
     body: JSON.stringify(request),
   }).then((raw) => ({ run: mapRun(raw.run) }));
+}
+
+export function queryAssistant(request: AssistantQueryInput): Promise<AssistantQueryResponse> {
+  return requestJson<AssistantQueryResponse>("/assistant/query", {
+    method: "POST",
+    body: JSON.stringify({
+      text: request.text,
+      ...(request.sessionId ? { sessionId: request.sessionId } : {}),
+      ...(request.expectedRevision ? { expectedRevision: request.expectedRevision } : {}),
+    }),
+  });
+}
+
+export type UniversityMembershipProvisionRequest = ApiProvisionMembership;
+export type UniversityMembershipOwnerRequest = ApiOwnerMembershipRequest;
+export type UniversityUnitRequest = ApiUnitRequest;
+export type UniversityUnitUpdateRequest = ApiUnitUpdateRequest;
+export type UniversityCategoryRequest = ApiCategoryRequest;
+export type UniversityCategoryUpdateRequest = ApiCategoryUpdateRequest;
+export type UniversityEditorialOverlayRequest = ApiEditorialOverlayRequest;
+export type UniversityEventRequest = ApiEventRequest;
+export type UniversityEventUpdateRequest = ApiEventUpdateRequest;
+export type UniversityAgendaReplaceRequest = ApiAgendaRequest;
+
+export function getUniversityMemberships(): Promise<UniversityMembership[]> {
+  return requestJson<ApiUniversityMemberships>("/university-admin/memberships").then((raw) => raw.items.map(mapUniversityMembership));
+}
+
+export function getUniversityMembers(universityId: string): Promise<UniversityMembership[]> {
+  return requestJson<components["schemas"]["UniversityMembershipListResponse"]>(`/university-admin/universities/${encodeURIComponent(universityId)}/members`).then((raw) => raw.items.map(mapUniversityMembership));
+}
+
+export function provisionUniversityMembership(request: UniversityMembershipProvisionRequest, opsKey: string): Promise<UniversityMembership> {
+  return requestJson<components["schemas"]["UniversityMembershipResponse"]>("/ops/university-admin/members", {
+    method: "POST",
+    headers: opsHeaders(opsKey),
+    body: JSON.stringify(request),
+  }).then(mapUniversityMembership);
+}
+
+export function addUniversityMember(universityId: string, request: UniversityMembershipOwnerRequest): Promise<UniversityMembership> {
+  return requestJson<components["schemas"]["UniversityMembershipResponse"]>(`/university-admin/universities/${encodeURIComponent(universityId)}/members`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  }).then(mapUniversityMembership);
+}
+
+export function revokeUniversityMember(universityId: string, membershipId: string, expectedRevision: number): Promise<UniversityMembership> {
+  const query = new URLSearchParams({ expectedRevision: String(expectedRevision) });
+  return requestJson<components["schemas"]["UniversityMembershipResponse"]>(`/university-admin/universities/${encodeURIComponent(universityId)}/members/${encodeURIComponent(membershipId)}?${query}`, {
+    method: "DELETE",
+  }).then(mapUniversityMembership);
+}
+
+export function getUniversities(): Promise<UniversityDiscovery[]> {
+  return requestJson<ApiUniversities>("/universities").then((raw) => raw.items);
+}
+
+export function getUniversityCatalog(universityId: string): Promise<UniversityCatalog> {
+  return requestJson<ApiUniversityCatalog>(`/universities/${encodeURIComponent(universityId)}/catalog`).then(mapUniversityCatalog);
+}
+
+export function getUniversityUnits(universityId: string): Promise<UniversityUnit[]> {
+  return requestJson<ApiUniversityUnits>(`/university-admin/universities/${encodeURIComponent(universityId)}/units`).then((raw) => raw.items.map(mapUniversityUnit));
+}
+
+export function createUniversityUnit(universityId: string, request: UniversityUnitRequest): Promise<UniversityUnit> {
+  return requestJson<components["schemas"]["UniversityUnitResponse"]>(`/university-admin/universities/${encodeURIComponent(universityId)}/units`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  }).then(mapUniversityUnit);
+}
+
+export function updateUniversityUnit(universityId: string, unitId: string, request: UniversityUnitUpdateRequest): Promise<UniversityUnit> {
+  return requestJson<ApiUniversityUnit>(`/university-admin/universities/${encodeURIComponent(universityId)}/units/${encodeURIComponent(unitId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(request),
+  }).then(mapUniversityUnit);
+}
+
+export function archiveUniversityUnit(universityId: string, unitId: string, expectedRevision: number): Promise<UniversityUnit> {
+  return requestJson<components["schemas"]["UniversityUnitResponse"]>(`/university-admin/universities/${encodeURIComponent(universityId)}/units/${encodeURIComponent(unitId)}?expectedRevision=${encodeURIComponent(String(expectedRevision))}`, {
+    method: "DELETE",
+  }).then(mapUniversityUnit);
+}
+
+export function getUniversityCategories(universityId: string): Promise<UniversityCategory[]> {
+  return requestJson<ApiUniversityCategories>(`/university-admin/universities/${encodeURIComponent(universityId)}/categories`).then((raw) => raw.items.map(mapUniversityCategory));
+}
+
+export function createUniversityCategory(universityId: string, request: UniversityCategoryRequest): Promise<UniversityCategory> {
+  return requestJson<components["schemas"]["UniversityCategoryResponse"]>(`/university-admin/universities/${encodeURIComponent(universityId)}/categories`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  }).then(mapUniversityCategory);
+}
+
+export function updateUniversityCategory(universityId: string, categoryId: string, request: UniversityCategoryUpdateRequest): Promise<UniversityCategory> {
+  return requestJson<ApiUniversityCategory>(`/university-admin/universities/${encodeURIComponent(universityId)}/categories/${encodeURIComponent(categoryId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(request),
+  }).then(mapUniversityCategory);
+}
+
+export function archiveUniversityCategory(universityId: string, categoryId: string, expectedRevision: number): Promise<UniversityCategory> {
+  return requestJson<components["schemas"]["UniversityCategoryResponse"]>(`/university-admin/universities/${encodeURIComponent(universityId)}/categories/${encodeURIComponent(categoryId)}?expectedRevision=${encodeURIComponent(String(expectedRevision))}`, {
+    method: "DELETE",
+  }).then(mapUniversityCategory);
+}
+
+export function replaceUniversityCatalogLinks(universityId: string, links: UniversityCatalogLinks): Promise<UniversityCatalogLinks> {
+  const payload: ApiCatalogLinksRequest = links;
+  return requestJson<components["schemas"]["UniversityCatalogLinksResponse"]>(`/university-admin/universities/${encodeURIComponent(universityId)}/catalog-links`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getUniversityProgramEditorial(universityId: string, programId: string): Promise<components["schemas"]["UniversityProgramEditorialResponse"]> {
+  return requestJson<components["schemas"]["UniversityProgramEditorialResponse"]>(`/university-admin/universities/${encodeURIComponent(universityId)}/programs/${encodeURIComponent(programId)}`);
+}
+
+export function updateUniversityProgramEditorial(universityId: string, programId: string, request: UniversityEditorialOverlayRequest): Promise<components["schemas"]["UniversityProgramEditorialResponse"]> {
+  return requestJson<ApiUniversityProgramEditorial>(`/university-admin/universities/${encodeURIComponent(universityId)}/programs/${encodeURIComponent(programId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(request),
+  });
+}
+
+export function getUniversityDisciplineEditorial(universityId: string, disciplineId: string): Promise<components["schemas"]["UniversityDisciplineEditorialResponse"]> {
+  return requestJson<components["schemas"]["UniversityDisciplineEditorialResponse"]>(`/university-admin/universities/${encodeURIComponent(universityId)}/disciplines/${encodeURIComponent(disciplineId)}`);
+}
+
+export function updateUniversityDisciplineEditorial(universityId: string, disciplineId: string, request: UniversityEditorialOverlayRequest): Promise<components["schemas"]["UniversityDisciplineEditorialResponse"]> {
+  return requestJson<ApiUniversityDisciplineEditorial>(`/university-admin/universities/${encodeURIComponent(universityId)}/disciplines/${encodeURIComponent(disciplineId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(request),
+  });
+}
+
+export function getUniversityAdminEvents(universityId: string, status?: UniversityEventStatus): Promise<UniversityEventListResponse> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return requestJson<ApiUniversityAdminEvents>(`/university-admin/universities/${encodeURIComponent(universityId)}/events${query}`).then((raw) => ({
+    items: raw.items.map((item) => mapUniversityEvent(item)),
+    total: raw.total,
+  }));
+}
+
+export function getUniversityAdminEvent(universityId: string, eventId: string): Promise<UniversityEvent> {
+  return requestJson<ApiUniversityAdminEvent>(`/university-admin/universities/${encodeURIComponent(universityId)}/events/${encodeURIComponent(eventId)}`).then((raw) => mapUniversityEvent(raw.event));
+}
+
+export function createUniversityEvent(universityId: string, request: UniversityEventRequest): Promise<UniversityEvent> {
+  return requestJson<ApiUniversityAdminEvent>(`/university-admin/universities/${encodeURIComponent(universityId)}/events`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  }).then((raw) => mapUniversityEvent(raw.event));
+}
+
+export function updateUniversityEvent(universityId: string, eventId: string, request: UniversityEventUpdateRequest): Promise<UniversityEvent> {
+  return requestJson<ApiUniversityAdminEvent>(`/university-admin/universities/${encodeURIComponent(universityId)}/events/${encodeURIComponent(eventId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(request),
+  }).then((raw) => mapUniversityEvent(raw.event));
+}
+
+export function publishUniversityEvent(universityId: string, eventId: string, expectedRevision: number): Promise<UniversityEvent> {
+  return requestJson<ApiUniversityAdminEvent>(`/university-admin/universities/${encodeURIComponent(universityId)}/events/${encodeURIComponent(eventId)}/publish?expectedRevision=${encodeURIComponent(String(expectedRevision))}`, {
+    method: "POST",
+  }).then((raw) => mapUniversityEvent(raw.event));
+}
+
+export function archiveUniversityEvent(universityId: string, eventId: string, expectedRevision: number): Promise<UniversityEvent> {
+  return requestJson<ApiUniversityAdminEvent>(`/university-admin/universities/${encodeURIComponent(universityId)}/events/${encodeURIComponent(eventId)}?expectedRevision=${encodeURIComponent(String(expectedRevision))}`, {
+    method: "DELETE",
+  }).then((raw) => mapUniversityEvent(raw.event));
+}
+
+export function replaceUniversityEventAgenda(universityId: string, eventId: string, request: UniversityAgendaReplaceRequest): Promise<UniversityEvent> {
+  return requestJson<ApiUniversityAdminEvent>(`/university-admin/universities/${encodeURIComponent(universityId)}/events/${encodeURIComponent(eventId)}/agenda`, {
+    method: "PUT",
+    body: JSON.stringify(request),
+  }).then((raw) => mapUniversityEvent(raw.event));
+}
+
+export function getUniversityEvents(
+  universityId: string,
+  options: { kind?: string; format?: string } = {},
+): Promise<UniversityEventListResponse> {
+  const query = queryString(options);
+  return requestJson<ApiUniversityPublicEvents>(`/universities/${encodeURIComponent(universityId)}/events${query}`).then((raw) => ({
+    items: raw.items.map((item) => mapUniversityEvent(item)),
+    total: raw.total,
+  }));
+}
+
+export function getUniversityEvent(universityId: string, eventId: string): Promise<UniversityEvent> {
+  return requestJson<ApiUniversityPublicEvent>(`/universities/${encodeURIComponent(universityId)}/events/${encodeURIComponent(eventId)}`).then((raw) => mapUniversityEvent(raw.event));
 }

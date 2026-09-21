@@ -38,9 +38,34 @@ CurriculumItemId: TypeAlias = Annotated[
     ),
 ]
 DisciplineId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^discipline:[a-f0-9]{16}$")]
+SemanticFeatureId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^semantic-feature:[a-z0-9][a-z0-9_-]{0,62}$"),
+]
+SemanticFeatureCode: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,62}$"),
+]
+SemanticVersion: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^[a-z][a-z0-9-]{0,63}\.v[0-9]+$"),
+]
 SourcePosition: TypeAlias = Annotated[int, Field(strict=True, ge=1, le=10_000)]
 SourceHash: TypeAlias = Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
 AccountId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^account:[a-f0-9]{32}$")]
+UniversityMembershipId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^membership:[a-f0-9]{32}$")]
+UniversityUnitId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^unit:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,62}$"),
+]
+UniversityCategoryId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^category:[a-z0-9][a-z0-9-]{0,62}:[a-z0-9][a-z0-9-]{0,62}$"),
+]
+UniversityEventId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^university-event:[a-z0-9][a-z0-9-]{0,62}:[a-f0-9]{32}$"),
+]
 SessionTokenHash: TypeAlias = SourceHash
 IngestRunId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^ingest:[a-f0-9]{32}$")]
 EducationYear: TypeAlias = Annotated[int, Field(strict=True, ge=2000, le=2100)]

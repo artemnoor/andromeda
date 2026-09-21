@@ -13,27 +13,42 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.responses import JSONResponse, Response
 
-from andromeda.api.routes.compare import router as compare_router
+from andromeda.api.request_controls import (
+    SlidingWindowRateLimiter,
+    enforce_rate_limit,
+    enforce_trusted_origin,
+    normalize_correlation_id,
+)
+from andromeda.api.routes.admin_ops import router as admin_ops_router
 from andromeda.api.routes.admission_fit import router as admission_fit_router
 from andromeda.api.routes.admissions import router as admissions_router
-from andromeda.api.routes.disciplines import router as disciplines_router
-from andromeda.api.routes.programs import router as programs_router
-from andromeda.api.routes.proftest import router as proftest_router
-from andromeda.api.routes.recommendations import router as recommendations_router
-from andromeda.api.routes.events import router as events_router
-from andromeda.api.routes.campus import router as campus_router
-from andromeda.api.routes.personal_route import router as personal_route_router
-from andromeda.api.routes.admin_ops import router as admin_ops_router
+from andromeda.api.routes.analytics import router as analytics_router
+from andromeda.api.routes.assistant import router as assistant_router
 from andromeda.api.routes.analytics_ops import router as analytics_ops_router
 from andromeda.api.routes.auth import router as auth_router
+from andromeda.api.routes.campus import router as campus_router
+from andromeda.api.routes.compare import router as compare_router
 from andromeda.api.routes.decision import router as decision_router
-from andromeda.api.routes.health import expected_schema_revision, router as health_router
-from andromeda.api.request_controls import SlidingWindowRateLimiter, enforce_rate_limit, enforce_trusted_origin, normalize_correlation_id
-from andromeda.shared.contracts.errors import AndromedaError, ErrorCode, ErrorResponse, details_from_validation
+from andromeda.api.routes.disciplines import router as disciplines_router
+from andromeda.api.routes.events import router as events_router
+from andromeda.api.routes.health import expected_schema_revision
+from andromeda.api.routes.health import router as health_router
+from andromeda.api.routes.personal_route import router as personal_route_router
+from andromeda.api.routes.proftest import router as proftest_router
+from andromeda.api.routes.programs import router as programs_router
+from andromeda.api.routes.recommendations import router as recommendations_router
+from andromeda.api.routes.university_admin import router as university_admin_router
+from andromeda.api.routes.university_catalog import router as university_catalog_router
+from andromeda.api.routes.university_events import router as university_events_router
 from andromeda.composition import build_container
 from andromeda.infrastructure.config.settings import Settings
 from andromeda.infrastructure.database.base import create_engine_for_url
-
+from andromeda.shared.contracts.errors import (
+    AndromedaError,
+    ErrorCode,
+    ErrorResponse,
+    details_from_validation,
+)
 
 logger = logging.getLogger("andromeda.api.request")
 
@@ -86,7 +101,7 @@ class AndromedaFastAPI(FastAPI):
 
 
 def _andromeda_error_response(request: Request, exc: AndromedaError, settings: Settings) -> JSONResponse:
-    status = 429 if exc.code is ErrorCode.RATE_LIMITED else 401 if exc.code is ErrorCode.UNAUTHORIZED else 404 if exc.code is ErrorCode.NOT_FOUND else 409 if exc.code is ErrorCode.CONFLICT else 400 if exc.code in (ErrorCode.VALIDATION_ERROR, ErrorCode.CONTRACT_ERROR, ErrorCode.SOURCE_CONTRACT_ERROR) else 500
+    status = 429 if exc.code is ErrorCode.RATE_LIMITED else 401 if exc.code is ErrorCode.UNAUTHORIZED else 403 if exc.code is ErrorCode.FORBIDDEN else 404 if exc.code is ErrorCode.NOT_FOUND else 409 if exc.code is ErrorCode.CONFLICT else 400 if exc.code in (ErrorCode.VALIDATION_ERROR, ErrorCode.CONTRACT_ERROR, ErrorCode.SOURCE_CONTRACT_ERROR, ErrorCode.UNSUPPORTED_METRIC, ErrorCode.UNSUPPORTED_AGGREGATION, ErrorCode.INVALID_QUERY, ErrorCode.AMBIGUOUS_ENTITY, ErrorCode.INSUFFICIENT_DATA) else 500
     if exc.code is ErrorCode.RATE_LIMITED:
         logger.warning("request_rate_limited path=%s correlation_id=%s", request.url.path, getattr(request.state, "correlation_id", "unknown"))
     headers = {"Retry-After": str(settings.rate_limit_window_seconds)} if status == 429 else None
@@ -99,7 +114,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
         title="Andromeda Decision Support API",
         version="1.0.0",
         description="Strict source-backed contracts for discovering, comparing and choosing educational programmes across supported universities.",
-        responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}, 422: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+        responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}, 403: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}, 422: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
     )
     app.state.settings = settings
     app.state.rate_limiter = SlidingWindowRateLimiter(settings.rate_limit_window_seconds)
@@ -190,6 +205,8 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(admission_fit_router)
     app.include_router(disciplines_router)
     app.include_router(compare_router)
+    app.include_router(analytics_router)
+    app.include_router(assistant_router)
     app.include_router(proftest_router)
     app.include_router(recommendations_router)
     app.include_router(events_router)
@@ -199,6 +216,9 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(analytics_ops_router)
     app.include_router(auth_router)
     app.include_router(decision_router)
+    app.include_router(university_admin_router)
+    app.include_router(university_catalog_router)
+    app.include_router(university_events_router)
     app.include_router(health_router)
     return app
 

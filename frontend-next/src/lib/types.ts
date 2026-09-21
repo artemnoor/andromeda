@@ -484,6 +484,139 @@ export type EventItem = {
 export type EventListResponse = { items: EventItem[]; total: number };
 export type EventDetailResponse = { event: EventItem };
 
+export type UniversityAdminRole = "owner" | "editor" | "viewer";
+export type MembershipStatus = "active" | "revoked";
+
+export type UniversityMembership = {
+  membershipId: string;
+  accountId: string;
+  universityId: string;
+  universityName?: string | null;
+  role: UniversityAdminRole;
+  status: MembershipStatus;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  revokedAt?: string | null;
+};
+
+export type UniversityDiscovery = {
+  id: string;
+  name: string;
+  city: string;
+};
+
+export type UniversityUnitType = "faculty" | "department";
+export type EditorialStatus = "draft" | "published" | "archived";
+export type EditorialVisibility = "visible" | "hidden";
+export type UniversityCategoryKind = "subject" | "program" | "event" | "general";
+
+export type UniversityUnit = {
+  unitId: string;
+  universityId: string;
+  unitType: UniversityUnitType;
+  parentUnitId?: string | null;
+  slug: string;
+  name: string;
+  description?: string | null;
+  status: EditorialStatus;
+  sortOrder: number;
+  revision: number;
+};
+
+export type UniversityCategory = {
+  categoryId: string;
+  universityId: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  categoryKind: UniversityCategoryKind;
+  status: EditorialStatus;
+  sortOrder: number;
+  revision: number;
+};
+
+export type UniversityCatalogProgram = {
+  programId: string;
+  name: string;
+  displayName?: string | null;
+  publicSummary?: string | null;
+  categoryIds: string[];
+  unitIds: string[];
+};
+
+export type UniversityCatalogDiscipline = {
+  disciplineId: string;
+  name: string;
+  displayName?: string | null;
+  publicSummary?: string | null;
+  categoryIds: string[];
+  unitIds: string[];
+};
+
+export type UniversityCatalog = {
+  universityId: string;
+  universityName: string;
+  city: string;
+  officialSite: string;
+  address: string;
+  sourceState: string;
+  units: UniversityUnit[];
+  categories: UniversityCategory[];
+  programs: UniversityCatalogProgram[];
+  disciplines: UniversityCatalogDiscipline[];
+};
+
+export type UniversityTarget = { id: string; label: string };
+export type UniversityAgendaItem = {
+  itemId: string;
+  eventId?: string;
+  position: number;
+  title: string;
+  description?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  locationLabel?: string | null;
+  speakerLabel?: string | null;
+  revision: number;
+};
+
+export type UniversityEventStatus = "draft" | "published" | "archived";
+export type UniversityAudienceMode = "all_university" | "selected_units" | "selected_programs" | "unaffiliated";
+
+export type UniversityEvent = {
+  eventId: string;
+  universityId: string;
+  slug: string;
+  title: string;
+  kind: EventKind;
+  format: EventFormat;
+  startsAt: string;
+  endsAt?: string | null;
+  description?: string | null;
+  registrationUrl?: string | null;
+  venueId?: string | null;
+  locationLabel?: string | null;
+  locationAddress?: string | null;
+  onlineUrl?: string | null;
+  status?: UniversityEventStatus;
+  audienceMode: UniversityAudienceMode;
+  revision?: number;
+  origin: "university_editorial";
+  units: UniversityTarget[];
+  programs: UniversityTarget[];
+  categories: UniversityTarget[];
+  agenda: UniversityAgendaItem[];
+};
+
+export type UniversityEventListResponse = { items: UniversityEvent[]; total: number };
+export type UniversityCatalogLinks = {
+  categoryPrograms: [string, string][];
+  categoryDisciplines: [string, string][];
+  unitPrograms: [string, string][];
+  unitDisciplines: [string, string][];
+};
+
 export type CampusPoint = {
   id: string;
   name: string;
@@ -576,4 +709,31 @@ export type IngestionRetryRequest = {
   source: IngestionRetrySource;
   idempotencyKey?: string;
   retryOfRunId?: string;
+};
+export type AssistantQueryInput = {
+  text: string;
+  sessionId?: string;
+  expectedRevision?: number;
+};
+
+export type AssistantResponseEnvelope = {
+  response_type: "text" | "image" | "image_collection" | "pdf" | "mini_app";
+  text: string;
+  template: string;
+  data: Record<string, unknown>;
+  actions: Array<Record<string, unknown>>;
+  metadata: Record<string, unknown>;
+};
+
+export type AssistantQueryResponse = {
+  state: "needs_clarification" | "complete" | "ambiguous";
+  session_id: string;
+  revision: number;
+  question: string | null;
+  options: string[];
+  missing_slots: string[];
+  response: AssistantResponseEnvelope | null;
+  query: Record<string, unknown> | null;
+  admission_request: Record<string, unknown> | null;
+  admission_result: Record<string, unknown> | null;
 };

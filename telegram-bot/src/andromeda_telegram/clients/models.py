@@ -99,8 +99,32 @@ class MutationResponse(WireModel):
     context: dict[str, object]
 
 
+class AssistantEnvelope(WireModel):
+    response_type: str = Field(alias="response_type")
+    text: str = ""
+    template: str
+    data: dict[str, object] = Field(default_factory=dict)
+    actions: list[dict[str, object]] = Field(default_factory=list)
+    metadata: dict[str, object] = Field(default_factory=dict)
+
+
+class AssistantResponse(WireModel):
+    state: str
+    session_id: str = Field(alias="session_id")
+    revision: int
+    question: str | None = None
+    options: list[str] = Field(default_factory=list)
+    missing_slots: list[str] = Field(default_factory=list)
+    response: AssistantEnvelope | None = None
+    query: dict[str, object] | None = None
+    admission_request: dict[str, object] | None = None
+    admission_result: dict[str, object] | None = None
+
+
 __all__ = [
     "AnalyticsAccepted",
+    "AssistantEnvelope",
+    "AssistantResponse",
     "ComparisonSummary",
     "DecisionContext",
     "DecisionSuggestion",

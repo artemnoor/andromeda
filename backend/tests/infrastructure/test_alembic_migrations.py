@@ -36,6 +36,38 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(tmp_path: 
         assert "venue_university_links" in inspector.get_table_names()
         assert "venue_department_links" in inspector.get_table_names()
         assert "venue_program_links" in inspector.get_table_names()
+        assert "university_admin_memberships" in inspector.get_table_names()
+        assert {
+            "university_units",
+            "university_categories",
+            "university_program_editorials",
+            "university_discipline_editorials",
+            "university_category_program_links",
+            "university_category_discipline_links",
+            "university_unit_program_links",
+            "university_unit_discipline_links",
+            "university_editorial_events",
+            "university_editorial_agenda_items",
+            "university_editorial_event_unit_links",
+            "university_editorial_event_program_links",
+            "university_editorial_event_category_links",
+        }.issubset(set(inspector.get_table_names()))
+        membership_columns = {column["name"] for column in inspector.get_columns("university_admin_memberships")}
+        assert {
+            "membership_id",
+            "account_id",
+            "university_id",
+            "role",
+            "status",
+            "revision",
+            "created_at",
+            "updated_at",
+            "granted_by_account_id",
+            "revoked_at",
+        }.issubset(membership_columns)
+        assert "ix_university_admin_memberships_university_status" in {
+            index["name"] for index in inspector.get_indexes("university_admin_memberships")
+        }
         profile_columns = {column["name"] for column in inspector.get_columns("user_profiles")}
         assert {"profile_id", "session_key_hash", "profile_json", "revision", "expires_at"}.issubset(profile_columns)
         decision_columns = {column["name"] for column in inspector.get_columns("decision_contexts")}

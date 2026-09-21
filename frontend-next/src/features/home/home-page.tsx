@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, BookOpen, CheckCircle2, GitCompare, GraduationCap, ListChecks, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, GitCompare, GraduationCap, ListChecks, MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Tag } from "@/components/shared";
@@ -8,6 +8,13 @@ import { useDecisionContext } from "@/features/decision/decision-context";
 import type { Route } from "@/lib/router";
 
 const ENTRY_POINTS = [
+  {
+    view: "assistant" as const,
+    icon: MessageCircle,
+    title: "Задать вопрос",
+    description: "Спросите, где больше математики, программирования или AI, сравните программы и разберите поступление.",
+    action: "Открыть ассистента",
+  },
   {
     view: "admission" as const,
     icon: GraduationCap,
@@ -42,7 +49,7 @@ export function HomePage({ navigate }: { navigate: (route: Route) => void }) {
         actions={<Tag tone="muted">Можно продолжить как гость</Tag>}
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {ENTRY_POINTS.map(({ view, icon: Icon, title, description, action }) => (
           <Card key={view} className="group flex flex-col border-border/70 transition hover:-translate-y-0.5 hover:shadow-md">
             <CardContent className="flex flex-1 flex-col gap-4 p-5">

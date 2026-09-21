@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Library, GitCompare, Compass, Sparkles, CalendarDays, Route as RouteIcon, Workflow, UserRound, Wrench, ListChecks, GraduationCap } from "lucide-react";
+import { Library, GitCompare, Compass, Sparkles, CalendarDays, Route as RouteIcon, Workflow, UserRound, Wrench, ListChecks, GraduationCap, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS, type View, type Route, buildHref } from "@/lib/router";
 import { AuthPanel } from "@/components/auth-panel";
@@ -20,6 +20,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Wrench,
   ListChecks,
   GraduationCap,
+  Building2,
 };
 
 export function AppShell({

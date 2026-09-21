@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import logging
+import unicodedata
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
-import logging
-import unicodedata
 
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawTracerBundle
@@ -18,7 +18,6 @@ from andromeda.shared.contracts.errors import ContractError, ErrorCode, ErrorDet
 from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 
 from ..identity import direction_codes
-
 
 logger = logging.getLogger("andromeda.ingestion.hse.normalize")
 
@@ -56,7 +55,8 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
         discipline_id = f"discipline:{sha256(normalized_name.encode('utf-8')).hexdigest()[:16]}"
         disciplines.setdefault(discipline_id, Discipline(id=discipline_id, name=_text(row.discipline), normalized_name=normalized_name))
         semester_key = str(row.semester) if row.semester is not None else "unassigned"
-        item = CurriculumItem(id=f"curriculum-item:{program.id}:{discipline_id}:{semester_key}", discipline_id=discipline_id, source_name=_text(row.discipline), semester=row.semester, hours=row.hours, credits=_credits(row.credits, row.locator.field or "credits"), assessment_types=_assessment(row.assessment), source_position=row.source_position)
+        item_id = f"curriculum-item:{program.id}:{discipline_id}:{semester_key}"
+        item = CurriculumItem(id=item_id, discipline_id=discipline_id, source_name=_text(row.discipline), semester=row.semester, hours=row.hours, credits=_credits(row.credits, row.locator.field or "credits"), assessment_types=_assessment(row.assessment), source_position=row.source_position, lecture_hours=row.lecture_hours, practice_hours=row.practice_hours, lab_hours=row.lab_hours, self_study_hours=row.self_study_hours, is_elective=row.is_elective, course_block=row.course_block, practice_type=row.practice_type, provenance=_row_provenance(raw, row, item_id))
         _append(items_by_program[program.code], item)
     curricula = tuple(
         Curriculum(id=f"curriculum:{program.id.removeprefix('program:')}-{program.education_year}", program_id=program.id, education_year=program.education_year, source_url=program.study_plan_url, captured_at=_captured_at(raw, program), items=tuple(items_by_program[program.code]), provenance=_source_attribution(raw, str(program.study_plan_url), ("hse_curriculum_document", "hse_curriculum_index"), field="curriculum", record_key=program.id), source_gaps=_source_gaps(raw, program.code, str(program.study_plan_url), field="curriculum"))
@@ -73,7 +73,7 @@ def _append(items: list[CurriculumItem], item: CurriculumItem) -> None:
     for index, current in enumerate(items):
         if (current.discipline_id, current.semester) != (item.discipline_id, item.semester):
             continue
-        items[index] = current.model_copy(update={"hours": max(current.hours, item.hours), "credits": current.credits if current.credits is not None else item.credits, "source_position": min(value for value in (current.source_position, item.source_position) if value is not None) if current.source_position is not None or item.source_position is not None else None})
+        items[index] = current.model_copy(update={"hours": max(current.hours, item.hours), "credits": current.credits if current.credits is not None else item.credits, "source_position": min(value for value in (current.source_position, item.source_position) if value is not None) if current.source_position is not None or item.source_position is not None else None, "lecture_hours": current.lecture_hours if current.lecture_hours is not None else item.lecture_hours, "practice_hours": current.practice_hours if current.practice_hours is not None else item.practice_hours, "lab_hours": current.lab_hours if current.lab_hours is not None else item.lab_hours, "self_study_hours": current.self_study_hours if current.self_study_hours is not None else item.self_study_hours, "is_elective": current.is_elective if current.is_elective is not None else item.is_elective, "course_block": current.course_block if current.course_block is not None else item.course_block, "practice_type": current.practice_type if current.practice_type is not None else item.practice_type, "provenance": tuple(dict.fromkeys((*current.provenance, *item.provenance)))})
         return
     items.append(item)
 
@@ -161,6 +161,28 @@ def _source_attribution(
             record_key=record_key,
         ),
     )
+
+
+def _row_provenance(raw: RawTracerBundle, row: object, item_id: str) -> tuple[SourceAttribution, ...]:
+    source_url = str(getattr(row, "source_url"))
+    values = _source_attribution(
+        raw,
+        source_url,
+        ("hse_curriculum_document", "hse_curriculum_index"),
+        field=getattr(getattr(row, "locator"), "field", None) or "curriculum_item",
+        record_key=item_id,
+    )
+    locator = getattr(row, "locator")
+    locator_text = ";".join(
+        value
+        for value in (
+            f"page={locator.page}" if locator.page is not None else None,
+            f"row={locator.row}" if locator.row is not None else None,
+            f"field={locator.field}" if locator.field else None,
+        )
+        if value
+    )
+    return tuple(item.model_copy(update={"locator": locator_text or None}) for item in values)
 
 
 def _source_gaps(raw: RawTracerBundle, record_key: str, source_url: str, *, field: str) -> tuple[SourceGapReference, ...]:

@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 import logging
-from urllib.parse import quote
 
-from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    BufferedInputFile,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from ..clients.backend import BackendHttpClient
 from ..clients.errors import BackendError, BackendTransportError, RenderError
 from ..config import Settings
 from ..handlers import keyboards, texts
-from ..parsing.program_resolver import ProgramResolver
 from ..parsing.admission_input import parse_exam_scores
+from ..parsing.program_resolver import ProgramResolver
 from ..render.client import RendererClient
 from ..state.callbacks import CallbackPayload, CallbackStore
 from ..state.repository import SessionRepository
-
 
 logger = logging.getLogger("andromeda_telegram.flows")
 
@@ -32,6 +35,38 @@ class TelegramFlows:
 
     async def start(self, message: Message) -> None:
         await message.answer(texts.START)
+
+    async def assistant(self, message: Message) -> None:
+        """Forward free-form questions to the channel-neutral assistant seam."""
+
+        owner = _owner_key(message)
+        state = self._sessions.get_assistant_state(owner)
+        try:
+            result = await self._backend.assistant_query(
+                (message.text or "").strip(),
+                session_id=state.session_id if state is not None else None,
+                expected_revision=state.revision if state is not None else None,
+                session_cookie=self._sessions.get_cookie(owner),
+            )
+            self._remember(owner, result.session_cookie)
+            self._sessions.save_assistant_state(owner, result.value.session_id, result.value.revision)
+            if result.value.state in {"needs_clarification", "ambiguous"}:
+                await message.answer(_assistant_question(result.value))
+                return
+            envelope = result.value.response
+            if envelope is None:
+                await message.answer("Ответ получен, но в нём нет отображаемого представления.")
+                return
+            if envelope.response_type == "text":
+                await message.answer(envelope.text or "Готово.")
+                return
+            image = await self._render_assistant_envelope(envelope, owner)
+            if image is None:
+                await message.answer(envelope.text or "Результат готов. Откройте его в приложении.")
+                return
+            await _photo(message, image, envelope.text or "Результат запроса.")
+        except (BackendError, BackendTransportError, RenderError):
+            await message.answer(texts.SOURCE_GAP)
 
     async def catalog(self, message: Message) -> None:
         owner = _owner_key(message)
@@ -162,6 +197,24 @@ class TelegramFlows:
         image = await self._renderer.render("program", {"ids": program_id, "theme": "light"}, session_cookie=self._sessions.get_cookie(owner))
         await _photo(message, image, "Карточка программы.", keyboards.program_actions(owner, program_id, self._callbacks))
 
+    async def _render_assistant_envelope(self, envelope: object, owner: str) -> bytes | None:
+        data = getattr(envelope, "data", {})
+        rows = data.get("rows", []) if isinstance(data, dict) else []
+        ids = tuple(
+            program_id
+            for row in rows
+            if isinstance(row, dict)
+            for program_id in row.get("program_ids", ())
+            if isinstance(program_id, str)
+        )[:3]
+        if len(ids) < 2:
+            return None
+        return await self._renderer.render(
+            "compare",
+            {"ids": ",".join(dict.fromkeys(ids)), "theme": "light"},
+            session_cookie=self._sessions.get_cookie(owner),
+        )
+
     async def _render_template(self, message: Message, owner: str, action: str, program_ids: tuple[str, ...]) -> None:
         template = "curriculum" if action == "curriculum" else "radar"
         image = await self._renderer.render(template, {"ids": ",".join(program_ids), "theme": "light"}, session_cookie=self._sessions.get_cookie(owner))
@@ -215,6 +268,14 @@ def _owner_key(value: Message | CallbackQuery) -> str:
     if user is None:
         raise ValueError("Telegram update has no sender")
     return f"telegram:{user.id}"
+
+
+def _assistant_question(value: object) -> str:
+    question = getattr(value, "question", None) or "Уточните запрос."
+    options = tuple(getattr(value, "options", ()))
+    if not options:
+        return question
+    return f"{question}\n\n" + "\n".join(f"• {option}" for option in options)
 
 
 __all__ = ["TelegramFlows"]

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
-from hashlib import sha256
 import logging
 import unicodedata
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from hashlib import sha256
 
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawTracerBundle
@@ -15,10 +15,9 @@ from andromeda.modules.programs.contracts.public import Program
 from andromeda.modules.universities.contracts.public import Direction, University
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel, SourceKind
 from andromeda.shared.contracts.errors import ContractError, ErrorCode, ErrorDetail
-from andromeda.shared.contracts.provenance import SourceAttribution
-from andromeda.shared.contracts.provenance import SourceGapReference
-from ..identity import direction_codes
+from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
 
+from ..identity import direction_codes
 
 logger = logging.getLogger("andromeda.ingestion.bmstu.normalize")
 
@@ -108,6 +107,14 @@ def normalize_bundle(raw: RawTracerBundle) -> CanonicalSnapshot:
             credits=_credits(row.credits, row.locator.field or "credits"),
             assessment_types=assessment_types,
             source_position=row.source_position,
+            lecture_hours=row.lecture_hours,
+            practice_hours=row.practice_hours,
+            lab_hours=row.lab_hours,
+            self_study_hours=row.self_study_hours,
+            is_elective=row.is_elective,
+            course_block=row.course_block,
+            practice_type=row.practice_type,
+            provenance=_row_provenance(raw, row, item_id),
         )
         _append_curriculum_item(items_by_program[program.code], item)
 
@@ -257,6 +264,28 @@ def _source_attribution(
     )
 
 
+def _row_provenance(raw: RawTracerBundle, row: object, item_id: str) -> tuple[SourceAttribution, ...]:
+    source_url = str(getattr(row, "source_url"))
+    values = _source_attribution(
+        raw,
+        source_url,
+        ("bmstu_curriculum_document", "bmstu_curriculum_metadata"),
+        field=getattr(getattr(row, "locator"), "field", None) or "curriculum_item",
+        record_key=item_id,
+    )
+    locator = getattr(row, "locator")
+    locator_text = ";".join(
+        value
+        for value in (
+            f"page={locator.page}" if locator.page is not None else None,
+            f"row={locator.row}" if locator.row is not None else None,
+            f"field={locator.field}" if locator.field else None,
+        )
+        if value
+    )
+    return tuple(item.model_copy(update={"locator": locator_text or None}) for item in values)
+
+
 def _source_gaps(raw: RawTracerBundle, record_key: str, source_url: str, *, field: str) -> tuple[SourceGapReference, ...]:
     return tuple(
         source_gap_reference(gap, field=field, record_key=record_key)
@@ -292,6 +321,14 @@ def _append_curriculum_item(items: list[CurriculumItem], item: CurriculumItem) -
                 "source_position": min(
                     value for value in (existing.source_position, item.source_position) if value is not None
                 ) if existing.source_position is not None or item.source_position is not None else None,
+                "lecture_hours": existing.lecture_hours if existing.lecture_hours is not None else item.lecture_hours,
+                "practice_hours": existing.practice_hours if existing.practice_hours is not None else item.practice_hours,
+                "lab_hours": existing.lab_hours if existing.lab_hours is not None else item.lab_hours,
+                "self_study_hours": existing.self_study_hours if existing.self_study_hours is not None else item.self_study_hours,
+                "is_elective": existing.is_elective if existing.is_elective is not None else item.is_elective,
+                "course_block": existing.course_block if existing.course_block is not None else item.course_block,
+                "practice_type": existing.practice_type if existing.practice_type is not None else item.practice_type,
+                "provenance": tuple(dict.fromkeys((*existing.provenance, *item.provenance))),
             }
         )
         logger.warning(
