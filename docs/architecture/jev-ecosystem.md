@@ -131,4 +131,3 @@ analytics or source-of-truth domain state.
 All Jev flags default to disabled. Live enablement requires provider ownership,
 secrets/rotation, valid heldout calibration, health checks, benchmark evidence,
 security review and a tested rollback.
-
