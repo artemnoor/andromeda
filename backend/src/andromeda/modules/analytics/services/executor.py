@@ -26,7 +26,7 @@ from ..contracts.query import (
     QueryScope,
     QuerySpec,
 )
-from ..contracts.results import AnalyticsResult, AnalyticsResultStatus, AnalyticsRow
+from ..contracts.results import AnalyticsResult, AnalyticsResultStatus, AnalyticsRow, MetricExplanation
 from ..domain.metric_registry import MetricRegistry
 from ..repository.queries import ProjectionQueryReader
 from .aggregation import aggregate_metrics
@@ -54,7 +54,12 @@ class AnalyticsExecutor:
             if cached is not None:
                 return cached
         definitions = tuple(self._registry.get(metric, entity_type=spec.entity, aggregation=spec.aggregation) for metric in spec.metrics)
-        projections = tuple(projection for projection in self._reader.list(program_ids=spec.scope_ids if spec.scope is QueryScope.PROGRAM else ()) if _matches_scope(projection, spec) and _matches_filters(projection, spec.filters, self._registry, spec.entity))
+        query_method = getattr(self._reader, "query", None)
+        if callable(query_method):
+            candidate_projections = query_method(spec, registry=self._registry)
+        else:
+            candidate_projections = self._reader.list(program_ids=spec.scope_ids if spec.scope is QueryScope.PROGRAM else ())
+        projections = tuple(projection for projection in candidate_projections if _matches_scope(projection, spec) and _matches_filters(projection, spec.filters, self._registry, spec.entity))
         storage_codes = tuple(definition.source_feature_code or definition.code for definition in definitions)
         evidence = self._reader.evidence(
             tuple(projection.program_id for projection in projections),
@@ -78,6 +83,16 @@ class AnalyticsExecutor:
             classifier_versions=tuple(sorted({value.quality.classifier_version for value in projections if value.quality.classifier_version})),
             provenance=tuple(value for projection in projections for value in projection.provenance)[:1000],
             source_gaps=tuple(value for projection in projections for value in projection.source_gaps)[:1000],
+            population_size=len(projections),
+            included_count=sum(1 for row in rows if any(metric.value is not None for metric in row.metrics.values())),
+            missing_count=sum(1 for row in rows if any(metric.value is None for metric in row.metrics.values())),
+            calculation_metadata={
+                "basis_policy": "projection_basis",
+                "aggregation": spec.aggregation.value,
+                "missing_policy": "exclude_missing_mark_partial",
+                "projection_status": "active_only",
+            },
+            explanations=_explanations(definitions, rows, len(projections)),
         )
         if self._cache is not None:
             self._cache.put(
@@ -111,6 +126,10 @@ class AnalyticsExecutor:
                     metrics=metric_values,
                     quality=_row_quality(metric_values.values()),
                     evidence=tuple(value for value in evidence if value.program_id in {projection.program_id for projection in group}),
+                    population_size=len(group),
+                    included_count=sum(1 for metric in metric_values.values() if metric.value is not None),
+                    missing_count=sum(1 for metric in metric_values.values() if metric.value is None),
+                    evidence_status="available" if evidence else "partial",
                 )
             )
         return tuple(rows)
@@ -128,12 +147,81 @@ def _row_for_projection(projection: ProgramProjection, evidence: tuple[Projectio
         metrics=metric_values,
         quality=_row_quality(metric_values.values()),
         evidence=row_evidence,
+        population_size=1,
+        included_count=sum(1 for metric in metric_values.values() if metric.value is not None),
+        missing_count=sum(1 for metric in metric_values.values() if metric.value is None),
+        evidence_status="available" if row_evidence else "partial",
     )
+
+
+def _explanations(
+    definitions: tuple[MetricDefinition, ...],
+    rows: tuple[AnalyticsRow, ...],
+    population_size: int,
+) -> tuple[MetricExplanation, ...]:
+    result: list[MetricExplanation] = []
+    for definition in definitions:
+        observations = tuple(row.metrics.get(definition.code) for row in rows)
+        available = tuple(metric for metric in observations if metric is not None and metric.value is not None)
+        basis = next((metric.basis.value for metric in available if metric.basis is not None), None)
+        evidence_count = sum(
+            1
+            for row in rows
+            for evidence in row.evidence
+            if evidence.metric_code == (definition.source_feature_code or definition.code)
+        )
+        result.append(
+            MetricExplanation(
+                metric_code=definition.code,
+                definition=definition,
+                basis=basis,
+                population_size=population_size,
+                included_count=len(available),
+                missing_count=population_size - len(available),
+                evidence_count=evidence_count,
+            )
+        )
+    return tuple(result)
 
 
 def _metric_for_projection(projection: ProgramProjection, definition: MetricDefinition, filters: tuple[QueryFilter, ...]) -> ProjectionMetric:
     code = definition.code
     source = definition.source_feature_code
+    if code in {"first_programming_semester", "first_ai_semester"}:
+        feature_code = "programming" if code == "first_programming_semester" else "ai_ml"
+        semester = projection.timeline.first_feature_semester.get(feature_code)
+        if semester is None:
+            return ProjectionMetric(code=code, unit=definition.unit, status=ProjectionDataQualityStatus.INSUFFICIENT_DATA)
+        return ProjectionMetric(
+            code=code,
+            value=Decimal(semester),
+            unit=definition.unit,
+            basis=projection.workload.basis,
+            coverage=Decimal("1"),
+            confidence=projection.quality.confidence,
+            status=ProjectionDataQualityStatus.AVAILABLE,
+            provenance=projection.provenance,
+        )
+    if code in {"math_first_year_share", "math_late_year_share"}:
+        by_semester = projection.timeline.feature_by_semester.get("mathematics", {})
+        selected = {
+            semester: value
+            for semester, value in by_semester.items()
+            if semester.isdigit() and (int(semester) <= 2 if code == "math_first_year_share" else int(semester) >= 5)
+        }
+        if not selected:
+            return ProjectionMetric(code=code, unit=definition.unit, status=ProjectionDataQualityStatus.INSUFFICIENT_DATA)
+        value = sum(selected.values(), Decimal("0"))
+        return ProjectionMetric(
+            code=code,
+            value=value,
+            unit=definition.unit,
+            basis=projection.workload.basis,
+            coverage=Decimal("1"),
+            confidence=projection.quality.confidence,
+            status=ProjectionDataQualityStatus.AVAILABLE,
+            provenance=projection.provenance,
+        )
     if source:
         metric = projection.semantic_features.get(source)
         if metric is None:
@@ -145,7 +233,7 @@ def _metric_for_projection(projection: ProgramProjection, definition: MetricDefi
         return _scalar_metric(code, definition.unit, projection.workload.total_credits, projection)
     if code == "exam_count":
         return _scalar_metric(code, definition.unit, projection.assessment.exam_count, projection)
-    if code in {"passing_score", "tuition", "budget_places"}:
+    if code in {"passing_score", "historical_passing_score", "tuition", "budget_places"}:
         return _admission_metric(code, definition.unit, projection, filters)
     return ProjectionMetric(code=code, unit=definition.unit)
 
@@ -160,7 +248,7 @@ def _admission_metric(code: str, unit: str, projection: ProgramProjection, filte
     offerings = tuple(offering for offering in projection.admission_offerings if _offering_matches(offering, filters))
     values: list[Decimal] = []
     for offering in offerings:
-        if code == "passing_score":
+        if code in {"passing_score", "historical_passing_score"}:
             values.extend(score.score for score in offering.passing_scores if score.score is not None)
         elif code == "tuition":
             values.extend(cost.amount for cost in offering.tuition)

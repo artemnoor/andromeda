@@ -8,10 +8,16 @@ from typing import Protocol
 from pydantic import Field
 
 from andromeda.modules.analytics.contracts.results import AnalyticsResult
+from andromeda.modules.presentation.contracts.policy import (
+    PresentationCapabilities,
+    ResponseFormat,
+    ResponseRequest,
+)
+from andromeda.modules.semantic.contracts.public import SemanticFeatureValue
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.versions import DECISION_POLICY_VERSION
 
-from .public import QuerySession
+from .public import ConversationIntent, QuerySession
 
 
 class DecisionAction(StrEnum):
@@ -21,6 +27,28 @@ class DecisionAction(StrEnum):
     COMPARE = "compare"
     BUILD_REPORT = "build_report"
     OPEN_MINI_APP = "open_mini_app"
+
+
+class DecisionModelOperation(StrEnum):
+    RESOLVE_INTENT = "resolve_intent"
+    RESOLVE_METRIC = "resolve_metric"
+    CHOOSE_NEXT_ACTION = "choose_next_action"
+    CHOOSE_PRESENTATION = "choose_presentation"
+    CLASSIFY_SEMANTIC_FEATURES = "classify_semantic_features"
+
+
+class DecisionModelSource(StrEnum):
+    DETERMINISTIC = "deterministic"
+    JEV = "jev"
+    FALLBACK = "fallback"
+    SHADOW = "shadow"
+
+
+class ConfidenceBucket(StrEnum):
+    UNAVAILABLE = "unavailable"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
 
 
 class DataCapabilities(ContractModel):
@@ -38,6 +66,84 @@ class DecisionPolicyResult(ContractModel):
     policy_version: str = DECISION_POLICY_VERSION
 
 
+class IntentDecision(ContractModel):
+    operation: DecisionModelOperation = DecisionModelOperation.RESOLVE_INTENT
+    intent: ConversationIntent
+    source: DecisionModelSource = DecisionModelSource.DETERMINISTIC
+    confidence: ConfidenceBucket = ConfidenceBucket.HIGH
+    model_version: str = "rule-based.v1"
+    assumptions: tuple[str, ...] = Field(default=(), max_length=8)
+    fallback_reason: str | None = Field(default=None, max_length=256)
+
+
+class MetricDecision(ContractModel):
+    operation: DecisionModelOperation = DecisionModelOperation.RESOLVE_METRIC
+    metric_code: str | None = Field(default=None, max_length=64)
+    candidates: tuple[str, ...] = Field(default=(), max_length=8)
+    source: DecisionModelSource = DecisionModelSource.DETERMINISTIC
+    confidence: ConfidenceBucket = ConfidenceBucket.HIGH
+    model_version: str = "rule-based.v1"
+    assumptions: tuple[str, ...] = Field(default=(), max_length=8)
+    fallback_reason: str | None = Field(default=None, max_length=256)
+
+
+class NextActionDecision(ContractModel):
+    operation: DecisionModelOperation = DecisionModelOperation.CHOOSE_NEXT_ACTION
+    decision: DecisionPolicyResult
+    source: DecisionModelSource = DecisionModelSource.DETERMINISTIC
+    confidence: ConfidenceBucket = ConfidenceBucket.HIGH
+    model_version: str = "rule-based.v1"
+    fallback_reason: str | None = Field(default=None, max_length=256)
+
+
+class PresentationDecision(ContractModel):
+    operation: DecisionModelOperation = DecisionModelOperation.CHOOSE_PRESENTATION
+    response_format: ResponseFormat
+    template: str = Field(min_length=1, max_length=128)
+    source: DecisionModelSource = DecisionModelSource.DETERMINISTIC
+    confidence: ConfidenceBucket = ConfidenceBucket.HIGH
+    model_version: str = "rule-based.v1"
+    fallback_reason: str | None = Field(default=None, max_length=256)
+
+
+class SemanticFeatureDecision(ContractModel):
+    operation: DecisionModelOperation = DecisionModelOperation.CLASSIFY_SEMANTIC_FEATURES
+    values: tuple[SemanticFeatureValue, ...] = Field(default=(), max_length=64)
+    source: DecisionModelSource = DecisionModelSource.DETERMINISTIC
+    confidence: ConfidenceBucket = ConfidenceBucket.MEDIUM
+    model_version: str = "rule-based.v1"
+    fallback_reason: str | None = Field(default=None, max_length=256)
+
+
+class DecisionModelPort(Protocol):
+    def resolve_intent(self, text: str) -> IntentDecision: ...
+
+    def resolve_metric(self, text: str, *, candidates: tuple[str, ...] = ()) -> MetricDecision: ...
+
+    def choose_next_action(
+        self,
+        session: QuerySession,
+        *,
+        available_actions: tuple[DecisionAction, ...] = tuple(DecisionAction),
+        capabilities: DataCapabilities | None = None,
+        last_result: AnalyticsResult | None = None,
+    ) -> NextActionDecision: ...
+
+    def choose_presentation(
+        self,
+        request: ResponseRequest,
+        *,
+        capabilities: PresentationCapabilities | None = None,
+    ) -> PresentationDecision: ...
+
+    def classify_semantic_features(
+        self,
+        input_text: str,
+        *,
+        feature_codes: tuple[str, ...] = (),
+    ) -> SemanticFeatureDecision: ...
+
+
 class DecisionPolicyPort(Protocol):
     def decide(
         self,
@@ -51,7 +157,16 @@ class DecisionPolicyPort(Protocol):
 
 __all__ = [
     "DataCapabilities",
+    "ConfidenceBucket",
     "DecisionAction",
+    "DecisionModelOperation",
+    "DecisionModelPort",
+    "DecisionModelSource",
     "DecisionPolicyPort",
     "DecisionPolicyResult",
+    "IntentDecision",
+    "MetricDecision",
+    "NextActionDecision",
+    "PresentationDecision",
+    "SemanticFeatureDecision",
 ]

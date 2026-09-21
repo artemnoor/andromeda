@@ -32,6 +32,21 @@ class AnalyticsRow(ContractModel):
     metrics: dict[str, ProjectionMetric]
     quality: ProjectionDataQuality
     evidence: tuple[ProjectionMetricEvidence, ...] = Field(default=(), max_length=1000)
+    population_size: int = Field(default=0, strict=True, ge=0)
+    included_count: int = Field(default=0, strict=True, ge=0)
+    missing_count: int = Field(default=0, strict=True, ge=0)
+    evidence_status: str = "available"
+
+
+class MetricExplanation(ContractModel):
+    metric_code: str
+    definition: MetricDefinition
+    basis: str | None = None
+    population_size: int = Field(strict=True, ge=0)
+    included_count: int = Field(strict=True, ge=0)
+    missing_count: int = Field(strict=True, ge=0)
+    evidence_count: int = Field(strict=True, ge=0)
+    truncated: bool = False
 
 
 class AnalyticsResult(ContractModel):
@@ -46,6 +61,11 @@ class AnalyticsResult(ContractModel):
     classifier_versions: tuple[str, ...] = ()
     provenance: tuple[SourceAttribution, ...] = Field(default=(), max_length=1000)
     source_gaps: tuple[SourceGapReference, ...] = Field(default=(), max_length=1000)
+    population_size: int = Field(default=0, strict=True, ge=0)
+    included_count: int = Field(default=0, strict=True, ge=0)
+    missing_count: int = Field(default=0, strict=True, ge=0)
+    calculation_metadata: dict[str, str] = Field(default_factory=dict, max_length=32)
+    explanations: tuple[MetricExplanation, ...] = Field(default=(), max_length=8)
 
 
-__all__ = ["AnalyticsResult", "AnalyticsResultStatus", "AnalyticsRow"]
+__all__ = ["AnalyticsResult", "AnalyticsResultStatus", "AnalyticsRow", "MetricExplanation"]

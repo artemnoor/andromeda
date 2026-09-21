@@ -16,8 +16,18 @@ from andromeda.modules.conversation.contracts.policy import (
     DecisionPolicyPort,
 )
 from andromeda.modules.conversation.contracts.ports import QuerySessionRepository
-from andromeda.modules.conversation.contracts.public import QuerySession, QuerySessionId
-from andromeda.modules.entity_resolution.contracts.public import ResolutionEntityType
+from andromeda.modules.conversation.contracts.public import (
+    ConversationSlot,
+    NextAction,
+    QuerySession,
+    QuerySessionId,
+)
+from andromeda.modules.entity_resolution.contracts.ports import EntityResolverGateway
+from andromeda.modules.entity_resolution.contracts.public import (
+    ResolutionContext,
+    ResolutionEntityType,
+    ResolutionStatus,
+)
 from andromeda.modules.presentation.contracts.envelope import ResponseEnvelope
 from andromeda.modules.presentation.contracts.policy import (
     ResponseFormat,
@@ -47,6 +57,7 @@ class AssistantService:
         admission_fit: AdmissionFitService,
         programs: ProgramReader,
         *,
+        entity_resolver: EntityResolverGateway | None = None,
         ttl_seconds: int = 86_400,
     ) -> None:
         self._sessions = sessions
@@ -56,6 +67,7 @@ class AssistantService:
         self._analytics = analytics
         self._admission_fit = admission_fit
         self._programs = programs
+        self._entity_resolver = entity_resolver
         self._ttl_seconds = ttl_seconds
 
     def handle(
@@ -74,8 +86,10 @@ class AssistantService:
         session = existing or _new_session(owner_scope, timestamp, self._ttl_seconds)
         base_revision = session.revision if existing is not None else None
         updated = self._conversation.apply(session, text, expected_revision=expected_revision, now=timestamp)
+        updated = self._resolve_entities(updated)
         decision = self._decision_policy.decide(updated)
         if decision.action is DecisionAction.ASK_CLARIFICATION:
+            updated = updated.model_copy(update={"last_question": decision.question})
             self._save(updated, base_revision)
             return AssistantResult(
                 state=AssistantState.NEEDS_CLARIFICATION,
@@ -122,6 +136,57 @@ class AssistantService:
                 admission_result=admission_result,
             )
         raise ContractError(ErrorCode.INSUFFICIENT_DATA, "Admission search has no bounded candidate programs")
+
+    def _resolve_entities(self, session: QuerySession) -> QuerySession:
+        if self._entity_resolver is None:
+            return session
+        resolved = {key: tuple(values) for key, values in session.entities.items()}
+        unresolved: list[str] = []
+        for entity_type in (
+            ResolutionEntityType.UNIVERSITY,
+            ResolutionEntityType.DIRECTION,
+            ResolutionEntityType.PROGRAM,
+        ):
+            queries = tuple(resolved.get(entity_type, ()))
+            if not queries:
+                continue
+            selected: list[str] = []
+            university_ids = tuple(resolved.get(ResolutionEntityType.UNIVERSITY, ()))
+            context_university = (
+                university_ids[0]
+                if len(university_ids) == 1 and university_ids[0].startswith("university:")
+                else None
+            )
+            context = ResolutionContext(university_id=context_university) if context_university else None
+            for query in queries:
+                result = self._entity_resolver.resolve(entity_type, query, context=context, limit=10)
+                if result.status in {ResolutionStatus.EXACT, ResolutionStatus.RESOLVED} and result.selected_id:
+                    selected.append(result.selected_id)
+                else:
+                    unresolved.append(f"{entity_type.value}:{query}")
+            if selected:
+                resolved[entity_type] = tuple(dict.fromkeys(selected))
+        if not unresolved:
+            return session.model_copy(
+                update={
+                    "entities": resolved,
+                    "unresolved_entities": (),
+                    "frame": session.frame.model_copy(update={"entities": resolved}),
+                }
+            )
+        university_unresolved = any(item.startswith("university:") for item in unresolved)
+        next_action = NextAction.ASK_FOR_UNIVERSITY_SCOPE if university_unresolved else NextAction.ASK_FOR_ENTITY
+        missing = (ConversationSlot.UNIVERSITY_SCOPE,) if university_unresolved else (ConversationSlot.ENTITY,)
+        return session.model_copy(
+            update={
+                "entities": resolved,
+                "unresolved_entities": tuple(unresolved),
+                "missing_slots": missing,
+                "next_action": next_action,
+                "last_action": next_action,
+                "frame": session.frame.model_copy(update={"entities": resolved, "missing_fields": missing}),
+            }
+        )
 
     def _candidate_program_ids(self, session: QuerySession) -> tuple[ProgramId, ...]:
         programs = tuple(session.entities.get(ResolutionEntityType.PROGRAM, ()))

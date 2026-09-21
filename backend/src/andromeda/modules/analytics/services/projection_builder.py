@@ -108,6 +108,12 @@ class ProgramProjectionBuilder:
             total_workload,
             basis,
         )
+        feature_by_semester, first_feature_semester = _semantic_timeline(
+            curriculum.items,
+            item_workloads,
+            semantic_features,
+            total_workload,
+        )
         semantic_versions = tuple(
             value.feature.semantic_version
             for values in semantic_features.values()
@@ -143,6 +149,8 @@ class ProgramProjectionBuilder:
             timeline=ProjectionTimeline(
                 by_semester=_shares(semester_workload, total_workload),
                 by_course_year={},
+                feature_by_semester=feature_by_semester,
+                first_feature_semester=first_feature_semester,
             ),
             activity_signals=activity_share,
             assessment=AssessmentSummary(
@@ -196,7 +204,7 @@ class ProgramProjectionBuilder:
             values = by_code[code]
             for item, assignment in values:
                 feature = assignment.feature
-                if feature.status is not SemanticValueStatus.AVAILABLE or feature.value is None:
+                if feature.status is not SemanticValueStatus.AVAILABLE or feature.value is None or feature.review_status.value == "rejected":
                     continue
                 item_workload = item_workloads[item.id]
                 available_workload += item_workload
@@ -235,6 +243,34 @@ class ProgramProjectionBuilder:
                 provenance=unique_provenance,
             )
         return metrics, evidence
+
+
+def _semantic_timeline(
+    items: tuple[CurriculumItem, ...],
+    item_workloads: Mapping[str, Decimal],
+    semantic_features: Mapping[str, tuple[CurriculumItemSemanticFeature, ...]],
+    total_workload: Decimal | None,
+) -> tuple[dict[str, dict[str, Decimal]], dict[str, int]]:
+    if total_workload is None or total_workload <= ZERO:
+        return {}, {}
+    by_semester: dict[str, dict[str, Decimal]] = defaultdict(lambda: defaultdict(lambda: ZERO))
+    for item in items:
+        if item.semester is None:
+            continue
+        for assignment in semantic_features.get(item.id, ()):
+            feature = assignment.feature
+            if feature.status is not SemanticValueStatus.AVAILABLE or feature.value is None or feature.review_status.value == "rejected":
+                continue
+            code = _feature_code(feature.feature_id)
+            by_semester[code][str(item.semester)] += item_workloads[item.id] * feature.value
+    normalized: dict[str, dict[str, Decimal]] = {}
+    first: dict[str, int] = {}
+    for code, workload in by_semester.items():
+        normalized[code] = _shares(dict(workload), total_workload)
+        numeric_semesters = tuple(int(value) for value in workload if value.isdigit())
+        if numeric_semesters:
+            first[code] = min(numeric_semesters)
+    return normalized, first
 
 
 class ProgramProjectionService:

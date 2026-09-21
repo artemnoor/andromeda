@@ -83,5 +83,21 @@ function assistantText(result: AssistantQueryResponse): string {
   if (result.state !== "complete") {
     return [result.question, ...result.options.map((option) => `• ${option}`)].filter(Boolean).join("\n") || "Уточните запрос.";
   }
-  return result.response?.text || "Результат готов.";
+  const envelope = result.response;
+  const plan = envelope?.plan;
+  const rows = plan?.data?.rows ?? envelope?.data?.rows;
+  const rowLines = Array.isArray(rows)
+    ? rows.slice(0, 5).flatMap((row) => {
+        if (!row || typeof row !== "object") return [];
+        const item = row as Record<string, unknown>;
+        const metrics = item.metrics && typeof item.metrics === "object" ? item.metrics as Record<string, unknown> : {};
+        const values = Object.entries(metrics).map(([code, metric]) => {
+          const value = metric && typeof metric === "object" ? (metric as Record<string, unknown>).value : metric;
+          return `${code}: ${value === null || value === undefined ? "нет данных" : String(value)}`;
+        });
+        return [`• ${String(item.entity_id ?? "Результат")}${values.length ? ` — ${values.join(", ")}` : ""}`];
+      })
+    : [];
+  const sourceNote = plan?.has_source_gaps ? "Есть пробелы в исходных данных — проверьте evidence." : "Расчёт выполнен по доступным source-backed данным.";
+  return [plan?.text || envelope?.text || "Результат готов.", ...rowLines, sourceNote].join("\n");
 }

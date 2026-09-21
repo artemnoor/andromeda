@@ -25,6 +25,7 @@ CORE_SUBJECT_MODULES = (
 )
 OPTIONAL_ANALYTICS_MODULES = (
     "semantic",
+    "program_analytics",
     "analytics",
     "entity_resolution",
     "conversation",

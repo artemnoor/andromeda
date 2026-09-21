@@ -26,6 +26,12 @@ from andromeda.modules.disciplines.contracts.public import (
     area_catalog,
 )
 from andromeda.modules.analytics.services.projection_builder import ProgramProjectionService
+from andromeda.modules.program_analytics.contracts.public import (
+    DerivedRefreshOutcome,
+    DerivedRefreshPort,
+    DerivedRefreshRequest,
+    DerivedRefreshStatus,
+)
 from andromeda.modules.semantic.domain import DEFAULT_SEMANTIC_FEATURES
 from andromeda.modules.semantic.services.enrichment import SemanticEnrichmentService
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel
@@ -37,6 +43,11 @@ from andromeda.shared.contracts.errors import (
     ErrorDetail,
 )
 from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
+from andromeda.shared.contracts.versions import (
+    ANALYTICS_PROJECTION_SCHEMA_VERSION,
+    SEMANTIC_CLASSIFIER_VERSION,
+    SEMANTIC_TAXONOMY_VERSION,
+)
 
 from ..database.models import (
     AssessmentTypeModel,
@@ -89,10 +100,12 @@ class SqlAlchemyIngestionRepository:
         self,
         engine: Any,
         *,
+        derived_refresh: DerivedRefreshPort | None = None,
         semantic_enrichment: SemanticEnrichmentService | None = None,
         projection_service: ProgramProjectionService | None = None,
     ) -> None:
         self._factory = session_factory(engine)
+        self._derived_refresh = derived_refresh
         self._semantic_enrichment = semantic_enrichment
         self._projection_service = projection_service
 
@@ -290,7 +303,33 @@ class SqlAlchemyIngestionRepository:
         except Exception:
             logger.exception("ingest_audit_complete_failed run_id=%s", resolved_run_id)
             raise
-        if self._semantic_enrichment is not None:
+        if self._derived_refresh is not None:
+            try:
+                derived_request = DerivedRefreshRequest(
+                    ingest_run_id=resolved_run_id,
+                    university_id=canonical.university.id,
+                    affected_program_ids=tuple(program.id for program in canonical.programs),
+                    source_hashes=tuple(source.content_sha256 for source in canonical.sources if source.content_sha256),
+                    semantic_version=SEMANTIC_TAXONOMY_VERSION,
+                    classifier_version=SEMANTIC_CLASSIFIER_VERSION,
+                    projection_version=ANALYTICS_PROJECTION_SCHEMA_VERSION,
+                    programs=canonical.programs,
+                    disciplines=canonical.disciplines,
+                    curricula=canonical.curricula,
+                    admissions=canonical.admissions,
+                )
+                derived_outcome = self._derived_refresh.refresh(derived_request)
+                self._mark_derived_refresh(resolved_run_id, derived_outcome)
+                logger.info(
+                    "ingest_derived_refresh_observed ingest_run_id=%s status=%s refreshed_programs=%d",
+                    resolved_run_id,
+                    derived_outcome.status,
+                    derived_outcome.refreshed_program_count,
+                )
+            except Exception as exc:
+                self._mark_derived_refresh_failed(resolved_run_id, exc)
+                logger.exception("ingest_derived_refresh_failed ingest_run_id=%s", resolved_run_id)
+        elif self._semantic_enrichment is not None:
             try:
                 derived_run = self._semantic_enrichment.enrich(
                     university_id=canonical.university.id,
@@ -311,7 +350,9 @@ class SqlAlchemyIngestionRepository:
                         resolved_run_id,
                         len(projections),
                     )
+                self._mark_derived_refresh_legacy(resolved_run_id)
             except Exception:
+                self._mark_derived_refresh_failed(resolved_run_id, RuntimeError("legacy_derived_refresh_failed"))
                 logger.exception("ingest_derived_projection_failed ingest_run_id=%s", resolved_run_id)
         logger.info(
             "ingest_transaction_commit run_id=%s programs=%d curriculum_items=%d inserted=%d updated=%d unchanged=%d removed=%d",
@@ -502,6 +543,37 @@ class SqlAlchemyIngestionRepository:
                     run_id,
                     previous_status,
                 )
+
+    def _mark_derived_refresh(self, run_id: str, outcome: DerivedRefreshOutcome) -> None:
+        with self._factory() as session, session.begin():
+            run = session.get(IngestRunModel, run_id)
+            if run is None:
+                raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest audit row disappeared after derived refresh")
+            if outcome.status is DerivedRefreshStatus.COMPLETED:
+                run.projection_status = "reconciled"
+                run.recovery_reason = None
+            else:
+                run.projection_status = "failed"
+                run.recovery_reason = outcome.recovery_reason or "derived_refresh_incomplete"
+
+    def _mark_derived_refresh_legacy(self, run_id: str) -> None:
+        with self._factory() as session, session.begin():
+            run = session.get(IngestRunModel, run_id)
+            if run is not None:
+                run.projection_status = "reconciled"
+                run.recovery_reason = None
+
+    def _mark_derived_refresh_failed(self, run_id: str, error: Exception) -> None:
+        with self._factory() as session, session.begin():
+            run = session.get(IngestRunModel, run_id)
+            if run is not None:
+                run.projection_status = "failed"
+                run.recovery_reason = "derived_refresh_failed"
+        logger.warning(
+            "ingest_derived_refresh_status_failed run_id=%s error_code=%s",
+            run_id,
+            type(error).__name__,
+        )
 
     def _mark_failed(self, run_id: str, error: Exception) -> None:
         error_code = _safe_error_code(error)

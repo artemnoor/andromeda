@@ -11,11 +11,13 @@ from decimal import Decimal
 
 from andromeda.modules.analytics.contracts.metrics import MetricAggregation
 from andromeda.modules.analytics.contracts.query import QueryScope
+from andromeda.shared.contracts.errors import ContractError, ErrorCode
 
 from ..contracts.public import ConversationIntent, ExamScore, ParsedQuery
 
 _METRIC_ALIASES = {
     "математик": "math_share",
+    "математическая нагрузка": "math_share",
     "математике": "math_share",
     "математики": "math_share",
     "матан": "math_share",
@@ -23,6 +25,9 @@ _METRIC_ALIASES = {
     "кодинг": "programming_share",
     "искусственн интеллект": "ai_share",
     "машинн обучен": "ai_share",
+    "искусственный интеллект": "ai_share",
+    "машинное обучение": "ai_share",
+    "ai": "ai_share",
     "физик": "physics_share",
     "бизнес": "business_share",
     "аналитик": "analytics_share",
@@ -44,11 +49,19 @@ _SUBJECT_ALIASES = (
 
 class RuleBasedQueryParser:
     version = "conversation-parser.v1"
+    max_input_length = 2000
 
     def parse(self, text: str) -> ParsedQuery:
-        if not text or not text.strip():
+        if not isinstance(text, str):
+            raise ContractError(ErrorCode.INVALID_QUERY, "Query text must be a string")
+        if len(text) > self.max_input_length:
+            raise ContractError(ErrorCode.INVALID_QUERY, "Query text exceeds the supported size")
+        if any(ord(character) < 32 and character not in "\t\n\r" for character in text):
+            raise ContractError(ErrorCode.INVALID_QUERY, "Query text contains unsupported control characters")
+        cleaned = " ".join(text.split())
+        if not cleaned:
             return ParsedQuery(unresolved_text="")
-        normalized = text.casefold().replace("ё", "е")
+        normalized = cleaned.casefold().replace("ё", "е")
         exam_scores = _parse_exam_scores(normalized)
         total_score = _parse_total_score(normalized)
         metric_codes = _parse_metrics(normalized)
@@ -68,7 +81,9 @@ class RuleBasedQueryParser:
             exam_scores=exam_scores,
             aggregation=aggregation,
             scope=scope,
-            unresolved_text=text.strip(),
+            semester=_parse_semester(normalized),
+            course_year=_parse_course_year(normalized),
+            unresolved_text=cleaned[:1000],
         )
 
 
@@ -105,10 +120,33 @@ def _parse_metrics(text: str) -> tuple[str, ...]:
 
 
 def _parse_canonical_entities(text: str) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
-    universities = tuple(dict.fromkeys(re.findall(r"\buniversity:[a-z0-9-]+\b", text)))
-    directions = tuple(dict.fromkeys(re.findall(r"\bdirection:[a-z0-9-]+:[0-9]{2}\.[0-9]{2}\.[0-9]{2}\b", text)))
+    universities = list(re.findall(r"\buniversity:[a-z0-9-]+\b", text))
+    if "бауман" in text:
+        universities.append("бауманка")
+    universities.extend(alias for alias in ("мгту", "вшэ", "hse", "мифи") if alias in text)
+    universities = list(dict.fromkeys(universities))
+    directions = list(re.findall(r"\bdirection:[a-z0-9-]+:[0-9]{2}\.[0-9]{2}\.[0-9]{2}\b", text))
+    directions.extend(code for code in re.findall(r"\b[0-9]{2}\.[0-9]{2}\.[0-9]{2}\b", text))
+    if "прикладн" in text and "информат" in text:
+        directions.append("прикладная информатика")
+    if "вычислительн" in text and "техник" in text:
+        directions.append("информатика и вычислительная техника")
+    directions = list(dict.fromkeys(directions))
     programs = tuple(dict.fromkeys(re.findall(r"\bprogram:[a-z0-9-]+:[0-9]{2}\.[0-9]{2}\.[0-9]{2}-[0-9]{2,3}\b", text)))
-    return universities, directions, programs
+    return tuple(universities), tuple(directions), programs
+
+
+def _parse_semester(text: str) -> int | None:
+    match = re.search(r"\b(?:семестр|семестре|семестра)\s*(?:№\s*)?(1[0-2]|[1-9])\b", text)
+    return int(match.group(1)) if match else None
+
+
+def _parse_course_year(text: str) -> int | None:
+    match = re.search(r"\b(?:курс|курсе|курса)\s*(1[0-2]|[1-9])\b|\b(1[0-2]|[1-9])\s*(?:курс|курсе|курса)\b", text)
+    if not match:
+        return None
+    value = match.group(1) or match.group(2)
+    return int(value)
 
 
 __all__ = ["RuleBasedQueryParser"]

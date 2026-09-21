@@ -204,9 +204,30 @@ class TelegramFlows:
             program_id
             for row in rows
             if isinstance(row, dict)
-            for program_id in row.get("program_ids", ())
+            for program_id in (row.get("entity_id"), *row.get("program_ids", ()))
             if isinstance(program_id, str)
         )[:3]
+        template = getattr(envelope, "template", "")
+        analytics_templates = {"metric-comparison", "metric-cards", "analytics-report", "analytics-explorer"}
+        if template in analytics_templates:
+            if not ids:
+                return None
+            metric = next(
+                (
+                    str(code)
+                    for row in rows
+                    if isinstance(row, dict)
+                    for metrics in (row.get("metrics", {}),)
+                    if isinstance(metrics, dict)
+                    for code in metrics
+                ),
+                "math_share",
+            )
+            return await self._renderer.render(
+                "analytics",
+                {"ids": ",".join(dict.fromkeys(ids)), "metric": metric, "theme": "light"},
+                session_cookie=self._sessions.get_cookie(owner),
+            )
         if len(ids) < 2:
             return None
         return await self._renderer.render(

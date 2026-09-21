@@ -1,6 +1,6 @@
 """The bot output policy is explicit and testable."""
 
-IMAGE_TEMPLATES = frozenset({"catalog", "program", "compare", "shortlist", "chances", "radar", "curriculum", "digest"})
+IMAGE_TEMPLATES = frozenset({"catalog", "program", "compare", "shortlist", "chances", "radar", "curriculum", "digest", "analytics"})
 
 
 def requires_image(template: str) -> bool:

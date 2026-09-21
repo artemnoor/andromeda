@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from andromeda.modules.analytics.contracts.public import ProgramProjection
+from andromeda.modules.program_analytics.contracts.public import ProgramProjection
 
 from .entities import ActivityCode, ProgramFingerprint
 

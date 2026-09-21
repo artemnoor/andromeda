@@ -59,6 +59,15 @@ class SemanticValueStatus(StrEnum):
     UNAVAILABLE = "unavailable"
 
 
+class SemanticReviewStatus(StrEnum):
+    """Human-review state for inferred semantic values."""
+
+    UNREVIEWED = "unreviewed"
+    REVIEWED = "reviewed"
+    REJECTED = "rejected"
+    NEEDS_REVIEW = "needs_review"
+
+
 class SemanticEnrichmentRunStatus(StrEnum):
     RUNNING = "running"
     COMPLETED = "completed"
@@ -73,6 +82,13 @@ class SemanticFeature(ContractModel):
     feature_group: SemanticFeatureGroup
     value_type: SemanticValueType = SemanticValueType.INTENSITY
     semantic_version: SemanticVersion = SEMANTIC_TAXONOMY_VERSION
+    definition_version: SemanticVersion = SEMANTIC_TAXONOMY_VERSION
+    active: bool = True
+    retired_at: datetime | None = None
+
+
+class SemanticFeatureDefinition(SemanticFeature):
+    """Versioned registry definition; codes remain data, not Python enums."""
 
 
 class SemanticClassificationEvidence(ContractModel):
@@ -88,6 +104,7 @@ class SemanticFeatureValue(ContractModel):
     status: SemanticValueStatus = SemanticValueStatus.AVAILABLE
     confidence: Decimal = Field(strict=True, ge=Decimal("0"), le=Decimal("1"), max_digits=5, decimal_places=4)
     classification_method: SemanticClassificationMethod
+    review_status: SemanticReviewStatus = SemanticReviewStatus.UNREVIEWED
     classifier_version: SemanticVersion = SEMANTIC_CLASSIFIER_VERSION
     semantic_version: SemanticVersion = SEMANTIC_TAXONOMY_VERSION
     source_hash: SourceHash | None = None
@@ -156,6 +173,17 @@ class SemanticClassifierPort(Protocol):
         """Return the deterministic policy version used by this classifier."""
 
 
+class SemanticFeatureRegistryPort(Protocol):
+    def get_by_codes(
+        self,
+        codes: tuple[str, ...],
+        *,
+        definition_version: SemanticVersion | None = None,
+    ) -> tuple[SemanticFeatureDefinition, ...]: ...
+
+    def list_active(self, definition_version: SemanticVersion) -> tuple[SemanticFeatureDefinition, ...]: ...
+
+
 __all__ = [
     "CurriculumItemSemanticFeature",
     "DisciplineSemanticDefault",
@@ -167,8 +195,11 @@ __all__ = [
     "SemanticEnrichmentRun",
     "SemanticEnrichmentRunStatus",
     "SemanticFeature",
+    "SemanticFeatureDefinition",
     "SemanticFeatureGroup",
+    "SemanticFeatureRegistryPort",
     "SemanticFeatureValue",
+    "SemanticReviewStatus",
     "SemanticValueStatus",
     "SemanticValueType",
 ]

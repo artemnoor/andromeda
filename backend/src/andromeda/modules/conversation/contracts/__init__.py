@@ -16,6 +16,9 @@ __all__ = [
     "AssistantResult",
     "AssistantState",
     "ConversationCompilation",
+    "EvaluationCase",
+    "EvaluationCaseResult",
+    "EvaluationReport",
     "ConversationIntent",
     "ConversationSlot",
     "ExamScore",
@@ -24,3 +27,4 @@ __all__ = [
     "QuerySession",
     "QuerySessionRepository",
 ]
+from .evaluation import EvaluationCase, EvaluationCaseResult, EvaluationReport

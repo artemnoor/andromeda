@@ -295,6 +295,24 @@ safe view/interaction payload; authoritative shortlist size before/after
 
 Для локального PostgreSQL запуска используйте [руководство PostgreSQL](postgresql.md). Без test DSN PostgreSQL-only tests явно помечаются skipped; CI обязан передавать `ANDROMEDA_POSTGRES_TEST_URL`.
 
+### Universal analytics acceptance corpus
+
+The source-backed analytics slice has deterministic fixtures for metric
+resolution and comparison, grouped mean by university, bounded ranking and
+filtering, evidence/basis/coverage explanations, admission clarification with
+no redundant questions, Jev unavailable/timeout/malformed-output fallback,
+and ResponsePlan transport conformance for Web, Telegram and future MAX.
+
+```powershell
+python backend/scripts/evaluate_decision_model.py
+python -m pytest -q tests/evaluation tests/modules/conversation tests/modules/presentation tests/infrastructure/test_jev_adapter.py
+python -m pytest -q tests/integration/test_analytics_engine.py tests/api/test_analytics_api.py tests/api/test_assistant_query.py
+```
+
+The evaluation report contains aggregate accuracy and fallback counts; it does
+not store raw user text. Jev shadow decisions are advisory until an empirical
+promotion gate exists.
+
 ## See Also
 
 - [API](api.md) — контракты, которые проверяются drift gate.

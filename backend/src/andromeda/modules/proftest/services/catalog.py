@@ -30,8 +30,9 @@ class ProftestCatalogService:
         if self._projection_reader is not None:
             projections = self._projection_reader.list()
             if projections:
-                logger.info("catalog_projection_loaded fingerprint_count=%d", len(projections))
+                logger.info("catalog_projection_loaded fingerprint_count=%d source=program_analytics", len(projections))
                 return tuple(fingerprint_from_projection(projection) for projection in projections)
+            logger.info("program_projection_fallback reason=no_active_projection")
         if isinstance(self._reader, BulkProftestCatalogReader):
             try:
                 snapshots = self._reader.list_catalog_snapshots()

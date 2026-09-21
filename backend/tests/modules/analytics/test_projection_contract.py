@@ -7,6 +7,7 @@ from andromeda.modules.analytics.contracts.public import (
     ProjectionDataQuality,
     ProjectionDataQualityStatus,
     ProjectionMetric,
+    ProjectionTimeline,
     WorkloadSummary,
 )
 from andromeda.modules.analytics.domain.basis import MetricBasis, select_workload_basis
@@ -69,3 +70,13 @@ def test_basis_selection_has_no_zero_fallback_for_missing_workload() -> None:
     assert select_workload_basis(total_hours=0, total_credits=Decimal("12")) is MetricBasis.CREDITS
     assert select_workload_basis(total_hours=120, total_credits=None) is MetricBasis.HOURS
     assert select_workload_basis(total_hours=None, total_credits=None) is MetricBasis.NORMALIZED_WORKLOAD
+
+
+def test_projection_timeline_keeps_feature_distribution_and_first_semester() -> None:
+    timeline = ProjectionTimeline(
+        by_semester={"1": Decimal("0.5"), "2": Decimal("0.5")},
+        feature_by_semester={"programming": {"2": Decimal("1")}},
+        first_feature_semester={"programming": 2},
+    )
+    assert timeline.feature_by_semester["programming"]["2"] == Decimal("1")
+    assert timeline.first_feature_semester["programming"] == 2

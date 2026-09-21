@@ -3,6 +3,7 @@
 from .ports import (
     DirectionResolver,
     DisciplineResolver,
+    EntityResolverGateway,
     MetricResolver,
     ProgramResolver,
     UniversityResolver,
@@ -20,6 +21,7 @@ __all__ = [
     "CandidateMatchReason",
     "DirectionResolver",
     "DisciplineResolver",
+    "EntityResolverGateway",
     "EntityResolutionCandidate",
     "EntityResolutionResult",
     "MetricResolver",

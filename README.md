@@ -96,6 +96,7 @@ GET /compare?programIds=<program-id-a>,<program-id-b>&scope=semester&semester=1
 | [Быстрый старт](docs/getting-started.md) | Установка и первый запуск |
 | [Архитектура](docs/architecture.md) | Модули и поток данных |
 | [Universal analytics](docs/architecture/universal-analytics.md) | Semantic layer, projections, QuerySpec и integration seams |
+| [Semantic and catalog analytics](docs/semantic-analytics.md) | Версии семантики, metric registry, evidence, rebuild/rollback и Jev fallback |
 | [Query flow](docs/architecture/query-flow.md) | Conversation state, analytics и admission compilation |
 | [API](docs/api.md) | OpenAPI endpoints и контракты |
 | [Admissions](docs/admissions.md) | Данные поступления и source gaps |

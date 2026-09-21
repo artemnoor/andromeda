@@ -17,6 +17,37 @@ FastAPI-приложение `andromeda.api.main` публикует OpenAPI н�
 
 `DisciplineResponse` сохраняет `name`/`sourceName` и дополнительно отдаёт `areaWeights` — вектор областей с весами — и `primaryArea`. Каталог областей доступен через `GET /discipline-areas`; он содержит 22 стабильных кода, название, описание и позицию для сортировки.
 
+## Универсальная аналитика и assistant query
+
+| Метод | Endpoint | Назначение |
+|---|---|---|
+| POST | `/analytics/query` | Выполняет strict typed `QuerySpec` по materialized program projections без NLP и raw SQL |
+| POST | `/assistant/query` | Принимает bounded текст, продолжает owner-bound `QuerySession` и возвращает clarification либо `ResponseEnvelope` |
+
+`/analytics/query` принимает allow-listed `entity`, `metrics`, `scope`,
+`filters`, `groupBy`, `aggregation`, `sort` и bounded `limit` (`1..100`).
+Unsupported metric/aggregation, неоднозначная сущность, неканонический ID и
+неподдержанный scope получают typed validation/contract error. Результат
+содержит population, included/missing counts, coverage, confidence, basis,
+metric explanations, provenance, source gaps и semantic/classifier versions.
+
+`/assistant/query` не использует `DecisionContext` как память диалога:
+assistant state хранится в owner-bound `query_sessions` с TTL и optimistic
+revision. Explicit user facts, deterministic inference, profile projection и
+policy defaults разделены в typed frame. Если данных недостаточно, endpoint
+возвращает минимальный следующий вопрос; если их достаточно — компилирует
+typed analytics/admission operation. Jev не обязателен: deterministic policy
+остаётся рабочим fallback.
+
+После изменения API контракт регенерируется единственным drift flow:
+
+```powershell
+python backend/scripts/export_openapi.py --out frontend-next/openapi.json
+cd frontend-next
+npm run generate-api
+npm run check-api-drift
+```
+
 ## University admin, public catalog and editorial events
 
 University console работает только в рамках account session и активной

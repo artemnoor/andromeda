@@ -16,6 +16,10 @@ from andromeda.modules.semantic.contracts.public import (
     DisciplineSemanticDefault,
     SemanticEnrichmentRun,
     SemanticEnrichmentRunStatus,
+    SemanticFeatureDefinition,
+    SemanticFeatureGroup,
+    SemanticReviewStatus,
+    SemanticValueType,
 )
 from andromeda.modules.semantic.repository.ports import SemanticEnrichmentStore
 from andromeda.shared.contracts.ids import (
@@ -25,11 +29,13 @@ from andromeda.shared.contracts.ids import (
     UniversityId,
 )
 from andromeda.shared.contracts.provenance import SourceAttribution
+from andromeda.shared.contracts.versions import SEMANTIC_TAXONOMY_VERSION
 
 from ..database.models import (
     CurriculumItemSemanticFeatureModel,
     DisciplineSemanticFeatureModel,
     SemanticEnrichmentRunModel,
+    SemanticFeatureModel,
 )
 from ..database.session import session_factory
 
@@ -37,6 +43,39 @@ from ..database.session import session_factory
 class SqlAlchemySemanticEnrichmentRepository(SemanticEnrichmentStore):
     def __init__(self, engine: Any) -> None:
         self._factory = session_factory(engine)
+
+    def list_features(self) -> tuple[SemanticFeatureDefinition, ...]:
+        return self.list_active(SEMANTIC_TAXONOMY_VERSION)
+
+    def list_active(self, definition_version: SemanticVersion) -> tuple[SemanticFeatureDefinition, ...]:
+        with self._factory() as session:
+            rows = session.scalars(
+                select(SemanticFeatureModel)
+                .where(
+                    SemanticFeatureModel.definition_version == definition_version,
+                    SemanticFeatureModel.active.is_(True),
+                )
+                .order_by(SemanticFeatureModel.code)
+            ).all()
+        return tuple(_to_feature(row) for row in rows)
+
+    def get_by_codes(
+        self,
+        codes: tuple[str, ...],
+        *,
+        definition_version: SemanticVersion | None = None,
+    ) -> tuple[SemanticFeatureDefinition, ...]:
+        if not codes:
+            return ()
+        with self._factory() as session:
+            query = select(SemanticFeatureModel).where(SemanticFeatureModel.code.in_(codes))
+            if definition_version is not None:
+                query = query.where(
+                    SemanticFeatureModel.definition_version == definition_version,
+                    SemanticFeatureModel.active.is_(True),
+                )
+            rows = session.scalars(query.order_by(SemanticFeatureModel.code)).all()
+        return tuple(_to_feature(row) for row in rows)
 
     def start_run(
         self,
@@ -235,6 +274,7 @@ def _discipline_mapping(value: DisciplineSemanticDefault) -> dict[str, object]:
         "status": feature.status.value,
         "confidence": feature.confidence,
         "classification_method": feature.classification_method.value,
+        "review_status": feature.review_status.value,
         "source_hash": feature.source_hash,
         "source_run_id": feature.source_run_id,
         "evidence_json": _json(feature.evidence),
@@ -254,6 +294,7 @@ def _item_mapping(value: CurriculumItemSemanticFeature) -> dict[str, object]:
         "status": feature.status.value,
         "confidence": feature.confidence,
         "classification_method": feature.classification_method.value,
+        "review_status": feature.review_status.value,
         "source_hash": feature.source_hash,
         "source_run_id": feature.source_run_id,
         "evidence_json": _json(feature.evidence),
@@ -281,6 +322,7 @@ def _to_item_feature(row: CurriculumItemSemanticFeatureModel) -> CurriculumItemS
         status=SemanticValueStatus(row.status),
         confidence=row.confidence,
         classification_method=SemanticClassificationMethod(row.classification_method),
+        review_status=SemanticReviewStatus(row.review_status),
         classifier_version=row.classifier_version,
         semantic_version=row.semantic_version,
         source_hash=row.source_hash,
@@ -293,6 +335,21 @@ def _to_item_feature(row: CurriculumItemSemanticFeatureModel) -> CurriculumItemS
         curriculum_item_id=row.curriculum_item_id,
         feature=feature,
         overrides_discipline_default=row.overrides_discipline_default,
+    )
+
+
+def _to_feature(row: SemanticFeatureModel) -> SemanticFeatureDefinition:
+    return SemanticFeatureDefinition(
+        id=row.id,
+        code=row.code,
+        name=row.name,
+        description=row.description,
+        feature_group=SemanticFeatureGroup(row.feature_group),
+        value_type=SemanticValueType(row.value_type),
+        definition_version=row.definition_version,
+        semantic_version=row.semantic_version,
+        active=row.active,
+        retired_at=row.retired_at,
     )
 
 

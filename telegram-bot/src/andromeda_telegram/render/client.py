@@ -15,7 +15,7 @@ from ..clients.errors import RenderError
 
 
 logger = logging.getLogger("andromeda_telegram.render")
-SUPPORTED_TEMPLATES = {"program", "compare", "shortlist", "chances", "radar", "curriculum", "digest", "catalog"}
+SUPPORTED_TEMPLATES = {"program", "compare", "shortlist", "chances", "radar", "curriculum", "digest", "catalog", "analytics"}
 
 
 class RendererClient:
@@ -41,7 +41,7 @@ class RendererClient:
             logger.debug("render_cache_hit template=%s", template)
             return cached
 
-        path = f"/og/{template}"
+        path = "/og/analytics" if template == "analytics" else f"/og/{template}"
         timestamp = str(int(time.time()))
         signature = _signature(self._secret, "GET", path, normalized, timestamp)
         headers = {

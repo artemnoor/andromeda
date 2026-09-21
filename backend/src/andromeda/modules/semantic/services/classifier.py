@@ -24,6 +24,7 @@ from ..contracts.public import (
     SemanticClassificationMethod,
     SemanticClassificationResult,
     SemanticFeatureValue,
+    SemanticReviewStatus,
     SemanticValueStatus,
 )
 from ..domain import DEFAULT_SEMANTIC_FEATURES
@@ -99,6 +100,7 @@ class RuleBasedSemanticClassifier:
                         status=SemanticValueStatus.UNKNOWN,
                         confidence=Decimal("0"),
                         classification_method=SemanticClassificationMethod.RULE,
+                        review_status=SemanticReviewStatus.NEEDS_REVIEW,
                         classifier_version=self._classifier_version,
                         semantic_version=self._taxonomy_version,
                         source_hash=input.source_hash,
@@ -125,6 +127,7 @@ class RuleBasedSemanticClassifier:
                     status=SemanticValueStatus.AVAILABLE,
                     confidence=selected[0].confidence,
                     classification_method=SemanticClassificationMethod.RULE,
+                    review_status=_review_status(selected[0].confidence),
                     classifier_version=self._classifier_version,
                     semantic_version=self._taxonomy_version,
                     source_hash=input.source_hash,
@@ -137,10 +140,12 @@ class RuleBasedSemanticClassifier:
 
         matched_count = len(matches)
         logger.info(
-            "semantic_classification_completed discipline_id=%s item_id=%s matched_features=%d taxonomy_version=%s classifier_version=%s",
+            "semantic_classification_completed discipline_id=%s item_id=%s matched_features=%d method_counts=rule:%d confidence_bucket=%s taxonomy_version=%s classifier_version=%s",
             input.discipline_id,
             input.curriculum_item_id,
             matched_count,
+            matched_count,
+            _confidence_bucket(values),
             self._taxonomy_version,
             self._classifier_version,
         )
@@ -222,6 +227,23 @@ def _insufficient_evidence_gap(input: SemanticClassificationInput) -> SourceGapR
         record_key=input.curriculum_item_id or input.discipline_id,
         can_continue=True,
     )
+
+
+def _review_status(confidence: Decimal) -> SemanticReviewStatus:
+    # These buckets are frozen from semantic corpus v1.  They are intentionally
+    # conservative: deterministic rules below 0.80 are review candidates, not
+    # facts suitable for an unqualified user-facing aggregate.
+    return SemanticReviewStatus.UNREVIEWED if confidence >= Decimal("0.80") else SemanticReviewStatus.NEEDS_REVIEW
+
+
+def _confidence_bucket(values: Iterable[SemanticFeatureValue]) -> str:
+    available = tuple(value.confidence for value in values if value.status is SemanticValueStatus.AVAILABLE)
+    if not available:
+        return "unresolved"
+    minimum = min(available)
+    if minimum >= Decimal("0.85"):
+        return "automatic_high"
+    return "automatic_low"
 
 
 def _normalize_name(value: str) -> str:

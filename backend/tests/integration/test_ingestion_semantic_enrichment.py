@@ -26,6 +26,7 @@ from andromeda.infrastructure.repositories.semantic_enrichment import (
 )
 from andromeda.ingestion.universities.bmstu import BmstuUniversityAdapter
 from andromeda.modules.semantic.services.classifier import RuleBasedSemanticClassifier
+from andromeda.modules.semantic.domain import DEFAULT_SEMANTIC_FEATURES
 from andromeda.modules.semantic.services.enrichment import SemanticEnrichmentService
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -56,8 +57,9 @@ def test_ingestion_runs_semantic_enrichment_and_reclassifies_only_changed_items(
             assert runs[1].classified_item_count == 0
             assert runs[1].unchanged_item_count == second.curriculum_item_count
             assert json.loads(runs[1].changed_item_ids_json) == []
-            assert session.scalar(select(func.count()).select_from(CurriculumItemSemanticFeatureModel)) == first.curriculum_item_count * 20
-            assert session.scalar(select(func.count()).select_from(DisciplineSemanticFeatureModel)) == first.unique_discipline_count * 20
+            feature_count = len(DEFAULT_SEMANTIC_FEATURES)
+            assert session.scalar(select(func.count()).select_from(CurriculumItemSemanticFeatureModel)) == first.curriculum_item_count * feature_count
+            assert session.scalar(select(func.count()).select_from(DisciplineSemanticFeatureModel)) == first.unique_discipline_count * feature_count
             assert session.scalar(
                 select(func.count()).select_from(CurriculumItemSemanticFeatureModel).where(
                     CurriculumItemSemanticFeatureModel.source_hash.is_(None)
@@ -67,9 +69,9 @@ def test_ingestion_runs_semantic_enrichment_and_reclassifies_only_changed_items(
                 select(func.count()).select_from(CurriculumItemSemanticFeatureModel).where(
                     CurriculumItemSemanticFeatureModel.source_run_id == first.run_id
                 )
-            ) == first.curriculum_item_count * 20
+            ) == first.curriculum_item_count * feature_count
             assert session.scalar(select(func.count()).select_from(ProgramProjectionModel)) == len(first.program_ids)
-            assert session.scalar(select(func.count()).select_from(ProgramMetricModel)) == len(first.program_ids) * 20
+            assert session.scalar(select(func.count()).select_from(ProgramMetricModel)) == len(first.program_ids) * feature_count
             assert session.scalar(select(func.count()).select_from(ProgramMetricEvidenceModel)) > 0
         projection = SqlAlchemyProgramProjectionRepository(engine).get(first.program_ids[0])
         assert projection is not None
@@ -165,5 +167,32 @@ def test_canonical_failure_does_not_create_a_derived_semantic_run(tmp_path: Path
             assert ingest_run is not None and ingest_run.status == "failed"
             assert session.scalar(select(func.count()).select_from(SemanticEnrichmentRunModel)) == 0
             assert session.scalar(select(func.count()).select_from(CurriculumItemSemanticFeatureModel)) == 0
+    finally:
+        engine.dispose()
+
+
+def test_post_commit_derived_failure_keeps_canonical_rows_and_marks_recovery(tmp_path: Path) -> None:
+    adapter = BmstuUniversityAdapter()
+    try:
+        raw, canonical = adapter.parse_sources(mode="fixture", fixture_dir=FIXTURE_DIR)
+    finally:
+        adapter.close()
+
+    class FailingDerivedRefresh:
+        def refresh(self, _request):
+            raise RuntimeError("derived store unavailable")
+
+    database_url = f"sqlite:///{(tmp_path / 'post-commit-derived-failure.db').as_posix()}"
+    engine = create_engine_for_url(database_url)
+    Base.metadata.create_all(engine)
+    try:
+        run_id = SqlAlchemyIngestionRepository(engine, derived_refresh=FailingDerivedRefresh()).ingest(raw, canonical)
+        with Session(engine) as session:
+            run = session.get(IngestRunModel, run_id)
+            assert run is not None
+            assert run.status == "completed"
+            assert run.projection_status == "failed"
+            assert run.recovery_reason == "derived_refresh_failed"
+            assert session.scalar(select(func.count()).select_from(ProgramProjectionModel)) == 0
     finally:
         engine.dispose()

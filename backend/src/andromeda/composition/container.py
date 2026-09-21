@@ -30,6 +30,12 @@ from andromeda.infrastructure.repositories.decision_analytics import (
 from andromeda.infrastructure.repositories.decision_candidates import (
     CatalogDecisionCandidateSource,
 )
+from andromeda.infrastructure.repositories.derived_refresh import (
+    SqlAlchemyDerivedRefreshAdapter,
+)
+from andromeda.infrastructure.repositories.entity_resolution import (
+    SqlAlchemyEntityResolutionRepository,
+)
 from andromeda.infrastructure.repositories.disciplines import (
     SqlAlchemyDisciplineRepository,
 )
@@ -106,6 +112,10 @@ from andromeda.modules.decision.services.candidates import DecisionCandidatePipe
 from andromeda.modules.decision.services.decision import DecisionService
 from andromeda.modules.disciplines.repository.ports import DisciplineReader
 from andromeda.modules.events.services.events import EventService
+from andromeda.modules.entity_resolution.services.resolvers import (
+    CachedEntityCatalog,
+    EntityResolverService,
+)
 from andromeda.modules.personal_route.services.personal_route import (
     PersonalRouteService,
 )
@@ -409,8 +419,14 @@ class AndromedaContainer:
     def ingestion(self) -> SqlAlchemyIngestionRepository:
         return SqlAlchemyIngestionRepository(
             self.engine,
-            semantic_enrichment=self.semantic_enrichment,
-            projection_service=self.program_projection_service,
+            derived_refresh=self.derived_refresh,
+        )
+
+    @property
+    def derived_refresh(self) -> SqlAlchemyDerivedRefreshAdapter:
+        return SqlAlchemyDerivedRefreshAdapter(
+            self.semantic_enrichment,
+            self.program_projection_service,
         )
 
     @property
@@ -429,6 +445,9 @@ class AndromedaContainer:
             cache=self.analytics_cache,
         )
 
+    def entity_resolver(self) -> EntityResolverService:
+        return EntityResolverService(CachedEntityCatalog(SqlAlchemyEntityResolutionRepository(self.engine)))
+
     def assistant_service(self, session: Session) -> AssistantService:
         return AssistantService(
             SqlAlchemyQuerySessionRepository(session),
@@ -438,6 +457,7 @@ class AndromedaContainer:
             self.analytics_executor(),
             self.admission_fit_service(session),
             self.program_reader(session),
+            entity_resolver=self.entity_resolver(),
             ttl_seconds=self.settings.profile_ttl_seconds,
         )
 

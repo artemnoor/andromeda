@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from decimal import Decimal
+from statistics import median
 
 from ..contracts.metrics import MetricAggregation
 from ..contracts.public import ProjectionDataQualityStatus, ProjectionMetric
@@ -28,6 +29,8 @@ def aggregate_metrics(values: Iterable[ProjectionMetric], aggregation: MetricAgg
         result = min(numbers)
     elif aggregation is MetricAggregation.MAX:
         result = max(numbers)
+    elif aggregation is MetricAggregation.MEDIAN:
+        result = Decimal(str(median(numbers)))
     elif aggregation is MetricAggregation.WEIGHTED_MEAN:
         selected_weights = tuple(weights)
         usable = selected_weights[: len(observations)]

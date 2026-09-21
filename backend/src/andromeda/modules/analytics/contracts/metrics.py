@@ -29,6 +29,7 @@ class MetricAggregation(StrEnum):
     WEIGHTED_MEAN = "weighted_mean"
     MIN = "min"
     MAX = "max"
+    MEDIAN = "median"
     COUNT = "count"
     DISTRIBUTION = "distribution"
 
@@ -54,6 +55,7 @@ class MetricDefinition(ContractModel):
     semantic_version: SemanticVersion = METRIC_REGISTRY_VERSION
     source_feature_code: SemanticFeatureCode | None = None
     minimum_coverage: Decimal = Field(default=Decimal("0.8"), strict=True, ge=Decimal("0"), le=Decimal("1"))
+    include_missing_in_aggregate: bool = False
 
 
 __all__ = [

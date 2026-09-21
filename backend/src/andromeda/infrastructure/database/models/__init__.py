@@ -8,6 +8,7 @@ from .admissions import (
 from .analytics import (
     ProgramMetricEvidenceModel,
     ProgramMetricModel,
+    ProgramProjectionRunModel,
     ProgramProjectionModel,
 )
 from .auth import AccountModel, AuthSessionModel
@@ -120,5 +121,6 @@ __all__ = [
     "ProgramMetricEvidenceModel",
     "ProgramMetricModel",
     "ProgramProjectionModel",
+    "ProgramProjectionRunModel",
     "QuerySessionModel",
 ]

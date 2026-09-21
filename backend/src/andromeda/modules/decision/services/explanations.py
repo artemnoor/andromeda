@@ -10,7 +10,8 @@ from andromeda.modules.admission_fit.contracts.public import (
     BatchAdmissionFitOutcome,
 )
 from andromeda.modules.programs.contracts.public import Program
-from andromeda.modules.proftest.contracts.public import MatchScore, ProgramFingerprint
+from andromeda.modules.proftest.contracts.public import MatchScore
+from andromeda.modules.program_analytics.contracts.public import ProgramFingerprint
 
 from ..contracts.public import (
     DecisionCandidatePartition,

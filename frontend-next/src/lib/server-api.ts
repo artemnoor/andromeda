@@ -30,11 +30,12 @@ export function authorizeOgRequest(request: Request): OgRequestContext {
   return { request, query, cookie: request.headers.get("cookie") };
 }
 
-export async function fetchInternal<T>(context: OgRequestContext, path: string): Promise<T> {
+export async function fetchInternal<T>(context: OgRequestContext, path: string, init: RequestInit = {}): Promise<T> {
   const baseUrl = (process.env.ANDROMEDA_INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://backend:8020").replace(/\/$/, "");
-  const headers: HeadersInit = { accept: "application/json" };
-  if (context.cookie) headers.cookie = context.cookie;
-  const response = await fetch(`${baseUrl}${path}`, { headers, cache: "no-store" });
+  const headers = new Headers(init.headers);
+  headers.set("accept", "application/json");
+  if (context.cookie) headers.set("cookie", context.cookie);
+  const response = await fetch(`${baseUrl}${path}`, { ...init, headers, cache: "no-store" });
   if (!response.ok) throw new OgHttpError(response.status, "internal API request failed");
   return (await response.json()) as T;
 }

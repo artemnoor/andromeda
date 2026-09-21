@@ -21,11 +21,19 @@ def build_response_envelope(
     for row in result.rows:
         for evidence in row.evidence:
             evidence_by_metric[evidence.metric_code] = evidence_by_metric.get(evidence.metric_code, 0) + 1
+    payload: dict[str, object] = {"rows": [row.model_dump(mode="json") for row in result.rows]}
+    plan = policy.to_plan(
+        text=text,
+        data=payload,
+        result_reference=result_reference,
+        evidence_available=bool(evidence_by_metric),
+        has_source_gaps=bool(result.source_gaps),
+    )
     return ResponseEnvelope(
         response_type=policy.response_format,
         text=text,
         template=policy.template,
-        data={"rows": [row.model_dump(mode="json") for row in result.rows]},
+        data=payload,
         actions=actions,
         query_reference=query_reference,
         result_reference=result_reference,
@@ -34,6 +42,7 @@ def build_response_envelope(
             for metric in result.metric_definitions
         ),
         metadata={"status": result.status.value, "reason": policy.reason},
+        plan=plan,
     )
 
 

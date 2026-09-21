@@ -16,6 +16,13 @@ from .metric_registry import MetricRegistry
 def validate_query_spec(spec: QuerySpec, registry: MetricRegistry | None = None) -> QuerySpec:
     selected = registry or MetricRegistry()
     try:
+        spec.validate_and_normalize()
+        if len(set(spec.metrics)) != len(spec.metrics) or len(set(spec.scope_ids)) != len(spec.scope_ids):
+            raise ContractError(ErrorCode.INVALID_QUERY, "query identifiers must be unique")
+        if spec.sort is not None and spec.sort.metric_code not in spec.metrics:
+            raise ContractError(ErrorCode.INVALID_QUERY, "sort metric must be one of query metrics")
+        if spec.scope is not QueryScope.ALL and not spec.scope_ids:
+            raise ContractError(ErrorCode.INVALID_QUERY, "scoped query requires canonical scope ids")
         for metric in spec.metrics:
             selected.get(metric, entity_type=spec.entity, aggregation=spec.aggregation)
         if spec.sort is not None:

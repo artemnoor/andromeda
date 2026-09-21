@@ -7,11 +7,13 @@ from typing import Protocol
 
 from andromeda.shared.contracts.ids import ProgramId
 
-from ..contracts.public import ProgramProjection, ProjectionBuild
+from ..contracts.public import ProgramProjection, ProgramProjectionRun, ProjectionBuild
 
 
 class ProgramProjectionStore(Protocol):
     def save(self, builds: Iterable[ProjectionBuild]) -> None: ...
+
+    def mark_stale(self, program_ids: tuple[ProgramId, ...]) -> None: ...
 
 
 class ProgramProjectionReader(Protocol):
@@ -19,5 +21,15 @@ class ProgramProjectionReader(Protocol):
 
     def list(self, *, program_ids: tuple[ProgramId, ...] = ()) -> tuple[ProgramProjection, ...]: ...
 
+    def read_by_program_ids(self, program_ids: tuple[ProgramId, ...]) -> tuple[ProgramProjection, ...]: ...
 
-__all__ = ["ProgramProjectionReader", "ProgramProjectionStore"]
+
+class ProgramProjectionRunStore(Protocol):
+    def start_run(self, run: ProgramProjectionRun) -> ProgramProjectionRun: ...
+
+    def complete_run(self, run_id: str, *, refreshed_program_count: int) -> ProgramProjectionRun: ...
+
+    def fail_run(self, run_id: str, *, error_code: str, error_message: str) -> ProgramProjectionRun: ...
+
+
+__all__ = ["ProgramProjectionReader", "ProgramProjectionRunStore", "ProgramProjectionStore"]

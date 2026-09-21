@@ -113,6 +113,11 @@ class QuerySpec(ContractModel):
     sort: QuerySort | None = None
     limit: int = Field(default=20, strict=True, ge=1, le=100)
 
+    def validate_and_normalize(self) -> QuerySpec:
+        """Return the validated immutable-by-convention query boundary."""
+
+        return self
+
 
 __all__ = [
     "FilterKind",

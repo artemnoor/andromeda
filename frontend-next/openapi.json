@@ -9897,8 +9897,7 @@
           "business",
           "data"
         ],
-        "title": "ActivityCode",
-        "description": "Activity dimensions used by deterministic profile matching."
+        "title": "ActivityCode"
       },
       "AdaptiveAnswerResponse": {
         "properties": {
@@ -9940,10 +9939,12 @@
           },
           "spread": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Spread"
           },
           "significance": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Significance"
           }
         },
@@ -10108,7 +10109,8 @@
           "value": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -10133,7 +10135,8 @@
           "value": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -10188,7 +10191,8 @@
           "applicant_score": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,6}0*$)\\d{0,3}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -10199,7 +10203,8 @@
           "applicant_total_score": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -10210,7 +10215,8 @@
           "reference_score": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -10285,7 +10291,8 @@
           "applicantScore": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,6}0*$)\\d{0,3}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -10296,7 +10303,8 @@
           "applicantTotalScore": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -10307,7 +10315,8 @@
           "referenceScore": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -10417,7 +10426,8 @@
           "applicantTotalScore": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -10520,7 +10530,8 @@
           "applicant_total_score": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,7}0*$)\\d{0,4}\\.\\d{0,2}0*$)"
               },
               {
                 "type": "null"
@@ -11315,7 +11326,8 @@
                 "minimum": 0.0
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -11431,10 +11443,12 @@
           },
           "coverage": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Coverage"
           },
           "confidence": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Confidence"
           },
           "projection_schema_version": {
@@ -11474,6 +11488,41 @@
             "type": "array",
             "maxItems": 1000,
             "title": "Source Gaps",
+            "default": []
+          },
+          "population_size": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Population Size",
+            "default": 0
+          },
+          "included_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Included Count",
+            "default": 0
+          },
+          "missing_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Missing Count",
+            "default": 0
+          },
+          "calculation_metadata": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "maxProperties": 32,
+            "title": "Calculation Metadata"
+          },
+          "explanations": {
+            "items": {
+              "$ref": "#/components/schemas/MetricExplanation"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Explanations",
             "default": []
           }
         },
@@ -11555,6 +11604,29 @@
             "maxItems": 1000,
             "title": "Evidence",
             "default": []
+          },
+          "population_size": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Population Size",
+            "default": 0
+          },
+          "included_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Included Count",
+            "default": 0
+          },
+          "missing_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Missing Count",
+            "default": 0
+          },
+          "evidence_status": {
+            "type": "string",
+            "title": "Evidence Status",
+            "default": "available"
           }
         },
         "additionalProperties": false,
@@ -11605,7 +11677,8 @@
                 "type": "number"
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               }
             ],
             "title": "Intensity",
@@ -11630,6 +11703,7 @@
           },
           "intensity": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Intensity",
             "decimal_places": 4,
             "ge": 0,
@@ -11697,6 +11771,7 @@
           },
           "score": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,6}0*$)\\d{0,3}\\.\\d{0,2}0*$)",
             "title": "Score"
           }
         },
@@ -11723,7 +11798,8 @@
                 "type": "number"
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               }
             ],
             "title": "Score",
@@ -12129,7 +12205,8 @@
           "latitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -12140,7 +12217,8 @@
           "longitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -12309,7 +12387,8 @@
           "latitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -12320,7 +12399,8 @@
           "longitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -12846,7 +12926,8 @@
           "creditsDelta": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -12993,6 +13074,7 @@
           },
           "credits": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Credits"
           }
         },
@@ -13012,7 +13094,8 @@
                 "type": "number"
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               }
             ],
             "title": "Value",
@@ -13043,6 +13126,7 @@
         "properties": {
           "value": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Value",
             "decimal_places": 4,
             "ge": 0,
@@ -13111,7 +13195,8 @@
           "credits": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -13587,7 +13672,8 @@
                 "type": "number"
               },
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               }
             ],
             "title": "Score",
@@ -13615,6 +13701,7 @@
           },
           "score": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Score",
             "decimal_places": 2,
             "ge": "0",
@@ -13767,7 +13854,8 @@
                     "type": "number"
                   },
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                   }
                 ],
                 "decimal_places": 2,
@@ -13849,7 +13937,8 @@
           "maxTuition": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -14925,6 +15014,7 @@
           },
           "weight": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,1}|(?=[\\d.]{1,6}0*$)\\d{0,1}\\.\\d{0,4}0*$)",
             "title": "Weight"
           }
         },
@@ -14951,6 +15041,7 @@
           },
           "share": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,1}|(?=[\\d.]{1,6}0*$)\\d{0,1}\\.\\d{0,4}0*$)",
             "title": "Share"
           }
         },
@@ -15466,7 +15557,8 @@
           "value": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,1}|(?=[\\d.]{1,6}0*$)\\d{0,1}\\.\\d{0,4}0*$)"
               },
               {
                 "type": "null"
@@ -15550,7 +15642,8 @@
           "minimumScore": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -16377,6 +16470,7 @@
           "weighted_mean",
           "min",
           "max",
+          "median",
           "count",
           "distribution"
         ],
@@ -16477,8 +16571,14 @@
           },
           "minimum_coverage": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Minimum Coverage",
             "default": "0.8"
+          },
+          "include_missing_in_aggregate": {
+            "type": "boolean",
+            "title": "Include Missing In Aggregate",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -16515,6 +16615,64 @@
           "discipline"
         ],
         "title": "MetricEntityType"
+      },
+      "MetricExplanation": {
+        "properties": {
+          "metric_code": {
+            "type": "string",
+            "title": "Metric Code"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/MetricDefinition"
+          },
+          "basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis"
+          },
+          "population_size": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Population Size"
+          },
+          "included_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Included Count"
+          },
+          "missing_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Missing Count"
+          },
+          "evidence_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Evidence Count"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_code",
+          "definition",
+          "population_size",
+          "included_count",
+          "missing_count",
+          "evidence_count"
+        ],
+        "title": "MetricExplanation"
       },
       "OptionalMetricResponse": {
         "properties": {
@@ -16557,7 +16715,8 @@
           "score": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -16965,7 +17124,8 @@
                     "type": "number"
                   },
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                   }
                 ],
                 "decimal_places": 4,
@@ -17071,7 +17231,8 @@
                     "type": "number"
                   },
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                   }
                 ],
                 "decimal_places": 4,
@@ -17134,7 +17295,8 @@
                     "type": "number"
                   },
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                   }
                 ],
                 "decimal_places": 4,
@@ -17478,10 +17640,12 @@
           },
           "coverage": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Coverage"
           },
           "confidence": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Confidence"
           },
           "freshness_at": {
@@ -17550,7 +17714,8 @@
           "value": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -17577,11 +17742,13 @@
           },
           "coverage": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Coverage",
             "default": "0"
           },
           "confidence": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Confidence",
             "default": "0"
           },
@@ -17646,7 +17813,8 @@
           "contribution": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -17808,7 +17976,8 @@
           "threshold": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"
@@ -18186,10 +18355,12 @@
           },
           "workload": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Workload"
           },
           "share": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Share"
           },
           "sourceNames": {
@@ -18366,7 +18537,8 @@
           },
           "areaShare": {
             "additionalProperties": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
             },
             "propertyNames": {
               "$ref": "#/components/schemas/DisciplineAreaCode"
@@ -18376,7 +18548,8 @@
           },
           "semesterDistribution": {
             "additionalProperties": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
             },
             "type": "object",
             "title": "Semesterdistribution"
@@ -18534,6 +18707,7 @@
             "title": "Template"
           },
           "data": {
+            "additionalProperties": true,
             "type": "object",
             "maxProperties": 64,
             "title": "Data"
@@ -18560,6 +18734,7 @@
             "title": "Deep Link"
           },
           "metadata": {
+            "additionalProperties": true,
             "type": "object",
             "maxProperties": 32,
             "title": "Metadata"
@@ -18601,6 +18776,16 @@
             "type": "string",
             "title": "Policy Version",
             "default": "response-policy.v1"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResponsePlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -18622,26 +18807,100 @@
         ],
         "title": "ResponseFormat"
       },
+      "ResponsePlan": {
+        "properties": {
+          "response_format": {
+            "$ref": "#/components/schemas/ResponseFormat"
+          },
+          "template": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Template"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Text",
+            "default": ""
+          },
+          "data": {
+            "additionalProperties": true,
+            "type": "object",
+            "maxProperties": 64,
+            "title": "Data"
+          },
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Actions",
+            "default": []
+          },
+          "result_reference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Reference"
+          },
+          "evidence_available": {
+            "type": "boolean",
+            "title": "Evidence Available",
+            "default": false
+          },
+          "has_source_gaps": {
+            "type": "boolean",
+            "title": "Has Source Gaps",
+            "default": false
+          },
+          "policy_version": {
+            "type": "string",
+            "title": "Policy Version",
+            "default": "response-policy.v1"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "response_format",
+          "template"
+        ],
+        "title": "ResponsePlan",
+        "description": "Prepared presentation input; it contains no query or aggregation logic."
+      },
       "ScoreBreakdownResponse": {
         "properties": {
           "subjectFit": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Subjectfit"
           },
           "activityFit": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Activityfit"
           },
           "distinctiveFit": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Distinctivefit"
           },
           "antiPenalty": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Antipenalty"
           },
           "rawContentFit": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Rawcontentfit"
           }
         },
@@ -18954,7 +19213,8 @@
           "value": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,1}|(?=[\\d.]{1,6}0*$)\\d{0,1}\\.\\d{0,4}0*$)"
               },
               {
                 "type": "null"
@@ -19317,6 +19577,7 @@
         "properties": {
           "amount": {
             "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Amount"
           },
           "currency": {
@@ -21233,7 +21494,8 @@
                   "type": "number"
                 },
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                 }
               ],
               "decimal_places": 4,
@@ -21254,7 +21516,8 @@
                   "type": "number"
                 },
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                 }
               ],
               "decimal_places": 4,
@@ -21275,7 +21538,8 @@
                   "type": "number"
                 },
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                 }
               ],
               "decimal_places": 4,
@@ -21328,7 +21592,8 @@
                     "type": "number"
                   },
                   {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                   }
                 ],
                 "decimal_places": 4,
@@ -21349,7 +21614,8 @@
                   "type": "number"
                 },
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
                 }
               ],
               "decimal_places": 4,
@@ -21414,6 +21680,7 @@
           "preferredSubjectWeights": {
             "additionalProperties": {
               "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "decimal_places": 4,
               "ge": 0,
               "le": 1,
@@ -21428,6 +21695,7 @@
           "preferredActivityWeights": {
             "additionalProperties": {
               "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "decimal_places": 4,
               "ge": 0,
               "le": 1,
@@ -21442,6 +21710,7 @@
           "negativeWeights": {
             "additionalProperties": {
               "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "decimal_places": 4,
               "ge": 0,
               "le": 1,
@@ -21488,6 +21757,7 @@
             "anyOf": [
               {
                 "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "decimal_places": 4,
                 "ge": 0,
                 "le": 1,
@@ -21502,6 +21772,7 @@
           "confidenceByDimension": {
             "additionalProperties": {
               "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
               "decimal_places": 4,
               "ge": 0,
               "le": 1,
@@ -21625,7 +21896,8 @@
           "latitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -21636,7 +21908,8 @@
           "longitude": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
               },
               {
                 "type": "null"
@@ -21673,7 +21946,8 @@
           "credits": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
               },
               {
                 "type": "null"

@@ -42,3 +42,27 @@ covered by `backend/tests/infrastructure/test_query_behavior.py`.
 
 Future index or cache changes must attach a before/after profile artifact and
 preserve completed-run/source-version invalidation semantics.
+
+## Materialized analytics profile
+
+Stable semantic values and program metrics are materialized after ingestion;
+request-time analytics reads active projections and performs bounded typed
+aggregation. The fixed grouped benchmark measures the real
+`AnalyticsExecutor` path for “mean mathematics share by university” and
+reports query count, population, coverage and duration without exposing rows:
+
+```powershell
+python backend/scripts/profile_analytics.py `
+  --database-url $env:ANDROMEDA_POSTGRES_TEST_URL `
+  --out $env:TEMP/andromeda-analytics-profile.json
+```
+
+`profile_queries.py` supplies the complementary read-only `EXPLAIN (FORMAT
+JSON)` plans. The repository prefilters active projections and metric
+thresholds in SQL and batch-hydrates metric/evidence rows. Analytics tests
+guard against full-catalog Python rebuilds and N+1 evidence reads.
+
+No universal latency SLA is claimed before a representative PostgreSQL
+artifact exists. The benchmark artifact is versioned by metric registry and
+projection schema; a regression is a release signal, not a reason to increase
+limits or skip a case.

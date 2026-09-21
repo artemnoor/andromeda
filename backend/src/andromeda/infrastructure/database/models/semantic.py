@@ -28,11 +28,15 @@ class SemanticFeatureModel(Base):
     feature_group: Mapped[str] = mapped_column(String(32), nullable=False)
     value_type: Mapped[str] = mapped_column(String(32), nullable=False)
     semantic_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    definition_version: Mapped[str] = mapped_column(String(64), nullable=False, default="semantic-taxonomy.v1", server_default="semantic-taxonomy.v1")
+    active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         CheckConstraint("id LIKE 'semantic-feature:%'", name="ck_semantic_feature_id"),
         CheckConstraint("length(code) > 0", name="ck_semantic_feature_code"),
         Index("ix_semantic_features_code_version", "code", "semantic_version"),
+        Index("ix_semantic_features_definition_active", "definition_version", "active", "code"),
     )
 
 
@@ -53,6 +57,7 @@ class DisciplineSemanticFeatureModel(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="available")
     confidence: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
     classification_method: Mapped[str] = mapped_column(String(16), nullable=False)
+    review_status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="unreviewed")
     source_hash: Mapped[str | None] = mapped_column(ForeignKey("source_snapshots.content_sha256"), nullable=True)
     source_run_id: Mapped[str | None] = mapped_column(ForeignKey("ingest_runs.id"), nullable=True)
     evidence_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
@@ -63,6 +68,7 @@ class DisciplineSemanticFeatureModel(Base):
         CheckConstraint("value IS NULL OR (value >= 0 AND value <= 1)", name="ck_discipline_semantic_value"),
         CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_discipline_semantic_confidence"),
         CheckConstraint("status IN ('available', 'unknown', 'unavailable')", name="ck_discipline_semantic_status"),
+        CheckConstraint("review_status IN ('unreviewed', 'reviewed', 'rejected', 'needs_review')", name="ck_discipline_semantic_review_status"),
         CheckConstraint("(status = 'available' AND value IS NOT NULL) OR (status <> 'available' AND value IS NULL)", name="ck_discipline_semantic_status_value"),
         Index("ix_discipline_semantic_feature_lookup", "feature_id", "semantic_version", "discipline_id"),
     )
@@ -79,6 +85,7 @@ class CurriculumItemSemanticFeatureModel(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="available")
     confidence: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
     classification_method: Mapped[str] = mapped_column(String(16), nullable=False)
+    review_status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="unreviewed")
     source_hash: Mapped[str | None] = mapped_column(ForeignKey("source_snapshots.content_sha256"), nullable=True)
     source_run_id: Mapped[str | None] = mapped_column(ForeignKey("ingest_runs.id"), nullable=True)
     evidence_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
@@ -90,6 +97,7 @@ class CurriculumItemSemanticFeatureModel(Base):
         CheckConstraint("value IS NULL OR (value >= 0 AND value <= 1)", name="ck_curriculum_item_semantic_value"),
         CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_curriculum_item_semantic_confidence"),
         CheckConstraint("status IN ('available', 'unknown', 'unavailable')", name="ck_curriculum_item_semantic_status"),
+        CheckConstraint("review_status IN ('unreviewed', 'reviewed', 'rejected', 'needs_review')", name="ck_curriculum_item_semantic_review_status"),
         CheckConstraint("(status = 'available' AND value IS NOT NULL) OR (status <> 'available' AND value IS NULL)", name="ck_curriculum_item_semantic_status_value"),
         Index("ix_curriculum_item_semantic_feature_lookup", "feature_id", "semantic_version", "curriculum_item_id"),
     )

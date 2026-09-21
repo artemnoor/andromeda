@@ -12,6 +12,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -49,15 +50,20 @@ class ProgramProjectionModel(Base):
     provenance_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
     source_gaps_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
     built_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    projection_run_id: Mapped[str | None] = mapped_column(ForeignKey("program_projection_runs.id", ondelete="SET NULL"), nullable=True)
+    input_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    materialization_status: Mapped[str] = mapped_column(String(16), nullable=False, default="active", server_default="active")
 
     __table_args__ = (
         CheckConstraint("basis IN ('hours', 'credits', 'course_count', 'normalized_workload')", name="ck_program_projection_basis"),
         CheckConstraint("quality_status IN ('available', 'partial', 'insufficient_data', 'unavailable')", name="ck_program_projection_quality"),
         CheckConstraint("coverage >= 0 AND coverage <= 1", name="ck_program_projection_coverage"),
         CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_program_projection_confidence"),
+        CheckConstraint("materialization_status IN ('active', 'stale', 'failed')", name="ck_program_projection_materialization_status"),
         Index("ix_program_projections_university_direction", "university_id", "direction_id"),
         Index("ix_program_projections_quality_version", "quality_status", "schema_version"),
         Index("ix_program_projections_ingest", "ingest_run_id"),
+        Index("ix_program_projections_materialization", "materialization_status", "schema_version"),
     )
 
 
@@ -111,3 +117,31 @@ class ProgramMetricEvidenceModel(Base):
 
 
 __all__ = ["ProgramMetricEvidenceModel", "ProgramMetricModel", "ProgramProjectionModel"]
+
+
+class ProgramProjectionRunModel(Base):
+    __tablename__ = "program_projection_runs"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    ingest_run_id: Mapped[str | None] = mapped_column(ForeignKey("ingest_runs.id"), nullable=True)
+    university_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    projection_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    semantic_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    classifier_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    input_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    affected_program_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    refreshed_program_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('running', 'completed', 'partial', 'failed')", name="ck_projection_run_status"),
+        CheckConstraint("affected_program_count >= 0", name="ck_projection_run_affected_count"),
+        CheckConstraint("refreshed_program_count >= 0", name="ck_projection_run_refreshed_count"),
+        Index("ix_projection_runs_status_started", "status", "started_at"),
+        Index("ix_projection_runs_ingest", "ingest_run_id"),
+        UniqueConstraint("university_id", "projection_version", "input_hash", name="uq_projection_run_target"),
+    )

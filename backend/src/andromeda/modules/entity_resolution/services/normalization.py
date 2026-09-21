@@ -20,6 +20,17 @@ UNIVERSITY_ALIASES: dict[str, tuple[str, ...]] = {
         "мгту им н э баумана",
         "бауманка",
     ),
+    "university:hse": (
+        "вшэ",
+        "вышка",
+        "высшая школа экономики",
+        "hse",
+    ),
+    "university:mephi": (
+        "мифи",
+        "нИЯУ мифи",
+        "мефи",
+    ),
 }
 
 DIRECTION_ALIASES: dict[str, tuple[str, ...]] = {

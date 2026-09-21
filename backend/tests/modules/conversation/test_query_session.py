@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from andromeda.modules.conversation.contracts.public import (
     ConversationIntent,
+    FactOrigin,
     ConversationSlot,
     NextAction,
     QuerySession,
@@ -45,6 +46,9 @@ def test_parser_and_session_fill_admission_slots_in_two_turns() -> None:
     assert completed.missing_slots == (ConversationSlot.UNIVERSITY_SCOPE,)
     assert completed.next_action is NextAction.ASK_FOR_UNIVERSITY_SCOPE
     assert completed.known_slots["total_score"] == Decimal("270")
+    assert completed.confirmed_parameters["total_score"].origin is FactOrigin.EXPLICIT_USER
+    assert completed.frame.intent is ConversationIntent.ADMISSION_SEARCH
+    assert completed.frame.missing_fields == (ConversationSlot.UNIVERSITY_SCOPE,)
 
 
 def test_parser_supports_metric_comparison_and_canonical_entity_slots() -> None:
@@ -74,3 +78,24 @@ def test_repeating_same_follow_up_is_idempotent_and_unknown_text_is_safe() -> No
     unsupported = parser.parse("Расскажи что-нибудь необычное")
     assert unsupported.intent is ConversationIntent.UNKNOWN
     assert unsupported.metric_codes == ()
+
+
+def test_query_frame_keeps_inference_separate_from_user_facts() -> None:
+    parsed = RuleBasedQueryParser().parse(
+        "В каком вузе в среднем больше математики: university:bmstu или university:hse"
+    )
+    session = merge_parsed_query(_session(), parsed, updated_at=NOW + timedelta(seconds=1))
+
+    assert session.frame.aggregation.value == "mean"
+    assert session.inferred_parameters["aggregation"].origin is FactOrigin.DETERMINISTIC_INFERENCE
+    assert "aggregation" not in session.confirmed_parameters
+
+
+def test_all_in_one_admission_request_does_not_ask_redundant_questions() -> None:
+    parsed = RuleBasedQueryParser().parse(
+        "Куда я прохожу с 270: русский 90, математика 90, информатика 90, university:bmstu"
+    )
+    session = merge_parsed_query(_session(), parsed, updated_at=NOW + timedelta(seconds=1))
+
+    assert session.next_action is NextAction.EXECUTE_QUERY
+    assert session.missing_slots == ()

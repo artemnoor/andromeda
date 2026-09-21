@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -76,6 +76,26 @@ class SqlAlchemyQuerySessionRepository:
             self._session.rollback()
             raise ConflictError("query session update conflicted") from exc
         return session
+
+    def purge_expired(self, *, now: datetime | None = None, limit: int = 500) -> int:
+        if limit < 1 or limit > 5000:
+            raise ValueError("query session purge limit must be between 1 and 5000")
+        cutoff = now or _now()
+        expired_ids = tuple(
+            self._session.scalars(
+                select(QuerySessionModel.session_id)
+                .where(QuerySessionModel.expires_at <= cutoff)
+                .order_by(QuerySessionModel.expires_at, QuerySessionModel.session_id)
+                .limit(limit)
+            ).all()
+        )
+        if not expired_ids:
+            return 0
+        result = self._session.execute(delete(QuerySessionModel).where(QuerySessionModel.session_id.in_(expired_ids)))
+        self._session.commit()
+        deleted = int(getattr(result, "rowcount", 0) or 0)
+        logger.info("query_session_purge outcome=completed count=%s", deleted)
+        return deleted
 
     def bind_anonymous_to_account(self, session_id: QuerySessionId, *, anonymous_scope: ProfileScope, account_id: str) -> QuerySession:
         if anonymous_scope.account_id is not None:

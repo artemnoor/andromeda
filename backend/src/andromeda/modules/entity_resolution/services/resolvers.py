@@ -200,6 +200,35 @@ class MetricResolverService:
         return _result(ResolutionEntityType.METRIC, query, matches, limit)
 
 
+class EntityResolverService:
+    """Dispatch typed resolution without exposing implementations to callers."""
+
+    def __init__(self, catalog: CachedEntityCatalog, registry: MetricRegistry | None = None) -> None:
+        self._universities = UniversityResolverService(catalog)
+        self._directions = DirectionResolverService(catalog)
+        self._programs = ProgramResolverService(catalog)
+        self._disciplines = DisciplineResolverService(catalog)
+        self._metrics = MetricResolverService(registry)
+
+    def resolve(
+        self,
+        entity_type: ResolutionEntityType,
+        query: str,
+        *,
+        context: ResolutionContext | None = None,
+        limit: int = 10,
+    ) -> EntityResolutionResult:
+        if entity_type is ResolutionEntityType.UNIVERSITY:
+            return self._universities.resolve(query, limit=limit)
+        if entity_type is ResolutionEntityType.DIRECTION:
+            return self._directions.resolve(query, context=context, limit=limit)
+        if entity_type is ResolutionEntityType.PROGRAM:
+            return self._programs.resolve(query, context=context, limit=limit)
+        if entity_type is ResolutionEntityType.DISCIPLINE:
+            return self._disciplines.resolve(query, limit=limit)
+        return self._metrics.resolve(query, limit=limit)
+
+
 def _match_entity(
     query: str,
     *,
@@ -270,6 +299,7 @@ __all__ = [
     "CachedEntityCatalog",
     "DisciplineResolverService",
     "DirectionResolverService",
+    "EntityResolverService",
     "MetricResolverService",
     "ProgramResolverService",
     "UniversityResolverService",

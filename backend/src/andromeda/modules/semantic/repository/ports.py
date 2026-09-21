@@ -17,10 +17,12 @@ from ..contracts.public import (
     DisciplineSemanticDefault,
     SemanticEnrichmentRun,
     SemanticFeature,
+    SemanticFeatureDefinition,
+    SemanticFeatureRegistryPort,
 )
 
 
-class SemanticFeatureCatalogReader(Protocol):
+class SemanticFeatureCatalogReader(SemanticFeatureRegistryPort, Protocol):
     def list_features(self) -> tuple[SemanticFeature, ...]:
         """Return the versioned allow-list used by classifiers."""
 

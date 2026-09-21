@@ -8,22 +8,28 @@ from .public import (
     ProjectionBuild,
     ProjectionDataQuality,
     ProjectionDataQualityStatus,
+    ProjectionMaterializationStatus,
     ProjectionMetric,
     ProjectionMetricEvidence,
     ProjectionTimeline,
+    ProjectionRunStatus,
+    ProgramProjectionRun,
     WorkloadSummary,
 )
-from .results import AnalyticsResult, AnalyticsResultStatus, AnalyticsRow
+from .results import AnalyticsResult, AnalyticsResultStatus, AnalyticsRow, MetricExplanation
 
 __all__ = [
     "ActivitySignalCode",
     "AssessmentSummary",
     "ProjectionDataQuality",
     "ProjectionDataQualityStatus",
+    "ProjectionMaterializationStatus",
     "ProjectionBuild",
     "ProjectionMetric",
     "ProjectionMetricEvidence",
     "ProjectionTimeline",
+    "ProjectionRunStatus",
+    "ProgramProjectionRun",
     "ProgramProjection",
     "WorkloadSummary",
     "MetricAggregation",
@@ -33,4 +39,5 @@ __all__ = [
     "AnalyticsResult",
     "AnalyticsResultStatus",
     "AnalyticsRow",
+    "MetricExplanation",
 ]

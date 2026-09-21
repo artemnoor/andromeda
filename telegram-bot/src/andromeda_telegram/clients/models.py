@@ -106,6 +106,8 @@ class AssistantEnvelope(WireModel):
     data: dict[str, object] = Field(default_factory=dict)
     actions: list[dict[str, object]] = Field(default_factory=list)
     metadata: dict[str, object] = Field(default_factory=dict)
+    evidence: list[dict[str, object]] = Field(default_factory=list)
+    plan: dict[str, object] | None = None
 
 
 class AssistantResponse(WireModel):

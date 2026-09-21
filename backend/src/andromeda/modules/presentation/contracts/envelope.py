@@ -9,7 +9,7 @@ from pydantic import Field
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.versions import RESPONSE_POLICY_VERSION
 
-from .policy import ResponseFormat
+from .policy import ResponseFormat, ResponsePlan
 
 
 class ResponseAction(StrEnum):
@@ -46,6 +46,7 @@ class ResponseEnvelope(ContractModel):
     result_reference: str | None = Field(default=None, max_length=256)
     evidence: tuple[EvidenceSummary, ...] = Field(default=(), max_length=32)
     policy_version: str = RESPONSE_POLICY_VERSION
+    plan: ResponsePlan | None = None
 
 
 __all__ = [

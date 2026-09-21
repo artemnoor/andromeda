@@ -10,8 +10,11 @@ from ...entity_resolution.contracts.public import ResolutionEntityType
 from ..contracts.public import (
     ConversationIntent,
     ConversationSlot,
+    FactOrigin,
     NextAction,
     ParsedQuery,
+    QueryFact,
+    QueryFrame,
     QuerySession,
     ExamScore,
 )
@@ -34,10 +37,24 @@ def merge_parsed_query(session: QuerySession, parsed: ParsedQuery, *, updated_at
             dict.fromkeys((*entities.get(ResolutionEntityType.PROGRAM, ()), *parsed.program_queries))
         )
     known_slots = dict(session.known_slots)
+    confirmed_parameters = dict(session.confirmed_parameters)
+    inferred_parameters = dict(session.inferred_parameters)
     if parsed.total_score is not None:
         known_slots["total_score"] = parsed.total_score
+        confirmed_parameters["total_score"] = QueryFact(value=parsed.total_score, origin=FactOrigin.EXPLICIT_USER, confirmed=True)
     if parsed.exam_scores:
         known_slots["exam_scores"] = tuple(parsed.exam_scores)
+        confirmed_parameters["exam_scores"] = QueryFact(value=tuple(parsed.exam_scores), origin=FactOrigin.EXPLICIT_USER, confirmed=True)
+    if parsed.semester is not None:
+        confirmed_parameters["semester"] = QueryFact(value=parsed.semester, origin=FactOrigin.EXPLICIT_USER, confirmed=True)
+    if parsed.course_year is not None:
+        confirmed_parameters["course_year"] = QueryFact(value=parsed.course_year, origin=FactOrigin.EXPLICIT_USER, confirmed=True)
+    if parsed.aggregation is not None:
+        inferred_parameters["aggregation"] = QueryFact(
+            value=parsed.aggregation,
+            origin=FactOrigin.DETERMINISTIC_INFERENCE,
+            confirmed=False,
+        )
     metrics = tuple(dict.fromkeys((*session.metrics, *parsed.metric_codes)))
     intent = parsed.intent if parsed.intent is not ConversationIntent.UNKNOWN else session.intent
     scope = parsed.scope or session.scope
@@ -54,13 +71,28 @@ def merge_parsed_query(session: QuerySession, parsed: ParsedQuery, *, updated_at
     candidate = session.model_copy(
         update={
             "intent": intent,
+            "frame": QueryFrame(
+                intent=intent,
+                entities=entities,
+                metrics=metrics,
+                scope=scope,
+                scope_ids=session.scope_ids,
+                filters=session.filters,
+                aggregation=aggregation,
+                semester=parsed.semester or _fact_int(confirmed_parameters, "semester"),
+                course_year=parsed.course_year or _fact_int(confirmed_parameters, "course_year"),
+                missing_fields=missing_slots,
+            ),
             "entities": entities,
             "metrics": metrics,
             "scope": scope,
             "aggregation": aggregation,
             "known_slots": known_slots,
+            "confirmed_parameters": confirmed_parameters,
+            "inferred_parameters": inferred_parameters,
             "missing_slots": missing_slots,
             "next_action": next_action,
+            "last_action": next_action,
             "updated_at": updated_at,
             "revision": session.revision + 1,
         }
@@ -68,6 +100,11 @@ def merge_parsed_query(session: QuerySession, parsed: ParsedQuery, *, updated_at
     if candidate.model_dump(exclude={"revision", "updated_at"}) == session.model_dump(exclude={"revision", "updated_at"}):
         return session
     return candidate
+
+
+def _fact_int(facts: dict[str, QueryFact], key: str) -> int | None:
+    fact = facts.get(key)
+    return fact.value if fact is not None and isinstance(fact.value, int) else None
 
 
 def _derive_slots(

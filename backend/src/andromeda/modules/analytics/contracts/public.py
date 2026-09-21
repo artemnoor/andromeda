@@ -42,6 +42,36 @@ class ProjectionDataQualityStatus(StrEnum):
     UNAVAILABLE = "unavailable"
 
 
+class ProjectionMaterializationStatus(StrEnum):
+    ACTIVE = "active"
+    STALE = "stale"
+    FAILED = "failed"
+
+
+class ProjectionRunStatus(StrEnum):
+    RUNNING = "running"
+    COMPLETED = "completed"
+    PARTIAL = "partial"
+    FAILED = "failed"
+
+
+class ProgramProjectionRun(ContractModel):
+    id: str
+    ingest_run_id: str | None = None
+    university_id: UniversityId
+    projection_version: SemanticVersion
+    semantic_version: SemanticVersion | None = None
+    classifier_version: SemanticVersion | None = None
+    input_hash: str
+    status: ProjectionRunStatus
+    affected_program_count: int = Field(strict=True, ge=0)
+    refreshed_program_count: int = Field(strict=True, ge=0)
+    started_at: datetime
+    finished_at: datetime | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+
+
 class WorkloadSummary(ContractModel):
     total_hours: int | None = Field(default=None, strict=True, ge=0)
     total_credits: Decimal | None = Field(default=None, strict=True, ge=Decimal("0"))
@@ -84,6 +114,8 @@ class ProjectionMetric(ContractModel):
 class ProjectionTimeline(ContractModel):
     by_semester: dict[str, Decimal] = Field(default_factory=dict)
     by_course_year: dict[str, Decimal] = Field(default_factory=dict)
+    feature_by_semester: dict[str, dict[str, Decimal]] = Field(default_factory=dict)
+    first_feature_semester: dict[str, int] = Field(default_factory=dict)
 
 
 class AssessmentSummary(ContractModel):
@@ -135,6 +167,9 @@ class ProgramProjection(ContractModel):
     provenance: tuple[SourceAttribution, ...] = Field(default=(), max_length=100)
     source_gaps: tuple[SourceGapReference, ...] = Field(default=(), max_length=100)
     ingest_run_id: str | None = None
+    projection_run_id: str | None = None
+    input_hash: str | None = None
+    materialization_status: ProjectionMaterializationStatus = ProjectionMaterializationStatus.ACTIVE
 
     @model_validator(mode="after")
     def validate_distributions(self) -> ProgramProjection:
@@ -151,12 +186,15 @@ __all__ = [
     "ActivitySignalCode",
     "AssessmentSummary",
     "ProgramProjection",
+    "ProgramProjectionRun",
     "ProjectionBuild",
     "ProjectionDataQuality",
     "ProjectionDataQualityStatus",
+    "ProjectionMaterializationStatus",
     "ProjectionMetric",
     "ProjectionMetricEvidence",
     "ProjectionTimeline",
+    "ProjectionRunStatus",
     "WorkloadSummary",
 ]
 

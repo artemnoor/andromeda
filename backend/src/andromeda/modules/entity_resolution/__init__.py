@@ -8,11 +8,13 @@ from .contracts.public import (
     ResolutionEntityType,
     ResolutionStatus,
 )
+from .services.resolvers import EntityResolverService
 
 __all__ = [
     "CandidateMatchReason",
     "EntityResolutionCandidate",
     "EntityResolutionResult",
+    "EntityResolverService",
     "ResolutionContext",
     "ResolutionEntityType",
     "ResolutionStatus",

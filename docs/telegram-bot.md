@@ -90,6 +90,15 @@ server-to-server. Cookie не попадает в URL, ключи не попа�
 session scope и decision revision; устаревший shortlist не переиспользует
 персонализированную картинку.
 
+## Channel-neutral analytics rendering
+
+Для analytics envelope бот использует тот же channel-neutral `ResponsePlan`:
+backend выбирает template и возвращает уже рассчитанные rows/evidence, а
+Telegram только вызывает совместимый `/og/analytics` или отправляет текст.
+Будущий MAX должен реализовать только `TransportInput`/`TransportOutput`
+адаптер и передавать тот же owner/session mapping; resolver, QuerySession,
+analytics и response policy остаются backend-owned.
+
 ## Команды и естественный ввод
 
 Доступны `/start`, `/catalog`, `/compare`, `/shortlist`, `/admission` и

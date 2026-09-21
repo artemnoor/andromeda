@@ -1288,7 +1288,6 @@ export interface components {
         };
         /**
          * ActivityCode
-         * @description Activity dimensions used by deterministic profile matching.
          * @enum {string}
          */
         ActivityCode: "analytical" | "software_creation" | "system_design" | "research" | "physical_engineering" | "communication" | "creative" | "business" | "data";
@@ -1774,6 +1773,30 @@ export interface components {
              * @default []
              */
             source_gaps: components["schemas"]["SourceGapReference"][];
+            /**
+             * Population Size
+             * @default 0
+             */
+            population_size: number;
+            /**
+             * Included Count
+             * @default 0
+             */
+            included_count: number;
+            /**
+             * Missing Count
+             * @default 0
+             */
+            missing_count: number;
+            /** Calculation Metadata */
+            calculation_metadata?: {
+                [key: string]: string;
+            };
+            /**
+             * Explanations
+             * @default []
+             */
+            explanations: components["schemas"]["MetricExplanation"][];
         };
         /**
          * AnalyticsResultStatus
@@ -1803,6 +1826,26 @@ export interface components {
              * @default []
              */
             evidence: components["schemas"]["ProjectionMetricEvidence"][];
+            /**
+             * Population Size
+             * @default 0
+             */
+            population_size: number;
+            /**
+             * Included Count
+             * @default 0
+             */
+            included_count: number;
+            /**
+             * Missing Count
+             * @default 0
+             */
+            missing_count: number;
+            /**
+             * Evidence Status
+             * @default available
+             */
+            evidence_status: string;
         };
         /** AnalyticsSortRequest */
         AnalyticsSortRequest: {
@@ -3416,7 +3459,7 @@ export interface components {
          * MetricAggregation
          * @enum {string}
          */
-        MetricAggregation: "value" | "sum" | "mean" | "weighted_mean" | "min" | "max" | "count" | "distribution";
+        MetricAggregation: "value" | "sum" | "mean" | "weighted_mean" | "min" | "max" | "median" | "count" | "distribution";
         /**
          * MetricBasis
          * @enum {string}
@@ -3455,6 +3498,11 @@ export interface components {
              * @default 0.8
              */
             minimum_coverage: string;
+            /**
+             * Include Missing In Aggregate
+             * @default false
+             */
+            include_missing_in_aggregate: boolean;
         };
         /**
          * MetricDomain
@@ -3466,6 +3514,27 @@ export interface components {
          * @enum {string}
          */
         MetricEntityType: "university" | "direction" | "program" | "curriculum" | "discipline";
+        /** MetricExplanation */
+        MetricExplanation: {
+            /** Metric Code */
+            metric_code: string;
+            definition: components["schemas"]["MetricDefinition"];
+            /** Basis */
+            basis?: string | null;
+            /** Population Size */
+            population_size: number;
+            /** Included Count */
+            included_count: number;
+            /** Missing Count */
+            missing_count: number;
+            /** Evidence Count */
+            evidence_count: number;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
+        };
         /** OptionalMetricResponse */
         OptionalMetricResponse: {
             /** Status */
@@ -4174,12 +4243,53 @@ export interface components {
              * @default response-policy.v1
              */
             policy_version: string;
+            plan?: components["schemas"]["ResponsePlan"] | null;
         };
         /**
          * ResponseFormat
          * @enum {string}
          */
         ResponseFormat: "text" | "image" | "image_collection" | "pdf" | "mini_app";
+        /**
+         * ResponsePlan
+         * @description Prepared presentation input; it contains no query or aggregation logic.
+         */
+        ResponsePlan: {
+            response_format: components["schemas"]["ResponseFormat"];
+            /** Template */
+            template: string;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /** Data */
+            data?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Actions
+             * @default []
+             */
+            actions: string[];
+            /** Result Reference */
+            result_reference?: string | null;
+            /**
+             * Evidence Available
+             * @default false
+             */
+            evidence_available: boolean;
+            /**
+             * Has Source Gaps
+             * @default false
+             */
+            has_source_gaps: boolean;
+            /**
+             * Policy Version
+             * @default response-policy.v1
+             */
+            policy_version: string;
+        };
         /** ScoreBreakdownResponse */
         ScoreBreakdownResponse: {
             /** Subjectfit */

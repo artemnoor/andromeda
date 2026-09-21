@@ -54,3 +54,27 @@ def test_query_session_repository_is_owner_bound_revisioned_and_bindable(tmp_pat
             assert repository.get(bound.session_id, owner_scope=bound.owner_scope) is not None
     finally:
         engine.dispose()
+
+
+def test_query_session_repository_purges_expired_rows_with_a_bound(tmp_path: Path) -> None:
+    engine = create_engine_for_url(f"sqlite:///{(tmp_path / 'query-sessions-purge.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    scope = ProfileScope(session_key_hash="a" * 64)
+    expired = _session(scope).model_copy(
+        update={
+            "session_id": "query-session:" + "1" * 32,
+            "expires_at": NOW - timedelta(seconds=1),
+            "updated_at": NOW - timedelta(minutes=2),
+        }
+    )
+    active = _session(scope).model_copy(update={"session_id": "query-session:" + "2" * 32})
+    try:
+        with Session(engine) as database_session:
+            repository = SqlAlchemyQuerySessionRepository(database_session)
+            repository.save(expired)
+            repository.save(active)
+            assert repository.purge_expired(now=NOW, limit=1) == 1
+            assert repository.get(expired.session_id, owner_scope=scope) is None
+            assert repository.get(active.session_id, owner_scope=scope) is not None
+    finally:
+        engine.dispose()

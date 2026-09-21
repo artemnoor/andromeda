@@ -723,6 +723,17 @@ export type AssistantResponseEnvelope = {
   data: Record<string, unknown>;
   actions: Array<Record<string, unknown>>;
   metadata: Record<string, unknown>;
+  evidence?: Array<Record<string, unknown>>;
+  plan?: {
+    response_format: "text" | "image" | "image_collection" | "pdf" | "mini_app";
+    template: string;
+    text: string;
+    data: Record<string, unknown>;
+    actions: string[];
+    result_reference: string | null;
+    evidence_available: boolean;
+    has_source_gaps: boolean;
+  } | null;
 };
 
 export type AssistantQueryResponse = {

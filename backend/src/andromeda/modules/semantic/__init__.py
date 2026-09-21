@@ -8,6 +8,7 @@ from .contracts.public import (
     SemanticClassificationResult,
     SemanticFeature,
     SemanticFeatureGroup,
+    SemanticReviewStatus,
     SemanticValueStatus,
     SemanticValueType,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "SemanticClassificationResult",
     "SemanticFeature",
     "SemanticFeatureGroup",
+    "SemanticReviewStatus",
     "SemanticValueStatus",
     "SemanticValueType",
 ]
