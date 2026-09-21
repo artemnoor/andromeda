@@ -54,6 +54,7 @@ class MetricDefinition(ContractModel):
     fallback_basis: tuple[MetricBasis, ...] = Field(default=(), max_length=4)
     semantic_version: SemanticVersion = METRIC_REGISTRY_VERSION
     source_feature_code: SemanticFeatureCode | None = None
+    predicate_definition_id: str | None = Field(default=None, max_length=128)
     minimum_coverage: Decimal = Field(default=Decimal("0.8"), strict=True, ge=Decimal("0"), le=Decimal("1"))
     include_missing_in_aggregate: bool = False
 

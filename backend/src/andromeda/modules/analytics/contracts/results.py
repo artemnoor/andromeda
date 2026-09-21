@@ -15,6 +15,7 @@ from andromeda.shared.contracts.versions import ANALYTICS_PROJECTION_SCHEMA_VERS
 from .metrics import MetricDefinition
 from .public import ProjectionDataQuality, ProjectionMetric, ProjectionMetricEvidence
 from .query import QuerySpec
+from .semantic_predicate import SemanticPredicateEvidence
 
 
 class AnalyticsResultStatus(StrEnum):
@@ -66,6 +67,7 @@ class AnalyticsResult(ContractModel):
     missing_count: int = Field(default=0, strict=True, ge=0)
     calculation_metadata: dict[str, str] = Field(default_factory=dict, max_length=32)
     explanations: tuple[MetricExplanation, ...] = Field(default=(), max_length=8)
+    semantic_predicate_evidence: tuple[SemanticPredicateEvidence, ...] = Field(default=(), max_length=1000)
 
 
 __all__ = ["AnalyticsResult", "AnalyticsResultStatus", "AnalyticsRow", "MetricExplanation"]

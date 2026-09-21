@@ -1633,9 +1633,9 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 
 ### Phase 05 — jevQL
 
-- [ ] T12 — Define SemanticPredicatePort
-- [ ] T13 — Add isolated jevQL adapter
-- [ ] T14 — Connect predicate evidence to analytics
+- [x] T12 — Define SemanticPredicatePort
+- [x] T13 — Add isolated jevQL adapter
+- [x] T14 — Connect predicate evidence to analytics
 
 ### Phase 06 — jev-tree
 

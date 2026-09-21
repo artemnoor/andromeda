@@ -27,6 +27,15 @@ from ..contracts.query import (
     QuerySpec,
 )
 from ..contracts.results import AnalyticsResult, AnalyticsResultStatus, AnalyticsRow, MetricExplanation
+from ..contracts.semantic_predicate import (
+    SemanticPredicateEvidence,
+    SemanticPredicateFailureReason,
+    SemanticPredicatePort,
+    SemanticPredicateRequest,
+    SemanticPredicateResult,
+    SemanticPredicateRow,
+    SemanticPredicateStatus,
+)
 from ..domain.metric_registry import MetricRegistry
 from ..repository.queries import ProjectionQueryReader
 from .aggregation import aggregate_metrics
@@ -39,10 +48,12 @@ class AnalyticsExecutor:
         reader: ProjectionQueryReader,
         registry: MetricRegistry | None = None,
         cache: AnalyticsResultCache | None = None,
+        semantic_predicate_port: SemanticPredicatePort | None = None,
     ) -> None:
         self._reader = reader
         self._registry = registry or MetricRegistry()
         self._cache = cache
+        self._semantic_predicate_port = semantic_predicate_port
 
     def execute(self, spec: QuerySpec) -> AnalyticsResult:
         from ..domain.query_validation import validate_query_spec
@@ -60,6 +71,13 @@ class AnalyticsExecutor:
         else:
             candidate_projections = self._reader.list(program_ids=spec.scope_ids if spec.scope is QueryScope.PROGRAM else ())
         projections = tuple(projection for projection in candidate_projections if _matches_scope(projection, spec) and _matches_filters(projection, spec.filters, self._registry, spec.entity))
+        predicate_result = self._evaluate_predicate(projections, spec)
+        if predicate_result is not None:
+            projections = tuple(
+                projection
+                for projection in projections
+                if predicate_result.matches.get(projection.program_id) is True
+            )
         storage_codes = tuple(definition.source_feature_code or definition.code for definition in definitions)
         evidence = self._reader.evidence(
             tuple(projection.program_id for projection in projections),
@@ -91,8 +109,10 @@ class AnalyticsExecutor:
                 "aggregation": spec.aggregation.value,
                 "missing_policy": "exclude_missing_mark_partial",
                 "projection_status": "active_only",
+                "semantic_predicate_status": predicate_result.status.value if predicate_result is not None else "not_requested",
             },
             explanations=_explanations(definitions, rows, len(projections)),
+            semantic_predicate_evidence=predicate_result.evidence if predicate_result is not None else (),
         )
         if self._cache is not None:
             self._cache.put(
@@ -101,6 +121,68 @@ class AnalyticsExecutor:
                 program_ids=frozenset(projection.program_id for projection in projections),
             )
         return result
+
+    def _evaluate_predicate(
+        self,
+        projections: tuple[ProgramProjection, ...],
+        spec: QuerySpec,
+    ) -> SemanticPredicateResult | None:
+        if spec.predicate is None:
+            return None
+        if self._semantic_predicate_port is None:
+            return self._predicate_unavailable(spec, SemanticPredicateFailureReason.CAPABILITY_UNAVAILABLE, projections)
+        if len(projections) > spec.predicate.max_rows:
+            return self._predicate_unavailable(spec, SemanticPredicateFailureReason.BUDGET, projections)
+        rows = tuple(
+            SemanticPredicateRow(
+                canonical_id=projection.program_id,
+                fields={
+                    field: value
+                    for field, value in {
+                        "program_name": projection.program_name,
+                        "program_code": projection.program_code,
+                        "university_id": projection.university_id,
+                        "direction_id": projection.direction_id,
+                    }.items()
+                    if field in spec.predicate.allowed_fields
+                },
+            )
+            for projection in projections
+        )
+        request = SemanticPredicateRequest(
+            predicate=spec.predicate,
+            rows=rows,
+            batch_size=min(spec.predicate.max_rows, 32),
+        )
+        try:
+            return self._semantic_predicate_port.evaluate(request)
+        except (TypeError, ValueError):
+            return self._predicate_unavailable(spec, SemanticPredicateFailureReason.INTERNAL, projections)
+
+
+    @staticmethod
+    def _predicate_unavailable(
+        spec: QuerySpec,
+        reason: SemanticPredicateFailureReason,
+        projections: tuple[ProgramProjection, ...],
+    ) -> SemanticPredicateResult:
+        evidence = tuple(
+            SemanticPredicateEvidence(
+                canonical_id=projection.program_id,
+                definition_id=spec.predicate.definition_id if spec.predicate is not None else "unknown",
+                definition_version=spec.predicate.definition_version if spec.predicate is not None else "unknown",
+                status=SemanticPredicateStatus.UNAVAILABLE,
+                reason=reason,
+            )
+            for projection in projections
+        )
+        return SemanticPredicateResult(
+            status=SemanticPredicateStatus.UNAVAILABLE,
+            matches={projection.program_id: None for projection in projections},
+            evaluated_population=0,
+            failure_reason=reason,
+            evidence=evidence,
+        )
 
     def _rows(self, projections: tuple[ProgramProjection, ...], evidence: tuple[ProjectionMetricEvidence, ...], spec: QuerySpec, definitions: tuple[MetricDefinition, ...]) -> tuple[AnalyticsRow, ...]:
         group_by = spec.group_by[0] if spec.group_by else None

@@ -13,6 +13,7 @@ from andromeda.shared.contracts.enums import EducationLevel
 from andromeda.shared.contracts.ids import EducationYear, Semester
 
 from .metrics import MetricAggregation, MetricEntityType
+from .semantic_predicate import SemanticPredicate
 
 
 class QueryScope(StrEnum):
@@ -112,6 +113,7 @@ class QuerySpec(ContractModel):
     aggregation: MetricAggregation = MetricAggregation.VALUE
     sort: QuerySort | None = None
     limit: int = Field(default=20, strict=True, ge=1, le=100)
+    predicate: SemanticPredicate | None = None
 
     def validate_and_normalize(self) -> QuerySpec:
         """Return the validated immutable-by-convention query boundary."""

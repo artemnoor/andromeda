@@ -17,6 +17,16 @@ from .public import (
     WorkloadSummary,
 )
 from .results import AnalyticsResult, AnalyticsResultStatus, AnalyticsRow, MetricExplanation
+from .semantic_predicate import (
+    SemanticPredicate,
+    SemanticPredicateEvidence,
+    SemanticPredicateFailureReason,
+    SemanticPredicatePort,
+    SemanticPredicateRequest,
+    SemanticPredicateResult,
+    SemanticPredicateRow,
+    SemanticPredicateStatus,
+)
 
 __all__ = [
     "ActivitySignalCode",
@@ -40,4 +50,12 @@ __all__ = [
     "AnalyticsResultStatus",
     "AnalyticsRow",
     "MetricExplanation",
+    "SemanticPredicate",
+    "SemanticPredicateEvidence",
+    "SemanticPredicateFailureReason",
+    "SemanticPredicatePort",
+    "SemanticPredicateRequest",
+    "SemanticPredicateResult",
+    "SemanticPredicateRow",
+    "SemanticPredicateStatus",
 ]

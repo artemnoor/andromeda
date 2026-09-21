@@ -25,6 +25,15 @@ def validate_query_spec(spec: QuerySpec, registry: MetricRegistry | None = None)
             raise ContractError(ErrorCode.INVALID_QUERY, "scoped query requires canonical scope ids")
         for metric in spec.metrics:
             selected.get(metric, entity_type=spec.entity, aggregation=spec.aggregation)
+        if spec.predicate is not None:
+            if spec.entity is not MetricEntityType.PROGRAM:
+                raise ContractError(ErrorCode.INVALID_QUERY, "semantic predicates are program-scoped")
+            definitions = tuple(selected.get(metric, entity_type=spec.entity, aggregation=spec.aggregation) for metric in spec.metrics)
+            if not any(definition.predicate_definition_id == spec.predicate.definition_id for definition in definitions):
+                raise ContractError(ErrorCode.UNSUPPORTED_METRIC, "semantic predicate is not declared by the metric registry")
+            supported_fields = {"program_name", "program_code", "university_id", "direction_id"}
+            if not set(spec.predicate.allowed_fields).issubset(supported_fields):
+                raise ContractError(ErrorCode.INVALID_QUERY, "semantic predicate field is not supported")
         if spec.sort is not None:
             selected.get(spec.sort.metric_code or "", entity_type=spec.entity)
         for query_filter in spec.filters:
