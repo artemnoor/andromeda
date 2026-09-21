@@ -1606,7 +1606,7 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 
 ### Phase 00 — Stage 1 baseline
 
-- [ ] T00 — Зафиксировать чистый Stage 1 baseline и подготовить branch для Stage 2
+- [x] T00 — Зафиксировать чистый Stage 1 baseline и подготовить branch для Stage 2
 
 ### Phase 01 — Foundation
 
