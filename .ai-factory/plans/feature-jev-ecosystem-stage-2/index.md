@@ -1612,7 +1612,7 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 
 - [x] T01 — Зафиксировать baseline и архитектурные инварианты
 - [x] T02 — Ввести shared DecisionDefinition и Question Registry
-- [ ] T03 — Уточнить typed integration boundary и response envelope
+- [x] T03 — Уточнить typed integration boundary и response envelope
 
 ### Phase 02 — Evaluation baseline
 

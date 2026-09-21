@@ -6,12 +6,26 @@ enabled; deterministic fallback remains the default.
 """
 
 from .adapter import JevAdapterConfig, JevDecisionModelAdapter, JevTransport
+from .contracts import (
+    JevFailure,
+    JevFailureReason,
+    JevRequestEnvelope,
+    JevResponseEnvelope,
+    JevUsage,
+    ModelIdentity,
+)
 from .question_registry import QuestionRegistry, QuestionRegistryError
 
 __all__ = [
     "JevAdapterConfig",
     "JevDecisionModelAdapter",
     "JevTransport",
+    "JevFailure",
+    "JevFailureReason",
+    "JevRequestEnvelope",
+    "JevResponseEnvelope",
+    "JevUsage",
+    "ModelIdentity",
     "QuestionRegistry",
     "QuestionRegistryError",
 ]

@@ -7,9 +7,17 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
+from uuid import uuid4
 
 from andromeda.modules.analytics.contracts.results import AnalyticsResult
 from andromeda.modules.analytics.domain.metric_registry import MetricRegistry
+from andromeda.modules.conversation.contracts.decision_definitions import (
+    DecisionDefinitionKind,
+    DecisionOutputSchema,
+    DecisionPiiPolicy,
+    DecisionTimeoutClass,
+    QuestionRegistryPort,
+)
 from andromeda.modules.conversation.contracts.policy import (
     ConfidenceBucket,
     DataCapabilities,
@@ -28,24 +36,105 @@ from andromeda.modules.presentation.contracts.policy import (
     PresentationCapabilities,
     ResponseRequest,
 )
+from .contracts import (
+    JevFailure,
+    JevFailureReason,
+    JevRequestEnvelope,
+    JevResponseEnvelope,
+    JevUsage,
+    ModelIdentity,
+)
 
 logger = logging.getLogger("andromeda.infrastructure.jev.adapter")
 _ALLOWED_TEMPLATES = {"analytics-summary", "metric-comparison", "metric-cards", "analytics-report", "analytics-explorer"}
 
 
 class JevTransport(Protocol):
-    """Minimal provider-neutral transport; timeout belongs to the implementation."""
+    """Legacy provider-neutral transport retained for existing adapters."""
 
     def request(self, operation: str, payload: Mapping[str, object], *, timeout_seconds: float) -> object: ...
+
+
+class JevEnvelopeTransport(Protocol):
+    """Typed transport used by new production/provider adapters."""
+
+    def request_envelope(self, request: JevRequestEnvelope) -> object: ...
 
 
 @dataclass(frozen=True, slots=True)
 class JevAdapterConfig:
     timeout_seconds: float = 2.0
+    enrichment_timeout_seconds: float = 10.0
+    evaluation_timeout_seconds: float = 30.0
     max_retries: int = 1
     max_failures: int = 3
     circuit_open_seconds: float = 30.0
     max_output_bytes: int = 32_000
+    provider: str = "jev"
+    model: str = "decision-model"
+    model_version: str = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class _DefinitionMetadata:
+    definition_id: str
+    version: str
+    kind: DecisionDefinitionKind
+    timeout_class: DecisionTimeoutClass
+    pii_policy: DecisionPiiPolicy
+    output_schema: DecisionOutputSchema
+
+
+class _JevBoundaryError(Exception):
+    def __init__(self, reason: JevFailureReason, detail_code: str) -> None:
+        super().__init__(detail_code)
+        self.reason = reason
+        self.detail_code = detail_code
+
+
+_EMPTY_OUTPUT_SCHEMA = DecisionOutputSchema()
+_LEGACY_DEFINITIONS: dict[DecisionModelOperation, _DefinitionMetadata] = {
+    DecisionModelOperation.RESOLVE_INTENT: _DefinitionMetadata(
+        "intent.v1",
+        "intent-definition.v1",
+        DecisionDefinitionKind.INTENT,
+        DecisionTimeoutClass.INTERACTIVE,
+        DecisionPiiPolicy.SANITIZED,
+        _EMPTY_OUTPUT_SCHEMA,
+    ),
+    DecisionModelOperation.RESOLVE_METRIC: _DefinitionMetadata(
+        "metric.v1",
+        "metric-definition.v1",
+        DecisionDefinitionKind.METRIC,
+        DecisionTimeoutClass.INTERACTIVE,
+        DecisionPiiPolicy.SANITIZED,
+        _EMPTY_OUTPUT_SCHEMA,
+    ),
+    DecisionModelOperation.CHOOSE_NEXT_ACTION: _DefinitionMetadata(
+        "next-action.v1",
+        "next-action-definition.v1",
+        DecisionDefinitionKind.NEXT_ACTION,
+        DecisionTimeoutClass.INTERACTIVE,
+        DecisionPiiPolicy.SANITIZED,
+        _EMPTY_OUTPUT_SCHEMA,
+    ),
+    DecisionModelOperation.CHOOSE_PRESENTATION: _DefinitionMetadata(
+        "presentation.v1",
+        "presentation-definition.v1",
+        DecisionDefinitionKind.PRESENTATION,
+        DecisionTimeoutClass.INTERACTIVE,
+        DecisionPiiPolicy.SANITIZED,
+        _EMPTY_OUTPUT_SCHEMA,
+    ),
+    DecisionModelOperation.CLASSIFY_SEMANTIC_FEATURES: _DefinitionMetadata(
+        "semantic-feature.v1",
+        "semantic-feature-definition.v1",
+        DecisionDefinitionKind.SEMANTIC_FEATURE,
+        DecisionTimeoutClass.ENRICHMENT,
+        DecisionPiiPolicy.SANITIZED,
+        _EMPTY_OUTPUT_SCHEMA,
+    ),
+}
 
 
 class JevDecisionModelAdapter(DecisionModelPort):
@@ -57,24 +146,35 @@ class JevDecisionModelAdapter(DecisionModelPort):
         fallback: DecisionModelPort,
         *,
         config: JevAdapterConfig | None = None,
+        registry: QuestionRegistryPort | None = None,
     ) -> None:
         self._transport = transport
         self._fallback = fallback
         self._config = config or JevAdapterConfig()
-        if self._config.timeout_seconds <= 0 or self._config.max_retries < 0:
+        if (
+            self._config.timeout_seconds <= 0
+            or self._config.enrichment_timeout_seconds <= 0
+            or self._config.evaluation_timeout_seconds <= 0
+            or self._config.max_retries < 0
+            or self._config.max_retries > 3
+            or self._config.max_failures < 1
+            or self._config.max_output_bytes < 1
+        ):
             raise ValueError("invalid Jev adapter bounds")
         self._failures = 0
         self._circuit_open_until = 0.0
         self._metric_registry = MetricRegistry()
+        self._registry = registry
 
     def resolve_intent(self, text: str) -> IntentDecision:
         if len(text) > 2000:
             return self._fallback_intent(text, "input_too_large")
         response = self._call(DecisionModelOperation.RESOLVE_INTENT, {"text": text})
-        if response is None:
-            return self._fallback_intent(text, "provider_unavailable")
+        failure_reason = self._response_failure_reason(response)
+        if failure_reason is not None:
+            return self._fallback_intent(text, failure_reason)
         try:
-            value = IntentDecision.model_validate(response, strict=False)
+            value = IntentDecision.model_validate(response.payload, strict=False)
             return value.model_copy(update={"operation": DecisionModelOperation.RESOLVE_INTENT, "source": DecisionModelSource.JEV})
         except (TypeError, ValueError):
             return self._fallback_intent(text, "invalid_provider_output")
@@ -86,10 +186,11 @@ class JevDecisionModelAdapter(DecisionModelPort):
             DecisionModelOperation.RESOLVE_METRIC,
             {"text": text, "candidates": candidates[:8]},
         )
-        if response is None:
-            return self._fallback_metric(text, candidates, "provider_unavailable")
+        failure_reason = self._response_failure_reason(response)
+        if failure_reason is not None:
+            return self._fallback_metric(text, candidates, failure_reason)
         try:
-            value = MetricDecision.model_validate(response, strict=False)
+            value = MetricDecision.model_validate(response.payload, strict=False)
             if value.metric_code is not None and candidates and value.metric_code not in candidates:
                 raise ValueError("provider returned a metric outside the candidate set")
             if value.metric_code is not None:
@@ -114,10 +215,11 @@ class JevDecisionModelAdapter(DecisionModelPort):
             "available_actions": tuple(action.value for action in available_actions),
         }
         response = self._call(DecisionModelOperation.CHOOSE_NEXT_ACTION, payload)
-        if response is None:
-            return self._fallback_next_action(session, available_actions, capabilities, last_result, "provider_unavailable")
+        failure_reason = self._response_failure_reason(response)
+        if failure_reason is not None:
+            return self._fallback_next_action(session, available_actions, capabilities, last_result, failure_reason)
         try:
-            value = NextActionDecision.model_validate(response, strict=False)
+            value = NextActionDecision.model_validate(response.payload, strict=False)
             if value.decision.action not in available_actions:
                 raise ValueError("provider returned a forbidden action")
             return value.model_copy(update={"operation": DecisionModelOperation.CHOOSE_NEXT_ACTION, "source": DecisionModelSource.JEV})
@@ -139,10 +241,11 @@ class JevDecisionModelAdapter(DecisionModelPort):
                 "capabilities": (capabilities or PresentationCapabilities()).model_dump(mode="json"),
             },
         )
-        if response is None:
-            return self._fallback_presentation(request, capabilities, "provider_unavailable")
+        failure_reason = self._response_failure_reason(response)
+        if failure_reason is not None:
+            return self._fallback_presentation(request, capabilities, failure_reason)
         try:
-            value = PresentationDecision.model_validate(response, strict=False)
+            value = PresentationDecision.model_validate(response.payload, strict=False)
             if value.template not in _ALLOWED_TEMPLATES:
                 raise ValueError("provider returned a forbidden presentation template")
             return value.model_copy(update={"operation": DecisionModelOperation.CHOOSE_PRESENTATION, "source": DecisionModelSource.JEV})
@@ -161,10 +264,11 @@ class JevDecisionModelAdapter(DecisionModelPort):
             DecisionModelOperation.CLASSIFY_SEMANTIC_FEATURES,
             {"text": input_text, "feature_codes": feature_codes[:64]},
         )
-        if response is None:
-            return self._fallback_semantic(input_text, feature_codes, "provider_unavailable")
+        failure_reason = self._response_failure_reason(response)
+        if failure_reason is not None:
+            return self._fallback_semantic(input_text, feature_codes, failure_reason)
         try:
-            value = SemanticFeatureDecision.model_validate(response, strict=False)
+            value = SemanticFeatureDecision.model_validate(response.payload, strict=False)
             allowed = set(feature_codes)
             if any(item.feature_id.removeprefix("semantic-feature:") not in allowed for item in value.values) and allowed:
                 raise ValueError("provider returned an unknown semantic feature")
@@ -172,38 +276,225 @@ class JevDecisionModelAdapter(DecisionModelPort):
         except (TypeError, ValueError):
             return self._fallback_semantic(input_text, feature_codes, "invalid_provider_output")
 
-    def _call(self, operation: DecisionModelOperation, payload: Mapping[str, object]) -> object | None:
+    def _call(self, operation: DecisionModelOperation, payload: Mapping[str, object]) -> JevResponseEnvelope:
+        definition = self._definition_for(operation)
+        if definition is None:
+            logger.error(
+                "jev_request_fallback operation=%s fallback_reason=artifact_missing",
+                operation.value,
+            )
+            return self._failure_response(
+                operation,
+                JevFailureReason.ARTIFACT_MISSING,
+                detail_code="question_definition_missing",
+            )
+
+        timeout_seconds = self._timeout_for(definition.timeout_class)
+        request = JevRequestEnvelope(
+            definition_id=definition.definition_id,
+            definition_version=definition.version,
+            definition_kind=definition.kind,
+            operation=operation,
+            redacted_payload=self._redact_payload(payload),
+            correlation_id=f"jev:{uuid4().hex}",
+            timeout_seconds=timeout_seconds,
+            timeout_class=definition.timeout_class,
+            pii_policy=definition.pii_policy,
+            output_schema=definition.output_schema,
+        )
+
         now = time.monotonic()
         if now < self._circuit_open_until:
-            return None
+            return self._failure_response(operation, JevFailureReason.PROVIDER_UNAVAILABLE, detail_code="circuit_open")
+
         attempts = self._config.max_retries + 1
         for attempt in range(attempts):
             started = time.monotonic()
+            logger.info(
+                "jev_request_started operation=%s definition_version=%s source=jev attempt=%s",
+                request.operation.value,
+                request.definition_version,
+                attempt + 1,
+            )
             try:
-                response = self._transport.request(operation.value, payload, timeout_seconds=self._config.timeout_seconds)
-                if len(repr(response).encode("utf-8")) > self._config.max_output_bytes:
-                    raise ValueError("provider output exceeds configured bound")
+                raw_response = self._request_transport(request)
+                if len(repr(raw_response).encode("utf-8")) > self._config.max_output_bytes:
+                    raise _JevBoundaryError(JevFailureReason.BUDGET, "output_too_large")
+                response = self._normalize_response(raw_response, request, started)
+                if response.failure is not None:
+                    self._failures += 1
+                    logger.warning(
+                        "jev_request_fallback operation=%s definition_version=%s fallback_reason=%s retry_count=%s",
+                        request.operation.value,
+                        request.definition_version,
+                        response.failure.reason.value,
+                        attempt,
+                    )
+                    if attempt + 1 < attempts and response.failure.retryable:
+                        continue
+                    return response
+
                 self._failures = 0
                 logger.info(
-                    "decision_model_call operation=%s source=jev outcome=accepted attempt=%s duration_ms=%s",
-                    operation.value,
-                    attempt + 1,
+                    "jev_request_completed operation=%s definition_version=%s source=%s latency_ms=%s retry_count=%s confidence_bucket=%s",
+                    request.operation.value,
+                    request.definition_version,
+                    response.identity.source.value,
                     int((time.monotonic() - started) * 1000),
+                    attempt,
+                    "unknown",
                 )
                 return response
-            except Exception as exc:  # provider boundary: fallback must be total
-                self._failures += 1
-                logger.warning(
-                    "decision_model_call operation=%s source=jev outcome=fallback attempt=%s error=%s",
-                    operation.value,
-                    attempt + 1,
-                    type(exc).__name__,
+            except _JevBoundaryError as exc:
+                failure = self._failure_response(
+                    operation,
+                    exc.reason,
+                    detail_code=exc.detail_code,
                 )
-                if attempt + 1 == attempts:
-                    if self._failures >= self._config.max_failures:
-                        self._circuit_open_until = time.monotonic() + self._config.circuit_open_seconds
-                    return None
-        return None
+            except TimeoutError:
+                failure = self._failure_response(operation, JevFailureReason.TIMEOUT, detail_code="transport_timeout")
+            except PermissionError:
+                failure = self._failure_response(operation, JevFailureReason.AUTH, detail_code="transport_auth")
+            except Exception as exc:  # provider boundary: fallback must be total
+                failure = self._failure_response(operation, JevFailureReason.TRANSPORT, detail_code=type(exc).__name__)
+
+            self._failures += 1
+            logger.warning(
+                "jev_request_fallback operation=%s definition_version=%s fallback_reason=%s retry_count=%s",
+                request.operation.value,
+                request.definition_version,
+                failure.failure.reason.value if failure.failure is not None else "unknown",
+                attempt,
+            )
+            if attempt + 1 < attempts and failure.failure is not None and failure.failure.retryable:
+                continue
+            if self._failures >= self._config.max_failures:
+                self._circuit_open_until = time.monotonic() + self._config.circuit_open_seconds
+            return failure
+        return self._failure_response(operation, JevFailureReason.PROVIDER_UNAVAILABLE, detail_code="retry_budget_exhausted")
+
+    def _definition_for(self, operation: DecisionModelOperation) -> _DefinitionMetadata | None:
+        if self._registry is None:
+            return _LEGACY_DEFINITIONS[operation]
+        try:
+            definition = self._registry.for_operation(operation.value)
+        except (KeyError, ValueError):
+            return None
+        return _DefinitionMetadata(
+            definition_id=definition.definition_id,
+            version=definition.version,
+            kind=definition.kind,
+            timeout_class=definition.timeout_class,
+            pii_policy=definition.pii_policy,
+            output_schema=definition.output_schema,
+        )
+
+    def _timeout_for(self, timeout_class: DecisionTimeoutClass) -> float:
+        if timeout_class is DecisionTimeoutClass.ENRICHMENT:
+            return self._config.enrichment_timeout_seconds
+        if timeout_class is DecisionTimeoutClass.EVALUATION:
+            return self._config.evaluation_timeout_seconds
+        return self._config.timeout_seconds
+
+    def _request_transport(self, request: JevRequestEnvelope) -> object:
+        request_envelope = getattr(self._transport, "request_envelope", None)
+        if callable(request_envelope):
+            return request_envelope(request)
+        return self._transport.request(
+            request.operation.value,
+            request.redacted_payload,
+            timeout_seconds=request.timeout_seconds,
+        )
+
+    def _normalize_response(
+        self,
+        raw_response: object,
+        request: JevRequestEnvelope,
+        started: float,
+    ) -> JevResponseEnvelope:
+        if isinstance(raw_response, JevResponseEnvelope):
+            return raw_response
+        if isinstance(raw_response, Mapping) and {"payload", "failure"}.intersection(raw_response):
+            try:
+                return JevResponseEnvelope.model_validate(raw_response, strict=False)
+            except (TypeError, ValueError):
+                logger.warning(
+                    "jev_schema_rejected operation=%s definition_version=%s reason=response_envelope",
+                    request.operation.value,
+                    request.definition_version,
+                )
+                return self._failure_response(operation=request.operation, reason=JevFailureReason.SCHEMA, detail_code="response_envelope")
+
+        return JevResponseEnvelope(
+            payload=raw_response,
+            identity=ModelIdentity(
+                provider=self._config.provider,
+                model=self._config.model,
+                model_version=self._config.model_version,
+                source=DecisionModelSource.JEV,
+                artifact_id=f"{request.definition_id}@{request.definition_version}",
+            ),
+            usage=JevUsage(latency_ms=int((time.monotonic() - started) * 1000)),
+        )
+
+    def _failure_response(
+        self,
+        operation: DecisionModelOperation,
+        reason: JevFailureReason,
+        *,
+        detail_code: str,
+    ) -> JevResponseEnvelope:
+        definition = _LEGACY_DEFINITIONS.get(operation)
+        artifact_id = (
+            f"{definition.definition_id}@{definition.version}"
+            if definition is not None
+            else f"operation:{operation.value}"
+        )
+        retryable = reason in {
+            JevFailureReason.TIMEOUT,
+            JevFailureReason.TRANSPORT,
+            JevFailureReason.RATE_LIMIT,
+            JevFailureReason.PROVIDER_UNAVAILABLE,
+        }
+        return JevResponseEnvelope(
+            identity=ModelIdentity(
+                provider=self._config.provider,
+                model=self._config.model,
+                model_version=self._config.model_version,
+                source=DecisionModelSource.FALLBACK,
+                artifact_id=artifact_id,
+            ),
+            failure=JevFailure(reason=reason, retryable=retryable, detail_code=detail_code),
+        )
+
+    @staticmethod
+    def _response_failure_reason(response: JevResponseEnvelope | None) -> str | None:
+        if response is None or response.failure is None:
+            return None
+        if response.failure.reason in {
+            JevFailureReason.TIMEOUT,
+            JevFailureReason.TRANSPORT,
+            JevFailureReason.AUTH,
+            JevFailureReason.RATE_LIMIT,
+            JevFailureReason.PROVIDER_UNAVAILABLE,
+        }:
+            return "provider_unavailable"
+        return response.failure.reason.value
+
+    @staticmethod
+    def _redact_payload(payload: Mapping[str, object]) -> dict[str, object]:
+        sensitive_keys = {"api_key", "authorization", "cookie", "password", "secret", "token"}
+        redacted: dict[str, object] = {}
+        for key, value in payload.items():
+            if key.lower() in sensitive_keys:
+                redacted[key] = "[REDACTED]"
+            elif isinstance(value, str):
+                redacted[key] = value[:8_000]
+            elif isinstance(value, (tuple, list)):
+                redacted[key] = tuple(item[:128] if isinstance(item, str) else item for item in value[:64])
+            else:
+                redacted[key] = value
+        return redacted
 
     def _fallback_intent(self, text: str, reason: str) -> IntentDecision:
         try:
@@ -265,4 +556,4 @@ class JevDecisionModelAdapter(DecisionModelPort):
         return value.model_copy(update={"source": DecisionModelSource.FALLBACK, "fallback_reason": reason})
 
 
-__all__ = ["JevAdapterConfig", "JevDecisionModelAdapter", "JevTransport"]
+__all__ = ["JevAdapterConfig", "JevDecisionModelAdapter", "JevEnvelopeTransport", "JevTransport"]
