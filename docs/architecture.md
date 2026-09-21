@@ -192,13 +192,58 @@ ingestion → canonical storage → semantic → projections
 правила и версии находятся в [universal analytics](architecture/universal-analytics.md),
 [semantic taxonomy](architecture/semantic-taxonomy.md),
 [metric registry](architecture/metric-registry.md) и
-[integration seams](architecture/integration-seams.md).
+[integration seams](architecture/integration-seams.md) и
+[Jev ecosystem](architecture/jev-ecosystem.md).
 
 `POST /analytics/query` является прямым typed входом без NLP. `POST
 /assistant/query` добавляет owner-bound `QuerySession`, deterministic parser,
 `DecisionPolicyPort`, существующий Admission Fit и `ResponsePolicyPort`.
 Отсутствие данных остаётся quality status, а evidence связывает metric с
 curriculum item и source snapshot.
+
+### Stage 2 Jev boundary and dependency direction
+
+Stage 2 extends the existing analytics graph without introducing a second
+backend:
+
+    clean Stage 1 baseline
+      → canonical storage
+      → semantic enrichment
+      → ProgramProjection / ProgramMetric
+      → MetricRegistry / QuerySpec
+      → deterministic AnalyticsExecutor
+      → QueryFrame / QuerySession
+      → DecisionModelPort
+           ↘ deterministic default
+           ↘ optional TypeSafe production adapter
+           ↘ shadow evaluation
+      → AnalyticsResult / ResponsePlan / ResponseEnvelope
+      → Web / OG / Telegram / future MAX
+
+The normal factual path is deterministic and source-backed. A Jev adapter may
+answer only bounded control questions such as intent, metric, next action,
+presentation or a reviewed semantic candidate. It never calculates catalog
+facts, emits SQL, writes canonical data or becomes the owner of user choices.
+
+The following ownership rules are mandatory:
+
+- DecisionContext remains explicit shortlist/decision state.
+- QuerySession remains conversation memory with explicit/inferred/model origin.
+- decision_analytics remains action telemetry and is not reused for catalog
+  metrics.
+- Question Registry owns shared instructions, criteria, definition version and
+  input/output schema; jevcal, jev-align, jevQL and jev-tree keep their own
+  technical configurations.
+- common analytics reads materialized metrics first; jevQL is only an
+  embedded-first optional semantic predicate for registered non-materialized
+  questions.
+- entity resolution uses exact/alias/context narrowing first; jev-tree is
+  eligible only for a genuinely large unresolved candidate set, never for
+  ordinary comparisons of twenty programs.
+
+No module under modules/domain, modules/contracts or modules/services imports a
+Jev SDK or an isolated runtime client. Infrastructure adapters depend inward on
+typed ports, and AndromedaContainer is the only composition authority.
 
 ```text
 backend/src/andromeda/

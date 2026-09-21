@@ -1,6 +1,19 @@
 # Integration seams
 
+## Stage 2 execution baseline
+
+Stage 2 runs from the clean Stage 1 baseline commit e353da4 on
+feature/jev-ecosystem-stage-2. The earlier feature/university-admin-control
+worktree was dirty during research and is preserved as a separate audit source;
+it is not a runtime or implementation baseline.
+
 ## Jev
+
+Jev integration is optional infrastructure behind typed ports. The default
+runtime is deterministic and must remain usable when every external provider
+is unavailable. The production decision client is a TypeSafe-compatible
+adapter; System One Adapter is evaluation-only and must not be used as the
+production client.
 
 Implement adapters for:
 
@@ -12,6 +25,49 @@ Implement adapters for:
 These adapters belong at the composition/integration boundary. Domain,
 analytics, admissions and presentation contracts must not import a Jev SDK.
 The deterministic implementations remain the testable default.
+
+The shared Question Registry owns operation instructions, criteria, version,
+input/output schema and calibration identity. Tool-specific settings stay in
+their own validated configuration:
+
+- jevcal: dataset splits, calibration and lock generation;
+- jev-align: acquisition, review, proposal and rewind settings;
+- jevQL: engine mode, budgets, cache and process settings;
+- jev-tree: candidate threshold, tree limits and Node runtime settings.
+
+No model output may provide SQL, a repository handle, an endpoint, a template
+name or a user fact. The only application-facing boundary is a typed
+DecisionModelPort/semantic/resolution port. External responses are
+schema-validated and failures fall back to deterministic behavior with a
+typed reason.
+
+### Upstream strategy
+
+| Project | Strategy | Boundary |
+|---|---|---|
+| jevcal | DEV/EVAL_TOOL | Offline calibration and immutable lock artifacts |
+| jev-align | DEV/EVAL_TOOL | Human-reviewed semantic proposals and versioned imports |
+| System One Adapter | DEV/EVAL_TOOL | Baseline/evaluation reports only |
+| jevQL | ISOLATED_OPTIONAL_RUNTIME, embedded-first | Python SDK embedded engine, then private subprocess, then shared service only when justified |
+| jev-tree | ISOLATED_OPTIONAL_RUNTIME | Node adapter only after deterministic narrowing and large-candidate threshold |
+| awesome-jev | PATTERN_ONLY | Curated reference list, no runtime dependency |
+
+The common analytics path is materialized metrics and deterministic SQL
+aggregation. jevQL may run only for an explicitly registered,
+non-materialized semantic predicate with bounded rows and evidence. jev-tree
+must not be called for ordinary small candidate sets, including a comparison of
+twenty programs.
+
+Production flags are disabled by default. Enabling a provider requires a
+validated definition, an immutable calibration lock, health/version checks,
+bounded timeout/retry/rate budgets and a tested rollback path.
+
+## State ownership
+
+DecisionContext stores explicit user choices for shortlist/decision flows.
+QuerySession stores conversation state, including explicit, inferred and
+model-candidate origins. decision_analytics is operational/user-action
+telemetry and is not catalog analytics or a source of domain truth.
 
 ## MAX
 

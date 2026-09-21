@@ -26,7 +26,7 @@ Depends on: repository audit and current contracts
    - jev-tree — ISOLATED_OPTIONAL_RUNTIME;
    - awesome-jev — PATTERN_ONLY.
 4. Явно зафиксировать, что decision_analytics — telemetry действий, а не catalog analytics; DecisionContext — explicit user decision, а QuerySession — conversation memory.
-5. Зафиксировать baseline SHA 8e11ef6, ветку feature/university-admin-control и наличие pre-existing dirty changes; branch creation не выполнять.
+5. Зафиксировать execution baseline SHA e353da4, clean branch feature/jev-ecosystem-stage-2 и связь с approved Stage 1 commit. Историческая ветка feature/university-admin-control с dirty worktree остаётся только preserved audit source и не является execution base.
 
 ### Contracts and compatibility
 
