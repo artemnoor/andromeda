@@ -1,0 +1,59 @@
+{
+  "schema_version": "decision-lock.v1",
+  "status": "validated",
+  "dataset_hash": "sha256:c8d73662277aa584ac56e96dcc4df46bfbad2ef0bc1bad998fa5eeb1e0565682",
+  "tool": {
+    "name": "jevcal",
+    "commit": "ae8f3144d69c9cb0e5e0a2c17f70b9d14714cb9f"
+  },
+  "model": {
+    "provider": "deterministic-fixture",
+    "model": "calibration-observations",
+    "version": "calibration-observations.v1",
+    "source": "shadow_only"
+  },
+  "definitions": {
+    "intent.v1": {
+      "definition_version": "intent-definition.v1",
+      "threshold": 0.82,
+      "coverage": 1.0,
+      "heldout_count": 1,
+      "ece": 0.18000000000000005,
+      "accepted_accuracy": 1.0
+    },
+    "metric.v1": {
+      "definition_version": "metric-definition.v1",
+      "threshold": 0.81,
+      "coverage": 1.0,
+      "heldout_count": 1,
+      "ece": 0.18999999999999995,
+      "accepted_accuracy": 1.0
+    },
+    "next-action.v1": {
+      "definition_version": "next-action-definition.v1",
+      "threshold": 0.79,
+      "coverage": 1.0,
+      "heldout_count": 1,
+      "ece": 0.20999999999999996,
+      "accepted_accuracy": 1.0
+    },
+    "presentation.v1": {
+      "definition_version": "presentation-definition.v1",
+      "threshold": 0.76,
+      "coverage": 1.0,
+      "heldout_count": 1,
+      "ece": 0.24,
+      "accepted_accuracy": 1.0
+    },
+    "semantic-feature.v1": {
+      "definition_version": "semantic-feature-definition.v1",
+      "threshold": 0.68,
+      "coverage": 1.0,
+      "heldout_count": 1,
+      "ece": 0.31999999999999995,
+      "accepted_accuracy": 1.0
+    }
+  },
+  "lock_id": "decision-lock-v1-18d8efdfee92",
+  "generated_at": "2026-09-21T21:45:00.110608+00:00"
+}

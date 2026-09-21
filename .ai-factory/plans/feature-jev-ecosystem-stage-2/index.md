@@ -1621,9 +1621,9 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 
 ### Phase 03 — Jevcal
 
-- [ ] T06 — Export typed decision data to Jevcal
-- [ ] T07 — Generate and validate calibration lock
-- [ ] T08 — Add CI calibration gates
+- [x] T06 — Export typed decision data to Jevcal
+- [x] T07 — Generate and validate calibration lock
+- [x] T08 — Add CI calibration gates
 
 ### Phase 04 — Jev-align
 
