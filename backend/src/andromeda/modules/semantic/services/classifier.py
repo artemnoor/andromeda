@@ -17,6 +17,7 @@ from andromeda.shared.contracts.versions import (
 )
 
 from ..contracts.inputs import SemanticClassificationInput
+from ..contracts.review_artifacts import ReviewedSemanticArtifact, SemanticProposalState
 from ..contracts.public import (
     CurriculumItemSemanticFeature,
     DisciplineSemanticDefault,
@@ -203,6 +204,43 @@ class RuleBasedSemanticClassifier:
         return tuple(result)
 
 
+class ReviewedMappingSemanticClassifier:
+    """Apply only accepted, source-matched review mappings over rule output."""
+
+    def __init__(self, base: RuleBasedSemanticClassifier, artifact: ReviewedSemanticArtifact) -> None:
+        if artifact.semantic_version != base.semantic_version:
+            raise ValueError("reviewed semantic artifact taxonomy version is stale")
+        self._base = base
+        self._artifact = artifact
+
+    @property
+    def semantic_version(self) -> str:
+        return self._artifact.semantic_version
+
+    @property
+    def classifier_version(self) -> str:
+        return self._artifact.classifier_version
+
+    def classify(self, input: SemanticClassificationInput) -> SemanticClassificationResult:
+        result = self._base.classify(input)
+        candidates = tuple(
+            proposal
+            for proposal in self._artifact.mappings
+            if proposal.state is SemanticProposalState.ACCEPTED
+            and proposal.source_hash == input.source_hash
+            and (
+                proposal.curriculum_item_id == input.curriculum_item_id
+                if input.curriculum_item_id is not None
+                else proposal.discipline_id == input.discipline_id
+            )
+        )
+        if not candidates:
+            return result
+        by_feature = {proposal.feature_id: proposal.feature for proposal in candidates}
+        values = tuple(by_feature.get(value.feature_id, value) for value in result.values)
+        return result.model_copy(update={"values": values})
+
+
 def merge_semantic_values(
     defaults: Iterable[DisciplineSemanticDefault],
     item_result: SemanticClassificationResult,
@@ -252,4 +290,4 @@ def _normalize_name(value: str) -> str:
     return re.sub(r"[‐‑‒–—―]", "-", normalized)
 
 
-__all__ = ["RuleBasedSemanticClassifier", "merge_semantic_values"]
+__all__ = ["ReviewedMappingSemanticClassifier", "RuleBasedSemanticClassifier", "merge_semantic_values"]

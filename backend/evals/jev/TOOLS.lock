@@ -6,6 +6,12 @@
       "commit": "ae8f3144d69c9cb0e5e0a2c17f70b9d14714cb9f",
       "role": "DEV/EVAL_TOOL",
       "runtime_dependency": false
+    },
+    "jev-align": {
+      "source": "https://github.com/sutro-sh/jev-align",
+      "commit": "3d997fc76593036655c28d4964de43b55f81fe2c",
+      "role": "DEV/EVAL_TOOL",
+      "runtime_dependency": false
     }
   }
 }

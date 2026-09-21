@@ -7,6 +7,7 @@ version parameters only. It never accepts source URLs, prompts or model output.
 from __future__ import annotations
 
 import argparse
+from datetime import UTC, datetime
 import json
 import logging
 import sys
@@ -35,7 +36,9 @@ from andromeda.modules.admissions.contracts.public import ProgramAdmissions  # n
 from andromeda.modules.curricula.contracts.public import Curriculum  # noqa: E402
 from andromeda.modules.disciplines.contracts.public import Discipline  # noqa: E402
 from andromeda.modules.programs.contracts.public import Program  # noqa: E402
-from andromeda.modules.semantic.services.classifier import RuleBasedSemanticClassifier  # noqa: E402
+from andromeda.modules.semantic.contracts.review_artifacts import ReviewedSemanticArtifact  # noqa: E402
+from andromeda.modules.semantic.services.classifier import ReviewedMappingSemanticClassifier, RuleBasedSemanticClassifier  # noqa: E402
+from andromeda.modules.semantic.contracts.review import SemanticReviewCandidate, SemanticReviewQueueItem, build_review_queue  # noqa: E402
 from andromeda.modules.semantic.services.enrichment import SemanticEnrichmentService  # noqa: E402
 from andromeda.shared.contracts.ids import UniversityId  # noqa: E402
 
@@ -59,6 +62,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--classifier-version", default="semantic-classifier.v1")
     parser.add_argument("--batch-size", type=int, default=500)
     parser.add_argument("--retry-of-run-id", help="record this run as a retry of a failed semantic run")
+    reviewed_group = parser.add_mutually_exclusive_group()
+    reviewed_group.add_argument("--reviewed-artifact", type=Path, help="apply an accepted reviewed semantic artifact")
+    reviewed_group.add_argument("--rollback-reviewed-artifact", type=Path, help="explicitly select a previous reviewed artifact")
+    parser.add_argument("--export-review-queue", type=Path, help="write an idempotent semantic review queue as JSONL")
     parser.add_argument("--dry-run", action="store_true")
     return parser
 
@@ -96,11 +103,34 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
             semantic_store = SqlAlchemySemanticEnrichmentRepository(engine)
-            service = SemanticEnrichmentService(
-                RuleBasedSemanticClassifier(
-                    taxonomy_version=args.definition_version,
+            if args.export_review_queue is not None:
+                queue = _build_review_queue(
+                    curricula,
+                    disciplines,
+                    semantic_store,
+                    semantic_version=args.definition_version,
                     classifier_version=args.classifier_version,
-                ),
+                    output_path=args.export_review_queue,
+                )
+                print(json.dumps({"status": "review_queue_exported", "count": len(queue), "path": str(args.export_review_queue)}))
+                return 0
+            base_classifier = RuleBasedSemanticClassifier(
+                taxonomy_version=args.definition_version,
+                classifier_version=args.classifier_version,
+            )
+            artifact_path = args.reviewed_artifact or args.rollback_reviewed_artifact
+            classifier = base_classifier
+            if artifact_path is not None:
+                artifact = _load_reviewed_artifact(artifact_path)
+                classifier = ReviewedMappingSemanticClassifier(base_classifier, artifact)
+                logger.info(
+                    "semantic_reviewed_artifact_selected artifact_id=%s classifier_version=%s rollback=%s",
+                    artifact.artifact_id,
+                    artifact.classifier_version,
+                    args.rollback_reviewed_artifact is not None,
+                )
+            service = SemanticEnrichmentService(
+                classifier,
                 semantic_store,
             )
             semantic_run = service.enrich(
@@ -161,6 +191,58 @@ def _snapshot_hash(programs: tuple[Program, ...], curricula: tuple[Curriculum, .
         )
     payload = "\n".join(sorted(values)).encode("utf-8")
     return sha256(payload).hexdigest()
+
+
+def _load_reviewed_artifact(path: Path) -> ReviewedSemanticArtifact:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return ReviewedSemanticArtifact.model_validate(payload, strict=False)
+    except (OSError, ValueError, TypeError) as exc:
+        raise RuntimeError(f"reviewed semantic artifact is invalid: {path}") from exc
+
+
+def _build_review_queue(
+    curricula: tuple[Curriculum, ...],
+    disciplines: tuple[Discipline, ...],
+    semantic_store: SqlAlchemySemanticEnrichmentRepository,
+    *,
+    semantic_version: str,
+    classifier_version: str,
+    output_path: Path,
+) -> tuple[SemanticReviewQueueItem, ...]:
+    items = tuple(item for curriculum in curricula for item in curriculum.items)
+    features = semantic_store.item_features(
+        tuple(item.id for item in items),
+        semantic_version=semantic_version,
+        classifier_version=classifier_version,
+    )
+    disciplines_by_id = {discipline.id: discipline for discipline in disciplines}
+    candidates = tuple(
+        SemanticReviewCandidate(
+            discipline_id=item.discipline_id,
+            curriculum_item_id=item.id,
+            discipline_name=disciplines_by_id.get(item.discipline_id).name if item.discipline_id in disciplines_by_id else item.source_name,
+            values=tuple(value.feature for value in features.get(item.id, ())),
+            source_hash=item.provenance[0].content_sha256 if item.provenance else None,
+            semantic_version=semantic_version,
+            classifier_version=classifier_version,
+            created_at=item.provenance[0].captured_at if item.provenance else datetime.now(UTC),
+        )
+        for item in items
+    )
+    reviewed_ids = frozenset(
+        json.loads(line)["queue_id"]
+        for line in output_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ) if output_path.exists() else frozenset()
+    queue = build_review_queue(candidates, reviewed_queue_ids=reviewed_ids)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        "".join(item.model_dump_json() + "\n" for item in queue),
+        encoding="utf-8",
+    )
+    logger.info("semantic_review_queue_exported count=%d path=%s", len(queue), output_path)
+    return queue
 
 
 if __name__ == "__main__":

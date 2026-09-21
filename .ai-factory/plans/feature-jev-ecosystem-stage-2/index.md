@@ -1627,9 +1627,9 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 
 ### Phase 04 — Jev-align
 
-- [ ] T09 — Export uncertain semantic items
-- [ ] T10 — Integrate review/export/import workflow
-- [ ] T11 — Add reviewed artifact compatibility
+- [x] T09 — Export uncertain semantic items
+- [x] T10 — Integrate review/export/import workflow
+- [x] T11 — Add reviewed artifact compatibility
 
 ### Phase 05 — jevQL
 
