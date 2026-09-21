@@ -1652,9 +1652,9 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 
 ### Phase 08 — Vertical slices
 
-- [ ] T22 — Complete analytics/admission slices
-- [ ] T23 — Verify ResponsePlan and adapters
-- [ ] T24 — Benchmark PostgreSQL and budgets
+- [x] T22 — Complete analytics/admission slices
+- [x] T23 — Verify ResponsePlan and adapters
+- [x] T24 — Benchmark PostgreSQL and budgets
 
 ### Phase 09 — Handoff
 

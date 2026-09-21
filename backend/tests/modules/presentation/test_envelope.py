@@ -42,10 +42,12 @@ def test_envelope_is_channel_neutral_and_actions_are_allow_listed() -> None:
         ResponsePolicyResult(response_format=ResponseFormat.TEXT, template="analytics-summary", reason="test"),
         text="Готово",
         actions=(ResponseActionItem(action=ResponseAction.SHOW_DETAILS, label="Подробнее", payload={"programId": "program:bmstu:09.03.01-02"}),),
+        metadata={"resolution_evidence": {"program:0": "strategy=deterministic"}},
     )
     assert envelope.response_type is ResponseFormat.TEXT
     assert envelope.actions[0].action is ResponseAction.SHOW_DETAILS
     assert envelope.data["rows"]
+    assert envelope.metadata["resolution_evidence"] == {"program:0": "strategy=deterministic"}
     assert "sql" not in envelope.model_dump_json().lower()
 
 
