@@ -193,7 +193,8 @@ ingestion → canonical storage → semantic → projections
 [semantic taxonomy](architecture/semantic-taxonomy.md),
 [metric registry](architecture/metric-registry.md) и
 [integration seams](architecture/integration-seams.md) и
-[Jev ecosystem](architecture/jev-ecosystem.md).
+[Jev ecosystem](architecture/jev-ecosystem.md) и
+[Jev rollout/security gate](architecture/jev-rollout.md).
 
 `POST /analytics/query` является прямым typed входом без NLP. `POST
 /assistant/query` добавляет owner-bound `QuerySession`, deterministic parser,

@@ -1797,6 +1797,11 @@ export interface components {
              * @default []
              */
             explanations: components["schemas"]["MetricExplanation"][];
+            /**
+             * Semantic Predicate Evidence
+             * @default []
+             */
+            semantic_predicate_evidence: components["schemas"]["SemanticPredicateEvidence"][];
         };
         /**
          * AnalyticsResultStatus
@@ -3493,6 +3498,8 @@ export interface components {
             semantic_version: string;
             /** Source Feature Code */
             source_feature_code?: string | null;
+            /** Predicate Definition Id */
+            predicate_definition_id?: string | null;
             /**
              * Minimum Coverage
              * @default 0.8
@@ -3976,6 +3983,7 @@ export interface components {
              * @default 20
              */
             limit: number;
+            predicate?: components["schemas"]["SemanticPredicate"] | null;
         };
         /**
          * QuestionBlock
@@ -4314,6 +4322,52 @@ export interface components {
             /** Rationale */
             rationale: string;
         };
+        /** SemanticPredicate */
+        SemanticPredicate: {
+            /** Definition Id */
+            definition_id: string;
+            /** Definition Version */
+            definition_version: string;
+            /** Question */
+            question: string;
+            /** Allowed Fields */
+            allowed_fields: string[];
+            /**
+             * Max Rows
+             * @default 100
+             */
+            max_rows: number;
+            /**
+             * Max Chars Per Row
+             * @default 2000
+             */
+            max_chars_per_row: number;
+        };
+        /** SemanticPredicateEvidence */
+        SemanticPredicateEvidence: {
+            /** Canonical Id */
+            canonical_id: string;
+            /** Definition Id */
+            definition_id: string;
+            /** Definition Version */
+            definition_version: string;
+            /** Result */
+            result?: boolean | null;
+            /** Confidence */
+            confidence?: string | null;
+            status: components["schemas"]["SemanticPredicateStatus"];
+            reason?: components["schemas"]["SemanticPredicateFailureReason"] | null;
+        };
+        /**
+         * SemanticPredicateFailureReason
+         * @enum {string}
+         */
+        SemanticPredicateFailureReason: "budget" | "auth" | "api" | "internal" | "transport" | "capability_unavailable" | "circuit_open";
+        /**
+         * SemanticPredicateStatus
+         * @enum {string}
+         */
+        SemanticPredicateStatus: "available" | "partial" | "insufficient_data" | "unavailable";
         /** SessionProgressResponse */
         SessionProgressResponse: {
             /** Stage */

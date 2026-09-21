@@ -15,12 +15,15 @@ is unavailable. The production decision client is a TypeSafe-compatible
 adapter; System One Adapter is evaluation-only and must not be used as the
 production client.
 
-Implement adapters for:
+Implemented now:
 
-- `DecisionPolicyPort` → `JevDecisionPolicy`;
-- `SemanticClassifierPort` → `JevSemanticClassifier`, if model-assisted
-  enrichment is later approved;
-- `ResponsePolicyPort` → `JevResponsePolicy`.
+- `TypeSafeJevTransport` → `JevDecisionModelAdapter` → `DecisionModelPort`;
+- `ModelBackedDecisionPolicy` and `ShadowDecisionPolicy` → `DecisionPolicyPort`;
+- `JevQLAdapter` → `SemanticPredicatePort`;
+- `JevTreeAdapter` → `HierarchicalSelectionPort`.
+
+`SemanticClassifierPort` and `ResponsePolicyPort` remain deterministic in the
+default composition; future provider adapters must use the same typed seam.
 
 These adapters belong at the composition/integration boundary. Domain,
 analytics, admissions and presentation contracts must not import a Jev SDK.

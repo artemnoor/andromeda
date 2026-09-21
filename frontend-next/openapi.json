@@ -11524,6 +11524,15 @@
             "maxItems": 8,
             "title": "Explanations",
             "default": []
+          },
+          "semantic_predicate_evidence": {
+            "items": {
+              "$ref": "#/components/schemas/SemanticPredicateEvidence"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Semantic Predicate Evidence",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -16569,6 +16578,18 @@
             ],
             "title": "Source Feature Code"
           },
+          "predicate_definition_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicate Definition Id"
+          },
           "minimum_coverage": {
             "type": "string",
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
@@ -18097,6 +18118,16 @@
             "minimum": 1.0,
             "title": "Limit",
             "default": 20
+          },
+          "predicate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SemanticPredicate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -18955,6 +18986,146 @@
           "rationale"
         ],
         "title": "SemanticClassificationEvidence"
+      },
+      "SemanticPredicate": {
+        "properties": {
+          "definition_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9._:-]*$",
+            "title": "Definition Id"
+          },
+          "definition_version": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9._:-]*$",
+            "title": "Definition Version"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "allowed_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Allowed Fields"
+          },
+          "max_rows": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Max Rows",
+            "default": 100
+          },
+          "max_chars_per_row": {
+            "type": "integer",
+            "maximum": 8000.0,
+            "minimum": 1.0,
+            "title": "Max Chars Per Row",
+            "default": 2000
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "definition_id",
+          "definition_version",
+          "question",
+          "allowed_fields"
+        ],
+        "title": "SemanticPredicate"
+      },
+      "SemanticPredicateEvidence": {
+        "properties": {
+          "canonical_id": {
+            "type": "string",
+            "title": "Canonical Id"
+          },
+          "definition_id": {
+            "type": "string",
+            "title": "Definition Id"
+          },
+          "definition_version": {
+            "type": "string",
+            "title": "Definition Version"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SemanticPredicateStatus"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SemanticPredicateFailureReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "canonical_id",
+          "definition_id",
+          "definition_version",
+          "status"
+        ],
+        "title": "SemanticPredicateEvidence"
+      },
+      "SemanticPredicateFailureReason": {
+        "type": "string",
+        "enum": [
+          "budget",
+          "auth",
+          "api",
+          "internal",
+          "transport",
+          "capability_unavailable",
+          "circuit_open"
+        ],
+        "title": "SemanticPredicateFailureReason"
+      },
+      "SemanticPredicateStatus": {
+        "type": "string",
+        "enum": [
+          "available",
+          "partial",
+          "insufficient_data",
+          "unavailable"
+        ],
+        "title": "SemanticPredicateStatus"
       },
       "SessionProgressResponse": {
         "properties": {

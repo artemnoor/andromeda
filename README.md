@@ -47,6 +47,10 @@ python scripts/andromeda.py full              # локальные провер�
 - Универсальный аналитический слой: versioned semantic features, materialized
   `ProgramProjection`, allow-listed `MetricRegistry`, typed `/analytics/query`
   и channel-neutral `/assistant/query` без зависимости от Jev/MAX/Telegram.
+- Jev integration seam: shared Question Registry, official TypeSafe SDK adapter,
+  deterministic fallback, shadow-only policy, calibration-lock gate and
+  isolated jevQL/jev-tree optional runtimes. Все flags выключены по умолчанию;
+  Jev не вычисляет факты и не генерирует SQL.
 - University-owned admin: scoped owner/editor/viewer memberships, управление факультетами/кафедрами и категориями, public catalog overlays и отдельная афиша вузов с draft/publish/archive, audience targeting и agenda. В UI доступны «Вузы», публичный каталог/афиша и защищённая админка из личного кабинета.
 - Persistent shortlist с ролями «основная/альтернатива», явными add/remove/restore и optimistic revision; raw A/B comparison и summary-first сравнение 2–3 программ.
 - Профиль содержания: короткое ядро из пяти вопросов, preliminary topic chips, bounded adaptive refinement и реальные программы с объяснениями по учебному плану. Career Fit и персональный Workload Readiness не являются MVP capability; вместо них показываются source-backed Content Fit и workload evidence в сравнении.
@@ -96,6 +100,7 @@ GET /compare?programIds=<program-id-a>,<program-id-b>&scope=semester&semester=1
 | [Быстрый старт](docs/getting-started.md) | Установка и первый запуск |
 | [Архитектура](docs/architecture.md) | Модули и поток данных |
 | [Universal analytics](docs/architecture/universal-analytics.md) | Semantic layer, projections, QuerySpec и integration seams |
+| [Jev rollout](docs/architecture/jev-rollout.md) | Безопасные flags, production gates, shadow/fallback и rollback |
 | [Semantic and catalog analytics](docs/semantic-analytics.md) | Версии семантики, metric registry, evidence, rebuild/rollback и Jev fallback |
 | [Query flow](docs/architecture/query-flow.md) | Conversation state, analytics и admission compilation |
 | [API](docs/api.md) | OpenAPI endpoints и контракты |

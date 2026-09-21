@@ -1658,8 +1658,8 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 
 ### Phase 09 — Handoff
 
-- [ ] T25 — Security review and architecture enforcement
-- [ ] T26 — Documentation and final gates
+- [x] T25 — Security review and architecture enforcement
+- [x] T26 — Documentation and final gates
 
 ## Commit checkpoints
 

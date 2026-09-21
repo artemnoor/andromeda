@@ -30,6 +30,19 @@
 | `ANDROMEDA_AUTH_RATE_LIMIT_MAX` | backend | `10` | Requests per window for login/register/guest import per client key |
 | `ANDROMEDA_SENSITIVE_RATE_LIMIT_MAX` | backend | `120` | Requests per window for decision/proftest state mutations |
 | `ANDROMEDA_OPS_RATE_LIMIT_MAX` | backend | `10` | Requests per window for Ops endpoints per client key |
+| `JEV_ENABLED` | backend | `false` | Enable calibrated production TypeSafe decisions; requires key, health and production lock |
+| `JEV_SHADOW_ENABLED` | backend | `false` | Run TypeSafe decisions for aggregate comparison while returning deterministic decisions |
+| `JEV_CALIBRATION_ENABLED` | backend | `false` | Explicit calibration gate required by production Jev |
+| `JEV_CALIBRATION_LOCK_PATH` | backend | — | Environment/secret-manager path to a validated production decision lock |
+| `TYPESAFE_API_KEY` | backend | — | Optional provider secret; never commit or log |
+| `JEV_ENDPOINT` | backend | `https://api.typesafe.ai` | Fixed allow-listed TypeSafe endpoint; never user-controlled |
+| `JEV_MODEL` | backend | `jev-latest` | TypeSafe model identity |
+| `JEVQL_ENABLED` | backend | `false` | Optional bounded semantic predicate runtime |
+| `JEV_TREE_ENABLED` | backend | `false` | Optional isolated Node 22 hierarchical resolver |
+| `JEV_MAX_ROWS` | backend | `100` | Hard external predicate row budget |
+| `JEV_MAX_CHARS` | backend | `32000` | Hard external payload budget |
+| `JEV_TIMEOUT_SECONDS` | backend | `2.0` | Interactive provider timeout |
+| `JEV_MAX_CONCURRENCY` | backend | `4` | External decision concurrency cap |
 | `NEXT_PUBLIC_API_BASE_URL` | frontend-next | `/api` | Browser API base URL; local demo runner overrides it with the API origin |
 | `ANDROMEDA_INTERNAL_API_URL` | frontend-next | `http://backend:8020` in YC compose | Server-side Next.js → backend URL; browser calls remain same-origin `/api` |
 | `NEXT_PUBLIC_DEBUG_API` | frontend-next | `0` | Client diagnostics toggle; production remains quiet |
@@ -61,6 +74,9 @@ provisioning владелец назначает editor/viewer через scoped
 В development/staging/production credentials передаются только через environment или secret manager. Staging/production требуют явный `FRONTEND_ORIGIN`, PostgreSQL, `ANDROMEDA_OPS_API_KEY` и secure cookies; production дополнительно принимает только HTTPS origins. Database URL в логах редактируется до `dialect://host:port/database`; password и query parameters не выводятся. SQLite fallback предназначен только для быстрых тестов.
 
 Profile persistence is anonymous by default: the server creates an opaque HttpOnly cookie, stores only its SHA-256 hash, and expires the profile after `ANDROMEDA_PROFILE_TTL_SECONDS`. The browser must not copy this cookie into LocalStorage or JavaScript state. Use `Secure=true` with HTTPS in staging; local HTTP development keeps it `false`.
+
+Jev rollout, lock requirements, degraded behavior and security boundaries are
+documented in [Jev rollout and security gate](architecture/jev-rollout.md).
 
 Account sessions are persistent server-side rows with revocation and expiry. Profile binding is deterministic: anonymous-only transfers, account profile wins on conflict, and no field-level merge occurs. State-changing auth calls with an `Origin` header require a configured `FRONTEND_ORIGIN` value.
 

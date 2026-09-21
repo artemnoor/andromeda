@@ -9,6 +9,7 @@ arbitrary prompts, SQL, or provider endpoints from a request.
 from __future__ import annotations
 
 import time
+import importlib
 from collections.abc import Callable, Mapping
 from typing import Any
 
@@ -103,10 +104,11 @@ class TypeSafeJevTransport:
 
 def _official_client_factory(**kwargs: Any) -> Any:
     try:
-        from typesafe_sdk import TypeSafeClient  # type: ignore[import-not-found]
+        module = importlib.import_module("typesafe_sdk")
+        client_type = getattr(module, "TypeSafeClient")
     except ImportError as exc:
         raise RuntimeError("typesafe-sdk optional dependency is not installed") from exc
-    return TypeSafeClient(**kwargs)
+    return client_type(**kwargs)
 
 
 def _bounded_state(payload: Mapping[str, object]) -> dict[str, object]:
