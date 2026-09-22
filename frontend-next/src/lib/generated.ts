@@ -4733,7 +4733,9 @@ export interface components {
             /** Template */
             template: string;
             /** Data */
-            data?: Record<string, never>;
+            data?: {
+                [key: string]: unknown;
+            };
             /**
              * Actions
              * @default []
@@ -4742,7 +4744,9 @@ export interface components {
             /** Deep Link */
             deep_link?: string | null;
             /** Metadata */
-            metadata?: Record<string, never>;
+            metadata?: {
+                [key: string]: unknown;
+            };
             /** Query Reference */
             query_reference?: string | null;
             /** Result Reference */
@@ -4778,7 +4782,9 @@ export interface components {
              */
             text: string;
             /** Data */
-            data?: Record<string, never>;
+            data?: {
+                [key: string]: unknown;
+            };
             /**
              * Actions
              * @default []
