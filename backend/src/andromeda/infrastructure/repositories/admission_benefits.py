@@ -177,7 +177,7 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
             if hasattr(model, "university_id"):
                 statement = statement.where(model.university_id == university_id)
             result = self._session.execute(statement)
-            count += int(result.rowcount or 0)
+            count += int(getattr(result, "rowcount", 0) or 0)
         logger.warning(
             "admission_benefits_source_staled university_id=%s year=%s source_kind=%s source_url=%s count=%d",
             university_id,
