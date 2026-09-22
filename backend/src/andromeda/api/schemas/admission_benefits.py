@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
-from typing import Annotated, Literal
+from enum import Enum
+from typing import Annotated, Literal, TypeVar
 
 from pydantic import BeforeValidator, Field
 
@@ -70,6 +71,29 @@ JsonScore = Annotated[
     Decimal,
     BeforeValidator(_decimal_from_json),
     Field(strict=True, ge=Decimal(0), le=Decimal(100), max_digits=5, decimal_places=2),
+]
+
+
+EnumT = TypeVar("EnumT", bound=Enum)
+
+
+def _enum_from_json(enum_type: type[EnumT], value: object) -> EnumT:
+    """Convert JSON enum strings before strict API-model validation."""
+
+    if isinstance(value, enum_type):
+        return value
+    if isinstance(value, str):
+        return enum_type(value)
+    raise TypeError(f"{enum_type.__name__} must be a string")
+
+
+JsonOlympiadResultType = Annotated[
+    OlympiadResultType,
+    BeforeValidator(lambda value: _enum_from_json(OlympiadResultType, value)),
+]
+JsonEducationLevel = Annotated[
+    EducationLevel,
+    BeforeValidator(lambda value: _enum_from_json(EducationLevel, value)),
 ]
 
 
@@ -246,7 +270,7 @@ class ApplicantOlympiadAchievementRequest(ApiModel):
     olympiad_id: str = Field(pattern=r"^olympiad:[a-z0-9][a-z0-9-]{0,127}$")
     olympiad_profile_id: str | None = Field(default=None, pattern=r"^olympiad-profile:[a-z0-9][a-z0-9-]{0,127}$")
     result_year: int = Field(strict=True, ge=2000, le=2100)
-    result_type: OlympiadResultType
+    result_type: JsonOlympiadResultType
     grade_or_class: str | None = Field(default=None, min_length=1, max_length=128)
     evidence_reference: str | None = Field(default=None, min_length=1, max_length=256)
 
@@ -270,7 +294,7 @@ class AdmissionEligibilityRequest(ApiModel):
     university_id: str = Field(pattern=r"^university:[a-z0-9][a-z0-9-]{0,127}$")
     direction_code: str = Field(pattern=r"^[0-9]{2}\.[0-9]{2}\.[0-9]{2}$")
     admission_year: int = Field(strict=True, ge=2000, le=2100)
-    education_level: EducationLevel | None = None
+    education_level: JsonEducationLevel | None = None
     nps: str | None = Field(default=None, min_length=1, max_length=256)
     applicant: ApplicantAdmissionFactsRequest
 
