@@ -1,32 +1,76 @@
 from __future__ import annotations
 
+import json
 import logging
+from collections.abc import Sequence
 from hashlib import sha256
 from pathlib import Path
-from typing import Sequence
 
-from ...contracts.normalized import CanonicalSnapshot
-from ...contracts.raw import RawAdmissionPassingScore, RawAdmissionRecord, RawProgramRecord, RawSourceGap, RawTracerBundle, SourceLocator
-from ...contracts.source import CapturedSources, RawSourceSnapshot
+from andromeda.ingestion.contracts.admission_benefits import AdmissionBenefitsSnapshot
+
+from ....modules.admission_benefits.contracts.status import BenefitPolicyVersion
 from ....modules.disciplines.contracts.public import Discipline
-from ....shared.contracts.enums import SourceKind
-from ....shared.contracts.provenance import SourceAttribution
 from ....modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
-from .selectors import DEFAULT_CAMPUS_FIXTURE_DIR, DEFAULT_EVENT_FIXTURE_DIR, DEFAULT_FIXTURE_DIR, select_program_codes
+from ....shared.contracts.enums import SourceKind
+from ....shared.contracts.ids import IngestRunId
+from ....shared.contracts.provenance import SourceAttribution
+from ....shared.contracts.versions import (
+    ADMISSION_BENEFITS_PARSER_VERSION,
+    ADMISSION_BENEFITS_POLICY_VERSION,
+    ADMISSION_BENEFITS_SCHEMA_VERSION,
+)
+from ...contracts.normalized import CanonicalSnapshot
+from ...contracts.raw import (
+    AdmissionBenefitParserDiagnostic,
+    RawAdmissionBenefitDocument,
+    RawAdmissionBenefitRecord,
+    RawAdmissionPassingScore,
+    RawAdmissionRecord,
+    RawIndividualAchievementRecord,
+    RawProgramRecord,
+    RawSourceGap,
+    RawSourceSnapshot,
+    RawTracerBundle,
+    SourceLocator,
+)
+from ...contracts.source import CapturedSources, source_gap_reference
+from .admission_benefits.capture import BmstuAdmissionBenefitsCapture
+from .admission_benefits.coverage import build_coverage
+from .capture import BmstuSource, _detail_plan_records, parse_orders_manifest
+from .identity import direction_codes as extract_direction_codes
+from .identity import map_source_program_code
 from .mappings.discipline_areas import BMSTU_DISCIPLINE_AREA_OVERRIDES
+from .normalizers.admission_benefits import (
+    OlympiadProfileSourceEnrichment,
+    normalize_individual_achievements,
+    normalize_olympiad_benefits,
+)
 from .normalizers.admissions import normalize_admissions
 from .normalizers.campus import normalize_campus_points
-from .normalizers.events import normalize_events
-from .parser.admissions import parse_detail_admissions
-from .parser.admission_orders import iter_pdf_pages, parse_admission_order_document
-from .parser.campus import load_campus_fixture, parse_campus_points
-from .parser.events import load_event_fixture, parse_events
-from .parser.tracer import parse_captured
-from .capture import BmstuSource, _detail_plan_records, parse_orders_manifest
-from .identity import direction_codes as extract_direction_codes, map_source_program_code
 from .normalizers.canonical import normalize_bundle
+from .normalizers.events import normalize_events
+from .parser.admission_benefits import BmstuAdmissionBenefitsParser
+from .parser.admission_olympiads import (
+    BmstuOlympiadProfileParseResult,
+    parse_olympiad_profile_source,
+)
+from .parser.admission_orders import iter_pdf_pages, parse_admission_order_document
+from .parser.admission_rules import parse_admission_rule_policy
+from .parser.admissions import parse_detail_admissions
+from .parser.campus import load_campus_fixture, parse_campus_points
+from .parser.catalog import parse_catalog_direction_codes, parse_catalog_direction_index
+from .parser.events import load_event_fixture, parse_events
+from .parser.individual_achievements import parse_individual_achievement_tables
+from .parser.special_olympiads import parse_special_olympiad_tables
+from .parser.tracer import parse_captured
+from .pdf import extract_pdf_tables, is_pdf
+from .selectors import (
+    DEFAULT_CAMPUS_FIXTURE_DIR,
+    DEFAULT_EVENT_FIXTURE_DIR,
+    DEFAULT_FIXTURE_DIR,
+    select_program_codes,
+)
 from .source_metadata import classify_order_document
-
 
 fetch_logger = logging.getLogger("andromeda.ingestion.bmstu.fetch")
 select_logger = logging.getLogger("andromeda.ingestion.bmstu.select")
@@ -37,12 +81,15 @@ normalize_logger = logging.getLogger("andromeda.ingestion.bmstu.normalize")
 class BmstuUniversityAdapter:
     """Typed BMSTU boundary for source capture, parsing, and normalization."""
 
-    def __init__(self, fetcher: object | None = None) -> None:
+    def __init__(self, fetcher: object | None = None, admission_benefits_capture: BmstuAdmissionBenefitsCapture | None = None) -> None:
         self._source = BmstuSource(fetcher=fetcher)  # type: ignore[arg-type]
         self._classifier = RuleBasedDisciplineClassifier(BMSTU_DISCIPLINE_AREA_OVERRIDES)
+        self._admission_benefits_capture = admission_benefits_capture
 
     def close(self) -> None:
         self._source.close()
+        if self._admission_benefits_capture is not None:
+            self._admission_benefits_capture.close()
 
     def capture(
         self,
@@ -50,6 +97,9 @@ class BmstuUniversityAdapter:
         fixture_dir: Path | None = None,
         event_fixture_dir: Path | None = None,
         campus_fixture_dir: Path | None = None,
+        admission_benefits_fixture_dir: Path | None = None,
+        admission_year: int = 2026,
+        include_admission_benefits: bool = False,
     ) -> CapturedSources:
         fetch_logger.debug("stage=capture mode=%s", mode)
         captured = self._source.capture(mode=mode, fixture_dir=fixture_dir or DEFAULT_FIXTURE_DIR)
@@ -58,7 +108,19 @@ class BmstuUniversityAdapter:
             event_snapshot = load_event_fixture(event_fixture_dir or DEFAULT_EVENT_FIXTURE_DIR)
             campus_snapshot = load_campus_fixture(campus_fixture_dir or DEFAULT_CAMPUS_FIXTURE_DIR)
             snapshots += (event_snapshot, campus_snapshot)
-        result = CapturedSources(snapshots=snapshots, source_gaps=captured.source_gaps)
+        source_gaps = list(captured.source_gaps)
+        should_capture_benefits = admission_benefits_fixture_dir is not None or include_admission_benefits
+        if should_capture_benefits:
+            if self._admission_benefits_capture is None:
+                self._admission_benefits_capture = BmstuAdmissionBenefitsCapture()
+            benefits = self._admission_benefits_capture.capture(
+                mode=mode,
+                fixture_dir=admission_benefits_fixture_dir,
+                admission_year=admission_year,
+            )
+            snapshots += benefits.captured.snapshots
+            source_gaps.extend(benefits.captured.source_gaps)
+        result = CapturedSources(snapshots=snapshots, source_gaps=tuple(source_gaps))
         fetch_logger.info(
             "stage=capture_complete mode=%s snapshots=%d event_source=%s campus_source=%s",
             mode,
@@ -72,6 +134,8 @@ class BmstuUniversityAdapter:
         self,
         captured: CapturedSources,
         program_codes: Sequence[str] | None = None,
+        source_run_id: IngestRunId | None = None,
+        admission_year: int = 2026,
     ) -> tuple[RawTracerBundle, CanonicalSnapshot]:
         selected = select_program_codes(tuple(program_codes)) if program_codes is not None else _fixture_documented_codes(captured)
         campus_source_kind = "bmstu_campus_points"
@@ -110,6 +174,24 @@ class BmstuUniversityAdapter:
                 "source_gaps": (*raw.source_gaps, *order_gaps, *admission_gaps),
                 "events": event_records,
                 "campus_points": campus_records,
+            }
+        )
+        benefit_records, benefit_diagnostics, benefit_snapshot = _parse_admission_benefits(
+            captured,
+            source_run_id=source_run_id or _derived_benefit_run_id(captured),
+            university_id="university:bmstu",
+            known_direction_codes=(
+                frozenset(direction.code for direction in (raw.directions or (raw.direction,)))
+                | parse_catalog_direction_codes(captured.by_kind("bmstu_major_catalog"))
+            ),
+            direction_index=parse_catalog_direction_index(captured.by_kind("bmstu_major_catalog")),
+            admission_year=admission_year,
+        )
+        raw = raw.model_copy(
+            update={
+                "admission_benefit_records": benefit_records,
+                "admission_benefit_diagnostics": benefit_diagnostics,
+                "admission_benefit_coverage": benefit_snapshot.coverage if benefit_snapshot else None,
             }
         )
         canonical = normalize_bundle(raw)
@@ -202,6 +284,7 @@ class BmstuUniversityAdapter:
                     snapshots=raw.snapshots,
                     known_program_codes=tuple(program.code for program in canonical.programs),
                 ),
+                "admission_benefits": benefit_snapshot,
             }
         )
         area_count = len({weight.area for discipline in canonical.disciplines for weight in discipline.area_weights})
@@ -232,14 +315,308 @@ class BmstuUniversityAdapter:
         event_fixture_dir: Path | None = None,
         campus_fixture_dir: Path | None = None,
         program_codes: Sequence[str] | None = None,
+        admission_benefits_fixture_dir: Path | None = None,
+        admission_year: int = 2026,
+        source_run_id: IngestRunId | None = None,
+        include_admission_benefits: bool = False,
     ) -> tuple[RawTracerBundle, CanonicalSnapshot]:
         captured = self.capture(
             mode=mode,
             fixture_dir=fixture_dir,
             event_fixture_dir=event_fixture_dir,
             campus_fixture_dir=campus_fixture_dir,
+            admission_benefits_fixture_dir=admission_benefits_fixture_dir,
+            admission_year=admission_year,
+            include_admission_benefits=include_admission_benefits,
         )
-        return self.parse(captured, program_codes=program_codes)
+        return self.parse(
+            captured,
+            program_codes=program_codes,
+            source_run_id=source_run_id,
+            admission_year=admission_year,
+        )
+
+
+_ADMISSION_DOCUMENT_TITLES = {
+    "appendix_5_1": "Приложение 5.1. Особое право приёма БВИ, 2026",
+    "appendix_5_2": "Приложение 5.2. Особое право приёма БВИ, 2026",
+    "appendix_5_3": "Приложение 5.3. Соответствие олимпиад для 100 баллов, 2026",
+    "appendix_5_4": "Приложение 5.4. Соответствие для Всероссийской олимпиады школьников, 2026",
+    "appendix_5_5": "Приложение 5.5. Соответствие для международной олимпиады, 2026",
+    "appendix_6": "Приложение 6. Индивидуальные достижения, 2026",
+    "appendix_7": "Приложение 7. Индивидуальные достижения магистратуры, 2026",
+}
+
+
+def _parse_admission_benefits(
+    captured: CapturedSources,
+    *,
+    source_run_id: IngestRunId,
+    university_id: str,
+    known_direction_codes: frozenset[str],
+    direction_index: dict[str, str],
+    admission_year: int,
+) -> tuple[
+    tuple[RawAdmissionBenefitRecord, ...],
+    tuple[AdmissionBenefitParserDiagnostic, ...],
+    AdmissionBenefitsSnapshot | None,
+]:
+    snapshots = tuple(
+        snapshot
+        for snapshot in captured.snapshots
+        if snapshot.source_kind.startswith("bmstu_admission_document:")
+    )
+    if not snapshots:
+        return (), (), None
+
+    parser = BmstuAdmissionBenefitsParser()
+    benefit_records: list[RawAdmissionBenefitRecord] = []
+    individual_records: list[RawIndividualAchievementRecord] = []
+    diagnostics: list[AdmissionBenefitParserDiagnostic] = []
+    profile_sources = []
+    for snapshot in captured.snapshots:
+        if not snapshot.source_kind.startswith("bmstu_olympiad_profile:"):
+            continue
+        profile_result: BmstuOlympiadProfileParseResult = parse_olympiad_profile_source(
+            snapshot,
+            source_run_id=source_run_id,
+            admission_year=admission_year,
+        )
+        diagnostics.extend(profile_result.diagnostics)
+        if profile_result.source is not None:
+            profile_sources.append(OlympiadProfileSourceEnrichment(source=profile_result.source))
+    rule_policy = next(
+        (
+            parse_admission_rule_policy(snapshot)
+            for snapshot in snapshots
+            if snapshot.source_kind.rsplit(":", 1)[-1] == "rules"
+        ),
+        None,
+    )
+    for snapshot in snapshots:
+        document_kind = snapshot.source_kind.rsplit(":", 1)[-1]
+        if document_kind == "rules":
+            continue
+        document = RawAdmissionBenefitDocument(
+            document_kind=document_kind,
+            document_title=_ADMISSION_DOCUMENT_TITLES.get(document_kind, f"BMSTU admission document {admission_year}"),
+            admission_year=admission_year,
+            source_url=snapshot.requested_url,
+            source_snapshot_hash=snapshot.content_sha256,
+            source_run_id=source_run_id,
+            captured_at=snapshot.captured_at,
+            locator=SourceLocator(source_url=snapshot.requested_url),
+            parser_version=ADMISSION_BENEFITS_PARSER_VERSION,
+        )
+        tables = _benefit_fixture_tables(snapshot)
+        if tables is None and is_pdf(snapshot.body, snapshot.content_type, str(snapshot.requested_url)):
+            try:
+                tables = tuple(extract_pdf_tables(snapshot.body))
+            except (OSError, RuntimeError, ValueError) as exc:
+                diagnostics.append(
+                    AdmissionBenefitParserDiagnostic(
+                        code="pdf_table_extract_failed",
+                        stage="pdf",
+                        message="PDF table extraction failed; source remains available for review",
+                        severity="warning",
+                        locator=document.locator,
+                    )
+                )
+                parse_logger.warning("bmstu_admission_benefit_table_extract_failed kind=%s error_type=%s", document_kind, type(exc).__name__)
+                tables = ()
+        if document_kind in {"appendix_6", "appendix_7"}:
+            parsed_achievements, parser_diagnostics = parse_individual_achievement_tables(document, tables or ())
+            individual_records.extend(parsed_achievements)
+        elif document_kind in {"appendix_5_4", "appendix_5_5"}:
+            parsed_benefits, parser_diagnostics = parse_special_olympiad_tables(document, tables or ())
+            benefit_records.extend(parsed_benefits)
+        elif document_kind in {"appendix_8_1", "appendix_8_3"}:
+            # These are admission-place/targeted-quota projections, not
+            # olympiad benefit tables.  Keep the captured source in the
+            # snapshot, but do not manufacture legal benefit rows from it.
+            parsed_benefits = ()
+            parser_diagnostics = (
+                AdmissionBenefitParserDiagnostic(
+                    code="quota_document_pending_projection",
+                    stage="document_dispatch",
+                    message="Appendix 8.x is captured but belongs to the admissions quota projection, not admission-benefit rules",
+                    severity="info",
+                    locator=document.locator,
+                ),
+            )
+        else:
+            parsed_benefits, parser_diagnostics = parser.parse_snapshot(
+                snapshot,
+                document_kind=document_kind,
+                document_title=document.document_title,
+                source_run_id=source_run_id,
+                tables=tables,
+            )
+            benefit_records.extend(parsed_benefits)
+        diagnostics.extend(parser_diagnostics)
+
+    olympiad_result = normalize_olympiad_benefits(
+        tuple(benefit_records),
+        university_id=university_id,
+        known_direction_codes=known_direction_codes,
+        policy_version=BenefitPolicyVersion(
+            schema_version=ADMISSION_BENEFITS_SCHEMA_VERSION,
+            parser_version=ADMISSION_BENEFITS_PARSER_VERSION,
+            policy_version=ADMISSION_BENEFITS_POLICY_VERSION,
+        ),
+        olympiad_result_max_age_years=(
+            rule_policy.olympiad_result_max_age_years if rule_policy is not None else None
+        ),
+        olympiad_result_validity_text=(
+            rule_policy.olympiad_result_validity_text if rule_policy is not None else None
+        ),
+        olympiad_confirmation_min_score=(
+            rule_policy.olympiad_confirmation_min_score if rule_policy is not None else None
+        ),
+        olympiad_confirmation_text=(
+            rule_policy.olympiad_confirmation_text if rule_policy is not None else None
+        ),
+        profile_sources=tuple(profile_sources),
+        direction_index=direction_index,
+    )
+    achievement_result = normalize_individual_achievements(
+        tuple(individual_records),
+        university_id=university_id,
+        policy_version=BenefitPolicyVersion(
+            schema_version=ADMISSION_BENEFITS_SCHEMA_VERSION,
+            parser_version=ADMISSION_BENEFITS_PARSER_VERSION,
+            policy_version=ADMISSION_BENEFITS_POLICY_VERSION,
+        ),
+        documents_discovered=len(snapshots),
+        documents_captured=len(snapshots),
+    ) if individual_records else None
+    diagnostics.extend(olympiad_result.diagnostics)
+    if achievement_result is not None:
+        diagnostics.extend(achievement_result.diagnostics)
+    all_records = (*benefit_records, *individual_records)
+    if not all_records:
+        parse_logger.warning("bmstu_admission_benefits_no_rows snapshots=%d", len(snapshots))
+    coverage = build_coverage(
+        documents_discovered=len(snapshots),
+        documents_captured=len(snapshots),
+        records=all_records,
+        normalized_count=len(olympiad_result.rules) + (len(achievement_result.policy.rules) if achievement_result and achievement_result.policy else 0),
+        resolved_targets=sum(
+            1
+            for rule in olympiad_result.rules
+            for target in rule.scope.targets
+            if target.resolution.value == "resolved"
+        ),
+        unresolved_targets=olympiad_result.unresolved_targets,
+        conflicts=len(achievement_result.conflicts) if achievement_result else 0,
+        review_required_rows=sum(1 for item in diagnostics if item.severity in {"warning", "ambiguous", "error"}),
+    )
+    source_attributions = tuple(
+        SourceAttribution(
+            kind=SourceKind.BMSTU_ADMISSION_INDIVIDUAL_ACHIEVEMENTS
+            if snapshot.source_kind.rsplit(":", 1)[-1] in {"appendix_6", "appendix_7"}
+            else SourceKind.BMSTU_ADMISSION_BENEFITS,
+            url=snapshot.requested_url,
+            captured_at=snapshot.captured_at,
+            content_sha256=snapshot.content_sha256,
+            university_id=university_id,
+            run_id=source_run_id,
+        )
+        for snapshot in (
+            *snapshots,
+            *(snapshot for snapshot in captured.snapshots if snapshot.source_kind.startswith("bmstu_olympiad_profile:")),
+        )
+    )
+    result = AdmissionBenefitsSnapshot(
+        admission_year=admission_year,
+        sources=source_attributions,
+        olympiads=olympiad_result.olympiads,
+        olympiad_profiles=olympiad_result.profiles,
+        benefit_rules=olympiad_result.rules,
+        individual_achievement_policy=achievement_result.policy if achievement_result else None,
+        coverage=coverage,
+        source_gaps=tuple(source_gap_reference(gap) for gap in captured.source_gaps),
+        diagnostics=tuple(diagnostics),
+    )
+    normalize_logger.info(
+        "bmstu_admission_benefits_normalized year=%d snapshots=%d raw_rows=%d rules=%d achievement_rules=%d diagnostics=%d coverage=%s",
+        admission_year,
+        len(snapshots),
+        len(all_records),
+        len(result.benefit_rules),
+        len(result.individual_achievement_policy.rules) if result.individual_achievement_policy else 0,
+        len(result.diagnostics),
+        result.coverage.status,
+    )
+    return tuple(all_records), tuple(diagnostics), result
+
+
+def _benefit_fixture_tables(snapshot: RawSourceSnapshot) -> tuple[dict[str, object], ...] | None:
+    """Read minimized official extracts used by parser/integration tests."""
+
+    try:
+        payload = json.loads(snapshot.body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    raw_tables = payload.get("tables")
+    if isinstance(raw_tables, list):
+        tables: list[dict[str, object]] = []
+        for index, raw_table in enumerate(raw_tables, start=1):
+            if not isinstance(raw_table, dict) or not isinstance(raw_table.get("rows"), list):
+                return None
+            table = dict(raw_table)
+            table.setdefault("page", 1)
+            table.setdefault("table", index)
+            tables.append(table)
+        return tuple(tables) or None
+    if not isinstance(payload.get("rows"), list):
+        return None
+    locator = str(payload.get("locator", ""))
+    page = next((int(part.split("=", 1)[1]) for part in locator.split(";") if part.startswith("page=") and part.split("=", 1)[1].isdigit()), 1)
+    table_number = next((int(part.split("=", 1)[1]) for part in locator.split(";") if part.startswith("table=") and part.split("=", 1)[1].isdigit()), 1)
+    rows = payload["rows"]
+    if not all(isinstance(row, list) for row in rows):
+        return None
+    document_kind = snapshot.source_kind.rsplit(":", 1)[-1]
+    if document_kind == "appendix_5_1":
+        rows = [["№", "Олимпиада", "Профиль", "Победитель", "Призер", "Направления"], *rows]
+    elif document_kind == "appendix_5_3":
+        column_count = max((len(row) for row in rows), default=0)
+        if column_count >= 8:
+            rows = [
+                [
+                    "№",
+                    "Олимпиада",
+                    "Профиль",
+                    "Общеобразовательные предметы или направления подготовки",
+                    "Уровень",
+                    "Профильные общеобразовательные предметы для предоставления особого права на 100 баллов при подтверждении олимпиады 75 баллами по ЕГЭ",
+                    "Победитель",
+                    "Призер",
+                ],
+                *rows,
+            ]
+        else:
+            rows = [["№", "Олимпиада", "Профиль", "Победитель", "Призер"], *rows]
+    if payload.get("confirmation_text"):
+        confirmation_text = str(payload["confirmation_text"])
+        rows[0] = [*rows[0], f"Подтверждение: {confirmation_text}"]
+        rows[1:] = [row + [confirmation_text] for row in rows[1:]]
+    row_numbers = payload.get("row_numbers")
+    table_payload: dict[str, object] = {"page": page, "table": table_number, "rows": rows}
+    if isinstance(row_numbers, list) and all(isinstance(value, int) for value in row_numbers):
+        table_payload["row_numbers"] = row_numbers
+    row_pages = payload.get("row_pages")
+    if isinstance(row_pages, list) and all(isinstance(value, int) for value in row_pages):
+        table_payload["row_pages"] = row_pages
+    return (table_payload,)
+
+
+def _derived_benefit_run_id(captured: CapturedSources) -> IngestRunId:
+    seed = "|".join(sorted(snapshot.content_sha256 for snapshot in captured.snapshots))
+    return f"ingest:{sha256(seed.encode('utf-8')).hexdigest()[:32]}"
 
 
 def _canonicalize_admission_code(record: RawAdmissionRecord, programs: Sequence[RawProgramRecord]) -> RawAdmissionRecord:

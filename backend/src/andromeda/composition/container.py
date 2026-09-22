@@ -10,6 +10,9 @@ from andromeda.infrastructure.repositories.admin_ops import SqlAlchemyIngestionR
 from andromeda.infrastructure.repositories.admission_fit import (
     SqlAlchemyAdmissionFitReader,
 )
+from andromeda.infrastructure.repositories.admission_benefits import (
+    SqlAlchemyAdmissionBenefitsRepository,
+)
 from andromeda.infrastructure.repositories.admissions import (
     SqlAlchemyAdmissionRepository,
 )
@@ -85,6 +88,12 @@ from andromeda.infrastructure.security.passwords import Argon2PasswordHasher
 from andromeda.modules.admin_ops.services.ingestion_runs import IngestionRunService
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
 from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
+from andromeda.modules.admission_benefits.repository.ports import AdmissionBenefitReader
+from andromeda.modules.admission_benefits.services.admission_decision import AdmissionDecisionService
+from andromeda.modules.admission_benefits.services.facade import (
+    AdmissionBenefitCatalogService,
+    AdmissionEligibilityService,
+)
 from andromeda.modules.admissions.services.admissions import AdmissionService
 from andromeda.modules.analytics.services.cache import AnalyticsResultCache
 from andromeda.modules.analytics.services.executor import AnalyticsExecutor
@@ -246,6 +255,18 @@ class AndromedaContainer:
 
     def admission_fit_service(self, session: Session) -> AdmissionFitService:
         return AdmissionFitService(self.admission_fit_reader(session))
+
+    def admission_benefit_repository(self, session: Session) -> AdmissionBenefitReader:
+        return SqlAlchemyAdmissionBenefitsRepository(session)
+
+    def admission_benefit_catalog_service(self, session: Session) -> AdmissionBenefitCatalogService:
+        return AdmissionBenefitCatalogService(self.admission_benefit_repository(session))
+
+    def admission_eligibility_service(self, session: Session) -> AdmissionEligibilityService:
+        return AdmissionEligibilityService(
+            self.admission_benefit_repository(session),
+            AdmissionDecisionService(),
+        )
 
     def comparison_service(self, session: Session) -> CompareProgramsService:
         return CompareProgramsService(

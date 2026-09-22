@@ -22,6 +22,7 @@ CORE_SUBJECT_MODULES = (
     "admin_ops",
     "auth",
     "university_admin",
+    "admission_benefits",
 )
 OPTIONAL_ANALYTICS_MODULES = (
     "semantic",

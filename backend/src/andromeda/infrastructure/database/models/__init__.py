@@ -5,6 +5,16 @@ from .admissions import (
     AdmissionQuotaModel,
     AdmissionTuitionModel,
 )
+from .admission_benefits import (
+    AdmissionBenefitOlympiadModel,
+    AdmissionBenefitOlympiadProfileModel,
+    AdmissionBenefitProfileSubjectModel,
+    AdmissionBenefitRuleModel,
+    AdmissionBenefitRuleScopeModel,
+    AdmissionBenefitRuleSubjectModel,
+    IndividualAchievementPolicyModel,
+    IndividualAchievementRuleModel,
+)
 from .analytics import (
     ProgramMetricEvidenceModel,
     ProgramMetricModel,
@@ -65,11 +75,19 @@ from .university_events import (
 
 __all__ = [
     "AssessmentTypeModel",
+    "AdmissionBenefitOlympiadModel",
+    "AdmissionBenefitOlympiadProfileModel",
+    "AdmissionBenefitProfileSubjectModel",
+    "AdmissionBenefitRuleModel",
+    "AdmissionBenefitRuleScopeModel",
+    "AdmissionBenefitRuleSubjectModel",
     "AdmissionExamRequirementModel",
     "AdmissionOfferingModel",
     "AdmissionPassingScoreModel",
     "AdmissionQuotaModel",
     "AdmissionTuitionModel",
+    "IndividualAchievementPolicyModel",
+    "IndividualAchievementRuleModel",
     "CurriculumItemAssessmentModel",
     "CurriculumItemModel",
     "CurriculumItemSourceLinkModel",

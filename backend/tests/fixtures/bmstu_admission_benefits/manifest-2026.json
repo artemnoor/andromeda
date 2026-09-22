@@ -1,0 +1,109 @@
+{
+  "university_id": "university:bmstu",
+  "admission_year": 2026,
+  "canonical_source_policy": "official_source_only",
+  "documents": [
+    {
+      "kind": "rules",
+      "title": "Правила приема в МГТУ им. Н.Э. Баумана в 2026 году",
+      "source_url": "https://api.www.bmstu.ru/file/124642/download",
+      "content_sha256": "896aab990a108da327b19c48e091b57f7aab3faedb8e64a9be14b1b810d0c9f6",
+      "locator": "section=4.1;page=35",
+      "extract_file": "rules-2026.extract.json"
+    },
+    {
+      "kind": "appendix_5_1",
+      "title": "Приложение 5.1. Особое право приема БВИ (г. Москва)",
+      "source_url": "https://api.www.bmstu.ru/file/124777/download",
+      "content_sha256": "f76eb91353b83c0fdf7773fffa768c5d9fde69ade6ff94bb3192f70b29f47941",
+      "locator": "pages=1,4;table=1;rows=8,17,55",
+      "extract_file": "appendix-5-1.rows.json"
+    },
+    {
+      "kind": "appendix_5_3",
+      "title": "Приложение 5.3. Соответствие олимпиад для 100 баллов",
+      "source_url": "https://api.www.bmstu.ru/file/122150/download",
+      "content_sha256": "3a59ad1e5d900f4e8bb67e58ef3e8a0421d52666f02cfa9c09abb6747ded2c6f",
+      "locator": "page=1;table=1;rows=1,2,4",
+      "extract_file": "appendix-5-3.rows.json"
+    },
+    {
+      "kind": "appendix_6",
+      "title": "Приложение 6. Перечень индивидуальных достижений при поступлении на 1-й курс",
+      "source_url": "https://api.www.bmstu.ru/file/125465/download",
+      "content_sha256": "5ae90e108dc8940b37fe3b07f211664b7871791792abdc6ddc0dd365fb948bb9",
+      "locator": "pages=1-2;table=1;rows=1,5",
+      "extract_file": "appendix-6.rows.json"
+    },
+    {
+      "kind": "official_olympiad_html",
+      "title": "Олимпиада школьников «Шаг в будущее» по профилю «Инженерное дело»",
+      "source_url": "https://olymp.bmstu.ru/ru/engeneering-olymp",
+      "content_sha256": "32aface71fe7266a49fcba2f0443cb4b1a0c008b6c35504476a538bdd3fbae5a",
+      "locator": "main;section=about",
+      "extract_file": "shag-engineering.html.extract.json"
+    }
+  ],
+  "verification_cases": [
+    {
+      "id": "shag-winner-bvi-all-except",
+      "source": "appendix_5_1",
+      "locator": "page=4;table=1;row=55",
+      "expected": {"result_type": "winner", "benefit_type": "bvi", "scope_mode": "all_except", "excluded_directions": ["01.03.02", "09.03.04", "10.05.01", "10.05.03"]}
+    },
+    {
+      "id": "shag-prize-bvi-all-except",
+      "source": "appendix_5_1",
+      "locator": "page=4;table=1;row=55",
+      "expected": {"result_type": "prize_winner", "benefit_type": "bvi", "scope_mode": "all_except", "excluded_directions": ["01.03.02", "09.03.04", "10.05.01", "10.05.03"]}
+    },
+    {
+      "id": "high-proba-winner-bvi-only",
+      "source": "appendix_5_1",
+      "locator": "page=1;table=1;row=8",
+      "expected": {"result_type": "winner", "benefit_type": "bvi", "scope_mode": "only", "directions": ["01.03.02", "09.03.04"]}
+    },
+    {
+      "id": "high-proba-prize-bvi-only",
+      "source": "appendix_5_1",
+      "locator": "page=1;table=1;row=8",
+      "expected": {"result_type": "prize_winner", "benefit_type": "bvi", "scope_mode": "only", "directions": ["01.03.02", "09.03.04"]}
+    },
+    {
+      "id": "city-physics-prize-not-granted",
+      "source": "appendix_5_1",
+      "locator": "page=1;table=1;row=17",
+      "expected": {"result_type": "prize_winner", "benefit_type": "bvi", "rule_present": false, "grant": "not_provided"}
+    },
+    {
+      "id": "formula-winner-100-math",
+      "source": "appendix_5_3",
+      "locator": "page=1;table=1;row=2",
+      "expected": {"result_type": "winner", "benefit_type": "one_hundred_points", "target_subject": "математика", "confirmation_subject": "математика", "confirmation_min_score": "75", "status": "review_required_program_scope"}
+    },
+    {
+      "id": "formula-prize-100-math",
+      "source": "appendix_5_3",
+      "locator": "page=1;table=1;row=2",
+      "expected": {"result_type": "prize_winner", "benefit_type": "one_hundred_points", "target_subject": "математика", "confirmation_subject": "математика", "confirmation_min_score": "75", "status": "review_required_program_scope"}
+    },
+    {
+      "id": "attestat-with-distinction-10",
+      "source": "appendix_6",
+      "locator": "page=1;table=1;row=1",
+      "expected": {"achievement_name": "Аттестат о среднем общем образовании с отличием", "points": "10"}
+    },
+    {
+      "id": "gold-gtо-5",
+      "source": "appendix_6",
+      "locator": "page=2;table=1;row=5",
+      "expected": {"achievement_name": "Золотой знак ГТО", "points": "5"}
+    },
+    {
+      "id": "historical-bvi-observation-is-not-rule",
+      "source": "historical_test_observation",
+      "locator": "page=1;section=admitted-without-exams",
+      "expected": {"competition_type": "bvi", "status": "bvi", "legal_eligibility_rule": false}
+    }
+  ]
+}

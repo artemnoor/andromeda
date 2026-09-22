@@ -1,0 +1,11 @@
+{
+  "source_url": "https://api.www.bmstu.ru/file/125465/download",
+  "content_sha256": "5ae90e108dc8940b37fe3b07f211664b7871791792abdc6ddc0dd365fb948bb9",
+  "locator": "appendix=6;pages=1-2;table=1",
+  "row_numbers": [1, 5],
+  "row_pages": [1, 2],
+  "rows": [
+    ["1", "Аттестат о среднем общем образовании с отличием", "аттестат", "10"],
+    ["5", "Золотой знак ГТО", "удостоверение ГТО", "5"]
+  ]
+}

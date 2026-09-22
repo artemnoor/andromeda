@@ -46,6 +46,22 @@ SemanticFeatureCode: TypeAlias = Annotated[
     str,
     StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,62}$"),
 ]
+OlympiadId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^olympiad:[a-z0-9][a-z0-9-]{0,127}$"),
+]
+OlympiadProfileId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^olympiad-profile:[a-z0-9][a-z0-9-]{0,127}$"),
+]
+AdmissionBenefitRuleId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^admission-benefit:[a-z0-9][a-z0-9-]{0,127}$"),
+]
+IndividualAchievementRuleId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^individual-achievement:[a-z0-9][a-z0-9-]{0,127}$"),
+]
 SemanticVersion: TypeAlias = Annotated[
     str,
     StringConstraints(pattern=r"^[a-z][a-z0-9-]{0,63}\.v[0-9]+$"),

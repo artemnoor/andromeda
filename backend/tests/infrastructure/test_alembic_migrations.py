@@ -38,6 +38,31 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(tmp_path: 
         assert "venue_program_links" in inspector.get_table_names()
         assert "university_admin_memberships" in inspector.get_table_names()
         assert {
+            "admission_benefit_olympiads",
+            "admission_benefit_olympiad_profiles",
+            "admission_benefit_profile_subjects",
+            "admission_benefit_rules",
+            "admission_benefit_rule_scopes",
+            "admission_benefit_rule_subjects",
+            "individual_achievement_policies",
+            "individual_achievement_rules",
+        }.issubset(set(inspector.get_table_names()))
+        benefit_rule_columns = {column["name"] for column in inspector.get_columns("admission_benefit_rules")}
+        assert {
+            "university_id",
+            "admission_year",
+            "benefit_type",
+            "scope_mode",
+            "source_snapshot_hash",
+            "source_run_id",
+        }.issubset(benefit_rule_columns)
+        assert "ix_benefit_rules_olympiad_result" in {
+            index["name"] for index in inspector.get_indexes("admission_benefit_rules")
+        }
+        assert "ix_achievement_rules_source_refresh" in {
+            index["name"] for index in inspector.get_indexes("individual_achievement_rules")
+        }
+        assert {
             "university_units",
             "university_categories",
             "university_program_editorials",
