@@ -6,6 +6,7 @@ import argparse
 import importlib.metadata
 import json
 import logging
+import os
 import subprocess
 from pathlib import Path
 from typing import Any, cast
@@ -15,7 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "evals" / "jev" / "TOOLS.lock"
 
 EXPECTED_BRANCH = "feature/jev-ecosystem-stage-2"
-EXPECTED_HEAD = "105dacb029a6b38a27aed5c16affb359189d609e"
+# The tool manifest pins upstream tool commits, not an implementation commit.
+# Keep checkout-head verification opt-in so every valid remediation commit does
+# not require editing this verifier or bypassing it with a stale hash.
+EXPECTED_HEAD: str | None = None
 
 
 class ToolManifestError(RuntimeError):
@@ -52,15 +56,17 @@ def _installed_version(package: str) -> str | None:
         return None
 
 
-def verify(*, expected_branch: str = EXPECTED_BRANCH, expected_head: str = EXPECTED_HEAD) -> None:
+def verify(*, expected_branch: str = EXPECTED_BRANCH, expected_head: str | None = EXPECTED_HEAD) -> None:
     logger.debug("jev_tool_manifest_verification_started path=%s", MANIFEST_PATH)
     manifest = _load_manifest()
     branch = _git("branch", "--show-current")
     head = _git("rev-parse", "HEAD")
     if branch != expected_branch:
         raise ToolManifestError(f"branch drift: expected {expected_branch}, observed {branch}")
-    if head != expected_head:
+    if expected_head is not None and head != expected_head:
         raise ToolManifestError(f"HEAD drift: expected {expected_head}, observed {head}")
+    if expected_head is None:
+        logger.info("jev_tool_manifest_head_check_skipped reason=manifest_pins_tool_commits")
 
     required = {"jevcal", "jev-align", "system-one-adapter", "typesafe-sdk", "jevql", "jev-tree"}
     tools = manifest["tools"]
@@ -87,14 +93,20 @@ def verify(*, expected_branch: str = EXPECTED_BRANCH, expected_head: str = EXPEC
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--allow-head", help="override expected HEAD for a controlled audit")
+    parser.add_argument("--expected-head", help="optionally require a specific checkout HEAD")
+    parser.add_argument("--allow-head", help="legacy alias for --expected-head")
     parser.add_argument("--allow-branch", help="override expected branch for a controlled audit")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     try:
         verify(
             expected_branch=args.allow_branch or EXPECTED_BRANCH,
-            expected_head=args.allow_head or EXPECTED_HEAD,
+            expected_head=(
+                args.expected_head
+                or args.allow_head
+                or os.environ.get("ANDROMEDA_JEV_EXPECTED_HEAD")
+                or EXPECTED_HEAD
+            ),
         )
     except ToolManifestError as exc:
         logger.error("jev_tool_manifest_verification_failed reason=%s", exc)

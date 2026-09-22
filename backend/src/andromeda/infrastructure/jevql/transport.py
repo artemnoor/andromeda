@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Mapping
-from typing import Any, Protocol, cast
+from typing import Protocol, cast
 
-from andromeda.modules.analytics.contracts.semantic_predicate import SemanticPredicateRequest
+from andromeda.modules.analytics.contracts.semantic_predicate import (
+    SemanticPredicateRequest,
+)
 
 from .config import JevQLConfig
 
@@ -117,19 +120,45 @@ def _judge(client: JevqlClient, request: SemanticPredicateRequest) -> dict[str, 
         {"canonical_id": row.canonical_id, **dict(row.fields)}
         for row in request.rows
     ]
-    result = client.judge(request.predicate.question, rows, kind="bool", raw=True)
+    # ``noul`` is the upstream jevQL boolean-judgement kind.  The pinned
+    # SDK does not expose a ``bool`` kind; its JudgeAnswer is positional and
+    # contains ``p``, ``passed`` and ``confidence`` instead of a row id.
+    result = client.judge(request.predicate.question, rows, kind="noul", raw=True)
     answers = getattr(result, "answers", None)
     if not isinstance(answers, list):
         raise JevQLTransportError("internal", "upstream jevQL returned malformed judge result")
+    if len(answers) > len(request.rows):
+        raise JevQLTransportError("internal", "upstream jevQL returned answers for unknown rows")
     matches: dict[str, bool | None] = {}
     confidences: list[float] = []
-    for row, answer in zip(request.rows, answers, strict=False):
+    for index, row in enumerate(request.rows):
+        if index >= len(answers):
+            # The upstream model permits an absent answer.  Preserve that as
+            # an unknown semantic result instead of dropping the input row.
+            matches[row.canonical_id] = None
+            continue
+        answer = answers[index]
+        probability = getattr(answer, "p", None)
+        if probability is not None and (
+            isinstance(probability, bool)
+            or not isinstance(probability, (int, float))
+            or not math.isfinite(float(probability))
+            or not 0 <= float(probability) <= 1
+        ):
+            raise JevQLTransportError("internal", "upstream jevQL returned a malformed probability")
         passed = getattr(answer, "passed", None)
         if passed is not None and not isinstance(passed, bool):
             raise JevQLTransportError("internal", "upstream jevQL returned a non-boolean answer")
         matches[row.canonical_id] = passed
         confidence = getattr(answer, "confidence", None)
-        if isinstance(confidence, (int, float)) and 0 <= confidence <= 1:
+        if confidence is not None:
+            if (
+                isinstance(confidence, bool)
+                or not isinstance(confidence, (int, float))
+                or not math.isfinite(float(confidence))
+                or not 0 <= float(confidence) <= 1
+            ):
+                raise JevQLTransportError("internal", "upstream jevQL returned a malformed confidence")
             confidences.append(float(confidence))
     return {
         "matches": matches,
