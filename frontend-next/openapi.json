@@ -537,6 +537,524 @@
         }
       }
     },
+    "/universities/{university_id}/admission-benefits": {
+      "get": {
+        "tags": [
+          "admission-benefits"
+        ],
+        "summary": "Get University Admission Benefits",
+        "operationId": "get_university_admission_benefits",
+        "parameters": [
+          {
+            "name": "university_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^university:[a-z0-9][a-z0-9-]{0,62}$",
+              "title": "University Id"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 2100,
+              "minimum": 2000,
+              "title": "Year"
+            }
+          },
+          {
+            "name": "education_level",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EducationLevel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Education Level"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionBenefitsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/admission-benefits": {
+      "get": {
+        "tags": [
+          "admission-benefits"
+        ],
+        "summary": "Get Program Admission Benefits",
+        "operationId": "get_program_admission_benefits",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Program Id"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 2100,
+              "minimum": 2000,
+              "title": "Year"
+            }
+          },
+          {
+            "name": "includeReview",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Includereview"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionBenefitRuleListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/admission-benefits/olympiads/{olympiad_id}/programs": {
+      "get": {
+        "tags": [
+          "admission-benefits"
+        ],
+        "summary": "Get Olympiad Admission Benefit Programs",
+        "operationId": "get_olympiad_admission_benefit_programs",
+        "parameters": [
+          {
+            "name": "olympiad_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^olympiad:[a-z0-9][a-z0-9-]{0,127}$",
+              "title": "Olympiad Id"
+            }
+          },
+          {
+            "name": "university_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^university:[a-z0-9][a-z0-9-]{0,62}$",
+              "title": "University Id"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 2100,
+              "minimum": 2000,
+              "title": "Year"
+            }
+          },
+          {
+            "name": "benefitType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Benefittype"
+            }
+          },
+          {
+            "name": "includeReview",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Includereview"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionBenefitRuleListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/programs/{program_id}/admission-eligibility": {
+      "post": {
+        "tags": [
+          "admission-benefits"
+        ],
+        "summary": "Evaluate Program Admission Eligibility",
+        "operationId": "evaluate_program_admission_eligibility",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^program:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}-[0-9]{2,3}$",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdmissionEligibilityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdmissionEligibilityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/discipline-areas": {
       "get": {
         "tags": [
@@ -9884,6 +10402,17 @@
         ],
         "title": "AccountResponse"
       },
+      "AchievementCombinationPolicy": {
+        "type": "string",
+        "enum": [
+          "additive",
+          "max_only",
+          "mutually_exclusive",
+          "not_combinable",
+          "unknown"
+        ],
+        "title": "AchievementCombinationPolicy"
+      },
       "ActivityCode": {
         "type": "string",
         "enum": [
@@ -10041,6 +10570,447 @@
         ],
         "title": "AdaptiveStatus"
       },
+      "AdmissionBenefitCoverageResponse": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/AdmissionBenefitCoverageStatus"
+          },
+          "documentsDiscovered": {
+            "type": "integer",
+            "title": "Documentsdiscovered"
+          },
+          "documentsCaptured": {
+            "type": "integer",
+            "title": "Documentscaptured"
+          },
+          "documentsParsed": {
+            "type": "integer",
+            "title": "Documentsparsed"
+          },
+          "recordsNormalized": {
+            "type": "integer",
+            "title": "Recordsnormalized"
+          },
+          "targetsResolved": {
+            "type": "integer",
+            "title": "Targetsresolved"
+          },
+          "unresolvedTargets": {
+            "type": "integer",
+            "title": "Unresolvedtargets"
+          },
+          "conflicts": {
+            "type": "integer",
+            "title": "Conflicts"
+          },
+          "reviewRequiredRows": {
+            "type": "integer",
+            "title": "Reviewrequiredrows"
+          },
+          "sourceHashes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcehashes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "documentsDiscovered",
+          "documentsCaptured",
+          "documentsParsed",
+          "recordsNormalized",
+          "targetsResolved",
+          "unresolvedTargets",
+          "conflicts",
+          "reviewRequiredRows",
+          "sourceHashes"
+        ],
+        "title": "AdmissionBenefitCoverageResponse"
+      },
+      "AdmissionBenefitCoverageStatus": {
+        "type": "string",
+        "enum": [
+          "complete",
+          "partial",
+          "review_required",
+          "unavailable"
+        ],
+        "title": "AdmissionBenefitCoverageStatus"
+      },
+      "AdmissionBenefitEvaluationResponse": {
+        "properties": {
+          "ruleId": {
+            "type": "string",
+            "title": "Ruleid"
+          },
+          "benefitType": {
+            "$ref": "#/components/schemas/BenefitType"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdmissionRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/EligibilityStatus"
+          },
+          "resultType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OlympiadResultType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "matchedApplicantFact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchedapplicantfact"
+          },
+          "rejectionReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejectionreason"
+          },
+          "effectiveScoreChange": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectivescorechange"
+          },
+          "pointsContribution": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pointscontribution"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionBenefitEvidenceResponse"
+            },
+            "type": "array",
+            "title": "Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ruleId",
+          "benefitType",
+          "status",
+          "evidence"
+        ],
+        "title": "AdmissionBenefitEvaluationResponse"
+      },
+      "AdmissionBenefitEvidenceResponse": {
+        "properties": {
+          "ruleId": {
+            "type": "string",
+            "title": "Ruleid"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/BenefitProvenanceResponse"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ruleId",
+          "provenance"
+        ],
+        "title": "AdmissionBenefitEvidenceResponse"
+      },
+      "AdmissionBenefitRuleListResponse": {
+        "properties": {
+          "admissionYear": {
+            "type": "integer",
+            "title": "Admissionyear"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionBenefitRuleResponse"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "sourceGaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcegaps",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "admissionYear",
+          "rules"
+        ],
+        "title": "AdmissionBenefitRuleListResponse"
+      },
+      "AdmissionBenefitRuleResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "universityId": {
+            "type": "string",
+            "title": "Universityid"
+          },
+          "admissionYear": {
+            "type": "integer",
+            "title": "Admissionyear"
+          },
+          "educationLevel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EducationLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "route": {
+            "$ref": "#/components/schemas/AdmissionRoute"
+          },
+          "benefitType": {
+            "$ref": "#/components/schemas/BenefitType"
+          },
+          "olympiadId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Olympiadid"
+          },
+          "olympiadProfileId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Olympiadprofileid"
+          },
+          "resultType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OlympiadResultType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "$ref": "#/components/schemas/BenefitScopeResponse"
+          },
+          "confirmationRequirement": {
+            "$ref": "#/components/schemas/ConfirmationRequirement"
+          },
+          "confirmationSubjects": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmationSubjectResponse"
+            },
+            "type": "array",
+            "title": "Confirmationsubjects"
+          },
+          "validity": {
+            "$ref": "#/components/schemas/ValidityPolicyResponse"
+          },
+          "targetSubject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetsubject"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points"
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/BenefitConditionResponse"
+            },
+            "type": "array",
+            "title": "Conditions"
+          },
+          "sourceText": {
+            "type": "string",
+            "title": "Sourcetext"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "policyVersion": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Policyversion"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/BenefitProvenanceResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "universityId",
+          "admissionYear",
+          "route",
+          "benefitType",
+          "scope",
+          "confirmationRequirement",
+          "confirmationSubjects",
+          "validity",
+          "conditions",
+          "sourceText",
+          "status",
+          "policyVersion",
+          "provenance"
+        ],
+        "title": "AdmissionBenefitRuleResponse"
+      },
+      "AdmissionBenefitsResponse": {
+        "properties": {
+          "admissionYear": {
+            "type": "integer",
+            "title": "Admissionyear"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceAttributionResponse"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "olympiads": {
+            "items": {
+              "$ref": "#/components/schemas/OlympiadResponse"
+            },
+            "type": "array",
+            "title": "Olympiads"
+          },
+          "olympiadProfiles": {
+            "items": {
+              "$ref": "#/components/schemas/OlympiadProfileResponse"
+            },
+            "type": "array",
+            "title": "Olympiadprofiles"
+          },
+          "benefitRules": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionBenefitRuleResponse"
+            },
+            "type": "array",
+            "title": "Benefitrules"
+          },
+          "individualAchievementPolicy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndividualAchievementPolicyResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/AdmissionBenefitCoverageResponse"
+          },
+          "sourceGaps": {
+            "items": {
+              "$ref": "#/components/schemas/SourceGapReferenceResponse"
+            },
+            "type": "array",
+            "title": "Sourcegaps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "admissionYear",
+          "sources",
+          "olympiads",
+          "olympiadProfiles",
+          "benefitRules",
+          "coverage",
+          "sourceGaps"
+        ],
+        "title": "AdmissionBenefitsResponse"
+      },
       "AdmissionCompetitionType": {
         "type": "string",
         "enum": [
@@ -10052,6 +11022,162 @@
           "other"
         ],
         "title": "AdmissionCompetitionType"
+      },
+      "AdmissionEligibilityRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "universityId": {
+            "type": "string",
+            "pattern": "^university:[a-z0-9][a-z0-9-]{0,127}$",
+            "title": "Universityid"
+          },
+          "directionCode": {
+            "type": "string",
+            "pattern": "^[0-9]{2}\\.[0-9]{2}\\.[0-9]{2}$",
+            "title": "Directioncode"
+          },
+          "admissionYear": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Admissionyear"
+          },
+          "educationLevel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EducationLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nps": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nps"
+          },
+          "applicant": {
+            "$ref": "#/components/schemas/ApplicantAdmissionFactsRequest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "universityId",
+          "directionCode",
+          "admissionYear",
+          "applicant"
+        ],
+        "title": "AdmissionEligibilityRequest"
+      },
+      "AdmissionEligibilityResponse": {
+        "properties": {
+          "programId": {
+            "type": "string",
+            "title": "Programid"
+          },
+          "admissionYear": {
+            "type": "integer",
+            "title": "Admissionyear"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EligibilityStatus"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdmissionRoute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evaluations": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionBenefitEvaluationResponse"
+            },
+            "type": "array",
+            "title": "Evaluations"
+          },
+          "baseCompetitiveScore": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basecompetitivescore"
+          },
+          "individualAchievementPoints": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Individualachievementpoints"
+          },
+          "effectiveCompetitiveScore": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectivecompetitivescore"
+          },
+          "individualAchievements": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndividualAchievementBreakdownResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceGaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcegaps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "programId",
+          "admissionYear",
+          "status",
+          "evaluations",
+          "sourceGaps"
+        ],
+        "title": "AdmissionEligibilityResponse"
       },
       "AdmissionFitBreakdown": {
         "properties": {
@@ -10908,6 +12034,21 @@
         ],
         "title": "AdmissionProvenanceResponse"
       },
+      "AdmissionRoute": {
+        "type": "string",
+        "enum": [
+          "olympiad",
+          "vosh",
+          "international",
+          "special_right",
+          "preferential_right",
+          "special_quota",
+          "separate_quota",
+          "targeted",
+          "other"
+        ],
+        "title": "AdmissionRoute"
+      },
       "AdmissionScope": {
         "type": "string",
         "enum": [
@@ -11728,6 +12869,45 @@
         ],
         "title": "AntiInterestResponse"
       },
+      "ApplicantAdmissionFactsRequest": {
+        "properties": {
+          "egeScores": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantExamScoreRequest"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Egescores"
+          },
+          "internalExamScores": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantInternalExamScoreRequest"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Internalexamscores"
+          },
+          "olympiadAchievements": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantOlympiadAchievementRequest"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Olympiadachievements"
+          },
+          "individualAchievements": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantIndividualAchievementRequest"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Individualachievements"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ApplicantAdmissionFactsRequest"
+      },
       "ApplicantAdmissionProfile": {
         "properties": {
           "version": {
@@ -11769,6 +12949,191 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ApplicantAdmissionProfileRequest"
+      },
+      "ApplicantExamScoreRequest": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Score",
+            "decimal_places": 2,
+            "ge": "0",
+            "le": "100",
+            "max_digits": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject",
+          "score"
+        ],
+        "title": "ApplicantExamScoreRequest"
+      },
+      "ApplicantIndividualAchievementRequest": {
+        "properties": {
+          "achievementCode": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Achievementcode"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 2000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "evidenceReference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidencereference"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "achievementCode"
+        ],
+        "title": "ApplicantIndividualAchievementRequest"
+      },
+      "ApplicantInternalExamScoreRequest": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Score",
+            "decimal_places": 2,
+            "ge": "0",
+            "le": "100",
+            "max_digits": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject",
+          "score"
+        ],
+        "title": "ApplicantInternalExamScoreRequest"
+      },
+      "ApplicantOlympiadAchievementRequest": {
+        "properties": {
+          "olympiadId": {
+            "type": "string",
+            "pattern": "^olympiad:[a-z0-9][a-z0-9-]{0,127}$",
+            "title": "Olympiadid"
+          },
+          "olympiadProfileId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^olympiad-profile:[a-z0-9][a-z0-9-]{0,127}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Olympiadprofileid"
+          },
+          "resultYear": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Resultyear"
+          },
+          "resultType": {
+            "$ref": "#/components/schemas/OlympiadResultType"
+          },
+          "gradeOrClass": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gradeorclass"
+          },
+          "evidenceReference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidencereference"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "olympiadId",
+          "resultYear",
+          "resultType"
+        ],
+        "title": "ApplicantOlympiadAchievementRequest"
       },
       "ApplicantSubjectScore": {
         "properties": {
@@ -12166,6 +13531,245 @@
         "type": "object",
         "title": "BatchAdmissionFitResult",
         "description": "Deterministic per-program Admission Fit outcomes, never a global score."
+      },
+      "BenefitConditionKind": {
+        "type": "string",
+        "enum": [
+          "confirmation_score",
+          "validity",
+          "required_document",
+          "result_type",
+          "target_scope",
+          "other"
+        ],
+        "title": "BenefitConditionKind"
+      },
+      "BenefitConditionResponse": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/BenefitConditionKind"
+          },
+          "sourceText": {
+            "type": "string",
+            "title": "Sourcetext"
+          },
+          "normalizedValue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalizedvalue"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "sourceText"
+        ],
+        "title": "BenefitConditionResponse"
+      },
+      "BenefitProvenanceResponse": {
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/SourceAttributionResponse"
+          },
+          "sourceSnapshotHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Sourcesnapshothash"
+          },
+          "sourceRunId": {
+            "type": "string",
+            "pattern": "^ingest:[a-f0-9]{32}$",
+            "title": "Sourcerunid"
+          },
+          "admissionYear": {
+            "type": "integer",
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Admissionyear"
+          },
+          "documentTitle": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Documenttitle"
+          },
+          "documentKind": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Documentkind"
+          },
+          "appendixNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appendixnumber"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table"
+          },
+          "row": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "parserVersion": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Parserversion"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "sourceSnapshotHash",
+          "sourceRunId",
+          "admissionYear",
+          "documentTitle",
+          "documentKind",
+          "parserVersion"
+        ],
+        "title": "BenefitProvenanceResponse"
+      },
+      "BenefitScopeResponse": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/BenefitTargetResponse"
+            },
+            "type": "array",
+            "title": "Targets"
+          },
+          "excludedTargets": {
+            "items": {
+              "$ref": "#/components/schemas/BenefitTargetResponse"
+            },
+            "type": "array",
+            "title": "Excludedtargets"
+          },
+          "originalText": {
+            "type": "string",
+            "title": "Originaltext"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mode",
+          "targets",
+          "excludedTargets",
+          "originalText"
+        ],
+        "title": "BenefitScopeResponse"
+      },
+      "BenefitTargetKind": {
+        "type": "string",
+        "enum": [
+          "direction",
+          "program",
+          "nps",
+          "education_level"
+        ],
+        "title": "BenefitTargetKind"
+      },
+      "BenefitTargetResponse": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/BenefitTargetKind"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "originalText": {
+            "type": "string",
+            "title": "Originaltext"
+          },
+          "resolution": {
+            "type": "string",
+            "title": "Resolution"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "value",
+          "originalText",
+          "resolution"
+        ],
+        "title": "BenefitTargetResponse"
+      },
+      "BenefitType": {
+        "type": "string",
+        "enum": [
+          "bvi",
+          "one_hundred_points",
+          "max_internal_exam_score",
+          "special_right",
+          "preferential_right",
+          "special_quota",
+          "separate_quota",
+          "targeted_route",
+          "other_review_required"
+        ],
+        "title": "BenefitType"
       },
       "CampusDepartmentReferenceResponse": {
         "properties": {
@@ -13159,6 +14763,60 @@
           "answeredAdaptive"
         ],
         "title": "ConfidenceResponse"
+      },
+      "ConfirmationExamKind": {
+        "type": "string",
+        "enum": [
+          "ege",
+          "internal_exam",
+          "other",
+          "unknown"
+        ],
+        "title": "ConfirmationExamKind"
+      },
+      "ConfirmationRequirement": {
+        "type": "string",
+        "enum": [
+          "required",
+          "not_required",
+          "unknown"
+        ],
+        "title": "ConfirmationRequirement"
+      },
+      "ConfirmationSubjectResponse": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "minimumScore": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimumscore"
+          },
+          "examKind": {
+            "$ref": "#/components/schemas/ConfirmationExamKind"
+          },
+          "sourceText": {
+            "type": "string",
+            "title": "Sourcetext"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject",
+          "examKind",
+          "sourceText"
+        ],
+        "title": "ConfirmationSubjectResponse"
       },
       "ConversationSlot": {
         "type": "string",
@@ -15192,6 +16850,16 @@
         ],
         "title": "EducationLevel"
       },
+      "EligibilityStatus": {
+        "type": "string",
+        "enum": [
+          "eligible",
+          "not_eligible",
+          "insufficient_data",
+          "review_required"
+        ],
+        "title": "EligibilityStatus"
+      },
       "ErrorCode": {
         "type": "string",
         "enum": [
@@ -15730,6 +17398,350 @@
           "informational"
         ],
         "title": "GapSeverity"
+      },
+      "IndividualAchievementBreakdownResponse": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/EligibilityStatus"
+          },
+          "totalPoints": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Totalpoints"
+          },
+          "uncappedPoints": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Uncappedpoints"
+          },
+          "globalCap": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Globalcap"
+          },
+          "evaluations": {
+            "items": {
+              "$ref": "#/components/schemas/IndividualAchievementEvaluationResponse"
+            },
+            "type": "array",
+            "title": "Evaluations"
+          },
+          "sourceGaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcegaps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "totalPoints",
+          "uncappedPoints",
+          "evaluations",
+          "sourceGaps"
+        ],
+        "title": "IndividualAchievementBreakdownResponse"
+      },
+      "IndividualAchievementEvaluationResponse": {
+        "properties": {
+          "ruleId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ruleid"
+          },
+          "achievementCode": {
+            "type": "string",
+            "title": "Achievementcode"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "applicantYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicantyear"
+          },
+          "rulePoints": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rulepoints"
+          },
+          "awardedPoints": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Awardedpoints"
+          },
+          "combinationPolicy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AchievementCombinationPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionBenefitEvidenceResponse"
+            },
+            "type": "array",
+            "title": "Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "achievementCode",
+          "status",
+          "awardedPoints",
+          "reason",
+          "evidence"
+        ],
+        "title": "IndividualAchievementEvaluationResponse"
+      },
+      "IndividualAchievementPolicyResponse": {
+        "properties": {
+          "universityId": {
+            "type": "string",
+            "title": "Universityid"
+          },
+          "admissionYear": {
+            "type": "integer",
+            "title": "Admissionyear"
+          },
+          "educationLevel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EducationLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "globalMaxPoints": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Globalmaxpoints"
+          },
+          "defaultCombinationPolicy": {
+            "$ref": "#/components/schemas/AchievementCombinationPolicy"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/IndividualAchievementRuleResponse"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "sourceText": {
+            "type": "string",
+            "title": "Sourcetext"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "policyVersion": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Policyversion"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/BenefitProvenanceResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "universityId",
+          "admissionYear",
+          "defaultCombinationPolicy",
+          "rules",
+          "sourceText",
+          "status",
+          "policyVersion",
+          "provenance"
+        ],
+        "title": "IndividualAchievementPolicyResponse"
+      },
+      "IndividualAchievementRuleResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "universityId": {
+            "type": "string",
+            "title": "Universityid"
+          },
+          "admissionYear": {
+            "type": "integer",
+            "title": "Admissionyear"
+          },
+          "educationLevel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EducationLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "achievementCode": {
+            "type": "string",
+            "title": "Achievementcode"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "officialName": {
+            "type": "string",
+            "title": "Officialname"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "points": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Points"
+          },
+          "categoryCap": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categorycap"
+          },
+          "combinationGroup": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Combinationgroup"
+          },
+          "combinationPolicy": {
+            "$ref": "#/components/schemas/AchievementCombinationPolicy"
+          },
+          "requiredDocument": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requireddocument"
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/BenefitConditionResponse"
+            },
+            "type": "array",
+            "title": "Conditions"
+          },
+          "sourceText": {
+            "type": "string",
+            "title": "Sourcetext"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "policyVersion": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Policyversion"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/BenefitProvenanceResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "universityId",
+          "admissionYear",
+          "achievementCode",
+          "category",
+          "officialName",
+          "points",
+          "combinationPolicy",
+          "conditions",
+          "sourceText",
+          "status",
+          "policyVersion",
+          "provenance"
+        ],
+        "title": "IndividualAchievementRuleResponse"
       },
       "IngestionRetryRequestBody": {
         "properties": {
@@ -16694,6 +18706,133 @@
           "evidence_count"
         ],
         "title": "MetricExplanation"
+      },
+      "OlympiadProfileResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "olympiadId": {
+            "type": "string",
+            "title": "Olympiadid"
+          },
+          "profileName": {
+            "type": "string",
+            "title": "Profilename"
+          },
+          "correspondingSubjects": {
+            "items": {
+              "$ref": "#/components/schemas/OlympiadProfileSubjectResponse"
+            },
+            "type": "array",
+            "title": "Correspondingsubjects"
+          },
+          "admissionYear": {
+            "type": "integer",
+            "title": "Admissionyear"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/BenefitProvenanceResponse"
+            },
+            "type": "array",
+            "title": "Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "olympiadId",
+          "profileName",
+          "correspondingSubjects",
+          "admissionYear",
+          "provenance"
+        ],
+        "title": "OlympiadProfileResponse"
+      },
+      "OlympiadProfileSubjectResponse": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "sourceText": {
+            "type": "string",
+            "title": "Sourcetext"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject",
+          "sourceText"
+        ],
+        "title": "OlympiadProfileSubjectResponse"
+      },
+      "OlympiadResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "officialName": {
+            "type": "string",
+            "title": "Officialname"
+          },
+          "organizer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organizer"
+          },
+          "rsoshLevel": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rsoshlevel"
+          },
+          "admissionYear": {
+            "type": "integer",
+            "title": "Admissionyear"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/BenefitProvenanceResponse"
+            },
+            "type": "array",
+            "title": "Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "officialName",
+          "admissionYear",
+          "provenance"
+        ],
+        "title": "OlympiadResponse"
+      },
+      "OlympiadResultType": {
+        "type": "string",
+        "enum": [
+          "winner",
+          "prize_winner",
+          "team_member"
+        ],
+        "title": "OlympiadResultType"
       },
       "OptionalMetricResponse": {
         "properties": {
@@ -19680,6 +21819,10 @@
           "bmstu_curriculum_metadata",
           "bmstu_admission_orders_index",
           "bmstu_admission_orders_document",
+          "bmstu_admission_document_index",
+          "bmstu_admission_rules",
+          "bmstu_admission_benefits",
+          "bmstu_admission_individual_achievements",
           "bmstu_events",
           "bmstu_campus_points",
           "hse_common",
@@ -22037,6 +24180,53 @@
           "expectedRevision"
         ],
         "title": "UserProfileUpdateRequest"
+      },
+      "ValidityPolicyResponse": {
+        "properties": {
+          "validFromResultYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validfromresultyear"
+          },
+          "validUntilResultYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validuntilresultyear"
+          },
+          "maxAgeYears": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxageyears"
+          },
+          "sourceText": {
+            "type": "string",
+            "title": "Sourcetext"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sourceText"
+        ],
+        "title": "ValidityPolicyResponse"
       },
       "VenueResponse": {
         "properties": {

@@ -336,7 +336,7 @@ jobs:
         run: uv run --locked --extra dev python -m alembic upgrade head
         working-directory: backend
       - name: Run PostgreSQL repository and API checks
-        run: uv run --locked --extra dev python -m pytest -q tests/integration/test_postgresql_ingestion.py tests/integration/test_postgresql_smoke.py tests/integration/test_postgresql_user_profile.py tests/integration/test_personal_route_vertical_slice.py tests/integration/test_admission_fit_vertical_slice.py tests/integration/test_campus_storage_vertical_slice.py tests/integration/test_campus_live_projection_safety.py tests/vertical/test_campus_vertical_slice.py tests/vertical/test_personal_route_scope_guard.py
+        run: uv run --locked --extra dev python -m pytest -q tests/integration/test_postgresql_ingestion.py tests/integration/test_postgresql_admission_benefits.py tests/integration/test_postgresql_smoke.py tests/integration/test_postgresql_user_profile.py tests/integration/test_personal_route_vertical_slice.py tests/integration/test_admission_fit_vertical_slice.py tests/integration/test_campus_storage_vertical_slice.py tests/integration/test_campus_live_projection_safety.py tests/vertical/test_campus_vertical_slice.py tests/vertical/test_personal_route_scope_guard.py
         working-directory: backend
       - name: Run auth/profile persistence checks
         run: uv run --locked --extra dev python -m pytest -q tests/api/test_auth_api.py tests/integration/test_user_profile_persistence.py

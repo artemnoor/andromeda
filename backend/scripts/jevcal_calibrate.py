@@ -259,7 +259,11 @@ def _probability(row: dict[str, object]) -> float:
 
 
 def _hash_file(path: Path) -> str:
-    return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+    # Git may check this JSONL text file out with CRLF on Windows. Normalize
+    # record separators so the same calibration corpus keeps the same hash
+    # across supported operating systems.
+    content = path.read_bytes().replace(b"\r\n", b"\n")
+    return "sha256:" + hashlib.sha256(content).hexdigest()
 
 
 def _hash_value(value: object) -> str:

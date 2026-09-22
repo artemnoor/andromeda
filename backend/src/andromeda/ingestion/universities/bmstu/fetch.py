@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-import logging
 from time import monotonic, sleep
 from typing import Any
 from urllib.parse import urljoin
@@ -24,7 +24,6 @@ from andromeda.ingestion.fetch_policy import (
 from .html import extract_text, is_blocked_page, is_js_shell
 from .source_models import FetchedResource, utc_now
 
-
 logger = logging.getLogger("andromeda.ingestion.bmstu.fetch")
 
 
@@ -37,6 +36,7 @@ BMSTU_SOURCE_HOST_POLICY = SourceHostPolicy(
             "api.www.bmstu.ru",
             "api.mirror.bmstu.ru",
             "priem.bmstu.ru",
+            "olymp.bmstu.ru",
             "disk.yandex.ru",
             "clck.ru",
             "clck.su",

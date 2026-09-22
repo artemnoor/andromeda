@@ -86,6 +86,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/universities/{university_id}/admission-benefits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get University Admission Benefits */
+        get: operations["get_university_admission_benefits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/programs/{program_id}/admission-benefits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Program Admission Benefits */
+        get: operations["get_program_admission_benefits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admission-benefits/olympiads/{olympiad_id}/programs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Olympiad Admission Benefit Programs */
+        get: operations["get_olympiad_admission_benefit_programs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/programs/{program_id}/admission-eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Evaluate Program Admission Eligibility */
+        post: operations["evaluate_program_admission_eligibility"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/discipline-areas": {
         parameters: {
             query?: never;
@@ -1287,6 +1355,11 @@ export interface components {
             createdAt: string;
         };
         /**
+         * AchievementCombinationPolicy
+         * @enum {string}
+         */
+        AchievementCombinationPolicy: "additive" | "max_only" | "mutually_exclusive" | "not_combinable" | "unknown";
+        /**
          * ActivityCode
          * @enum {string}
          */
@@ -1347,11 +1420,170 @@ export interface components {
          * @enum {string}
          */
         AdaptiveStatus: "ready" | "skipped";
+        /** AdmissionBenefitCoverageResponse */
+        AdmissionBenefitCoverageResponse: {
+            status: components["schemas"]["AdmissionBenefitCoverageStatus"];
+            /** Documentsdiscovered */
+            documentsDiscovered: number;
+            /** Documentscaptured */
+            documentsCaptured: number;
+            /** Documentsparsed */
+            documentsParsed: number;
+            /** Recordsnormalized */
+            recordsNormalized: number;
+            /** Targetsresolved */
+            targetsResolved: number;
+            /** Unresolvedtargets */
+            unresolvedTargets: number;
+            /** Conflicts */
+            conflicts: number;
+            /** Reviewrequiredrows */
+            reviewRequiredRows: number;
+            /** Sourcehashes */
+            sourceHashes: string[];
+        };
+        /**
+         * AdmissionBenefitCoverageStatus
+         * @enum {string}
+         */
+        AdmissionBenefitCoverageStatus: "complete" | "partial" | "review_required" | "unavailable";
+        /** AdmissionBenefitEvaluationResponse */
+        AdmissionBenefitEvaluationResponse: {
+            /** Ruleid */
+            ruleId: string;
+            benefitType: components["schemas"]["BenefitType"];
+            route?: components["schemas"]["AdmissionRoute"] | null;
+            status: components["schemas"]["EligibilityStatus"];
+            resultType?: components["schemas"]["OlympiadResultType"] | null;
+            /** Matchedapplicantfact */
+            matchedApplicantFact?: string | null;
+            /** Rejectionreason */
+            rejectionReason?: string | null;
+            /** Effectivescorechange */
+            effectiveScoreChange?: string | null;
+            /** Pointscontribution */
+            pointsContribution?: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["AdmissionBenefitEvidenceResponse"][];
+        };
+        /** AdmissionBenefitEvidenceResponse */
+        AdmissionBenefitEvidenceResponse: {
+            /** Ruleid */
+            ruleId: string;
+            provenance: components["schemas"]["BenefitProvenanceResponse"];
+            /** Excerpt */
+            excerpt?: string | null;
+        };
+        /** AdmissionBenefitRuleListResponse */
+        AdmissionBenefitRuleListResponse: {
+            /** Admissionyear */
+            admissionYear: number;
+            /** Rules */
+            rules: components["schemas"]["AdmissionBenefitRuleResponse"][];
+            /**
+             * Sourcegaps
+             * @default []
+             */
+            sourceGaps: string[];
+        };
+        /** AdmissionBenefitRuleResponse */
+        AdmissionBenefitRuleResponse: {
+            /** Id */
+            id: string;
+            /** Universityid */
+            universityId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            educationLevel?: components["schemas"]["EducationLevel"] | null;
+            route: components["schemas"]["AdmissionRoute"];
+            benefitType: components["schemas"]["BenefitType"];
+            /** Olympiadid */
+            olympiadId?: string | null;
+            /** Olympiadprofileid */
+            olympiadProfileId?: string | null;
+            resultType?: components["schemas"]["OlympiadResultType"] | null;
+            scope: components["schemas"]["BenefitScopeResponse"];
+            confirmationRequirement: components["schemas"]["ConfirmationRequirement"];
+            /** Confirmationsubjects */
+            confirmationSubjects: components["schemas"]["ConfirmationSubjectResponse"][];
+            validity: components["schemas"]["ValidityPolicyResponse"];
+            /** Targetsubject */
+            targetSubject?: string | null;
+            /** Points */
+            points?: string | null;
+            /** Conditions */
+            conditions: components["schemas"]["BenefitConditionResponse"][];
+            /** Sourcetext */
+            sourceText: string;
+            /** Status */
+            status: string;
+            /** Policyversion */
+            policyVersion: {
+                [key: string]: string;
+            };
+            provenance: components["schemas"]["BenefitProvenanceResponse"];
+        };
+        /** AdmissionBenefitsResponse */
+        AdmissionBenefitsResponse: {
+            /** Admissionyear */
+            admissionYear: number;
+            /** Sources */
+            sources: components["schemas"]["SourceAttributionResponse"][];
+            /** Olympiads */
+            olympiads: components["schemas"]["OlympiadResponse"][];
+            /** Olympiadprofiles */
+            olympiadProfiles: components["schemas"]["OlympiadProfileResponse"][];
+            /** Benefitrules */
+            benefitRules: components["schemas"]["AdmissionBenefitRuleResponse"][];
+            individualAchievementPolicy?: components["schemas"]["IndividualAchievementPolicyResponse"] | null;
+            coverage: components["schemas"]["AdmissionBenefitCoverageResponse"];
+            /** Sourcegaps */
+            sourceGaps: components["schemas"]["SourceGapReferenceResponse"][];
+        };
         /**
          * AdmissionCompetitionType
          * @enum {string}
          */
         AdmissionCompetitionType: "general" | "special_quota" | "separate_quota" | "targeted" | "bvi" | "other";
+        /** AdmissionEligibilityRequest */
+        AdmissionEligibilityRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Universityid */
+            universityId: string;
+            /** Directioncode */
+            directionCode: string;
+            /** Admissionyear */
+            admissionYear: number;
+            educationLevel?: components["schemas"]["EducationLevel"] | null;
+            /** Nps */
+            nps?: string | null;
+            applicant: components["schemas"]["ApplicantAdmissionFactsRequest"];
+        };
+        /** AdmissionEligibilityResponse */
+        AdmissionEligibilityResponse: {
+            /** Programid */
+            programId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            status: components["schemas"]["EligibilityStatus"];
+            route?: components["schemas"]["AdmissionRoute"] | null;
+            /** Evaluations */
+            evaluations: components["schemas"]["AdmissionBenefitEvaluationResponse"][];
+            /** Basecompetitivescore */
+            baseCompetitiveScore?: string | null;
+            /** Individualachievementpoints */
+            individualAchievementPoints?: string | null;
+            /** Effectivecompetitivescore */
+            effectiveCompetitiveScore?: string | null;
+            individualAchievements?: components["schemas"]["IndividualAchievementBreakdownResponse"] | null;
+            /** Sourcegaps */
+            sourceGaps: string[];
+        };
         /** AdmissionFitBreakdown */
         AdmissionFitBreakdown: {
             minimum_readiness: components["schemas"]["AdmissionFitMetric"];
@@ -1606,6 +1838,11 @@ export interface components {
              */
             inferred: boolean;
         };
+        /**
+         * AdmissionRoute
+         * @enum {string}
+         */
+        AdmissionRoute: "olympiad" | "vosh" | "international" | "special_right" | "preferential_right" | "special_quota" | "separate_quota" | "targeted" | "other";
         /**
          * AdmissionScope
          * @enum {string}
@@ -1879,6 +2116,17 @@ export interface components {
             /** Intensity */
             intensity: string;
         };
+        /** ApplicantAdmissionFactsRequest */
+        ApplicantAdmissionFactsRequest: {
+            /** Egescores */
+            egeScores?: components["schemas"]["ApplicantExamScoreRequest"][];
+            /** Internalexamscores */
+            internalExamScores?: components["schemas"]["ApplicantInternalExamScoreRequest"][];
+            /** Olympiadachievements */
+            olympiadAchievements?: components["schemas"]["ApplicantOlympiadAchievementRequest"][];
+            /** Individualachievements */
+            individualAchievements?: components["schemas"]["ApplicantIndividualAchievementRequest"][];
+        };
         /**
          * ApplicantAdmissionProfile
          * @description Subject scores used only by Admission Fit, not by Content Fit.
@@ -1906,6 +2154,45 @@ export interface components {
             version: 1;
             /** Scores */
             scores?: components["schemas"]["ApplicantSubjectScoreRequest"][];
+        };
+        /** ApplicantExamScoreRequest */
+        ApplicantExamScoreRequest: {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: number | string;
+        };
+        /** ApplicantIndividualAchievementRequest */
+        ApplicantIndividualAchievementRequest: {
+            /** Achievementcode */
+            achievementCode: string;
+            /** Year */
+            year?: number | null;
+            /** Details */
+            details?: string | null;
+            /** Evidencereference */
+            evidenceReference?: string | null;
+        };
+        /** ApplicantInternalExamScoreRequest */
+        ApplicantInternalExamScoreRequest: {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: number | string;
+        };
+        /** ApplicantOlympiadAchievementRequest */
+        ApplicantOlympiadAchievementRequest: {
+            /** Olympiadid */
+            olympiadId: string;
+            /** Olympiadprofileid */
+            olympiadProfileId?: string | null;
+            /** Resultyear */
+            resultYear: number;
+            resultType: components["schemas"]["OlympiadResultType"];
+            /** Gradeorclass */
+            gradeOrClass?: string | null;
+            /** Evidencereference */
+            evidenceReference?: string | null;
         };
         /**
          * ApplicantSubjectScore
@@ -2030,6 +2317,76 @@ export interface components {
                 [key: string]: components["schemas"]["BatchAdmissionFitOutcome"];
             };
         };
+        /**
+         * BenefitConditionKind
+         * @enum {string}
+         */
+        BenefitConditionKind: "confirmation_score" | "validity" | "required_document" | "result_type" | "target_scope" | "other";
+        /** BenefitConditionResponse */
+        BenefitConditionResponse: {
+            kind: components["schemas"]["BenefitConditionKind"];
+            /** Sourcetext */
+            sourceText: string;
+            /** Normalizedvalue */
+            normalizedValue?: string | null;
+        };
+        /** BenefitProvenanceResponse */
+        BenefitProvenanceResponse: {
+            source: components["schemas"]["SourceAttributionResponse"];
+            /** Sourcesnapshothash */
+            sourceSnapshotHash: string;
+            /** Sourcerunid */
+            sourceRunId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            /** Documenttitle */
+            documentTitle: string;
+            /** Documentkind */
+            documentKind: string;
+            /** Appendixnumber */
+            appendixNumber?: string | null;
+            /** Page */
+            page?: number | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Parserversion */
+            parserVersion: string;
+        };
+        /** BenefitScopeResponse */
+        BenefitScopeResponse: {
+            /** Mode */
+            mode: string;
+            /** Targets */
+            targets: components["schemas"]["BenefitTargetResponse"][];
+            /** Excludedtargets */
+            excludedTargets: components["schemas"]["BenefitTargetResponse"][];
+            /** Originaltext */
+            originalText: string;
+        };
+        /**
+         * BenefitTargetKind
+         * @enum {string}
+         */
+        BenefitTargetKind: "direction" | "program" | "nps" | "education_level";
+        /** BenefitTargetResponse */
+        BenefitTargetResponse: {
+            kind: components["schemas"]["BenefitTargetKind"];
+            /** Value */
+            value: string;
+            /** Originaltext */
+            originalText: string;
+            /** Resolution */
+            resolution: string;
+        };
+        /**
+         * BenefitType
+         * @enum {string}
+         */
+        BenefitType: "bvi" | "one_hundred_points" | "max_internal_exam_score" | "special_right" | "preferential_right" | "special_quota" | "separate_quota" | "targeted_route" | "other_review_required";
         /** CampusDepartmentReferenceResponse */
         CampusDepartmentReferenceResponse: {
             /** Id */
@@ -2396,6 +2753,26 @@ export interface components {
             answeredBase: number;
             /** Answeredadaptive */
             answeredAdaptive: number;
+        };
+        /**
+         * ConfirmationExamKind
+         * @enum {string}
+         */
+        ConfirmationExamKind: "ege" | "internal_exam" | "other" | "unknown";
+        /**
+         * ConfirmationRequirement
+         * @enum {string}
+         */
+        ConfirmationRequirement: "required" | "not_required" | "unknown";
+        /** ConfirmationSubjectResponse */
+        ConfirmationSubjectResponse: {
+            /** Subject */
+            subject: string;
+            /** Minimumscore */
+            minimumScore?: string | null;
+            examKind: components["schemas"]["ConfirmationExamKind"];
+            /** Sourcetext */
+            sourceText: string;
         };
         /**
          * ConversationSlot
@@ -3019,6 +3396,11 @@ export interface components {
          */
         EducationLevel: "bachelor" | "specialist" | "master" | "postgraduate";
         /**
+         * EligibilityStatus
+         * @enum {string}
+         */
+        EligibilityStatus: "eligible" | "not_eligible" | "insufficient_data" | "review_required";
+        /**
          * ErrorCode
          * @enum {string}
          */
@@ -3199,6 +3581,100 @@ export interface components {
          * @enum {string}
          */
         GapSeverity: "blocking" | "degradable" | "informational";
+        /** IndividualAchievementBreakdownResponse */
+        IndividualAchievementBreakdownResponse: {
+            status: components["schemas"]["EligibilityStatus"];
+            /** Totalpoints */
+            totalPoints: string;
+            /** Uncappedpoints */
+            uncappedPoints: string;
+            /** Globalcap */
+            globalCap?: string | null;
+            /** Evaluations */
+            evaluations: components["schemas"]["IndividualAchievementEvaluationResponse"][];
+            /** Sourcegaps */
+            sourceGaps: string[];
+        };
+        /** IndividualAchievementEvaluationResponse */
+        IndividualAchievementEvaluationResponse: {
+            /** Ruleid */
+            ruleId?: string | null;
+            /** Achievementcode */
+            achievementCode: string;
+            /** Status */
+            status: string;
+            /** Applicantyear */
+            applicantYear?: number | null;
+            /** Rulepoints */
+            rulePoints?: string | null;
+            /** Awardedpoints */
+            awardedPoints: string;
+            combinationPolicy?: components["schemas"]["AchievementCombinationPolicy"] | null;
+            /** Reason */
+            reason: string;
+            /** Evidence */
+            evidence: components["schemas"]["AdmissionBenefitEvidenceResponse"][];
+        };
+        /** IndividualAchievementPolicyResponse */
+        IndividualAchievementPolicyResponse: {
+            /** Universityid */
+            universityId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            educationLevel?: components["schemas"]["EducationLevel"] | null;
+            /** Globalmaxpoints */
+            globalMaxPoints?: string | null;
+            defaultCombinationPolicy: components["schemas"]["AchievementCombinationPolicy"];
+            /** Rules */
+            rules: components["schemas"]["IndividualAchievementRuleResponse"][];
+            /** Sourcetext */
+            sourceText: string;
+            /** Status */
+            status: string;
+            /** Policyversion */
+            policyVersion: {
+                [key: string]: string;
+            };
+            provenance: components["schemas"]["BenefitProvenanceResponse"];
+        };
+        /** IndividualAchievementRuleResponse */
+        IndividualAchievementRuleResponse: {
+            /** Id */
+            id: string;
+            /** Universityid */
+            universityId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            educationLevel?: components["schemas"]["EducationLevel"] | null;
+            /** Achievementcode */
+            achievementCode: string;
+            /** Category */
+            category: string;
+            /** Officialname */
+            officialName: string;
+            /** Description */
+            description?: string | null;
+            /** Points */
+            points: string;
+            /** Categorycap */
+            categoryCap?: string | null;
+            /** Combinationgroup */
+            combinationGroup?: string | null;
+            combinationPolicy: components["schemas"]["AchievementCombinationPolicy"];
+            /** Requireddocument */
+            requiredDocument?: string | null;
+            /** Conditions */
+            conditions: components["schemas"]["BenefitConditionResponse"][];
+            /** Sourcetext */
+            sourceText: string;
+            /** Status */
+            status: string;
+            /** Policyversion */
+            policyVersion: {
+                [key: string]: string;
+            };
+            provenance: components["schemas"]["BenefitProvenanceResponse"];
+        };
         /** IngestionRetryRequestBody */
         IngestionRetryRequestBody: {
             /**
@@ -3542,6 +4018,48 @@ export interface components {
              */
             truncated: boolean;
         };
+        /** OlympiadProfileResponse */
+        OlympiadProfileResponse: {
+            /** Id */
+            id: string;
+            /** Olympiadid */
+            olympiadId: string;
+            /** Profilename */
+            profileName: string;
+            /** Correspondingsubjects */
+            correspondingSubjects: components["schemas"]["OlympiadProfileSubjectResponse"][];
+            /** Admissionyear */
+            admissionYear: number;
+            /** Provenance */
+            provenance: components["schemas"]["BenefitProvenanceResponse"][];
+        };
+        /** OlympiadProfileSubjectResponse */
+        OlympiadProfileSubjectResponse: {
+            /** Subject */
+            subject: string;
+            /** Sourcetext */
+            sourceText: string;
+        };
+        /** OlympiadResponse */
+        OlympiadResponse: {
+            /** Id */
+            id: string;
+            /** Officialname */
+            officialName: string;
+            /** Organizer */
+            organizer?: string | null;
+            /** Rsoshlevel */
+            rsoshLevel?: number | null;
+            /** Admissionyear */
+            admissionYear: number;
+            /** Provenance */
+            provenance: components["schemas"]["BenefitProvenanceResponse"][];
+        };
+        /**
+         * OlympiadResultType
+         * @enum {string}
+         */
+        OlympiadResultType: "winner" | "prize_winner" | "team_member";
         /** OptionalMetricResponse */
         OptionalMetricResponse: {
             /** Status */
@@ -4549,7 +5067,7 @@ export interface components {
          * SourceKind
          * @enum {string}
          */
-        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_curriculum_metadata" | "bmstu_admission_orders_index" | "bmstu_admission_orders_document" | "bmstu_events" | "bmstu_campus_points" | "hse_common" | "hse_program_catalog" | "hse_program_detail" | "hse_curriculum_index" | "hse_curriculum_document" | "hse_admission_rules" | "hse_admission_places" | "hse_tuition" | "hse_passing_scores" | "hse_enrollment_index" | "hse_enrollment_document";
+        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_curriculum_metadata" | "bmstu_admission_orders_index" | "bmstu_admission_orders_document" | "bmstu_admission_document_index" | "bmstu_admission_rules" | "bmstu_admission_benefits" | "bmstu_admission_individual_achievements" | "bmstu_events" | "bmstu_campus_points" | "hse_common" | "hse_program_catalog" | "hse_program_detail" | "hse_curriculum_index" | "hse_curriculum_document" | "hse_admission_rules" | "hse_admission_places" | "hse_tuition" | "hse_passing_scores" | "hse_enrollment_index" | "hse_enrollment_document";
         /**
          * StudyForm
          * @enum {string}
@@ -5316,6 +5834,17 @@ export interface components {
             /** Expectedrevision */
             expectedRevision: number;
         };
+        /** ValidityPolicyResponse */
+        ValidityPolicyResponse: {
+            /** Validfromresultyear */
+            validFromResultYear?: number | null;
+            /** Validuntilresultyear */
+            validUntilResultYear?: number | null;
+            /** Maxageyears */
+            maxAgeYears?: number | null;
+            /** Sourcetext */
+            sourceText: string;
+        };
         /** VenueResponse */
         VenueResponse: {
             /** Id */
@@ -5711,6 +6240,361 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdmissionFitResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_university_admission_benefits: {
+        parameters: {
+            query: {
+                year: number;
+                education_level?: components["schemas"]["EducationLevel"] | null;
+            };
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdmissionBenefitsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_program_admission_benefits: {
+        parameters: {
+            query: {
+                year: number;
+                includeReview?: boolean;
+            };
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdmissionBenefitRuleListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_olympiad_admission_benefit_programs: {
+        parameters: {
+            query: {
+                university_id: string;
+                year: number;
+                benefitType?: string | null;
+                includeReview?: boolean;
+            };
+            header?: never;
+            path: {
+                olympiad_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdmissionBenefitRuleListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    evaluate_program_admission_eligibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdmissionEligibilityRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdmissionEligibilityResponse"];
                 };
             };
             /** @description Bad Request */

@@ -3,3 +3,21 @@ from .text import normalize_text
 from .workload import parse_credits
 
 __all__ = ["normalize_code", "normalize_text", "parse_credits"]
+from .admission_benefits import (
+    IndividualAchievementNormalizationResult,
+    OlympiadBenefitNormalizationResult,
+    normalize_direction_scope,
+    normalize_individual_achievements,
+    normalize_olympiad_benefits,
+)
+
+__all__ = [
+    "IndividualAchievementNormalizationResult",
+    "OlympiadBenefitNormalizationResult",
+    "normalize_code",
+    "normalize_direction_scope",
+    "normalize_individual_achievements",
+    "normalize_olympiad_benefits",
+    "normalize_text",
+    "parse_credits",
+]

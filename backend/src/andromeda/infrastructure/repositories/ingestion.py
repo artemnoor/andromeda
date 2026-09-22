@@ -21,11 +21,13 @@ from andromeda.ingestion.quality import (
     QualityOutcome,
     is_critical_gap,
 )
+from andromeda.modules.analytics.services.projection_builder import (
+    ProgramProjectionService,
+)
 from andromeda.modules.disciplines.contracts.public import (
     DisciplineAreaWeight,
     area_catalog,
 )
-from andromeda.modules.analytics.services.projection_builder import ProgramProjectionService
 from andromeda.modules.program_analytics.contracts.public import (
     DerivedRefreshOutcome,
     DerivedRefreshPort,
@@ -68,6 +70,7 @@ from ..database.models import (
     UniversityModel,
 )
 from ..database.session import session_factory
+from .admission_benefits import SqlAlchemyAdmissionBenefitsRepository
 from .admissions import SqlAlchemyAdmissionRepository
 from .campus import SqlAlchemyCampusPointRepository
 from .events import SqlAlchemyEventRepository
@@ -207,7 +210,12 @@ class SqlAlchemyIngestionRepository:
             run_id,
             len(raw.snapshots),
             sum(len(snapshot.body) for snapshot in raw.snapshots),
-            len(raw.programs) + len(raw.curriculum_rows) + len(raw.admissions) + len(raw.events) + len(raw.campus_points),
+            len(raw.programs)
+            + len(raw.curriculum_rows)
+            + len(raw.admissions)
+            + len(raw.events)
+            + len(raw.campus_points)
+            + len(raw.admission_benefit_records),
         )
         self._update_run_metadata(
             run_id,
@@ -241,6 +249,8 @@ class SqlAlchemyIngestionRepository:
 
     def ingest(self, raw: RawTracerBundle, canonical: CanonicalSnapshot, *, run_id: str | None = None) -> str:
         resolved_run_id = run_id or self.start_run(university_id=str(canonical.university.id))
+        raw = _bind_admission_benefit_raw_run(raw, resolved_run_id)
+        canonical = _bind_admission_benefit_run(canonical, resolved_run_id)
         source_hashes = tuple(snapshot.content_sha256 for snapshot in raw.snapshots)
         source_kinds = tuple(snapshot.source_kind for snapshot in raw.snapshots)
         self._update_run_metadata(
@@ -685,6 +695,14 @@ class SqlAlchemyIngestionRepository:
         records.extend(("Event", event.model_dump_json(), str(event.source_url)) for event in raw.events)
         records.extend(("CampusPoint", point.model_dump_json(), str(point.source_url)) for point in raw.campus_points)
         records.extend(
+            ("AdmissionBenefit", record.model_dump_json(), str(record.source_url))
+            for record in raw.admission_benefit_records
+        )
+        records.extend(
+            ("AdmissionBenefitDiagnostic", diagnostic.model_dump_json(), str(diagnostic.locator.source_url))
+            for diagnostic in raw.admission_benefit_diagnostics
+        )
+        records.extend(
             ("SourceGap", gap.model_dump_json(), str(gap.locator.source_url))
             for gap in raw.source_gaps
             if str(gap.locator.source_url) in hashes_by_url
@@ -767,6 +785,29 @@ class SqlAlchemyIngestionRepository:
             )
         session.flush()
         SqlAlchemyAdmissionRepository(session).sync(canonical.admissions)
+        session.flush()
+        if canonical.admission_benefits is not None:
+            benefit_stats = SqlAlchemyAdmissionBenefitsRepository(session).sync_snapshot(
+                canonical.admission_benefits,
+                source_run_id=run_id,
+            )
+            stats.inserted += (
+                benefit_stats.olympiads_inserted
+                + benefit_stats.profiles_inserted
+                + benefit_stats.rules_inserted
+                + benefit_stats.achievement_rules_inserted
+            )
+            stats.unchanged += benefit_stats.unchanged_rows
+            stats.removed += benefit_stats.stale_rows
+            logger.info(
+                "ingest_admission_benefits_projected run_id=%s year=%d rules=%d achievement_rules=%d stale=%d conflicts=%d",
+                run_id,
+                canonical.admission_benefits.admission_year,
+                benefit_stats.rules_inserted,
+                benefit_stats.achievement_rules_inserted,
+                benefit_stats.stale_rows,
+                benefit_stats.conflict_rows,
+            )
         session.flush()
         event_stats = SqlAlchemyEventRepository(session).sync(
             canonical.events,
@@ -997,6 +1038,67 @@ class SqlAlchemyIngestionRepository:
 
 def _semester_identity(semester: int | None) -> str:
     return "unassigned" if semester is None else f"semester:{semester}"
+
+
+def _bind_admission_benefit_raw_run(raw: RawTracerBundle, run_id: str) -> RawTracerBundle:
+    if not raw.admission_benefit_records:
+        return raw
+    return raw.model_copy(
+        update={
+            "admission_benefit_records": tuple(
+                record.model_copy(update={"source_run_id": run_id})
+                for record in raw.admission_benefit_records
+            )
+        }
+    )
+
+
+def _bind_admission_benefit_run(canonical: CanonicalSnapshot, run_id: str) -> CanonicalSnapshot:
+    snapshot = canonical.admission_benefits
+    if snapshot is None:
+        return canonical
+
+    def bind_provenance(value: Any) -> Any:
+        return value.model_copy(
+            update={
+                "source_run_id": run_id,
+                "source": value.source.model_copy(update={"run_id": run_id}),
+            }
+        )
+
+    olympiads = tuple(
+        value.model_copy(update={"provenance": tuple(bind_provenance(item) for item in value.provenance)})
+        for value in snapshot.olympiads
+    )
+    profiles = tuple(
+        value.model_copy(update={"provenance": tuple(bind_provenance(item) for item in value.provenance)})
+        for value in snapshot.olympiad_profiles
+    )
+    rules = tuple(
+        value.model_copy(update={"provenance": bind_provenance(value.provenance)})
+        for value in snapshot.benefit_rules
+    )
+    policy = snapshot.individual_achievement_policy
+    if policy is not None:
+        policy = policy.model_copy(
+            update={
+                "provenance": bind_provenance(policy.provenance),
+                "rules": tuple(
+                    value.model_copy(update={"provenance": bind_provenance(value.provenance)})
+                    for value in policy.rules
+                ),
+            }
+        )
+    rebound = snapshot.model_copy(
+        update={
+            "sources": tuple(source.model_copy(update={"run_id": run_id}) for source in snapshot.sources),
+            "olympiads": olympiads,
+            "olympiad_profiles": profiles,
+            "benefit_rules": rules,
+            "individual_achievement_policy": policy,
+        }
+    )
+    return canonical.model_copy(update={"admission_benefits": rebound})
 
 
 def _curriculum_item_source_link_id(item_id: str, attribution: SourceAttribution) -> str:

@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import Literal, Self, TypeAlias
 
 from pydantic import Field, HttpUrl, model_validator
 
 from ...shared.contracts.base import ContractModel
-from ...shared.contracts.ids import UniversityId
+from ...shared.contracts.ids import IngestRunId, SourceHash, UniversityId
+from ...modules.admission_benefits.contracts.coverage import AdmissionBenefitCoverage, AdmissionBenefitCoverageStatus
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
@@ -33,6 +35,76 @@ class SourceLocator(ContractModel):
     page: int | None = Field(default=None, strict=True, ge=1)
     row: int | None = Field(default=None, strict=True, ge=1)
     field: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class RawAdmissionBenefitRecordKind(StrEnum):
+    OLYMPIAD = "olympiad"
+    OLYMPIAD_PROFILE = "olympiad_profile"
+    BENEFIT_RULE = "benefit_rule"
+    INDIVIDUAL_ACHIEVEMENT = "individual_achievement"
+    ACHIEVEMENT_POLICY = "achievement_policy"
+    SOURCE_GAP = "source_gap"
+
+
+class RawAdmissionBenefitCell(ContractModel):
+    header: str = Field(min_length=1, max_length=512)
+    value: str = Field(min_length=1, max_length=10_000)
+
+
+class RawAdmissionBenefitCandidate(ContractModel):
+    field: str = Field(min_length=1, max_length=128)
+    value: str = Field(min_length=1, max_length=2_000)
+    confidence: Decimal | None = Field(default=None, strict=True, ge=Decimal("0"), le=Decimal("1"), max_digits=3, decimal_places=2)
+
+
+class AdmissionBenefitParserDiagnostic(ContractModel):
+    code: str = Field(min_length=1, max_length=128)
+    stage: str = Field(min_length=1, max_length=64)
+    message: str = Field(min_length=1, max_length=512)
+    severity: Literal["info", "warning", "ambiguous", "error"] = "warning"
+    locator: SourceLocator
+    candidates: tuple[str, ...] = ()
+
+
+class RawAdmissionBenefitDocument(ContractModel):
+    document_kind: str = Field(min_length=1, max_length=128)
+    document_title: str = Field(min_length=1, max_length=512)
+    admission_year: int = Field(strict=True, ge=2000, le=2100)
+    source_url: HttpUrl
+    source_snapshot_hash: SourceHash
+    source_run_id: IngestRunId
+    captured_at: datetime
+    locator: SourceLocator
+    parser_version: str = Field(min_length=1, max_length=128)
+    raw_page_text: str | None = Field(default=None, max_length=100_000)
+
+
+class RawAdmissionBenefitRecord(ContractModel):
+    record_id: str = Field(min_length=1, max_length=384)
+    record_kind: RawAdmissionBenefitRecordKind
+    document_kind: str = Field(min_length=1, max_length=128)
+    document_title: str = Field(min_length=1, max_length=512)
+    admission_year: int = Field(strict=True, ge=2000, le=2100)
+    source_url: HttpUrl
+    source_snapshot_hash: SourceHash
+    source_run_id: IngestRunId
+    captured_at: datetime
+    locator: SourceLocator
+    raw_text: str = Field(min_length=1, max_length=100_000)
+    cells: tuple[RawAdmissionBenefitCell, ...] = ()
+    normalized_candidates: tuple[RawAdmissionBenefitCandidate, ...] = ()
+    diagnostics: tuple[AdmissionBenefitParserDiagnostic, ...] = ()
+    parser_version: str = Field(min_length=1, max_length=128)
+
+
+class RawIndividualAchievementRecord(RawAdmissionBenefitRecord):
+    record_kind: Literal[RawAdmissionBenefitRecordKind.INDIVIDUAL_ACHIEVEMENT] = RawAdmissionBenefitRecordKind.INDIVIDUAL_ACHIEVEMENT
+    achievement_code_candidate: str | None = Field(default=None, min_length=1, max_length=256)
+    official_name_candidate: str | None = Field(default=None, min_length=1, max_length=512)
+    points_text: str | None = Field(default=None, min_length=1, max_length=512)
+    cap_text: str | None = Field(default=None, min_length=1, max_length=512)
+    combination_text: str | None = Field(default=None, min_length=1, max_length=2_000)
+    required_document_text: str | None = Field(default=None, min_length=1, max_length=2_000)
 
 
 class RawUniversityRecord(ContractModel):
@@ -230,3 +302,6 @@ class RawTracerBundle(ContractModel):
     admissions: tuple[RawAdmissionRecord, ...] = ()
     events: tuple[RawEventRecord, ...] = ()
     campus_points: tuple[RawCampusPointRecord, ...] = ()
+    admission_benefit_records: tuple[RawAdmissionBenefitRecord, ...] = ()
+    admission_benefit_diagnostics: tuple[AdmissionBenefitParserDiagnostic, ...] = ()
+    admission_benefit_coverage: AdmissionBenefitCoverage | None = None

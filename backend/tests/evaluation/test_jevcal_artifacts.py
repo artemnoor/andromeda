@@ -42,6 +42,15 @@ def test_calibration_generation_rejects_missing_heldout(monkeypatch: pytest.Monk
         jevcal_calibrate._build_lock()
 
 
+def test_observation_hash_is_independent_of_windows_line_endings(tmp_path: Path) -> None:
+    lf = tmp_path / "observations-lf.jsonl"
+    crlf = tmp_path / "observations-crlf.jsonl"
+    lf.write_bytes(b'{"case_id":"one"}\n{"case_id":"two"}\n')
+    crlf.write_bytes(b'{"case_id":"one"}\r\n{"case_id":"two"}\r\n')
+
+    assert jevcal_calibrate._hash_file(lf) == jevcal_calibrate._hash_file(crlf)
+
+
 def test_export_hash_is_deterministic(tmp_path: Path) -> None:
     first = tmp_path / "one.jsonl"
     second = tmp_path / "two.jsonl"

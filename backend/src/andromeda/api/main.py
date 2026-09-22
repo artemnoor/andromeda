@@ -21,6 +21,7 @@ from andromeda.api.request_controls import (
 )
 from andromeda.api.routes.admin_ops import router as admin_ops_router
 from andromeda.api.routes.admission_fit import router as admission_fit_router
+from andromeda.api.routes.admission_benefits import router as admission_benefits_router
 from andromeda.api.routes.admissions import router as admissions_router
 from andromeda.api.routes.analytics import router as analytics_router
 from andromeda.api.routes.assistant import router as assistant_router
@@ -203,6 +204,7 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(programs_router)
     app.include_router(admissions_router)
     app.include_router(admission_fit_router)
+    app.include_router(admission_benefits_router)
     app.include_router(disciplines_router)
     app.include_router(compare_router)
     app.include_router(analytics_router)

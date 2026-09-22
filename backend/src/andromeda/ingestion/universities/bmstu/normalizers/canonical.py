@@ -215,6 +215,15 @@ def _credits(value: str | float | int | None, path: str) -> Decimal | None:
 
 def _source_kind(value: str) -> SourceKind:
     aliases = {"bmstu_major_catalog": SourceKind.BMSTU_MAJOR_CATALOG}
+    if value.startswith("bmstu_admission_document:"):
+        document_kind = value.rsplit(":", 1)[-1]
+        return (
+            SourceKind.BMSTU_ADMISSION_INDIVIDUAL_ACHIEVEMENTS
+            if document_kind in {"appendix_6", "appendix_7"}
+            else SourceKind.BMSTU_ADMISSION_BENEFITS
+        )
+    if value.startswith("bmstu_olympiad_profile:"):
+        return SourceKind.BMSTU_ADMISSION_BENEFITS
     try:
         return aliases.get(value, SourceKind(value))
     except ValueError as exc:

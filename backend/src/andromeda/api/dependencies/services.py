@@ -11,6 +11,11 @@ from andromeda.modules.admin_ops.repository.ports import (
 from andromeda.modules.admin_ops.services.ingestion_runs import IngestionRunService
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
 from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
+from andromeda.modules.admission_benefits.repository.ports import AdmissionBenefitReader
+from andromeda.modules.admission_benefits.services.facade import (
+    AdmissionBenefitCatalogService,
+    AdmissionEligibilityService,
+)
 from andromeda.modules.admissions.repository.ports import AdmissionReader
 from andromeda.modules.admissions.services.admissions import AdmissionService
 from andromeda.modules.analytics.services.executor import AnalyticsExecutor
@@ -178,6 +183,27 @@ def get_admission_fit_service(
     session: Session = Depends(get_session),
 ) -> AdmissionFitService:
     return container.admission_fit_service(session)
+
+
+def get_admission_benefit_reader(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> AdmissionBenefitReader:
+    return container.admission_benefit_repository(session)
+
+
+def get_admission_benefit_catalog_service(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> AdmissionBenefitCatalogService:
+    return container.admission_benefit_catalog_service(session)
+
+
+def get_admission_eligibility_service(
+    container: AndromedaContainer = Depends(get_composition_root),
+    session: Session = Depends(get_session),
+) -> AdmissionEligibilityService:
+    return container.admission_eligibility_service(session)
 
 
 def get_analytics_executor(
