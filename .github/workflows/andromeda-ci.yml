@@ -397,7 +397,7 @@ jobs:
       - name: Install locked backend environment
         run: |
           python -m pip install --disable-pip-version-check uv==0.11.28
-          uv sync --locked --extra dev --extra browser
+          uv sync --locked --extra dev --extra browser --extra evaluation --extra jev --extra jevql
         working-directory: backend
       - name: Run production proftest and admission-fit checks
         run: uv run --project backend --locked --extra dev --extra browser python -m pytest -q backend/tests/modules/proftest backend/tests/modules/admission_fit backend/tests/api/test_proftest_api.py backend/tests/api/test_proftest_contract.py backend/tests/api/test_proftest_profile_api.py backend/tests/api/test_proftest_profile_contract.py backend/tests/api/test_admission_fit_api.py backend/tests/api/test_admission_fit_contract.py backend/tests/integration/test_proftest_catalog.py backend/tests/integration/test_proftest_vertical_slice.py backend/tests/integration/test_user_profile_persistence.py backend/tests/integration/test_admission_fit_vertical_slice.py

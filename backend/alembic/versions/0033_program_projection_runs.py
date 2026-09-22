@@ -38,7 +38,10 @@ def upgrade() -> None:
     op.create_index("ix_projection_runs_status_started", "program_projection_runs", ["status", "started_at"])
     op.create_index("ix_projection_runs_ingest", "program_projection_runs", ["ingest_run_id"])
 
-    with op.batch_alter_table("program_projections", recreate="always") as batch:
+    # Keep PostgreSQL on native ALTER TABLE operations so existing metric/evidence
+    # foreign keys can continue to reference the projection primary key. Alembic
+    # still uses SQLite's table-rebuild implementation for the test database.
+    with op.batch_alter_table("program_projections") as batch:
         batch.add_column(sa.Column("projection_run_id", sa.String(length=128), nullable=True))
         batch.add_column(sa.Column("input_hash", sa.String(length=128), nullable=True))
         batch.add_column(sa.Column("materialization_status", sa.String(length=16), nullable=False, server_default="active"))
@@ -58,7 +61,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index("ix_program_projections_materialization", table_name="program_projections")
-    with op.batch_alter_table("program_projections", recreate="always") as batch:
+    with op.batch_alter_table("program_projections") as batch:
         batch.drop_constraint("ck_program_projection_materialization_status", type_="check")
         batch.drop_constraint("fk_program_projections_projection_run", type_="foreignkey")
         batch.drop_column("materialization_status")
