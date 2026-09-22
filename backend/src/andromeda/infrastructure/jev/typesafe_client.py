@@ -18,7 +18,13 @@ from andromeda.modules.conversation.contracts.decision_definitions import (
     QuestionRegistryPort,
 )
 
-from .contracts import JevRequestEnvelope, JevResponseEnvelope, JevUsage, ModelIdentity
+from .contracts import (
+    JevAnswerEvidence,
+    JevRequestEnvelope,
+    JevResponseEnvelope,
+    JevUsage,
+    ModelIdentity,
+)
 
 
 class TypeSafeJevTransport:
@@ -58,6 +64,7 @@ class TypeSafeJevTransport:
             timeout=request.timeout_seconds,
         )
         payload = _payload_for(definition, response)
+        evidence = _evidence_for(response)
         usage = getattr(response, "usage", None)
         return JevResponseEnvelope(
             payload=payload,
@@ -70,8 +77,11 @@ class TypeSafeJevTransport:
             usage=JevUsage(
                 input_tokens=getattr(usage, "input_tokens", None),
                 output_tokens=getattr(usage, "output_tokens", None),
+                retry_count=getattr(usage, "n_retries", None),
+                malformed_retry_count=getattr(usage, "n_retries_malformed_structure", None),
                 latency_ms=int((time.monotonic() - started) * 1000),
             ),
+            evidence=evidence,
         )
 
     def health_check(self) -> bool:
@@ -127,25 +137,24 @@ def _bounded_state(payload: Mapping[str, object]) -> dict[str, object]:
     return state
 
 
-def _questions_for(definition: DecisionDefinition, payload: Mapping[str, object]) -> dict[str, dict[str, object]]:
+def _questions_for(definition: DecisionDefinition, payload: Mapping[str, object]) -> dict[str, object]:
+    try:
+        from typesafe_sdk import Choice, Noul
+    except ImportError as exc:  # pragma: no cover - optional dependency guard
+        raise RuntimeError("typesafe-sdk optional dependency is not installed") from exc
     options = _dynamic_options(definition, payload)
     if definition.operation == "classify_semantic_features":
         feature_codes = _string_tuple(payload.get("feature_codes"))
         return {
-            code: {
-                "type": "noul",
-                "instructions": f"{definition.instructions} Evaluate feature code {code}; return true only when supported by the supplied discipline text.",
-            }
+            code: Noul(
+                instructions=f"{definition.instructions} Evaluate feature code {code}; return true only when supported by the supplied discipline text."
+            )
             for code in feature_codes[:64]
         }
     if not options:
         raise ValueError(f"registered decision has no bounded options: {definition.definition_id}")
     return {
-        "answer": {
-            "type": "choice",
-            "instructions": definition.instructions,
-            "criteria": options,
-        }
+        "answer": Choice(instructions=definition.instructions, criteria=options)
     }
 
 
@@ -187,6 +196,36 @@ def _payload_for(definition: DecisionDefinition, response: Any) -> dict[str, obj
     # Preserve the registered call and let the semantic fallback/review path
     # handle the result until that calibration exists.
     return {"values": (), "confidence": confidence}
+
+
+def _evidence_for(response: Any) -> JevAnswerEvidence | None:
+    choices = getattr(response, "choices", {})
+    if not isinstance(choices, Mapping):
+        return None
+    answer = choices.get("answer")
+    if answer is None and choices:
+        answer = next(iter(choices.values()))
+    if answer is None:
+        return None
+    raw_probabilities = getattr(answer, "probabilities", None)
+    probabilities: dict[str, float] = {}
+    if isinstance(raw_probabilities, Mapping):
+        for key, value in raw_probabilities.items():
+            if isinstance(key, str) and isinstance(value, (int, float)) and 0 <= value <= 1:
+                probabilities[key] = float(value)
+    raw_value = getattr(answer, "choice", None)
+    if raw_value is None:
+        raw_value = getattr(answer, "noul", None)
+    confidence = getattr(answer, "confidence", None)
+    if not isinstance(confidence, (int, float)):
+        confidence = None
+    return JevAnswerEvidence(
+        answer_kind=type(answer).__name__,
+        answer_value=raw_value,
+        confidence=confidence,
+        probabilities=probabilities,
+        has_probability_evidence=bool(probabilities),
+    )
 
 
 def _string_tuple(value: object) -> tuple[str, ...]:

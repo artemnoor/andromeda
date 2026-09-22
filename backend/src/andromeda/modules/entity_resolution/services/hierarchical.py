@@ -45,6 +45,10 @@ class HierarchicalResolutionService:
         self._definition_version = definition_version
         self._timeout_seconds = timeout_seconds
 
+    @property
+    def candidate_threshold(self) -> int:
+        return self._threshold
+
     def resolve(
         self,
         entity_type: ResolutionEntityType,

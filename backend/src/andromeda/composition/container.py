@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
+from pathlib import Path
+from urllib.parse import urlparse
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
@@ -76,6 +79,11 @@ from andromeda.infrastructure.repositories.university_catalog import (
     SqlAlchemyUniversityCatalogRepository,
 )
 from andromeda.infrastructure.jev.runtime import build_decision_policy
+from andromeda.infrastructure.jevql.adapter import JevQLAdapter
+from andromeda.infrastructure.jevql.config import JevQLConfig, JevQLMode
+from andromeda.infrastructure.jev_tree.adapter import JevTreeAdapter
+from andromeda.infrastructure.jev_tree.config import JevTreeConfig
+from andromeda.infrastructure.jev_tree.transport import NodeJevTreeTransport
 from andromeda.infrastructure.repositories.university_events import (
     SqlAlchemyUniversityEditorialEventRepository,
 )
@@ -115,6 +123,7 @@ from andromeda.modules.entity_resolution.services.resolvers import (
     CachedEntityCatalog,
     EntityResolverService,
 )
+from andromeda.modules.entity_resolution.services.hierarchical import HierarchicalResolutionService
 from andromeda.modules.personal_route.services.personal_route import (
     PersonalRouteService,
 )
@@ -123,6 +132,9 @@ from andromeda.modules.presentation.services.rule_response_policy import (
 )
 from andromeda.modules.proftest.repository.ports import UserProfileRepository
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
+
+
+logger = logging.getLogger("andromeda.composition.container")
 from andromeda.modules.proftest.services.profile_persistence import (
     UserProfilePersistenceService,
 )
@@ -443,10 +455,63 @@ class AndromedaContainer:
         return AnalyticsExecutor(
             SqlAlchemyProgramProjectionRepository(self.engine),
             cache=self.analytics_cache,
+            semantic_predicate_port=self.jevql_adapter(),
         )
 
+    def jevql_adapter(self) -> JevQLAdapter | None:
+        """Compose the real upstream Jevql client only when the feature is enabled."""
+
+        if not self.settings.jevql_enabled:
+            return None
+        if self.settings.jevql_endpoint is None:
+            config = JevQLConfig(
+                mode=JevQLMode.EMBEDDED,
+                timeout_seconds=self.settings.jev_timeout_seconds,
+                max_rows=self.settings.jev_max_rows,
+                max_chars_per_row=min(self.settings.jev_max_chars, 8000),
+                max_concurrency=self.settings.jev_max_concurrency,
+            )
+        else:
+            parsed = urlparse(self.settings.jevql_endpoint)
+            host = parsed.hostname
+            if host is None:
+                raise ValueError("JEVQL_ENDPOINT must include a hostname")
+            config = JevQLConfig(
+                mode=JevQLMode.SHARED_SERVICE,
+                timeout_seconds=self.settings.jev_timeout_seconds,
+                max_rows=self.settings.jev_max_rows,
+                max_chars_per_row=min(self.settings.jev_max_chars, 8000),
+                max_concurrency=self.settings.jev_max_concurrency,
+                shared_endpoint=self.settings.jevql_endpoint,
+                shared_allowed_hosts=(host,),
+                shared_bearer_token=self.settings.jevql_token,
+            )
+        logger.info("jevql_composed mode=%s endpoint_configured=%s", config.mode.value, config.shared_endpoint is not None)
+        return JevQLAdapter(config=config)
+
     def entity_resolver(self) -> EntityResolverService:
-        return EntityResolverService(CachedEntityCatalog(SqlAlchemyEntityResolutionRepository(self.engine)))
+        return EntityResolverService(
+            CachedEntityCatalog(SqlAlchemyEntityResolutionRepository(self.engine)),
+            hierarchical=self.jev_tree_resolver(),
+        )
+
+    def jev_tree_resolver(self) -> HierarchicalResolutionService | None:
+        """Compose jev-tree only for large candidate sets when explicitly enabled."""
+
+        if not self.settings.jev_tree_enabled:
+            return None
+        bridge_path = Path(__file__).resolve().parents[3] / "jev-tree-bridge" / "src" / "index.mjs"
+        config = JevTreeConfig(
+            enabled=True,
+            bridge_path=bridge_path,
+            timeout_seconds=min(self.settings.jev_timeout_seconds, 15.0),
+        )
+        logger.info("jev_tree_composed bridge=%s threshold=%d", bridge_path.name, 255)
+        return HierarchicalResolutionService(
+            JevTreeAdapter(NodeJevTreeTransport(config)),
+            candidate_threshold=255,
+            timeout_seconds=config.timeout_seconds,
+        )
 
     def assistant_service(self, session: Session) -> AssistantService:
         return AssistantService(

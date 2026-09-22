@@ -2,7 +2,7 @@
 
 ## Stage 2 execution baseline
 
-Stage 2 runs from the clean Stage 1 baseline commit e353da4 on
+Stage 2 remediation runs from the clean baseline commit 105dacb on
 feature/jev-ecosystem-stage-2. The earlier feature/university-admin-control
 worktree was dirty during research and is preserved as a separate audit source;
 it is not a runtime or implementation baseline.
@@ -33,9 +33,9 @@ The shared Question Registry owns operation instructions, criteria, version,
 input/output schema and calibration identity. Tool-specific settings stay in
 their own validated configuration:
 
-- jevcal: dataset splits, calibration and lock generation;
-- jev-align: acquisition, review, proposal and rewind settings;
-- jevQL: engine mode, budgets, cache and process settings;
+- jevcal: dataset splits, upstream calibration and lock generation;
+- jev-align: upstream acquisition/GEPA, review, proposal and rewind settings;
+- jevQL: engine mode, budgets, cache and SDK endpoint settings;
 - jev-tree: candidate threshold, tree limits and Node runtime settings.
 
 No model output may provide SQL, a repository handle, an endpoint, a template
@@ -51,7 +51,7 @@ typed reason.
 | jevcal | DEV/EVAL_TOOL | Offline calibration and immutable lock artifacts |
 | jev-align | DEV/EVAL_TOOL | Human-reviewed semantic proposals and versioned imports |
 | System One Adapter | DEV/EVAL_TOOL | Baseline/evaluation reports only |
-| jevQL | ISOLATED_OPTIONAL_RUNTIME, embedded-first | Python SDK embedded engine, then private subprocess, then shared service only when justified |
+| jevQL | ISOLATED_OPTIONAL_RUNTIME, embedded-first | `Jevql()` private embedded engine, or `Jevql(url=..., token=...)` shared service |
 | jev-tree | ISOLATED_OPTIONAL_RUNTIME | Node adapter only after deterministic narrowing and large-candidate threshold |
 | awesome-jev | PATTERN_ONLY | Curated reference list, no runtime dependency |
 

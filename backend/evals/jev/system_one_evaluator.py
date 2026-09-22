@@ -9,14 +9,22 @@ from __future__ import annotations
 
 import time
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from andromeda.modules.conversation.contracts.decision_definitions import DecisionDefinition
 
 
 class SystemOneClientProtocol(Protocol):
-    def system_one(self, *, state: str, questions: Mapping[str, object], **kwargs: object) -> object: ...
+    def system_one(
+        self,
+        state: Any,
+        questions: Any,
+        *,
+        provider: Any = None,
+        model: Any = None,
+        **kwargs: Any,
+    ) -> object: ...
 
 
 class SystemOneQuestionFactory(Protocol):
@@ -29,6 +37,7 @@ class SystemOneEvaluationCase:
     definition: DecisionDefinition
     input_text: str
     expected: Mapping[str, object]
+    input_data: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +51,7 @@ class SystemOneEvaluationResult:
     input_tokens: int | None
     output_tokens: int | None
     retry_count: int | None
+    malformed_retry_count: int | None
     provider: str
     model: str
     sanitized_output: Mapping[str, object] | None
@@ -68,7 +78,10 @@ class SystemOneEvaluator:
             try:
                 response = self._client.system_one(
                     state=case.input_text,
-                    questions=self._question_factory.build(case.definition, {"expected": case.expected}),
+                    questions=self._question_factory.build(
+                        case.definition,
+                        {"expected": case.expected, "input": case.input_data},
+                    ),
                     provider=provider,
                     model=model,
                 )
@@ -85,6 +98,7 @@ class SystemOneEvaluator:
                         input_tokens=_usage_int(usage, "input_tokens_total"),
                         output_tokens=_usage_int(usage, "output_tokens_total"),
                         retry_count=_usage_int(usage, "n_retries"),
+                        malformed_retry_count=_usage_int(usage, "n_retries_malformed_structure"),
                         provider=provider,
                         model=model,
                         sanitized_output=_sanitize_output(dumped),
@@ -104,6 +118,7 @@ class SystemOneEvaluator:
                         input_tokens=None,
                         output_tokens=None,
                         retry_count=None,
+                        malformed_retry_count=None,
                         provider=provider,
                         model=model,
                         sanitized_output=None,
@@ -113,25 +128,45 @@ class SystemOneEvaluator:
 
 
 class OfficialSystemOneQuestionFactory:
-    """Build a single bounded Noul question using the optional official adapter."""
+    """Build native typed questions using the optional official adapter."""
 
     def __init__(self) -> None:
         try:
-            from system_one_adapter import Noul
+            from system_one_adapter import Choice
         except ImportError as exc:  # pragma: no cover - exercised by CLI preflight
             raise RuntimeError("install the optional 'evaluation' dependency first") from exc
-        self._noul = Noul
+        self._choice = Choice
 
     def build(self, definition: DecisionDefinition, case: Mapping[str, object]) -> Mapping[str, object]:
-        del case
+        input_data = case.get("input")
+        criteria = _choice_criteria(definition, input_data if isinstance(input_data, Mapping) else {})
         return {
-            "decision": self._noul(
-                instructions=(
-                    f"{definition.instructions} Return only the typed decision for "
-                    f"definition {definition.definition_id} ({definition.version})."
-                )
+            "decision": self._choice(
+                instructions=f"{definition.instructions} Return only the typed decision.",
+                criteria=criteria,
             )
         }
+
+
+def _choice_criteria(
+    definition: DecisionDefinition,
+    input_data: Mapping[str, object],
+) -> dict[str, str]:
+    criteria: dict[str, str] = {
+        option.code: option.description for option in definition.options
+    }
+    for value in definition.output_schema.allowed_values:
+        criteria.setdefault(value, value)
+    for field_name in ("candidates", "feature_codes"):
+        values = input_data.get(field_name)
+        if isinstance(values, Sequence) and not isinstance(values, (str, bytes)):
+            for value in values:
+                if isinstance(value, str) and value:
+                    criteria.setdefault(value, value)
+    if len(criteria) < 2:
+        criteria.setdefault("resolved", "A supported resolved value")
+        criteria.setdefault("unknown", "No supported value can be selected safely")
+    return criteria
 
 
 def _safe_dump(value: object) -> Mapping[str, object]:

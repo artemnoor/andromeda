@@ -5,7 +5,7 @@
 Andromeda remains a modular monolith. Jev tools are integration capabilities
 behind typed ports; they do not become domain dependencies or a second backend.
 
-Execution starts from Stage 1 commit e353da4 on branch
+Execution starts from the remediation baseline commit 105dacb on branch
 feature/jev-ecosystem-stage-2. The earlier feature/university-admin-control
 worktree was dirty during audit and is preserved separately.
 
@@ -16,7 +16,7 @@ worktree was dirty during audit and is preserved separately.
 | jevcal | DEV/EVAL_TOOL | calibration, ECE/coverage analysis and immutable decision locks | offline scripts and committed lock metadata |
 | jev-align | DEV/EVAL_TOOL | uncertain-row acquisition, proposal generation and human review | review queue, manifests and approved semantic artifacts |
 | System One Adapter | DEV/EVAL_TOOL | official TypeSafe benchmark/evaluation baseline | optional development dependency and evaluation scripts |
-| jevQL | ISOLATED_OPTIONAL_RUNTIME, embedded-first | bounded semantic predicate for rare non-materialized analytics | Python SDK embedded engine, private subprocess, then shared service only if measured and approved |
+| jevQL | ISOLATED_OPTIONAL_RUNTIME, embedded-first | bounded semantic predicate for rare non-materialized analytics | upstream `Jevql()` embedded engine or `Jevql(url=..., token=...)` shared service |
 | jev-tree | ISOLATED_OPTIONAL_RUNTIME | hierarchical choice for genuinely large unresolved candidate sets | Node bridge/service after deterministic narrowing |
 | awesome-jev | PATTERN_ONLY | ecosystem reference list | documentation only |
 
@@ -31,7 +31,7 @@ Upstream references:
 
 Pinned runtime/evaluation artifacts are recorded in
 `backend/evals/jev/TOOLS.lock`. The production Python provider extra pins
-`typesafe-sdk==0.6.0`; the isolated Node bridge pins `jev-tree@0.1.0` and
+`typesafe-sdk==0.7.1`; the isolated Node bridge pins `jev-tree@0.1.0` and
 requires Node `>=22 <23`. TypeSafe SDK is used only through the typed
 `TypeSafeJevTransport`; the System One Adapter remains evaluation-only.
 
@@ -98,7 +98,7 @@ configuration remains tool-specific:
 - jevcal owns dataset splits, calibration commands, optimizer/cache settings
   and lock generation;
 - jev-align owns acquisition, review, proposal, rewind and artifact settings;
-- jevQL owns engine mode, budgets, cache, subprocess and endpoint settings;
+- jevQL owns engine mode, budgets, cache and endpoint settings;
 - jev-tree owns candidate threshold, fanout/depth/call limits and Node runtime.
 
 This keeps the shared semantic contract stable without forcing unrelated
@@ -115,8 +115,9 @@ tooling into a false universal configuration.
    DecisionModelPort. System One Adapter is never the production client.
 4. jevQL is selected only after MetricRegistry and materialized ProgramMetric
    lookup cannot answer an explicitly registered semantic predicate. Its
-   deployment order is embedded Python SDK, private subprocess, then shared
-   service only when capability and benchmark evidence require it.
+   deployment is either the upstream embedded Python SDK (`Jevql()`) or the
+   upstream shared client (`Jevql(url=..., token=...)`); unavailable capability
+   falls back deterministically.
 5. jev-tree runs only after exact, alias and contextual deterministic narrowing,
    and only when the candidate set exceeds the measured threshold. A normal
    comparison of twenty programs must make zero jev-tree calls.

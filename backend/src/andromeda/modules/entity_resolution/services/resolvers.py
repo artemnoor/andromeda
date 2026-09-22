@@ -21,6 +21,7 @@ from ..contracts.public import (
     ResolutionEntityType,
     ResolutionStatus,
 )
+from .hierarchical import HierarchicalResolutionService
 from .normalization import (
     aliases_for,
     direction_university_id,
@@ -203,12 +204,18 @@ class MetricResolverService:
 class EntityResolverService:
     """Dispatch typed resolution without exposing implementations to callers."""
 
-    def __init__(self, catalog: CachedEntityCatalog, registry: MetricRegistry | None = None) -> None:
+    def __init__(
+        self,
+        catalog: CachedEntityCatalog,
+        registry: MetricRegistry | None = None,
+        hierarchical: HierarchicalResolutionService | None = None,
+    ) -> None:
         self._universities = UniversityResolverService(catalog)
         self._directions = DirectionResolverService(catalog)
         self._programs = ProgramResolverService(catalog)
         self._disciplines = DisciplineResolverService(catalog)
         self._metrics = MetricResolverService(registry)
+        self._hierarchical = hierarchical
 
     def resolve(
         self,
@@ -218,15 +225,26 @@ class EntityResolverService:
         context: ResolutionContext | None = None,
         limit: int = 10,
     ) -> EntityResolutionResult:
+        if limit < 1 or limit > 1000:
+            raise ValueError("resolution limit must be between 1 and 1000")
+        resolver_limit = (
+            min(self._hierarchical.candidate_threshold + 1, 1000)
+            if self._hierarchical is not None
+            else limit
+        )
         if entity_type is ResolutionEntityType.UNIVERSITY:
-            return self._universities.resolve(query, limit=limit)
-        if entity_type is ResolutionEntityType.DIRECTION:
-            return self._directions.resolve(query, context=context, limit=limit)
-        if entity_type is ResolutionEntityType.PROGRAM:
-            return self._programs.resolve(query, context=context, limit=limit)
-        if entity_type is ResolutionEntityType.DISCIPLINE:
-            return self._disciplines.resolve(query, limit=limit)
-        return self._metrics.resolve(query, limit=limit)
+            result = self._universities.resolve(query, limit=resolver_limit)
+        elif entity_type is ResolutionEntityType.DIRECTION:
+            result = self._directions.resolve(query, context=context, limit=resolver_limit)
+        elif entity_type is ResolutionEntityType.PROGRAM:
+            result = self._programs.resolve(query, context=context, limit=resolver_limit)
+        elif entity_type is ResolutionEntityType.DISCIPLINE:
+            result = self._disciplines.resolve(query, limit=resolver_limit)
+        else:
+            result = self._metrics.resolve(query, limit=resolver_limit)
+        if self._hierarchical is not None and len(result.candidates) > self._hierarchical.candidate_threshold:
+            result = self._hierarchical.resolve(entity_type, query, result.candidates)
+        return _trim_result(result, limit)
 
 
 def _match_entity(
@@ -263,8 +281,8 @@ def _match_entity(
 
 
 def _result(entity_type: ResolutionEntityType, query: str, matches: Iterable[_Match | None], limit: int) -> EntityResolutionResult:
-    if limit < 1 or limit > 20:
-        raise ValueError("resolution limit must be between 1 and 20")
+    if limit < 1 or limit > 1000:
+        raise ValueError("resolution limit must be between 1 and 1000")
     ranked = sorted((match for match in matches if match is not None), key=lambda item: (-item.score, item.canonical_id))
     candidates = tuple(
         EntityResolutionCandidate(
@@ -293,6 +311,20 @@ def _result(entity_type: ResolutionEntityType, query: str, matches: Iterable[_Ma
         candidates=candidates,
         selected_id=candidates[0].canonical_id,
     )
+
+
+def _trim_result(result: EntityResolutionResult, limit: int) -> EntityResolutionResult:
+    """Keep the public result bounded while retaining a model-selected leaf."""
+
+    candidates = list(result.candidates[:limit])
+    if result.selected_id is not None and result.selected_id not in {item.canonical_id for item in candidates}:
+        selected = next((item for item in result.candidates if item.canonical_id == result.selected_id), None)
+        if selected is not None:
+            if candidates:
+                candidates[-1] = selected
+            else:
+                candidates.append(selected)
+    return result.model_copy(update={"candidates": tuple(candidates)})
 
 
 __all__ = [

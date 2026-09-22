@@ -24,6 +24,28 @@ def test_loads_versioned_registry_artifact() -> None:
     assert registry.for_operation("choose_next_action").kind is DecisionDefinitionKind.NEXT_ACTION
 
 
+def test_exports_stable_vendor_neutral_projection() -> None:
+    registry = QuestionRegistry.from_file(REGISTRY_PATH)
+
+    exported = registry.export()
+
+    assert len(exported) == 5
+    assert exported[0].registry_hash == registry.content_hash()
+    assert exported[0].as_dict()["output_schema"] == {
+        "fields": ["intent", "confidence"],
+        "allowed_values": ["catalog_search", "comparison", "admission_search", "recommendation", "unknown"],
+        "additional_properties": False,
+    }
+    assert exported[0].as_dict()["options"][0]["code"] == "catalog_search"
+
+
+def test_export_keeps_definition_lookup_fail_closed() -> None:
+    registry = QuestionRegistry.from_file(REGISTRY_PATH)
+
+    with pytest.raises(QuestionRegistryError, match="unknown decision definition"):
+        registry.export_definition("missing.v1")
+
+
 def test_unknown_definition_and_operation_fail_closed() -> None:
     registry = QuestionRegistry.from_file(REGISTRY_PATH)
 
@@ -91,4 +113,3 @@ def registry_definition(definition_id: str, operation: str) -> dict[str, object]
         "pii_policy": "sanitized",
         "evaluation_dataset_key": "test.v1",
     }
-

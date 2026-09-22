@@ -5,16 +5,23 @@ from hashlib import sha256
 from andromeda.modules.disciplines.contracts.public import Discipline
 from andromeda.modules.disciplines.domain.areas import default_area_weights
 from andromeda.modules.entity_resolution.contracts.public import (
+    ResolutionEntityType,
     ResolutionContext,
     ResolutionStatus,
 )
+from andromeda.modules.entity_resolution.contracts.hierarchical import SelectionResult
 from andromeda.modules.entity_resolution.services.resolvers import (
     CachedEntityCatalog,
     DirectionResolverService,
     DisciplineResolverService,
     MetricResolverService,
     ProgramResolverService,
+    EntityResolverService,
     UniversityResolverService,
+)
+from andromeda.modules.entity_resolution.services.hierarchical import (
+    HierarchicalResolutionService,
+    compute_candidate_hash,
 )
 from andromeda.modules.programs.contracts.public import Program
 from andromeda.modules.universities.contracts.public import Direction, University
@@ -130,3 +137,56 @@ def test_catalog_is_cached_and_metric_and_discipline_aliases_are_shared() -> Non
     metric = MetricResolverService().resolve("матан")
     assert metric.status is ResolutionStatus.RESOLVED
     assert metric.selected_id == "metric:math_share"
+
+
+def test_entity_resolver_invokes_hierarchical_port_only_above_threshold() -> None:
+    source = _Catalog()
+    direction = source.directions[0]
+    source.programs = tuple(_program(direction, f"{index:03d}", f"Программа {index}") for index in range(1, 257))
+
+    class Port:
+        calls = 0
+
+        def select(self, request):
+            self.calls += 1
+            selected_id = request.candidates[-1].canonical_id
+            return SelectionResult(
+                status=ResolutionStatus.RESOLVED,
+                selected_id=selected_id,
+                candidate_ids=tuple(item.canonical_id for item in request.candidates),
+                strategy="test-jevtree",
+                candidate_hash=compute_candidate_hash(request.candidates),
+            )
+
+    port = Port()
+    resolver = EntityResolverService(
+        CachedEntityCatalog(source),
+        hierarchical=HierarchicalResolutionService(port, candidate_threshold=255),
+    )
+
+    result = resolver.resolve(ResolutionEntityType.PROGRAM, "Программа", limit=3)
+
+    assert port.calls == 1
+    assert result.selected_id == "program:bmstu:09.03.03-256"
+    assert len(result.candidates) == 3
+
+
+def test_entity_resolver_bypasses_hierarchical_port_for_small_set() -> None:
+    source = _Catalog()
+
+    class Port:
+        calls = 0
+
+        def select(self, request):
+            self.calls += 1
+            raise AssertionError("small candidate set must not reach jev-tree")
+
+    port = Port()
+    resolver = EntityResolverService(
+        CachedEntityCatalog(source),
+        hierarchical=HierarchicalResolutionService(port, candidate_threshold=255),
+    )
+
+    resolver.resolve(ResolutionEntityType.PROGRAM, "Прикладная информатика")
+
+    assert port.calls == 0

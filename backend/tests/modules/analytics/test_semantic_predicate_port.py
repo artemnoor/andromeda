@@ -69,21 +69,21 @@ class _FakeTransport:
         return self.response
 
 
-def test_embedded_is_preferred_then_private_fallback_and_cache_is_bounded() -> None:
+def test_embedded_is_preferred_then_shared_fallback_and_cache_is_bounded() -> None:
     embedded = _FakeTransport(False)
-    private = _FakeTransport(
+    shared = _FakeTransport(
         True,
         {
             "matches": {"discipline:one": True, "discipline:two": None},
             "confidence": 0.75,
-            "provider": "jevql-private",
+            "provider": "jevql-shared",
             "model": "jevql-test",
         },
     )
     adapter = JevQLAdapter(
         config=JevQLConfig(mode="auto", max_rows=2),
         embedded=embedded,
-        private_process=private,
+        shared_service=shared,
     )
 
     first = adapter.evaluate(_request())
@@ -95,7 +95,7 @@ def test_embedded_is_preferred_then_private_fallback_and_cache_is_bounded() -> N
     assert first.confidence == Decimal("0.75")
     assert first.evidence[1].result is None
     assert second.cache_identity == first.cache_identity
-    assert private.calls == 1
+    assert shared.calls == 1
     assert embedded.calls == 0
 
 

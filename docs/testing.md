@@ -318,3 +318,19 @@ promotion gate exists.
 - [API](api.md) — контракты, которые проверяются drift gate.
 - [Быстрый старт](getting-started.md) — локальный fixture demo.
 - [PostgreSQL](postgresql.md) — storage integration commands.
+## Jev ecosystem offline gate
+
+The upstream integration gate is offline by default and does not require
+provider secrets. From `backend/` run:
+
+```text
+uv lock --check
+uv run --locked --extra evaluation --extra jev --extra jevql --extra dev python -m pytest -q tests/evaluation tests/infrastructure/jevql tests/modules/entity_resolution tests/composition/test_jevql_wiring.py
+npm ci --ignore-scripts                 # from backend/jev-tree-bridge
+uv run --locked --extra evaluation --extra dev python scripts/evaluate_jev_ecosystem.py --output .tmp/jev-report.json --check
+```
+
+The report labels provider paths as unavailable/not-run when credentials or an
+engine are absent. That is a safe degraded result, not a production
+calibration claim. The official TypeSafe client and System One benchmark are
+opt-in; raw provider prompts, responses, cookies and keys are never committed.

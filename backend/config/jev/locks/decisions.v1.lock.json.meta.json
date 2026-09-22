@@ -1,0 +1,49 @@
+{
+  "schema_version": "andromeda-jevcal-manifest.v1",
+  "artifact_id": "jevcal-lock-1f1475cfbdd0",
+  "source_kind": "fixture",
+  "status": "fixture_only",
+  "registry_hash": "sha256:7dc01ca8ed684ccd271e265a5a8b7e8cb5d4491684d9b58e176026615cec48b5",
+  "dataset_hash": "2c7eefc83e15b68b8584f27293d800a40ba70e745913c642ae73527bcd4f21d7",
+  "observations_hash": "sha256:c8d73662277aa584ac56e96dcc4df46bfbad2ef0bc1bad998fa5eeb1e0565682",
+  "lock_hash": "sha256:1f1475cfbdd053f8a260c71648143a82ca7227f829bae1c1e16af28639d2e005",
+  "upstream": {
+    "name": "jevcal",
+    "commit": "ae8f3144d69c9cb0e5e0a2c17f70b9d14714cb9f",
+    "version": "0.1.0"
+  },
+  "model_requested": "jev-latest",
+  "model_observed": [
+    "calibration-observations.v1"
+  ],
+  "min_support": 30,
+  "samples_by_definition": {
+    "intent.v1": {
+      "total": 3,
+      "heldout": 1
+    },
+    "metric.v1": {
+      "total": 3,
+      "heldout": 1
+    },
+    "next-action.v1": {
+      "total": 3,
+      "heldout": 1
+    },
+    "presentation.v1": {
+      "total": 3,
+      "heldout": 1
+    },
+    "semantic-feature.v1": {
+      "total": 3,
+      "heldout": 1
+    }
+  },
+  "definition_versions": {
+    "intent.v1": "intent-definition.v1",
+    "metric.v1": "metric-definition.v1",
+    "next-action.v1": "next-action-definition.v1",
+    "presentation.v1": "presentation-definition.v1",
+    "semantic-feature.v1": "semantic-feature-definition.v1"
+  }
+}

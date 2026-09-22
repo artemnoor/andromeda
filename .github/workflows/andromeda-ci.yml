@@ -8,6 +8,48 @@ permissions:
   contents: read
 
 jobs:
+  jev-ecosystem-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install locked Jev evaluation environment
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.28
+          uv sync --locked --extra dev --extra evaluation --extra jev --extra jevql
+        working-directory: backend
+      - name: Verify optional tool manifest and lock reproducibility
+        run: |
+          uv lock --check
+          uv run --locked --extra dev python -m pytest -q tests/evaluation/test_jev_tool_manifest.py
+        working-directory: backend
+      - name: Run upstream integration contract tests without provider secrets
+        run: |
+          uv run --locked --extra evaluation --extra jev --extra jevql --extra dev python -m pytest -q \
+            tests/evaluation/test_jev_ecosystem_harness.py \
+            tests/evaluation/test_jevcal_artifacts.py \
+            tests/evaluation/test_jevcal_exporter.py \
+            tests/evaluation/test_jev_align_adapter.py \
+            tests/infrastructure/test_jev_adapter.py \
+            tests/infrastructure/test_jevcal_cascade.py \
+            tests/infrastructure/jevql \
+            tests/modules/entity_resolution/test_hierarchical.py \
+            tests/modules/entity_resolution/test_services.py \
+            tests/composition/test_jevql_wiring.py
+        working-directory: backend
+      - name: Run jev-tree bridge smoke with pinned npm package
+        run: |
+          npm ci --ignore-scripts
+          printf '%s' '{"query":"program","entityType":"program","candidates":[{"canonical_id":"program:test:09.03.03-001","label":"program","code":"09.03.03-001"}],"tree":{"root":{"node_id":"root","depth":0,"candidate_ids":["program:test:09.03.03-001"],"children":[]},"max_depth":4,"max_fanout":16},"candidateHash":"ci","maxFanout":16,"maxDepth":4,"maxCalls":1,"timeoutMs":1000}' | node src/index.mjs
+        working-directory: backend/jev-tree-bridge
+      - name: Run Jev ecosystem offline report and boundary checks
+        run: |
+          uv run --locked --extra evaluation --extra dev python scripts/evaluate_jev_ecosystem.py --output "$RUNNER_TEMP/jev-ecosystem-report.json" --check
+          uv run --locked --extra dev python -m pytest -q tests/architecture/test_jev_boundaries.py tests/architecture/test_module_boundaries.py
+        working-directory: backend
+
   telegram-bot:
     runs-on: ubuntu-latest
     steps:

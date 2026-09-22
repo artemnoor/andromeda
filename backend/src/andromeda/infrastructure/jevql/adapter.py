@@ -23,7 +23,6 @@ from .transport import (
     EmbeddedTransport,
     JevQLTransport,
     JevQLTransportError,
-    PrivateProcessTransport,
     SharedServiceTransport,
 )
 
@@ -36,15 +35,10 @@ class JevQLAdapter(SemanticPredicatePort):
         *,
         config: JevQLConfig | None = None,
         embedded: JevQLTransport | None = None,
-        private_process: JevQLTransport | None = None,
         shared_service: JevQLTransport | None = None,
     ) -> None:
         self._config = config or JevQLConfig()
         self._embedded = embedded or EmbeddedTransport()
-        self._private_process = private_process or PrivateProcessTransport(
-            self._config.private_command,
-            timeout_seconds=self._config.timeout_seconds,
-        )
         self._shared_service = shared_service or (
             SharedServiceTransport(self._config) if self._config.shared_endpoint is not None else None
         )
@@ -110,11 +104,10 @@ class JevQLAdapter(SemanticPredicatePort):
     def _transports(self) -> tuple[tuple[JevQLMode, JevQLTransport | None], ...]:
         configured = {
             JevQLMode.EMBEDDED: (JevQLMode.EMBEDDED, self._embedded),
-            JevQLMode.PRIVATE_PROCESS: (JevQLMode.PRIVATE_PROCESS, self._private_process),
             JevQLMode.SHARED_SERVICE: (JevQLMode.SHARED_SERVICE, self._shared_service),
         }
         if self._config.mode is JevQLMode.AUTO:
-            return tuple(configured[mode] for mode in (JevQLMode.EMBEDDED, JevQLMode.PRIVATE_PROCESS, JevQLMode.SHARED_SERVICE))
+            return tuple(configured[mode] for mode in (JevQLMode.EMBEDDED, JevQLMode.SHARED_SERVICE))
         return (configured[self._config.mode],)
 
     def _normalize(

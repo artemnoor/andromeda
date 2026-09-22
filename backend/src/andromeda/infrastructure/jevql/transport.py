@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable, Mapping
-import subprocess
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 from andromeda.modules.analytics.contracts.semantic_predicate import SemanticPredicateRequest
 
@@ -24,16 +22,16 @@ class JevQLTransport(Protocol):
     def evaluate(self, request: SemanticPredicateRequest) -> object: ...
 
 
-class EmbeddedClient(Protocol):
-    def evaluate(self, request: SemanticPredicateRequest) -> object: ...
+class JevqlClient(Protocol):
+    def judge(self, question: str, rows: list[Mapping[str, object]], *, kind: str, raw: bool) -> object: ...
 
 
 class EmbeddedTransport:
     """Lazy official SDK adapter; the SDK is imported only on first use."""
 
-    def __init__(self, client_factory: Callable[[], EmbeddedClient] | None = None) -> None:
+    def __init__(self, client_factory: Callable[[], JevqlClient] | None = None) -> None:
         self._client_factory = client_factory or _official_embedded_client
-        self._client: EmbeddedClient | None = None
+        self._client: JevqlClient | None = None
         self._capability_error: str | None = None
 
     def available(self) -> bool:
@@ -49,40 +47,7 @@ class EmbeddedTransport:
     def evaluate(self, request: SemanticPredicateRequest) -> object:
         if not self.available() or self._client is None:
             raise JevQLTransportError("capability_unavailable", self._capability_error or "embedded SDK unavailable")
-        return self._client.evaluate(request)
-
-
-class PrivateProcessTransport:
-    """Bounded JSON process protocol; command is configured, never user-selected."""
-
-    def __init__(self, command: tuple[str, ...], *, timeout_seconds: float) -> None:
-        self._command = command
-        self._timeout_seconds = timeout_seconds
-
-    def available(self) -> bool:
-        return bool(self._command)
-
-    def evaluate(self, request: SemanticPredicateRequest) -> object:
-        if not self._command:
-            raise JevQLTransportError("capability_unavailable", "private process command is not configured")
-        try:
-            completed = subprocess.run(
-                self._command,
-                input=request.model_dump_json(),
-                capture_output=True,
-                text=True,
-                timeout=self._timeout_seconds,
-                check=False,
-                shell=False,
-            )
-        except subprocess.TimeoutExpired as exc:
-            raise JevQLTransportError("transport", "private process timed out") from exc
-        if completed.returncode != 0:
-            raise JevQLTransportError("internal", "private process returned a failure")
-        try:
-            return json.loads(completed.stdout)
-        except json.JSONDecodeError as exc:
-            raise JevQLTransportError("internal", "private process returned malformed JSON") from exc
+        return _judge(self._client, request)
 
 
 class SharedServiceTransport:
@@ -91,11 +56,19 @@ class SharedServiceTransport:
         config: JevQLConfig,
         *,
         requester: Callable[[SemanticPredicateRequest], object] | None = None,
+        client_factory: Callable[[], JevqlClient] | None = None,
     ) -> None:
         if config.shared_endpoint is None:
             raise ValueError("shared jevQL endpoint is not configured")
         self._config = config
         self._requester = requester
+        self._client_factory = client_factory or (
+            lambda: _official_shared_client(
+                self._config.shared_endpoint or "",
+                self._config.shared_bearer_token,
+            )
+        )
+        self._client: JevqlClient | None = None
 
     def available(self) -> bool:
         return self._requester is not None or self._config.shared_endpoint is not None
@@ -104,46 +77,71 @@ class SharedServiceTransport:
         if self._requester is not None:
             return self._requester(request)
         try:
-            import httpx
-
-            headers = {}
-            if self._config.shared_bearer_token:
-                headers["Authorization"] = f"Bearer {self._config.shared_bearer_token}"
-            response = httpx.post(
-                self._config.shared_endpoint or "",
-                json=request.model_dump(mode="json"),
-                headers=headers,
-                timeout=self._config.timeout_seconds,
-            )
-            if response.status_code in {401, 403}:
-                raise JevQLTransportError("auth", "shared jevQL authorization failed")
-            if response.status_code == 429:
-                raise JevQLTransportError("api", "shared jevQL rate limit")
-            response.raise_for_status()
-            return response.json()
-        except JevQLTransportError:
-            raise
+            if self._client is None:
+                self._client = self._client_factory()
+            return _judge(self._client, request)
+        except PermissionError as exc:
+            raise JevQLTransportError("auth", "shared jevQL authorization failed") from exc
         except Exception as exc:
             raise JevQLTransportError("transport", "shared jevQL request failed") from exc
 
 
-def _official_embedded_client() -> EmbeddedClient:
+def _official_embedded_client() -> JevqlClient:
     try:
         import importlib
 
         module = importlib.import_module("jevql")
-        factory = getattr(module, "EmbeddedClient", None)
+        factory = getattr(module, "Jevql", None)
         if not callable(factory):
-            raise ImportError("jevQL SDK does not expose EmbeddedClient")
-        return cast(EmbeddedClient, factory())
+            raise ImportError("jevQL SDK does not expose Jevql")
+        return cast(JevqlClient, factory())
     except Exception as exc:
         raise RuntimeError("official jevQL Python SDK embedded engine is unavailable") from exc
+
+
+def _official_shared_client(endpoint: str, token: str | None) -> JevqlClient:
+    try:
+        import importlib
+
+        module = importlib.import_module("jevql")
+        factory = getattr(module, "Jevql", None)
+        if not callable(factory):
+            raise ImportError("jevQL SDK does not expose Jevql")
+        return cast(JevqlClient, factory(url=endpoint, token=token))
+    except Exception as exc:
+        raise RuntimeError("official jevQL Python SDK shared client is unavailable") from exc
+
+
+def _judge(client: JevqlClient, request: SemanticPredicateRequest) -> dict[str, object]:
+    rows: list[Mapping[str, object]] = [
+        {"canonical_id": row.canonical_id, **dict(row.fields)}
+        for row in request.rows
+    ]
+    result = client.judge(request.predicate.question, rows, kind="bool", raw=True)
+    answers = getattr(result, "answers", None)
+    if not isinstance(answers, list):
+        raise JevQLTransportError("internal", "upstream jevQL returned malformed judge result")
+    matches: dict[str, bool | None] = {}
+    confidences: list[float] = []
+    for row, answer in zip(request.rows, answers, strict=False):
+        passed = getattr(answer, "passed", None)
+        if passed is not None and not isinstance(passed, bool):
+            raise JevQLTransportError("internal", "upstream jevQL returned a non-boolean answer")
+        matches[row.canonical_id] = passed
+        confidence = getattr(answer, "confidence", None)
+        if isinstance(confidence, (int, float)) and 0 <= confidence <= 1:
+            confidences.append(float(confidence))
+    return {
+        "matches": matches,
+        "confidence": sum(confidences) / len(confidences) if confidences else 0.0,
+        "provider": "jevql",
+        "model": "upstream",
+    }
 
 
 __all__ = [
     "EmbeddedTransport",
     "JevQLTransport",
     "JevQLTransportError",
-    "PrivateProcessTransport",
     "SharedServiceTransport",
 ]

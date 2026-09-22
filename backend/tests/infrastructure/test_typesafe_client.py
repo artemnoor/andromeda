@@ -70,7 +70,8 @@ def test_official_sdk_adapter_sends_only_registered_typed_question() -> None:
     assert response.identity.source is DecisionModelSource.JEV
     assert response.payload == {"metric_code": "math", "candidates": ("math",), "confidence": "high"}
     assert set(holder["client"].last_questions) == {"answer"}
-    assert holder["client"].last_questions["answer"]["criteria"] == {"math": "math", "physics": "physics"}
+    question = holder["client"].last_questions["answer"]
+    assert question.model_dump(mode="json")["criteria"] == {"math": "math", "physics": "physics"}
     assert transport.health_check() is True
 
 
@@ -86,4 +87,3 @@ def test_client_rejects_non_https_provider_endpoint() -> None:
         assert "HTTPS" in str(exc)
     else:
         raise AssertionError("non-HTTPS endpoint must be rejected")
-

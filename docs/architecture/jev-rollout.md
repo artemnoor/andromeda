@@ -8,7 +8,7 @@ TypeSafe Python SDK is an optional `jev` extra; it is not imported by the core
 composition unless a validated capability is explicitly enabled.
 
 The current code is architecture/evaluation-ready, not a production Jev
-enablement approval. The generated calibration lock is shadow-only until a
+enablement approval. The generated fixture calibration lock is fixture-only until a
 held-out evaluation and provider ownership review produce a production-ready
 lock. System One Adapter, jevcal and jev-align remain development/evaluation
 tools.
@@ -48,7 +48,8 @@ copied from user input.
 The common analytics path reads materialized projections and the MetricRegistry.
 jevQL is considered only for an explicitly registered, bounded semantic
 predicate that materialized metrics cannot answer; unavailable rows stay
-unknown rather than becoming false. jev-tree is a Node 22 isolated bridge
+unknown rather than becoming false. The upstream Python SDK owns both embedded
+and shared jevQL transports. jev-tree is a Node 22 isolated bridge
 used only after deterministic narrowing and a candidate threshold above 255;
 ordinary program comparisons do not call it.
 

@@ -1,59 +1,129 @@
 {
-  "schema_version": "decision-lock.v1",
-  "status": "validated",
-  "dataset_hash": "sha256:c8d73662277aa584ac56e96dcc4df46bfbad2ef0bc1bad998fa5eeb1e0565682",
-  "tool": {
-    "name": "jevcal",
-    "commit": "ae8f3144d69c9cb0e5e0a2c17f70b9d14714cb9f"
-  },
-  "model": {
-    "provider": "deterministic-fixture",
-    "model": "calibration-observations",
-    "version": "calibration-observations.v1",
-    "source": "shadow_only"
-  },
-  "definitions": {
+  "jevcal_version": "0.1.0",
+  "created": "2026-09-21T23:41:38+00:00",
+  "provider": "deterministic-fixture",
+  "model_requested": "jev-latest",
+  "model_observed": [
+    "calibration-observations.v1"
+  ],
+  "questions_sha": "57c498fe2889a232a46f760802c12a570a029be64f4891402541aadb3ae8dcdf",
+  "dataset_sha": "2c7eefc83e15b68b8584f27293d800a40ba70e745913c642ae73527bcd4f21d7",
+  "n_rows": 15,
+  "holdout": 0.5,
+  "seed": 7,
+  "questions": {
     "intent.v1": {
-      "definition_version": "intent-definition.v1",
-      "threshold": 0.82,
-      "coverage": 1.0,
-      "heldout_count": 1,
-      "ece": 0.18000000000000005,
-      "accepted_accuracy": 1.0
+      "type": "choice",
+      "instructions": "Resolve only the supported Andromeda conversation intent.",
+      "criteria": {
+        "catalog_search": "Search the educational catalog.",
+        "comparison": "Compare resolved educational entities.",
+        "admission_search": "Search admission fit for supplied applicant facts.",
+        "recommendation": "Recommend programs using explicit criteria.",
+        "unknown": "The request cannot be resolved safely."
+      },
+      "target": 0.8,
+      "measure": "top_prob",
+      "threshold": null,
+      "status": "no_threshold",
+      "baseline": {
+        "accuracy_all": 1.0,
+        "accepted_accuracy": null,
+        "coverage": 0.0,
+        "holdout_accepted_accuracy": null,
+        "holdout_coverage": 0.0,
+        "ece": 0.1266666666666667
+      }
     },
     "metric.v1": {
-      "definition_version": "metric-definition.v1",
-      "threshold": 0.81,
-      "coverage": 1.0,
-      "heldout_count": 1,
-      "ece": 0.18999999999999995,
-      "accepted_accuracy": 1.0
+      "type": "choice",
+      "instructions": "Resolve a user phrase to an allow-listed metric candidate.",
+      "criteria": {
+        "mathematics_share": "mathematics_share",
+        "programming_share": "programming_share",
+        "unknown": "unknown"
+      },
+      "target": 0.8,
+      "measure": "top_prob",
+      "threshold": null,
+      "status": "no_threshold",
+      "baseline": {
+        "accuracy_all": 1.0,
+        "accepted_accuracy": null,
+        "coverage": 0.0,
+        "holdout_accepted_accuracy": null,
+        "holdout_coverage": 0.0,
+        "ece": 0.16666666666666663
+      }
     },
     "next-action.v1": {
-      "definition_version": "next-action-definition.v1",
-      "threshold": 0.79,
-      "coverage": 1.0,
-      "heldout_count": 1,
-      "ece": 0.20999999999999996,
-      "accepted_accuracy": 1.0
+      "type": "choice",
+      "instructions": "Choose one allowed next action for the current typed conversation state.",
+      "criteria": {
+        "ask_clarification": "ask_clarification",
+        "execute_query": "execute_query",
+        "show_result": "show_result",
+        "compare": "compare",
+        "build_report": "build_report",
+        "open_mini_app": "open_mini_app"
+      },
+      "target": 0.8,
+      "measure": "top_prob",
+      "threshold": null,
+      "status": "no_threshold",
+      "baseline": {
+        "accuracy_all": 1.0,
+        "accepted_accuracy": null,
+        "coverage": 0.0,
+        "holdout_accepted_accuracy": null,
+        "holdout_coverage": 0.0,
+        "ece": 0.16333333333333333
+      }
     },
     "presentation.v1": {
-      "definition_version": "presentation-definition.v1",
-      "threshold": 0.76,
-      "coverage": 1.0,
-      "heldout_count": 1,
-      "ece": 0.24,
-      "accepted_accuracy": 1.0
+      "type": "choice",
+      "instructions": "Choose an allow-listed response format and template.",
+      "criteria": {
+        "text": "text",
+        "image": "image",
+        "image_collection": "image_collection",
+        "pdf": "pdf",
+        "mini_app": "mini_app"
+      },
+      "target": 0.8,
+      "measure": "top_prob",
+      "threshold": null,
+      "status": "no_threshold",
+      "baseline": {
+        "accuracy_all": 1.0,
+        "accepted_accuracy": null,
+        "coverage": 0.0,
+        "holdout_accepted_accuracy": null,
+        "holdout_coverage": 0.0,
+        "ece": 0.17333333333333334
+      }
     },
     "semantic-feature.v1": {
-      "definition_version": "semantic-feature-definition.v1",
-      "threshold": 0.68,
-      "coverage": 1.0,
-      "heldout_count": 1,
-      "ece": 0.31999999999999995,
-      "accepted_accuracy": 1.0
+      "type": "choice",
+      "instructions": "Propose feature values for a canonical discipline candidate.",
+      "criteria": {
+        "calculus": "calculus",
+        "databases": "databases",
+        "review_required": "review_required"
+      },
+      "target": 0.8,
+      "measure": "top_prob",
+      "threshold": null,
+      "status": "no_threshold",
+      "baseline": {
+        "accuracy_all": 1.0,
+        "accepted_accuracy": null,
+        "coverage": 0.0,
+        "holdout_accepted_accuracy": null,
+        "holdout_coverage": 0.0,
+        "ece": 0.29
+      }
     }
   },
-  "lock_id": "decision-lock-v1-18d8efdfee92",
-  "generated_at": "2026-09-21T21:45:00.110608+00:00"
+  "cost": null
 }

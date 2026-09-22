@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from andromeda.infrastructure.jevql.adapter import JevQLAdapter
 from andromeda.infrastructure.jevql.config import JevQLConfig
-from andromeda.infrastructure.jevql.transport import PrivateProcessTransport
+from andromeda.infrastructure.jevql.transport import EmbeddedTransport, SharedServiceTransport
 from andromeda.modules.analytics.contracts.semantic_predicate import (
     SemanticPredicate,
     SemanticPredicateRequest,
@@ -37,23 +39,57 @@ class _FakeTransport:
         return self.response
 
 
-def test_private_process_transport_is_not_selected_when_embedded_is_available() -> None:
+def test_shared_service_is_not_selected_when_embedded_is_available() -> None:
     embedded = _FakeTransport(
         True,
         {"matches": {"discipline:one": True}, "confidence": 0.9},
     )
-    private = _FakeTransport(True, {"matches": {}, "confidence": 0.0})
+    shared = _FakeTransport(True, {"matches": {}, "confidence": 0.0})
     result = JevQLAdapter(
         config=JevQLConfig(mode="auto"),
         embedded=embedded,
-        private_process=private,
+        shared_service=shared,
     ).evaluate(_request())
 
     assert result.status is SemanticPredicateStatus.AVAILABLE
     assert embedded.calls == 1
-    assert private.calls == 0
+    assert shared.calls == 0
 
 
-def test_private_process_command_is_bounded_and_shell_free() -> None:
-    transport = PrivateProcessTransport(("python", "-c", "print('{}')"), timeout_seconds=1)
-    assert transport.available()
+def test_embedded_transport_calls_upstream_jevql_judge_api() -> None:
+    class UpstreamClient:
+        def judge(self, question, rows, *, kind, raw):
+            assert question.startswith("Does this")
+            assert rows[0]["canonical_id"] == "discipline:one"
+            assert kind == "bool"
+            assert raw is True
+            return SimpleNamespace(
+                answers=[SimpleNamespace(passed=True, confidence=0.91)],
+            )
+
+    transport = EmbeddedTransport(client_factory=UpstreamClient)
+    result = transport.evaluate(_request())
+
+    assert result["matches"] == {"discipline:one": True}
+    assert result["provider"] == "jevql"
+
+
+def test_shared_transport_constructs_upstream_jevql_url_client() -> None:
+    captured = {}
+
+    class UpstreamClient:
+        def judge(self, question, rows, *, kind, raw):
+            return SimpleNamespace(answers=[SimpleNamespace(passed=False, confidence=0.8)])
+
+    def factory():
+        captured["constructed"] = True
+        return UpstreamClient()
+
+    transport = SharedServiceTransport(
+        JevQLConfig(mode="shared_service", shared_endpoint="http://jevql:7433", shared_allowed_hosts=("jevql",)),
+        client_factory=factory,
+    )
+    result = transport.evaluate(_request())
+
+    assert captured["constructed"] is True
+    assert result["matches"] == {"discipline:one": False}

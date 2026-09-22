@@ -28,11 +28,14 @@ class NodeJevTreeTransport:
         if not self._config.enabled:
             raise RuntimeError("jev-tree is disabled")
         command = (self._config.node_binary, str(self._config.bridge_path))
-        environment = {
-            key: value
-            for key in ("AI_GATEWAY_API_KEY", "TYPESAFE_API_KEY")
-            if (value := os.environ.get(key))
-        }
+        environment = {"PATH": os.environ.get("PATH", "")}
+        environment.update(
+            {
+                key: value
+                for key in ("AI_GATEWAY_API_KEY", "TYPESAFE_API_KEY")
+                if (value := os.environ.get(key))
+            }
+        )
         try:
             completed = subprocess.run(
                 command,

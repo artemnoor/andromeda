@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 class JevQLMode(StrEnum):
     AUTO = "auto"
     EMBEDDED = "embedded"
-    PRIVATE_PROCESS = "private_process"
     SHARED_SERVICE = "shared_service"
 
 
@@ -27,7 +26,6 @@ class JevQLConfig:
     shared_endpoint: str | None = None
     shared_allowed_hosts: tuple[str, ...] = ()
     shared_bearer_token: str | None = None
-    private_command: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "mode", JevQLMode(self.mode))

@@ -26,8 +26,18 @@ dependencies = [
 
 [project.optional-dependencies]
 browser = ["playwright>=1.45"]
-evaluation = ["system-one-adapter==0.1.5"]
-jev = ["typesafe-sdk==0.6.0"]
+evaluation = [
+    "system-one-adapter==0.2.0",
+    "jevcal @ git+https://github.com/abhixhek/jevcal@ae8f3144d69c9cb0e5e0a2c17f70b9d14714cb9f",
+    "jev-align @ git+https://github.com/sutro-sh/jev-align@3d997fc76593036655c28d4964de43b55f81fe2c",
+]
+jev = [
+    "typesafe-sdk==0.7.1",
+    "jevcal @ git+https://github.com/abhixhek/jevcal@ae8f3144d69c9cb0e5e0a2c17f70b9d14714cb9f",
+]
+jevql = [
+    "jevql @ git+https://github.com/kylemclaren/jevql@274532af852e8edfb7715ec6dca1113e589cb191#subdirectory=sdk/python",
+]
 dev = [
     "jsonschema>=4.22",
     "mypy>=1.11",

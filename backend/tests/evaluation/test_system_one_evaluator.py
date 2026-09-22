@@ -63,6 +63,7 @@ def test_system_one_evaluator_keeps_only_sanitized_structured_output() -> None:
     assert result.input_tokens == 12
     assert result.output_tokens == 4
     assert result.retry_count == 1
+    assert result.malformed_retry_count is None
     assert result.sanitized_output == {"answer": "catalog_search", "text": "[REDACTED]", "debug": "[REDACTED]"}
 
 

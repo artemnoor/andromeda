@@ -11,9 +11,14 @@ from scripts import jevcal_calibrate, jevcal_export
 def test_committed_calibration_lock_is_reproducible() -> None:
     jevcal_calibrate._validate_lock(jevcal_calibrate.LOCK_PATH)
     lock = json.loads(jevcal_calibrate.LOCK_PATH.read_text(encoding="utf-8"))
-    assert lock["status"] == "validated"
-    assert lock["model"]["source"] == "shadow_only"
-    assert all(value["heldout_count"] > 0 for value in lock["definitions"].values())
+    manifest = json.loads(jevcal_calibrate.MANIFEST_PATH.read_text(encoding="utf-8"))
+    assert lock["jevcal_version"] == "0.1.0"
+    assert manifest["status"] == "fixture_only"
+    assert all(value["status"] == "no_threshold" for value in lock["questions"].values())
+    from jevcal.runtime import Cascade
+
+    cascade = Cascade(lock, provider=object())
+    assert set(cascade.questions) == set(lock["questions"])
 
 
 def test_calibration_generation_rejects_missing_heldout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -33,7 +38,7 @@ def test_calibration_generation_rejects_missing_heldout(monkeypatch: pytest.Monk
     )
     monkeypatch.setattr(jevcal_calibrate, "OBSERVATIONS_PATH", observations)
 
-    with pytest.raises(ValueError, match="heldout observations"):
+    with pytest.raises(jevcal_calibrate.CalibrationArtifactError, match="heldout observations"):
         jevcal_calibrate._build_lock()
 
 

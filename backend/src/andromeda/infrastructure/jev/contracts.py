@@ -28,6 +28,7 @@ class JevFailureReason(StrEnum):
     RATE_LIMIT = "rate_limit"
     ARTIFACT_MISSING = "artifact_missing"
     PROVIDER_UNAVAILABLE = "provider_unavailable"
+    CALIBRATION_REJECTED = "calibration_rejected"
 
 
 class ModelIdentity(ContractModel):
@@ -41,7 +42,19 @@ class ModelIdentity(ContractModel):
 class JevUsage(ContractModel):
     input_tokens: int | None = Field(default=None, ge=0)
     output_tokens: int | None = Field(default=None, ge=0)
+    retry_count: int | None = Field(default=None, ge=0)
+    malformed_retry_count: int | None = Field(default=None, ge=0)
     latency_ms: int | None = Field(default=None, ge=0)
+
+
+class JevAnswerEvidence(ContractModel):
+    """Bounded provider evidence passed to the optional calibration adapter."""
+
+    answer_kind: str = Field(min_length=1, max_length=32)
+    answer_value: object | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    probabilities: dict[str, float] = Field(default_factory=dict, max_length=128)
+    has_probability_evidence: bool = False
 
 
 class JevFailure(ContractModel):
@@ -71,12 +84,14 @@ class JevResponseEnvelope(ContractModel):
     payload: object | None = None
     identity: ModelIdentity
     usage: JevUsage = Field(default_factory=JevUsage)
+    evidence: JevAnswerEvidence | None = None
     failure: JevFailure | None = None
 
 
 __all__ = [
     "JevFailure",
     "JevFailureReason",
+    "JevAnswerEvidence",
     "JevRequestEnvelope",
     "JevResponseEnvelope",
     "JevUsage",

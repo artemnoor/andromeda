@@ -4,7 +4,14 @@ from pathlib import Path
 from typing import Mapping
 
 from andromeda.infrastructure.jev.adapter import JevAdapterConfig, JevDecisionModelAdapter
-from andromeda.infrastructure.jev.contracts import JevFailureReason, JevRequestEnvelope
+from andromeda.infrastructure.jev.contracts import (
+    JevAnswerEvidence,
+    JevFailureReason,
+    JevRequestEnvelope,
+    JevResponseEnvelope,
+    JevUsage,
+    ModelIdentity,
+)
 from andromeda.infrastructure.jev.question_registry import QuestionRegistry
 from andromeda.modules.conversation.services.decision_model import RuleBasedDecisionModel
 from andromeda.modules.conversation.contracts.policy import DecisionModelOperation, DecisionModelSource
@@ -34,6 +41,15 @@ class _EnvelopeTransport:
             "source": "jev",
             "confidence": "high",
         }
+
+
+class _RejectedCalibration:
+    artifact_id = "fixture-artifact"
+
+    def evaluate(self, definition_id: str, evidence: JevAnswerEvidence):
+        assert definition_id == "intent.v1"
+        assert evidence.answer_value == "analytics_query"
+        return type("Gate", (), {"accepted": False, "artifact_id": self.artifact_id, "reason": "calibration_rejected"})()
 
 
 def test_jev_unavailable_falls_back_without_changing_deterministic_intent() -> None:
@@ -109,3 +125,30 @@ def test_missing_registry_artifact_is_a_typed_fallback() -> None:
 
     assert decision.source is DecisionModelSource.FALLBACK
     assert decision.fallback_reason == JevFailureReason.ARTIFACT_MISSING.value
+
+
+def test_calibration_gate_rejects_provider_answer_before_domain_parsing() -> None:
+    class Transport:
+        def request_envelope(self, request: JevRequestEnvelope) -> JevResponseEnvelope:
+            return JevResponseEnvelope(
+                payload={"intent": "analytics_query", "source": "jev", "confidence": "high"},
+                identity=ModelIdentity(artifact_id="intent.v1@intent-definition.v1"),
+                usage=JevUsage(),
+                evidence=JevAnswerEvidence(
+                    answer_kind="choice",
+                    answer_value="analytics_query",
+                    probabilities={"analytics_query": 0.6, "unknown": 0.4},
+                    has_probability_evidence=True,
+                ),
+            )
+
+    adapter = JevDecisionModelAdapter(
+        Transport(),
+        RuleBasedDecisionModel(),
+        calibration=_RejectedCalibration(),
+    )
+
+    decision = adapter.resolve_intent("Где больше математики?")
+
+    assert decision.source is DecisionModelSource.FALLBACK
+    assert decision.fallback_reason == JevFailureReason.CALIBRATION_REJECTED.value

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +16,7 @@ from andromeda.modules.conversation.services.model_decision_policy import (
 from andromeda.modules.conversation.services.rule_decision_policy import RuleBasedDecisionPolicy
 
 from .adapter import JevAdapterConfig, JevDecisionModelAdapter
+from .calibration import CascadeCalibrationAdapter
 from .question_registry import QuestionRegistry
 from .typesafe_client import TypeSafeJevTransport
 
@@ -39,7 +39,25 @@ def build_decision_policy(settings: Settings) -> tuple[DecisionPolicyPort, JevCa
         return deterministic, _report(settings, reason="disabled_by_config")
     try:
         registry = QuestionRegistry.from_file(_registry_path())
-        lock_id = _validate_lock(settings) if settings.jev_enabled else None
+        calibration = None
+        lock_id = None
+        if settings.jev_enabled:
+            if not settings.jev_calibration_enabled:
+                raise RuntimeError("calibration_gate_disabled")
+            if not settings.jev_calibration_lock_path:
+                raise RuntimeError("calibration_lock_missing")
+            lock_path = Path(settings.jev_calibration_lock_path)
+            calibration = CascadeCalibrationAdapter(
+                lock_path=lock_path,
+                manifest_path=Path(f"{lock_path}.meta.json"),
+                registry=registry,
+                model=settings.jev_model,
+                production=True,
+                min_support=settings.jev_calibration_min_support,
+                min_heldout=settings.jev_calibration_min_heldout,
+                max_age_seconds=settings.jev_calibration_max_age_seconds,
+            )
+            lock_id = calibration.artifact_id
         if settings.jev_api_key is None:
             raise RuntimeError("provider_key_missing")
         transport = TypeSafeJevTransport(
@@ -61,6 +79,7 @@ def build_decision_policy(settings: Settings) -> tuple[DecisionPolicyPort, JevCa
                 model=settings.jev_model,
             ),
             registry=registry,
+            calibration=calibration,
         )
         if settings.jev_shadow_enabled:
             policy: DecisionPolicyPort = ShadowDecisionPolicy(model, deterministic)
@@ -78,23 +97,6 @@ def build_decision_policy(settings: Settings) -> tuple[DecisionPolicyPort, JevCa
 
 def _registry_path() -> Path:
     return Path(__file__).resolve().parents[3] / "config" / "jev" / "question-definitions.v1.yaml"
-
-
-def _validate_lock(settings: Settings) -> str:
-    if not settings.jev_calibration_lock_path:
-        raise RuntimeError("calibration_lock_missing")
-    path = Path(settings.jev_calibration_lock_path)
-    if not path.is_file():
-        raise RuntimeError("calibration_lock_not_found")
-    try:
-        document = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError("calibration_lock_invalid") from exc
-    lock_id = document.get("lock_id") if isinstance(document, dict) else None
-    model = document.get("model") if isinstance(document, dict) else None
-    if not isinstance(lock_id, str) or not isinstance(model, dict) or model.get("source") == "shadow_only":
-        raise RuntimeError("calibration_lock_not_production_ready")
-    return lock_id
 
 
 def _report(settings: Settings, *, reason: str, lock_id: str | None = None) -> JevCapabilityReport:

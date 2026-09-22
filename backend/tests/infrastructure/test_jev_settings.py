@@ -9,12 +9,18 @@ def _clear_jev(monkeypatch: pytest.MonkeyPatch) -> None:
         "JEV_SHADOW_ENABLED",
         "JEV_CALIBRATION_ENABLED",
         "JEV_CALIBRATION_LOCK_PATH",
+        "JEV_CALIBRATION_MODE",
+        "JEV_CALIBRATION_MIN_SUPPORT",
+        "JEV_CALIBRATION_MIN_HELDOUT",
+        "JEV_CALIBRATION_MAX_AGE_SECONDS",
+        "JEV_ALLOW_FIXTURE_RUNTIME",
         "JEV_ENDPOINT",
         "JEV_RUNTIME_PROVIDER",
         "JEV_MODEL",
         "TYPESAFE_API_KEY",
         "JEVQL_ENABLED",
         "JEVQL_ENDPOINT",
+        "JEVQL_TOKEN",
         "JEV_TREE_ENABLED",
         "JEV_TREE_ENDPOINT",
     ):
@@ -56,4 +62,3 @@ def test_jev_endpoint_is_allow_listed(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(ValueError, match="allow-listed"):
         Settings.from_environment()
-

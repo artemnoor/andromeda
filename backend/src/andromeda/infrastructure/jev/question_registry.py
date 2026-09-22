@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import logging
+import hashlib
+import json
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
@@ -25,6 +28,56 @@ logger = logging.getLogger("andromeda.infrastructure.jev.question_registry")
 
 class QuestionRegistryError(ValueError):
     """Raised when the shared decision-definition artifact is invalid."""
+
+
+@dataclass(frozen=True, slots=True)
+class QuestionRegistryExport:
+    """Vendor-neutral immutable projection consumed by external tool adapters."""
+
+    definition_id: str
+    definition_version: str
+    kind: str
+    operation: str
+    instructions: str
+    criteria: tuple[str, ...]
+    options: tuple[Mapping[str, str], ...]
+    input_fields: tuple[str, ...]
+    output_fields: tuple[str, ...]
+    output_allowed_values: tuple[str, ...]
+    output_additional_properties: bool
+    deterministic_fallback: str
+    timeout_class: str
+    max_input_chars: int
+    pii_policy: str
+    evidence_required: bool
+    evaluation_dataset_key: str
+    registry_hash: str
+
+    def as_dict(self) -> dict[str, object]:
+        """Return a JSON-safe mapping for tool-specific serializers."""
+
+        return {
+            "definition_id": self.definition_id,
+            "definition_version": self.definition_version,
+            "kind": self.kind,
+            "operation": self.operation,
+            "instructions": self.instructions,
+            "criteria": list(self.criteria),
+            "options": [dict(option) for option in self.options],
+            "input_fields": list(self.input_fields),
+            "output_schema": {
+                "fields": list(self.output_fields),
+                "allowed_values": list(self.output_allowed_values),
+                "additional_properties": self.output_additional_properties,
+            },
+            "deterministic_fallback": self.deterministic_fallback,
+            "timeout_class": self.timeout_class,
+            "max_input_chars": self.max_input_chars,
+            "pii_policy": self.pii_policy,
+            "evidence_required": self.evidence_required,
+            "evaluation_dataset_key": self.evaluation_dataset_key,
+            "registry_hash": self.registry_hash,
+        }
 
 
 class QuestionRegistry(QuestionRegistryPort):
@@ -154,4 +207,59 @@ class QuestionRegistry(QuestionRegistryPort):
         return self._definitions
 
 
-__all__ = ["QuestionRegistry", "QuestionRegistryError"]
+    def export(self) -> tuple[QuestionRegistryExport, ...]:
+        """Expose one stable projection for Jev ecosystem adapters."""
+
+        registry_hash = self.content_hash()
+        exports = tuple(self._export_definition(definition, registry_hash) for definition in self._definitions)
+        logger.debug(
+            "question_registry_exported definitions=%s registry_hash=%s",
+            len(exports),
+            registry_hash,
+        )
+        return exports
+
+    def export_definition(self, definition_id: str) -> QuestionRegistryExport:
+        """Export one definition while retaining registry-wide identity."""
+
+        definition = self.get(definition_id)
+        registry_hash = self.content_hash()
+        return self._export_definition(definition, registry_hash)
+
+    def content_hash(self) -> str:
+        """Return the deterministic hash of the validated registry projection."""
+
+        canonical = [definition.model_dump(mode="json") for definition in self._definitions]
+        payload = json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _export_definition(
+        definition: DecisionDefinition, registry_hash: str
+    ) -> QuestionRegistryExport:
+        return QuestionRegistryExport(
+            definition_id=definition.definition_id,
+            definition_version=definition.version,
+            kind=definition.kind.value,
+            operation=definition.operation,
+            instructions=definition.instructions,
+            criteria=definition.criteria,
+            options=tuple(
+                MappingProxyType({"code": option.code, "description": option.description})
+                for option in definition.options
+            ),
+            input_fields=definition.input_fields,
+            output_fields=definition.output_schema.fields,
+            output_allowed_values=definition.output_schema.allowed_values,
+            output_additional_properties=definition.output_schema.additional_properties,
+            deterministic_fallback=definition.deterministic_fallback,
+            timeout_class=definition.timeout_class.value,
+            max_input_chars=definition.max_input_chars,
+            pii_policy=definition.pii_policy.value,
+            evidence_required=definition.evidence_required,
+            evaluation_dataset_key=definition.evaluation_dataset_key,
+            registry_hash=registry_hash,
+        )
+
+
+__all__ = ["QuestionRegistry", "QuestionRegistryError", "QuestionRegistryExport"]

@@ -44,6 +44,7 @@ from .contracts import (
     JevUsage,
     ModelIdentity,
 )
+from .calibration import CascadeCalibrationAdapter
 
 logger = logging.getLogger("andromeda.infrastructure.jev.adapter")
 _ALLOWED_TEMPLATES = {"analytics-summary", "metric-comparison", "metric-cards", "analytics-report", "analytics-explorer"}
@@ -147,6 +148,7 @@ class JevDecisionModelAdapter(DecisionModelPort):
         *,
         config: JevAdapterConfig | None = None,
         registry: QuestionRegistryPort | None = None,
+        calibration: CascadeCalibrationAdapter | None = None,
     ) -> None:
         self._transport = transport
         self._fallback = fallback
@@ -165,6 +167,7 @@ class JevDecisionModelAdapter(DecisionModelPort):
         self._circuit_open_until = 0.0
         self._metric_registry = MetricRegistry()
         self._registry = registry
+        self._calibration = calibration
 
     def resolve_intent(self, text: str) -> IntentDecision:
         if len(text) > 2000:
@@ -333,6 +336,32 @@ class JevDecisionModelAdapter(DecisionModelPort):
                     if attempt + 1 < attempts and response.failure.retryable:
                         continue
                     return response
+
+                if self._calibration is not None:
+                    if response.evidence is None:
+                        logger.warning(
+                            "jev_request_fallback operation=%s definition_id=%s fallback_reason=calibration_evidence_missing",
+                            request.operation.value,
+                            request.definition_id,
+                        )
+                        return self._failure_response(
+                            operation,
+                            JevFailureReason.CALIBRATION_REJECTED,
+                            detail_code="calibration_evidence_missing",
+                        )
+                    gate = self._calibration.evaluate(request.definition_id, response.evidence)
+                    if not gate.accepted:
+                        logger.warning(
+                            "jev_request_fallback operation=%s definition_id=%s fallback_reason=calibration_rejected artifact_id=%s",
+                            request.operation.value,
+                            request.definition_id,
+                            gate.artifact_id,
+                        )
+                        return self._failure_response(
+                            operation,
+                            JevFailureReason.CALIBRATION_REJECTED,
+                            detail_code=gate.reason,
+                        )
 
                 self._failures = 0
                 logger.info(

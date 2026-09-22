@@ -75,6 +75,7 @@ def _load_cases(registry: QuestionRegistry, selected: set[str]) -> tuple[SystemO
                 definition=definition,
                 input_text=input_data["text"],
                 expected=row["expected"],
+                input_data=input_data,
             )
         )
     return tuple(cases)

@@ -67,6 +67,11 @@ class Settings:
     jev_shadow_enabled: bool = False
     jev_calibration_enabled: bool = False
     jev_calibration_lock_path: str | None = None
+    jev_calibration_mode: str = "fixture_only"
+    jev_calibration_min_support: int = 30
+    jev_calibration_min_heldout: int = 30
+    jev_calibration_max_age_seconds: int | None = None
+    jev_allow_fixture_runtime: bool = False
     jev_runtime_provider: str = "typesafe"
     jev_endpoint: str = DEFAULT_JEV_ENDPOINT
     jev_model: str = "jev-latest"
@@ -74,6 +79,7 @@ class Settings:
     jev_align_capture_enabled: bool = False
     jevql_enabled: bool = False
     jevql_endpoint: str | None = None
+    jevql_token: str | None = field(default=None, repr=False)
     jev_tree_enabled: bool = False
     jev_tree_endpoint: str | None = None
     jev_max_rows: int = DEFAULT_JEV_MAX_ROWS
@@ -137,6 +143,11 @@ class Settings:
             jev_shadow_enabled=_bool_from_environment("JEV_SHADOW_ENABLED", False),
             jev_calibration_enabled=_bool_from_environment("JEV_CALIBRATION_ENABLED", False),
             jev_calibration_lock_path=_optional_text_from_environment("JEV_CALIBRATION_LOCK_PATH"),
+            jev_calibration_mode=os.environ.get("JEV_CALIBRATION_MODE", "fixture_only").strip().lower(),
+            jev_calibration_min_support=_bounded_int_from_environment("JEV_CALIBRATION_MIN_SUPPORT", 30, 1, 1_000_000),
+            jev_calibration_min_heldout=_bounded_int_from_environment("JEV_CALIBRATION_MIN_HELDOUT", 30, 1, 1_000_000),
+            jev_calibration_max_age_seconds=_optional_bounded_int_from_environment("JEV_CALIBRATION_MAX_AGE_SECONDS", 1, 31_536_000),
+            jev_allow_fixture_runtime=_bool_from_environment("JEV_ALLOW_FIXTURE_RUNTIME", False),
             jev_runtime_provider=os.environ.get("JEV_RUNTIME_PROVIDER", "typesafe").strip().lower(),
             jev_endpoint=os.environ.get("JEV_ENDPOINT", DEFAULT_JEV_ENDPOINT).strip(),
             jev_model=os.environ.get("JEV_MODEL", "jev-latest").strip(),
@@ -144,6 +155,7 @@ class Settings:
             jev_align_capture_enabled=_bool_from_environment("JEV_ALIGN_CAPTURE_ENABLED", False),
             jevql_enabled=_bool_from_environment("JEVQL_ENABLED", False),
             jevql_endpoint=_optional_text_from_environment("JEVQL_ENDPOINT"),
+            jevql_token=_optional_secret_from_environment("JEVQL_TOKEN"),
             jev_tree_enabled=_bool_from_environment("JEV_TREE_ENABLED", False),
             jev_tree_endpoint=_optional_text_from_environment("JEV_TREE_ENDPOINT"),
             jev_max_rows=_bounded_int_from_environment("JEV_MAX_ROWS", DEFAULT_JEV_MAX_ROWS, 1, 10_000),
@@ -247,6 +259,19 @@ def _bounded_float_from_environment(name: str, default: float, minimum: float, m
     return value
 
 
+def _optional_bounded_int_from_environment(name: str, minimum: int, maximum: int) -> int | None:
+    raw_value = os.environ.get(name)
+    if raw_value is None or not raw_value.strip():
+        return None
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}")
+    return value
+
+
 def _ratio_from_environment(name: str, default: float) -> float:
     raw_value = os.environ.get(name)
     if raw_value is None:
@@ -300,11 +325,14 @@ def _validate_jev_settings(settings: Settings) -> None:
         raise ValueError("JEV_RUNTIME_PROVIDER must be typesafe")
     if not settings.jev_model:
         raise ValueError("JEV_MODEL must not be empty")
+    if settings.jev_calibration_mode not in {"fixture_only", "shadow_only", "production"}:
+        raise ValueError("JEV_CALIBRATION_MODE must be fixture_only, shadow_only or production")
+    if settings.jev_allow_fixture_runtime and settings.environment == "production":
+        raise ValueError("JEV_ALLOW_FIXTURE_RUNTIME is forbidden in production")
     _validate_endpoint("JEV_ENDPOINT", settings.jev_endpoint, JEV_ALLOWED_HOSTS)
     if settings.jevql_enabled:
-        if settings.jevql_endpoint is None:
-            raise ValueError("JEVQL_ENABLED requires JEVQL_ENDPOINT")
-        _validate_endpoint("JEVQL_ENDPOINT", settings.jevql_endpoint, frozenset(("localhost", "127.0.0.1", "jevql")), allow_internal=True)
+        if settings.jevql_endpoint is not None:
+            _validate_endpoint("JEVQL_ENDPOINT", settings.jevql_endpoint, frozenset(("localhost", "127.0.0.1", "jevql")), allow_internal=True)
     if settings.jev_tree_enabled and settings.jev_tree_endpoint is not None:
         _validate_endpoint(
             "JEV_TREE_ENDPOINT",
