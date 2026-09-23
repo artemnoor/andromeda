@@ -17,10 +17,14 @@ COPY alembic.ini ./
 COPY docker-entrypoint.sh ./
 
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y poppler-utils \
-    && rm -rf /var/lib/apt/lists/* \
+    && apt-get install --no-install-recommends -y git poppler-utils \
     && pip install --no-cache-dir uv==0.11.28 \
+    && echo "[FIX] Installing pinned VCS dependency jevcal for the Jev runtime extra" \
     && uv sync --frozen --no-dev --extra jev \
+    && echo "[FIX] Pinned Jev runtime dependencies installed" \
+    && apt-get purge --auto-remove -y git \
+    && ! command -v git \
+    && rm -rf /var/lib/apt/lists/* \
     && chmod +x /app/docker-entrypoint.sh
 
 ENV PATH="/app/.venv/bin:${PATH}"
