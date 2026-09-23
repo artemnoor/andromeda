@@ -55,6 +55,22 @@ def test_only_scope_normalizes_program_ids_and_keeps_source_text() -> None:
     assert scope.applies_to(program_id="program:bmstu:09.03.03-02").status is ApplicabilityStatus.NOT_APPLICABLE
 
 
+def test_branch_campus_scope_does_not_grant_moscow_or_guess_when_campus_is_missing() -> None:
+    scope = BenefitScope(
+        mode=BenefitScopeMode.ONLY,
+        targets=(
+            _target(BenefitTargetKind.CAMPUS, "campus:bmstu-kaluga"),
+            _target(BenefitTargetKind.CAMPUS, "campus:bmstu-mytishchi"),
+        ),
+        original_text="все направления Калужского и Мытищинского филиалов",
+    )
+
+    assert scope.applies_to(campus_id="campus:bmstu-kaluga").status is ApplicabilityStatus.APPLICABLE
+    assert scope.applies_to(campus_id="campus:bmstu-mytishchi").status is ApplicabilityStatus.APPLICABLE
+    assert scope.applies_to(campus_id="campus:bmstu-moscow").status is ApplicabilityStatus.NOT_APPLICABLE
+    assert scope.applies_to().status is ApplicabilityStatus.INSUFFICIENT_DATA
+
+
 def test_unresolved_target_is_review_required_not_not_applicable() -> None:
     scope = BenefitScope(
         mode=BenefitScopeMode.ALL_EXCEPT,

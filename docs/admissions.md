@@ -17,6 +17,8 @@ BMSTU detail API + official orders manifest/PDFs
 
 `admissions` не импортирует ORM, SQLAlchemy или parser internals. Service получает программу через публичный `ProgramReader`, а данные поступления — через `AdmissionReader`. У каждой offering и каждого дочернего показателя хранится provenance: source kind, URL, capture timestamp, content hash и locator.
 
+An offering may carry a source-backed campus and exam choice-group cardinalities. Missing source values remain unknown. Admission-benefit evaluation selects exactly one matching offering; competitive-score calculation counts required exams and only the source-defined number of alternatives in each choice group, never every score supplied by the applicant.
+
 ## Source hierarchy and score semantics
 
 Парсер использует только официальные публичные источники МГТУ:

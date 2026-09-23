@@ -43,6 +43,9 @@ from andromeda.modules.admission_benefits.contracts.results import (
     AdmissionBenefitEvaluation,
     AdmissionBenefitEvidence,
     AdmissionDecisionResult,
+    CompetitiveExamScore,
+    CompetitiveScoreStatus,
+    EffectiveCompetitiveScore,
     EligibilityStatus,
     IndividualAchievementEvaluation,
 )
@@ -52,8 +55,10 @@ from andromeda.modules.admission_benefits.contracts.snapshot import (
 from andromeda.modules.admission_benefits.services.evaluator import (
     AdmissionBenefitEvaluationInput,
 )
+from andromeda.modules.admissions.contracts.public import FundingType, StudyForm
 from andromeda.shared.contracts.enums import EducationLevel
 
+from .admissions import AdmissionProvenanceResponse
 from .common import ApiModel, SourceAttributionResponse, SourceGapReferenceResponse
 
 
@@ -96,6 +101,8 @@ JsonEducationLevel = Annotated[
     EducationLevel,
     BeforeValidator(lambda value: _enum_from_json(EducationLevel, value)),
 ]
+JsonStudyForm = Annotated[StudyForm, BeforeValidator(lambda value: _enum_from_json(StudyForm, value))]
+JsonFundingType = Annotated[FundingType, BeforeValidator(lambda value: _enum_from_json(FundingType, value))]
 JsonConfirmationApplicantCategory = Annotated[
     ConfirmationApplicantCategory,
     BeforeValidator(
@@ -322,6 +329,10 @@ class AdmissionEligibilityRequest(ApiModel):
     admission_year: int = Field(strict=True, ge=2000, le=2100)
     education_level: JsonEducationLevel | None = None
     nps: str | None = Field(default=None, min_length=1, max_length=256)
+    offering_id: str | None = Field(default=None, min_length=1, max_length=512)
+    study_form: JsonStudyForm | None = None
+    funding_type: JsonFundingType | None = None
+    campus_id: str | None = Field(default=None, pattern=r"^campus:[a-z0-9][a-z0-9-]{0,62}$")
     applicant: ApplicantAdmissionFactsRequest
 
 
@@ -365,6 +376,31 @@ class IndividualAchievementBreakdownResponse(ApiModel):
     source_gaps: tuple[str, ...]
 
 
+class CompetitiveExamScoreResponse(ApiModel):
+    subject: str
+    source_name: str
+    raw_score: Decimal | None = None
+    effective_score: Decimal | None = None
+    minimum_score: Decimal | None = None
+    applied_benefit_rule_ids: tuple[str, ...]
+    provenance: tuple[AdmissionProvenanceResponse, ...]
+
+
+class EffectiveCompetitiveScoreResponse(ApiModel):
+    status: CompetitiveScoreStatus
+    offering_id: str | None = None
+    available_offering_ids: tuple[str, ...]
+    selected_exam_combination: tuple[str, ...]
+    exam_scores_before: tuple[CompetitiveExamScoreResponse, ...]
+    exam_scores_after_benefits: tuple[CompetitiveExamScoreResponse, ...]
+    candidate_exams_considered: int
+    base_exam_score: Decimal | None = None
+    post_benefit_exam_score: Decimal | None = None
+    individual_achievement_points: Decimal | None = None
+    effective_total: Decimal | None = None
+    source_gaps: tuple[str, ...]
+
+
 class AdmissionEligibilityResponse(ApiModel):
     program_id: str
     admission_year: int
@@ -375,6 +411,7 @@ class AdmissionEligibilityResponse(ApiModel):
     individual_achievement_points: Decimal | None = None
     effective_competitive_score: Decimal | None = None
     individual_achievements: IndividualAchievementBreakdownResponse | None = None
+    competitive_score: EffectiveCompetitiveScoreResponse | None = None
     source_gaps: tuple[str, ...]
 
 
@@ -585,7 +622,39 @@ def eligibility_request(
         admission_year=value.admission_year,
         education_level=value.education_level,
         nps=value.nps,
+        campus_id=None,
         applicant=admission_facts(value.applicant),
+    )
+
+
+def _competitive_exam_score(value: CompetitiveExamScore) -> CompetitiveExamScoreResponse:
+    return CompetitiveExamScoreResponse(
+        subject=value.subject,
+        source_name=value.source_name,
+        raw_score=value.raw_score,
+        effective_score=value.effective_score,
+        minimum_score=value.minimum_score,
+        applied_benefit_rule_ids=value.applied_benefit_rule_ids,
+        provenance=tuple(AdmissionProvenanceResponse.model_validate(item.model_dump()) for item in value.provenance),
+    )
+
+
+def _competitive_score(value: EffectiveCompetitiveScore | None) -> EffectiveCompetitiveScoreResponse | None:
+    if value is None:
+        return None
+    return EffectiveCompetitiveScoreResponse(
+        status=value.status,
+        offering_id=value.offering_id,
+        available_offering_ids=value.available_offering_ids,
+        selected_exam_combination=value.selected_exam_combination,
+        exam_scores_before=tuple(_competitive_exam_score(item) for item in value.exam_scores_before),
+        exam_scores_after_benefits=tuple(_competitive_exam_score(item) for item in value.exam_scores_after_benefits),
+        candidate_exams_considered=value.candidate_exams_considered,
+        base_exam_score=value.base_exam_score,
+        post_benefit_exam_score=value.post_benefit_exam_score,
+        individual_achievement_points=value.individual_achievement_points,
+        effective_total=value.effective_total,
+        source_gaps=value.source_gaps,
     )
 
 
@@ -659,6 +728,7 @@ def eligibility_response(
             if breakdown is not None
             else None
         ),
+        competitive_score=_competitive_score(value.competitive_score),
         source_gaps=value.source_gaps,
     )
 

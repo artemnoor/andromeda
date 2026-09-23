@@ -285,7 +285,7 @@ class AdmissionBenefitRuleScopeModel(Base):
         ),
         CheckConstraint("target_index >= 0", name="ck_benefit_scope_target_index"),
         CheckConstraint(
-            "target_kind IN ('direction', 'program', 'nps', 'education_level')",
+            "target_kind IN ('direction', 'program', 'nps', 'education_level', 'campus')",
             name="ck_benefit_scope_target_kind",
         ),
         CheckConstraint(

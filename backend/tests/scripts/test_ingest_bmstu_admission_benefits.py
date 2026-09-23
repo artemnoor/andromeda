@@ -19,7 +19,7 @@ def test_fixture_dry_run_returns_source_coverage_without_database_write(tmp_path
         allow_partial=True,
     )
     assert report.dry_run is True
-    assert report.documents_captured == 5
+    assert report.documents_captured == 6
     assert report.bvi_rules > 0
     assert report.individual_achievement_rules > 0
     assert not (tmp_path / "should-not-be-created.db").exists()

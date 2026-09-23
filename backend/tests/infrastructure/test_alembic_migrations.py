@@ -638,3 +638,53 @@ def test_alembic_uses_config_url_when_environment_url_is_unset(
         assert "alembic_version" in inspect(engine).get_table_names()
     finally:
         engine.dispose()
+
+
+def test_admission_offering_scope_migration_adds_and_downgrades_optional_metadata(
+    tmp_path: Path, monkeypatch
+) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'admission-offering-scope.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    config = _alembic_config(database_url)
+
+    command.upgrade(config, "0037_confirmation_applicant_category")
+    command.upgrade(config, "0038_admission_offering_scope_and_exam_choices")
+    engine = create_engine(database_url)
+    try:
+        inspector = inspect(engine)
+        offering_columns = {column["name"] for column in inspector.get_columns("admission_offerings")}
+        exam_columns = {column["name"] for column in inspector.get_columns("admission_exam_requirements")}
+        assert "campus_id" in offering_columns
+        assert {"choice_group_id", "choice_group_min", "choice_group_max"}.issubset(exam_columns)
+        assert {
+            "uq_admission_offering_identity_without_campus",
+            "uq_admission_offering_identity_by_campus",
+            "ix_admission_offerings_campus_year",
+        }.issubset({index["name"] for index in inspector.get_indexes("admission_offerings")})
+        assert "ix_admission_exams_choice_group" in {
+            index["name"] for index in inspector.get_indexes("admission_exam_requirements")
+        }
+        assert {
+            "ck_admission_exam_choice_group_id",
+            "ck_admission_exam_choice_group_min",
+            "ck_admission_exam_choice_group_max",
+            "ck_admission_exam_choice_group_order",
+            "ck_admission_exam_choice_group_flag",
+        }.issubset({constraint["name"] for constraint in inspector.get_check_constraints("admission_exam_requirements")})
+    finally:
+        engine.dispose()
+
+    command.downgrade(config, "0037_confirmation_applicant_category")
+    engine = create_engine(database_url)
+    try:
+        inspector = inspect(engine)
+        assert "campus_id" not in {column["name"] for column in inspector.get_columns("admission_offerings")}
+        assert not {"choice_group_id", "choice_group_min", "choice_group_max"}.intersection(
+            column["name"] for column in inspector.get_columns("admission_exam_requirements")
+        )
+        assert "uq_admission_offering_identity" in {
+            constraint["name"] for constraint in inspector.get_unique_constraints("admission_offerings")
+        }
+    finally:
+        engine.dispose()

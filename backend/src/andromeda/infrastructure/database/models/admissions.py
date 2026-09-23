@@ -3,7 +3,19 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..base import Base
@@ -21,6 +33,7 @@ class AdmissionOfferingModel(Base):
     funding_type: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
     scope: Mapped[str] = mapped_column(String(32), nullable=False)
     places: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    campus_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
     source_kind: Mapped[str] = mapped_column(String(256), nullable=False)
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -34,15 +47,31 @@ class AdmissionOfferingModel(Base):
     inferred: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
-        UniqueConstraint(
+        Index(
+            "uq_admission_offering_identity_without_campus",
             "program_id",
             "admission_year",
             "study_form",
             "funding_type",
             "scope",
-            name="uq_admission_offering_identity",
+            unique=True,
+            sqlite_where=text("campus_id IS NULL"),
+            postgresql_where=text("campus_id IS NULL"),
+        ),
+        Index(
+            "uq_admission_offering_identity_by_campus",
+            "program_id",
+            "admission_year",
+            "study_form",
+            "funding_type",
+            "scope",
+            "campus_id",
+            unique=True,
+            sqlite_where=text("campus_id IS NOT NULL"),
+            postgresql_where=text("campus_id IS NOT NULL"),
         ),
         Index("ix_admission_offerings_program_year", "program_id", "admission_year"),
+        Index("ix_admission_offerings_campus_year", "campus_id", "admission_year"),
         CheckConstraint("admission_year >= 2000 AND admission_year <= 2100", name="ck_admission_offering_year"),
         CheckConstraint("places IS NULL OR (places >= 0 AND places <= 100000)", name="ck_admission_offering_places"),
         CheckConstraint("length(id) > 0", name="ck_admission_offering_id_non_empty"),
@@ -62,6 +91,9 @@ class AdmissionExamRequirementModel(Base):
     minimum_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     is_choice: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    choice_group_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    choice_group_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    choice_group_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source_kind: Mapped[str] = mapped_column(String(256), nullable=False)
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -76,8 +108,23 @@ class AdmissionExamRequirementModel(Base):
     __table_args__ = (
         UniqueConstraint("offering_id", "subject", "source_name", name="uq_admission_exam_identity"),
         Index("ix_admission_exams_offering", "offering_id"),
+        Index("ix_admission_exams_choice_group", "offering_id", "choice_group_id"),
         CheckConstraint("length(subject) > 0", name="ck_admission_exam_subject"),
         CheckConstraint("minimum_score IS NULL OR (minimum_score >= 0 AND minimum_score <= 100)", name="ck_admission_exam_minimum"),
+        CheckConstraint("choice_group_id IS NULL OR length(choice_group_id) > 0", name="ck_admission_exam_choice_group_id"),
+        CheckConstraint(
+            "choice_group_min IS NULL OR (choice_group_min >= 1 AND choice_group_min <= 20)",
+            name="ck_admission_exam_choice_group_min",
+        ),
+        CheckConstraint(
+            "choice_group_max IS NULL OR (choice_group_max >= 1 AND choice_group_max <= 20)",
+            name="ck_admission_exam_choice_group_max",
+        ),
+        CheckConstraint(
+            "choice_group_min IS NULL OR choice_group_max IS NULL OR choice_group_min <= choice_group_max",
+            name="ck_admission_exam_choice_group_order",
+        ),
+        CheckConstraint("choice_group_id IS NULL OR is_choice", name="ck_admission_exam_choice_group_flag"),
         CheckConstraint("length(content_sha256) = 64", name="ck_admission_exam_sha256"),
     )
 

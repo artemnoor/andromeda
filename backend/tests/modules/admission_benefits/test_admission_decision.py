@@ -1,12 +1,39 @@
+from datetime import datetime, timezone
 from decimal import Decimal
 
-from andromeda.modules.admission_benefits.contracts.applicant import ApplicantAdmissionFacts, ApplicantExamScore
-from andromeda.modules.admission_benefits.contracts.public import BenefitType, ConfirmationExamKind, ConfirmationRequirement, ConfirmationSubjectRule
+from andromeda.modules.admission_benefits.contracts.applicant import (
+    ApplicantAdmissionFacts,
+    ApplicantExamScore,
+)
+from andromeda.modules.admission_benefits.contracts.public import (
+    BenefitType,
+    ConfirmationExamKind,
+    ConfirmationRequirement,
+    ConfirmationSubjectRule,
+)
 from andromeda.modules.admission_benefits.contracts.results import EligibilityStatus
-from andromeda.modules.admission_benefits.services.admission_decision import AdmissionDecisionService
-from andromeda.modules.admission_benefits.services.evaluator import AdmissionBenefitEvaluationInput
+from andromeda.modules.admission_benefits.services.admission_decision import (
+    AdmissionDecisionService,
+)
+from andromeda.modules.admission_benefits.services.evaluator import (
+    AdmissionBenefitEvaluationInput,
+)
+from andromeda.modules.admissions.contracts.public import (
+    AdmissionOffering,
+    AdmissionProvenance,
+    AdmissionScope,
+    ExamRequirement,
+)
 
-from .test_helpers import DIRECTION_CODE, PROGRAM_ID, achievement_fact, achievement_policy, achievement_rule, olympiad_fact, olympiad_rule
+from .test_helpers import (
+    DIRECTION_CODE,
+    PROGRAM_ID,
+    achievement_fact,
+    achievement_policy,
+    achievement_rule,
+    olympiad_fact,
+    olympiad_rule,
+)
 
 
 def test_bvi_is_primary_and_is_not_presented_as_a_passing_score() -> None:
@@ -52,7 +79,24 @@ def test_100_points_and_individual_achievements_compose_after_legal_evaluation()
         ),
         rules=(rule,),
     )
-    result = AdmissionDecisionService().evaluate(request, individual_policy=policy)
+    source = AdmissionProvenance(
+        source_kind="bmstu_major_detail",
+        source_url="https://api.www.bmstu.ru/majors/example",
+        captured_at=datetime(2026, 9, 22, tzinfo=timezone.utc),
+        content_sha256="d" * 64,
+    )
+    offering = AdmissionOffering(
+        id="admission-offering:program:09.03.03-01:2026:full_time:budget:direction",
+        program_id=PROGRAM_ID,
+        admission_year=2026,
+        scope=AdmissionScope.DIRECTION,
+        exams=(
+            ExamRequirement(subject="Информатика", source_name="Информатика", provenance=source),
+            ExamRequirement(subject="Русский язык", source_name="Русский язык", provenance=source),
+        ),
+        provenance=(source,),
+    )
+    result = AdmissionDecisionService().evaluate(request, individual_policy=policy, offering=offering)
     assert result.status is EligibilityStatus.ELIGIBLE
     assert result.individual_achievement_points == Decimal("5")
     assert result.effective_competitive_score == Decimal("195")

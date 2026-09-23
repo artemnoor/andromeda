@@ -8,6 +8,11 @@ from pydantic import Field, StringConstraints
 NonEmptyText: TypeAlias = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=512)]
 ShortText: TypeAlias = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=256)]
 UniversityId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^university:[a-z0-9][a-z0-9-]{0,62}$")]
+AdmissionCampusId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^campus:[a-z0-9][a-z0-9-]{0,62}$")]
+AdmissionExamChoiceGroupId: TypeAlias = Annotated[
+    str,
+    StringConstraints(pattern=r"^exam-choice:[a-z0-9][a-z0-9-]{0,62}$"),
+]
 DirectionId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^direction:(?:[a-z0-9][a-z0-9-]{0,62}:)?[0-9]{2}\.[0-9]{2}\.[0-9]{2}$")]
 DirectionCode: TypeAlias = Annotated[str, StringConstraints(pattern=r"^[0-9]{2}\.[0-9]{2}\.[0-9]{2}$")]
 ProgramId: TypeAlias = Annotated[

@@ -92,6 +92,13 @@ definition of a decision operation:
 - evaluation corpus identity;
 - calibration lock identity.
 
+Admission Olympiad/profile candidate resolution is intentionally defined in a
+separate `backend/config/jev/question-definitions.admission.v1.yaml` artifact
+with its own corpus/lock identity. It uses the same typed registry and official
+TypeSafe transport, but cannot silently change the existing Stage 2 registry
+hash or calibration. This operation is disabled unless explicitly enabled with
+its dedicated compatible production lock.
+
 The registry does not own technical settings of every tool. Separate validated
 configuration remains tool-specific:
 

@@ -153,7 +153,7 @@ def test_continuation_table_without_repeated_header_uses_official_status_columns
     }
 
 
-def test_appendix_52_combined_official_heading_is_bvi_for_both_result_types() -> None:
+def test_appendix_52_combined_official_heading_preserves_both_branch_campuses() -> None:
     records, diagnostics = parse_benefit_tables(
         _document("appendix_5_2"),
         (
@@ -172,7 +172,13 @@ def test_appendix_52_combined_official_heading_is_bvi_for_both_result_types() ->
     assert len(records) == 2
     assert all(any(candidate.field == "benefit_type" and candidate.value == "bvi" for candidate in record.normalized_candidates) for record in records)
     assert all(any(candidate.field == "benefit_granted" and candidate.value == "yes" for candidate in record.normalized_candidates) for record in records)
-    assert all(any(candidate.field == "scope_mode" and candidate.value == "all" for candidate in record.normalized_candidates) for record in records)
+    assert all(any(candidate.field == "scope_mode" and candidate.value == "only" for candidate in record.normalized_candidates) for record in records)
+    assert {
+        candidate.value
+        for record in records
+        for candidate in record.normalized_candidates
+        if candidate.field == "scope_campus_id"
+    } == {"campus:bmstu-kaluga", "campus:bmstu-mytishchi"}
 
 
 def test_confirmation_threshold_is_extracted_from_the_official_header_not_defaulted() -> None:

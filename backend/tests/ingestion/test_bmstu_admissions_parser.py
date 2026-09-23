@@ -1,19 +1,23 @@
 from __future__ import annotations
 
-import json
 import importlib
+import json
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 
 from andromeda.ingestion.contracts.raw import RawSourceSnapshot
 from andromeda.ingestion.contracts.source import CapturedSources
-from andromeda.ingestion.universities.bmstu.adapter import _parse_order_admissions
 from andromeda.ingestion.universities.bmstu import BmstuUniversityAdapter
+from andromeda.ingestion.universities.bmstu.adapter import _parse_order_admissions
+from andromeda.ingestion.universities.bmstu.mappings.admissions import (
+    normalize_study_form,
+)
 from andromeda.ingestion.universities.bmstu.parser import admission_orders
-from andromeda.ingestion.universities.bmstu.mappings.admissions import normalize_study_form
-from andromeda.ingestion.universities.bmstu.parser.admissions import _tuition
-
+from andromeda.ingestion.universities.bmstu.parser.admissions import (
+    _exam_requirements,
+    _tuition,
+)
 
 adapter_module = importlib.import_module("andromeda.ingestion.universities.bmstu.adapter")
 
@@ -32,6 +36,32 @@ def test_tuition_does_not_invent_academic_year() -> None:
     tuition = _tuition({"price": [{"value": 100, "currency": "RUB"}]})
 
     assert tuition[0].academic_year is None
+
+
+def test_bmstu_choice_metadata_is_only_retained_when_source_explicitly_defines_it() -> None:
+    legacy = _exam_requirements(
+        {"points": [{"title": "Информатика", "point": 45, "isChoice": True}]}
+    )
+    explicit = _exam_requirements(
+        {
+            "points": [
+                {
+                    "title": "Информатика",
+                    "point": 45,
+                    "isChoice": True,
+                    "choiceGroupId": "exam-choice:ege-third",
+                    "choiceGroupMin": 1,
+                    "choiceGroupMax": 1,
+                }
+            ]
+        }
+    )
+
+    assert legacy[0].choice_group_id is None
+    assert legacy[0].choice_group_min is None
+    assert legacy[0].choice_group_max is None
+    assert explicit[0].choice_group_id == "exam-choice:ege-third"
+    assert (explicit[0].choice_group_min, explicit[0].choice_group_max) == (1, 1)
 
 
 def test_bmstu_detail_admissions_are_emitted_as_canonical_program_contracts() -> None:

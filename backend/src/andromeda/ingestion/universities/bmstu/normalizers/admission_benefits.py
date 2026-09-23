@@ -57,6 +57,7 @@ from andromeda.modules.admission_benefits.contracts.status import (
     RuleDataStatus,
     TargetResolutionStatus,
 )
+from andromeda.modules.admissions.contracts.subject_identity import is_known_exam_subject
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.enums import EducationLevel, SourceKind
 from andromeda.shared.contracts.ids import UniversityId
@@ -157,7 +158,9 @@ def normalize_olympiad_benefits(
         profile_id: str | None = None
         profile_name = values.get("profile_name")
         profile_subjects = _profile_subjects(
-            values.get("target_subject") or values.get("corresponding_subject"),
+            values.get("target_subject")
+            or values.get("corresponding_subject")
+            or (values.get("profile_name") if values.get("profile_name") and is_known_exam_subject(values["profile_name"]) else None),
             profile_source.source.corresponding_subjects if profile_source is not None else (),
         )
         if profile_name and profile_subjects:
@@ -182,6 +185,7 @@ def normalize_olympiad_benefits(
             )
         scope_mode = _scope_mode(values.get("scope_mode"), values.get("scope_text"))
         direction_codes = tuple(dict.fromkeys(_candidate_values(record, "scope_direction_code")))
+        campus_ids = tuple(dict.fromkeys(_candidate_values(record, "scope_campus_id")))
         if direction_index:
             direction_codes = tuple(
                 dict.fromkeys(
@@ -200,6 +204,7 @@ def normalize_olympiad_benefits(
             (scope_mode is None or (scope_mode is BenefitScopeMode.ONLY and not direction_codes))
             and benefit_text == BenefitType.ONE_HUNDRED_POINTS.value
             and values.get("target_subject")
+            and not campus_ids
         ):
             # Appendix 5.3 can describe the target subject without enumerating
             # direction codes. Preserve the legal candidate, but never make it
@@ -225,15 +230,32 @@ def normalize_olympiad_benefits(
                     "official direction names did not resolve to a unique catalog direction code",
                 )
             )
-        if scope_mode is None or (scope_mode is not BenefitScopeMode.ALL and not direction_codes):
+        if scope_mode is None or (
+            scope_mode is not BenefitScopeMode.ALL and not direction_codes and not campus_ids
+        ):
             diagnostics.append(_review_diagnostic(record, "benefit_scope_unknown", "program/direction scope is not source-resolved"))
             continue
         scope_text = values.get("scope_text") or "Официальная таблица не содержит отдельного текста области применения"
-        scope = normalize_direction_scope(
-            mode=scope_mode,
-            direction_codes=direction_codes,
-            original_text=_bounded_text(scope_text, limit=2_000),
-            known_direction_codes=known_direction_codes,
+        scope = (
+            BenefitScope(
+                mode=scope_mode,
+                targets=tuple(
+                    BenefitTarget(
+                        kind=BenefitTargetKind.CAMPUS,
+                        value=campus_id,
+                        original_text=_bounded_text(scope_text, limit=512),
+                    )
+                    for campus_id in campus_ids
+                ),
+                original_text=_bounded_text(scope_text, limit=2_000),
+            )
+            if campus_ids
+            else normalize_direction_scope(
+                mode=scope_mode,
+                direction_codes=direction_codes,
+                original_text=_bounded_text(scope_text, limit=2_000),
+                known_direction_codes=known_direction_codes,
+            )
         )
         unresolved_targets += len(scope.unresolved_targets)
         status = RuleDataStatus.REVIEW_REQUIRED if scope.unresolved_targets or scope_review_required else RuleDataStatus.ACTIVE

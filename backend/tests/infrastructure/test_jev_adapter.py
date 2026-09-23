@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
-from andromeda.infrastructure.jev.adapter import JevAdapterConfig, JevDecisionModelAdapter
+from andromeda.infrastructure.jev.adapter import (
+    JevAdapterConfig,
+    JevDecisionModelAdapter,
+)
 from andromeda.infrastructure.jev.contracts import (
     JevAnswerEvidence,
     JevFailureReason,
@@ -13,18 +16,28 @@ from andromeda.infrastructure.jev.contracts import (
     ModelIdentity,
 )
 from andromeda.infrastructure.jev.question_registry import QuestionRegistry
-from andromeda.modules.conversation.services.decision_model import RuleBasedDecisionModel
-from andromeda.modules.conversation.contracts.policy import DecisionModelOperation, DecisionModelSource
+from andromeda.modules.conversation.contracts.policy import (
+    CandidateResolutionOption,
+    DecisionModelOperation,
+    DecisionModelSource,
+)
+from andromeda.modules.conversation.services.decision_model import (
+    RuleBasedDecisionModel,
+)
 from andromeda.modules.presentation.contracts.policy import ResponseRequest
 
 
 class _UnavailableTransport:
-    def request(self, operation: str, payload: Mapping[str, object], *, timeout_seconds: float) -> object:
+    def request(
+        self, operation: str, payload: Mapping[str, object], *, timeout_seconds: float
+    ) -> object:
         raise TimeoutError(operation)
 
 
 class _InvalidTransport:
-    def request(self, operation: str, payload: Mapping[str, object], *, timeout_seconds: float) -> object:
+    def request(
+        self, operation: str, payload: Mapping[str, object], *, timeout_seconds: float
+    ) -> object:
         if operation == "resolve_intent":
             return {"intent": "execute_sql", "source": "jev", "confidence": "high"}
         return {"response_format": "text", "template": "<script>bad</script>"}
@@ -49,7 +62,28 @@ class _RejectedCalibration:
     def evaluate(self, definition_id: str, evidence: JevAnswerEvidence):
         assert definition_id == "intent.v1"
         assert evidence.answer_value == "analytics_query"
-        return type("Gate", (), {"accepted": False, "artifact_id": self.artifact_id, "reason": "calibration_rejected"})()
+        return type(
+            "Gate",
+            (),
+            {
+                "accepted": False,
+                "artifact_id": self.artifact_id,
+                "reason": "calibration_rejected",
+            },
+        )()
+
+
+class _AcceptedCandidateCalibration:
+    artifact_id = "admission-fixture-artifact"
+
+    def evaluate(self, definition_id: str, evidence: JevAnswerEvidence):
+        assert definition_id == "olympiad-profile-resolution.v1"
+        assert evidence.answer_value == "olympiad-profile:shag-engineering"
+        return type(
+            "Gate",
+            (),
+            {"accepted": True, "artifact_id": self.artifact_id, "reason": "accepted"},
+        )()
 
 
 def test_jev_unavailable_falls_back_without_changing_deterministic_intent() -> None:
@@ -86,7 +120,9 @@ def test_typed_transport_receives_registry_definition_and_schema() -> None:
         / "jev"
         / "question-definitions.v1.yaml"
     )
-    adapter = JevDecisionModelAdapter(transport, RuleBasedDecisionModel(), registry=registry)
+    adapter = JevDecisionModelAdapter(
+        transport, RuleBasedDecisionModel(), registry=registry
+    )
 
     decision = adapter.resolve_intent("Где больше математики?")
 
@@ -119,7 +155,9 @@ def test_missing_registry_artifact_is_a_typed_fallback() -> None:
             ]
         }
     )
-    adapter = JevDecisionModelAdapter(_EnvelopeTransport(), RuleBasedDecisionModel(), registry=registry)
+    adapter = JevDecisionModelAdapter(
+        _EnvelopeTransport(), RuleBasedDecisionModel(), registry=registry
+    )
 
     decision = adapter.resolve_metric("математика", candidates=("mathematics_share",))
 
@@ -131,7 +169,11 @@ def test_calibration_gate_rejects_provider_answer_before_domain_parsing() -> Non
     class Transport:
         def request_envelope(self, request: JevRequestEnvelope) -> JevResponseEnvelope:
             return JevResponseEnvelope(
-                payload={"intent": "analytics_query", "source": "jev", "confidence": "high"},
+                payload={
+                    "intent": "analytics_query",
+                    "source": "jev",
+                    "confidence": "high",
+                },
                 identity=ModelIdentity(artifact_id="intent.v1@intent-definition.v1"),
                 usage=JevUsage(),
                 evidence=JevAnswerEvidence(
@@ -152,3 +194,108 @@ def test_calibration_gate_rejects_provider_answer_before_domain_parsing() -> Non
 
     assert decision.source is DecisionModelSource.FALLBACK
     assert decision.fallback_reason == JevFailureReason.CALIBRATION_REJECTED.value
+
+
+def test_olympiad_resolution_fails_closed_without_calibration() -> None:
+    class Transport:
+        calls = 0
+
+        def request_envelope(self, request: JevRequestEnvelope) -> JevResponseEnvelope:
+            self.calls += 1
+            raise AssertionError(
+                "uncalibrated candidate selection must not call the provider"
+            )
+
+    transport = Transport()
+    registry = QuestionRegistry.from_file(
+        Path(__file__).resolve().parents[2]
+        / "config"
+        / "jev"
+        / "question-definitions.admission.v1.yaml"
+    )
+    adapter = JevDecisionModelAdapter(
+        transport, RuleBasedDecisionModel(), registry=registry
+    )
+
+    decision = adapter.resolve_olympiad_profile(
+        "Шаг в будущее, Инженерное дело",
+        candidates=(
+            CandidateResolutionOption(
+                candidate_id="olympiad-profile:shag-engineering",
+                label="Шаг в будущее — Инженерное дело",
+            ),
+            CandidateResolutionOption(
+                candidate_id="olympiad-profile:shag-programming",
+                label="Шаг в будущее — Программирование",
+            ),
+        ),
+    )
+
+    assert decision.candidate_id is None
+    assert decision.source is DecisionModelSource.FALLBACK
+    assert decision.fallback_reason == "calibration_unavailable"
+    assert transport.calls == 0
+
+
+def test_olympiad_resolution_accepts_only_calibrated_candidate_from_allowlist() -> None:
+    class Transport:
+        def __init__(self) -> None:
+            self.requests: list[JevRequestEnvelope] = []
+
+        def request_envelope(self, request: JevRequestEnvelope) -> JevResponseEnvelope:
+            self.requests.append(request)
+            return JevResponseEnvelope(
+                payload={"candidate_id": "olympiad-profile:shag-engineering"},
+                identity=ModelIdentity(
+                    provider="typesafe",
+                    model="jev",
+                    source=DecisionModelSource.JEV,
+                    artifact_id="olympiad-profile-resolution.v1@v1",
+                ),
+                usage=JevUsage(),
+                evidence=JevAnswerEvidence(
+                    answer_kind="choice",
+                    answer_value="olympiad-profile:shag-engineering",
+                    probabilities={
+                        "olympiad-profile:shag-engineering": 0.95,
+                        "olympiad-profile:shag-programming": 0.05,
+                    },
+                    has_probability_evidence=True,
+                ),
+            )
+
+    transport = Transport()
+    registry = QuestionRegistry.from_file(
+        Path(__file__).resolve().parents[2]
+        / "config"
+        / "jev"
+        / "question-definitions.admission.v1.yaml"
+    )
+    adapter = JevDecisionModelAdapter(
+        transport,
+        RuleBasedDecisionModel(),
+        registry=registry,
+        calibration=_AcceptedCandidateCalibration(),
+    )
+
+    decision = adapter.resolve_olympiad_profile(
+        "Я призёр олимпиады Шаг в будущее по профилю Инженерное дело, мой телефон +7 999 123-45-67",
+        candidates=(
+            CandidateResolutionOption(
+                candidate_id="olympiad-profile:shag-engineering",
+                label="Шаг в будущее — Инженерное дело",
+            ),
+            CandidateResolutionOption(
+                candidate_id="olympiad-profile:shag-programming",
+                label="Шаг в будущее — Программирование",
+            ),
+        ),
+    )
+
+    assert decision.candidate_id == "olympiad-profile:shag-engineering"
+    assert decision.source is DecisionModelSource.JEV
+    payload = transport.requests[0].redacted_payload
+    assert "телефон" not in str(payload).casefold()
+    assert "+7" not in str(payload)
+    assert "999" not in str(payload)
+    assert "123-45-67" not in str(payload)

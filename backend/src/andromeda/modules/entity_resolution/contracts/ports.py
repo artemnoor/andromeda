@@ -4,7 +4,22 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .public import EntityResolutionResult, ResolutionContext, ResolutionEntityType
+from .public import (
+    EntityResolutionCandidate,
+    EntityResolutionResult,
+    ResolutionContext,
+    ResolutionEntityType,
+)
+
+
+class BoundedCandidateSelector(Protocol):
+    """Select only among a source-backed candidate set; None means unresolved."""
+
+    def select(
+        self,
+        query: str,
+        candidates: tuple[EntityResolutionCandidate, ...],
+    ) -> str | None: ...
 
 
 class UniversityResolver(Protocol):
@@ -53,6 +68,7 @@ class EntityResolverGateway(Protocol):
 
 
 __all__ = [
+    "BoundedCandidateSelector",
     "DirectionResolver",
     "DisciplineResolver",
     "EntityResolverGateway",

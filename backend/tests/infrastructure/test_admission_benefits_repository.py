@@ -607,7 +607,10 @@ def test_partial_coverage_only_catalog_returns_insufficient_data_from_service(
             university_id=UNIVERSITY_ID,
         )
         assert result.status is EligibilityStatus.INSUFFICIENT_DATA
-        assert result.source_gaps == ("A required admission appendix was unavailable",)
+        assert result.source_gaps == (
+            "A required admission appendix was unavailable",
+            "Source-backed admission offering lookup is unavailable",
+        )
     engine.dispose()
 
 

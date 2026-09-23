@@ -7,6 +7,7 @@ from typing import Protocol
 
 from andromeda.shared.contracts.enums import EducationLevel
 from andromeda.shared.contracts.ids import (
+    AdmissionCampusId,
     DirectionCode,
     EducationYear,
     IngestRunId,
@@ -48,6 +49,7 @@ class AdmissionBenefitReader(Protocol):
         admission_year: EducationYear,
         *,
         include_review: bool = False,
+        campus_id: AdmissionCampusId | None = None,
     ) -> tuple[AdmissionBenefitRule, ...]: ...
 
     def get_rules_for_direction(
@@ -58,6 +60,7 @@ class AdmissionBenefitReader(Protocol):
         *,
         education_level: EducationLevel | None = None,
         include_review: bool = False,
+        campus_id: AdmissionCampusId | None = None,
     ) -> tuple[AdmissionBenefitRule, ...]: ...
 
     def get_programs_for_olympiad(

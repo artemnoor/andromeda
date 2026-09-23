@@ -8,8 +8,8 @@ arbitrary prompts, SQL, or provider endpoints from a request.
 
 from __future__ import annotations
 
-import time
 import importlib
+import time
 from collections.abc import Callable, Mapping
 from typing import Any
 
@@ -25,6 +25,8 @@ from .contracts import (
     JevUsage,
     ModelIdentity,
 )
+
+_ALLOWED_ENDPOINTS = frozenset(("https://api.typesafe.ai", "https://polza.ai/api"))
 
 
 class TypeSafeJevTransport:
@@ -42,8 +44,8 @@ class TypeSafeJevTransport:
     ) -> None:
         if not api_key.strip():
             raise ValueError("TypeSafe API key must not be empty")
-        if not endpoint.startswith("https://"):
-            raise ValueError("TypeSafe endpoint must use HTTPS")
+        if endpoint not in _ALLOWED_ENDPOINTS:
+            raise ValueError("TypeSafe endpoint is not an approved HTTPS endpoint")
         if not model.strip():
             raise ValueError("TypeSafe model must not be empty")
         self._api_key = api_key
@@ -78,7 +80,9 @@ class TypeSafeJevTransport:
                 input_tokens=getattr(usage, "input_tokens", None),
                 output_tokens=getattr(usage, "output_tokens", None),
                 retry_count=getattr(usage, "n_retries", None),
-                malformed_retry_count=getattr(usage, "n_retries_malformed_structure", None),
+                malformed_retry_count=getattr(
+                    usage, "n_retries_malformed_structure", None
+                ),
                 latency_ms=int((time.monotonic() - started) * 1000),
             ),
             evidence=evidence,
@@ -86,7 +90,9 @@ class TypeSafeJevTransport:
 
     def health_check(self) -> bool:
         try:
-            response = self._client_or_create().models.list(timeout=self._timeout_seconds)
+            response = self._client_or_create().models.list(
+                timeout=self._timeout_seconds
+            )
             models = getattr(response, "models", ())
             return any(getattr(item, "name", None) == self._model for item in models)
         except Exception:
@@ -131,13 +137,20 @@ def _bounded_state(payload: Mapping[str, object]) -> dict[str, object]:
         elif isinstance(value, (bool, int, float)):
             state[key] = value
         elif isinstance(value, (tuple, list)):
-            state[key] = tuple(item[:256] if isinstance(item, str) else item for item in value[:64])
+            state[key] = tuple(
+                item[:256] if isinstance(item, str) else item for item in value[:64]
+            )
         elif isinstance(value, Mapping):
-            state[key] = {str(inner_key): inner_value for inner_key, inner_value in list(value.items())[:32]}
+            state[key] = {
+                str(inner_key): inner_value
+                for inner_key, inner_value in list(value.items())[:32]
+            }
     return state
 
 
-def _questions_for(definition: DecisionDefinition, payload: Mapping[str, object]) -> dict[str, object]:
+def _questions_for(
+    definition: DecisionDefinition, payload: Mapping[str, object]
+) -> dict[str, object]:
     try:
         from typesafe_sdk import Choice, Noul
     except ImportError as exc:  # pragma: no cover - optional dependency guard
@@ -151,14 +164,25 @@ def _questions_for(definition: DecisionDefinition, payload: Mapping[str, object]
             )
             for code in feature_codes[:64]
         }
+    if definition.operation == "resolve_olympiad_profile":
+        options = _candidate_options(payload.get("candidates"))
+        options["unresolved"] = "The phrase does not identify one supplied candidate."
+        return {
+            "answer": Choice(
+                instructions=definition.instructions,
+                criteria=options,
+            )
+        }
     if not options:
-        raise ValueError(f"registered decision has no bounded options: {definition.definition_id}")
-    return {
-        "answer": Choice(instructions=definition.instructions, criteria=options)
-    }
+        raise ValueError(
+            f"registered decision has no bounded options: {definition.definition_id}"
+        )
+    return {"answer": Choice(instructions=definition.instructions, criteria=options)}
 
 
-def _dynamic_options(definition: DecisionDefinition, payload: Mapping[str, object]) -> dict[str, str]:
+def _dynamic_options(
+    definition: DecisionDefinition, payload: Mapping[str, object]
+) -> dict[str, str]:
     if definition.operation == "resolve_metric":
         candidates = _string_tuple(payload.get("candidates"))
         return {candidate: candidate for candidate in candidates[:8]}
@@ -167,7 +191,23 @@ def _dynamic_options(definition: DecisionDefinition, payload: Mapping[str, objec
         return {candidate: candidate for candidate in candidates[:16]}
     if definition.operation == "choose_presentation":
         return {value: value for value in definition.output_schema.allowed_values}
+    if definition.operation == "resolve_olympiad_profile":
+        return _candidate_options(payload.get("candidates"))
     return {option.code: option.description for option in definition.options}
+
+
+def _candidate_options(value: object) -> dict[str, str]:
+    if not isinstance(value, (tuple, list)):
+        return {}
+    options: dict[str, str] = {}
+    for item in value[:8]:
+        if not isinstance(item, Mapping):
+            continue
+        candidate_id = item.get("candidate_id")
+        label = item.get("label")
+        if isinstance(candidate_id, str) and isinstance(label, str):
+            options[candidate_id[:256]] = label[:512]
+    return options
 
 
 def _payload_for(definition: DecisionDefinition, response: Any) -> dict[str, object]:
@@ -179,9 +219,21 @@ def _payload_for(definition: DecisionDefinition, response: Any) -> dict[str, obj
     if definition.operation == "resolve_intent":
         return {"intent": choice, "confidence": confidence}
     if definition.operation == "resolve_metric":
-        return {"metric_code": choice, "candidates": (choice,) if choice else (), "confidence": confidence}
+        return {
+            "metric_code": choice,
+            "candidates": (choice,) if choice else (),
+            "confidence": confidence,
+        }
     if definition.operation == "choose_next_action":
-        return {"decision": {"action": choice, "question": None, "options": (), "reason": "TypeSafe registered choice"}, "confidence": confidence}
+        return {
+            "decision": {
+                "action": choice,
+                "question": None,
+                "options": (),
+                "reason": "TypeSafe registered choice",
+            },
+            "confidence": confidence,
+        }
     if definition.operation == "choose_presentation":
         template = {
             "text": "analytics-summary",
@@ -190,7 +242,16 @@ def _payload_for(definition: DecisionDefinition, response: Any) -> dict[str, obj
             "pdf": "analytics-report",
             "mini_app": "analytics-explorer",
         }.get(choice, "analytics-summary")
-        return {"response_format": choice, "template": template, "confidence": confidence}
+        return {
+            "response_format": choice,
+            "template": template,
+            "confidence": confidence,
+        }
+    if definition.operation == "resolve_olympiad_profile":
+        return {
+            "candidate_id": choice if choice and choice != "unresolved" else None,
+            "confidence": confidence,
+        }
     # Noul answers are probabilities, but converting them into source-like
     # semantic values would be unsafe without a feature intensity calibration.
     # Preserve the registered call and let the semantic fallback/review path
@@ -211,7 +272,11 @@ def _evidence_for(response: Any) -> JevAnswerEvidence | None:
     probabilities: dict[str, float] = {}
     if isinstance(raw_probabilities, Mapping):
         for key, value in raw_probabilities.items():
-            if isinstance(key, str) and isinstance(value, (int, float)) and 0 <= value <= 1:
+            if (
+                isinstance(key, str)
+                and isinstance(value, (int, float))
+                and 0 <= value <= 1
+            ):
                 probabilities[key] = float(value)
     raw_value = getattr(answer, "choice", None)
     if raw_value is None:

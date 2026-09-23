@@ -8,7 +8,7 @@ from enum import StrEnum
 from pydantic import Field, model_validator
 
 from andromeda.shared.contracts.base import ContractModel
-from andromeda.shared.contracts.ids import DirectionId, UniversityId
+from andromeda.shared.contracts.ids import DirectionId, EducationYear, UniversityId
 
 
 class ResolutionEntityType(StrEnum):
@@ -17,6 +17,8 @@ class ResolutionEntityType(StrEnum):
     PROGRAM = "program"
     DISCIPLINE = "discipline"
     METRIC = "metric"
+    OLYMPIAD = "olympiad"
+    OLYMPIAD_PROFILE = "olympiad_profile"
 
 
 class ResolutionStatus(StrEnum):
@@ -37,6 +39,7 @@ class CandidateMatchReason(StrEnum):
 class ResolutionContext(ContractModel):
     university_id: UniversityId | None = None
     direction_id: DirectionId | None = None
+    admission_year: EducationYear | None = None
 
 
 class EntityResolutionCandidate(ContractModel):
@@ -49,6 +52,8 @@ class EntityResolutionCandidate(ContractModel):
     university_id: UniversityId | None = None
     direction_id: DirectionId | None = None
     code: str | None = Field(default=None, max_length=128)
+    parent_id: str | None = Field(default=None, max_length=256)
+    admission_year: EducationYear | None = None
 
 
 class EntityResolutionResult(ContractModel):

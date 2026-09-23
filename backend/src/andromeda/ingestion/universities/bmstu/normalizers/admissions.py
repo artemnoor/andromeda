@@ -9,15 +9,13 @@ from decimal import Decimal
 from typing import TypeVar
 
 from andromeda.modules.admissions.contracts.public import (
-    AdmissionCompetitionType,
     AdmissionOffering,
     AdmissionProvenance,
     AdmissionScope,
     ExamRequirement,
+    PassingScore,
     ProgramAdmissions,
     Quota,
-    PassingScore,
-    PassingScoreStatus,
     TuitionCost,
 )
 from andromeda.modules.programs.contracts.public import Program
@@ -26,15 +24,14 @@ from andromeda.shared.contracts.errors import ContractError, ErrorCode
 from ....contracts.raw import RawAdmissionRecord, RawSourceSnapshot
 from ..identity import resolve_programs
 from ..mappings.admissions import (
-    normalize_currency,
     normalize_competition_type,
+    normalize_currency,
     normalize_funding,
     normalize_passing_score,
     normalize_passing_status,
     normalize_quota,
     normalize_study_form,
 )
-
 
 logger = logging.getLogger("andromeda.ingestion.bmstu.normalizers.admissions")
 _Child = TypeVar("_Child")
@@ -75,7 +72,13 @@ def normalize_admissions(
         )
         for program in targets:
             offering = _offering(record, program.id, provenance)
-            key = (offering.admission_year, offering.study_form, offering.funding_type, offering.scope)
+            key = (
+                offering.admission_year,
+                offering.study_form,
+                offering.funding_type,
+                offering.scope,
+                offering.campus_id,
+            )
             current = grouped[program.id].get(key)
             grouped[program.id][key] = _merge(current, offering) if current is not None else offering
 
@@ -93,7 +96,8 @@ def _offering(record: RawAdmissionRecord, program_id: str, provenance: Admission
     scope = AdmissionScope(record.scope)
     form_key = form.value if form is not None else "unknown"
     funding_key = funding.value if funding is not None else "unknown"
-    identifier = f"admission-offering:{program_id}:{record.admission_year}:{form_key}:{funding_key}:{scope.value}"
+    campus_suffix = f":{record.campus_id}" if record.campus_id is not None else ""
+    identifier = f"admission-offering:{program_id}:{record.admission_year}:{form_key}:{funding_key}:{scope.value}{campus_suffix}"
     child_provenance = provenance
     return AdmissionOffering(
         id=identifier,
@@ -101,6 +105,7 @@ def _offering(record: RawAdmissionRecord, program_id: str, provenance: Admission
         admission_year=record.admission_year,
         study_form=form,
         funding_type=funding,
+        campus_id=record.campus_id,
         scope=scope,
         places=record.places,
         exams=tuple(
@@ -110,6 +115,9 @@ def _offering(record: RawAdmissionRecord, program_id: str, provenance: Admission
                 minimum_score=item.minimum_score,
                 is_choice=item.is_choice,
                 is_required=item.is_required,
+                choice_group_id=item.choice_group_id,
+                choice_group_min=item.choice_group_min,
+                choice_group_max=item.choice_group_max,
                 provenance=child_provenance,
             )
             for item in record.exams
@@ -148,6 +156,7 @@ def _merge(left: AdmissionOffering, right: AdmissionOffering) -> AdmissionOfferi
     return left.model_copy(
         update={
             "places": left.places if left.places is not None else right.places,
+            "campus_id": left.campus_id if left.campus_id is not None else right.campus_id,
             "exams": _unique_children((*left.exams, *right.exams), lambda item: (item.subject, item.source_name)),
             "quotas": _unique_children((*left.quotas, *right.quotas), lambda item: (item.quota_type, item.source_name)),
             "passing_scores": _merge_passing_scores(left.passing_scores, right.passing_scores),

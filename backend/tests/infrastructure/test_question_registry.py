@@ -12,8 +12,18 @@ from andromeda.modules.conversation.contracts.decision_definitions import (
     DecisionDefinitionKind,
 )
 
-
-REGISTRY_PATH = Path(__file__).resolve().parents[2] / "config" / "jev" / "question-definitions.v1.yaml"
+REGISTRY_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "config"
+    / "jev"
+    / "question-definitions.v1.yaml"
+)
+ADMISSION_REGISTRY_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "config"
+    / "jev"
+    / "question-definitions.admission.v1.yaml"
+)
 
 
 def test_loads_versioned_registry_artifact() -> None:
@@ -21,7 +31,24 @@ def test_loads_versioned_registry_artifact() -> None:
 
     assert len(registry.all()) == 5
     assert registry.get("metric.v1").operation == "resolve_metric"
-    assert registry.for_operation("choose_next_action").kind is DecisionDefinitionKind.NEXT_ACTION
+    assert (
+        registry.for_operation("choose_next_action").kind
+        is DecisionDefinitionKind.NEXT_ACTION
+    )
+
+
+def test_admission_entity_resolution_has_its_own_versioned_calibration_definition() -> (
+    None
+):
+    registry = QuestionRegistry.from_file(ADMISSION_REGISTRY_PATH)
+
+    definition = registry.for_operation("resolve_olympiad_profile")
+
+    assert definition.definition_id == "olympiad-profile-resolution.v1"
+    assert definition.kind is DecisionDefinitionKind.ENTITY_RESOLUTION
+    assert definition.version == "olympiad-profile-resolution-definition.v1"
+    assert definition.pii_policy.value == "sanitized"
+    assert definition.output_schema.allowed_values == ("unresolved",)
 
 
 def test_exports_stable_vendor_neutral_projection() -> None:
@@ -33,7 +60,13 @@ def test_exports_stable_vendor_neutral_projection() -> None:
     assert exported[0].registry_hash == registry.content_hash()
     assert exported[0].as_dict()["output_schema"] == {
         "fields": ["intent", "confidence"],
-        "allowed_values": ["catalog_search", "comparison", "admission_search", "recommendation", "unknown"],
+        "allowed_values": [
+            "catalog_search",
+            "comparison",
+            "admission_search",
+            "recommendation",
+            "unknown",
+        ],
         "additional_properties": False,
     }
     assert exported[0].as_dict()["options"][0]["code"] == "catalog_search"
@@ -90,9 +123,7 @@ def test_malformed_yaml_fails_closed(tmp_path: Path) -> None:
 def test_invalid_definition_is_rejected(tmp_path: Path) -> None:
     artifact = tmp_path / "invalid.yaml"
     artifact.write_text(
-        "definitions:\n"
-        "  - definition_id: broken\n"
-        "    kind: unsupported\n",
+        "definitions:\n  - definition_id: broken\n    kind: unsupported\n",
         encoding="utf-8",
     )
 

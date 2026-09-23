@@ -16,6 +16,7 @@ class DecisionDefinitionKind(StrEnum):
     NEXT_ACTION = "next_action"
     PRESENTATION = "presentation"
     SEMANTIC_FEATURE = "semantic_feature"
+    ENTITY_RESOLUTION = "entity_resolution"
 
 
 class DecisionTimeoutClass(StrEnum):

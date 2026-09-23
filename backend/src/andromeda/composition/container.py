@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -9,12 +9,21 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from andromeda.infrastructure.config.settings import Settings
-from andromeda.infrastructure.repositories.admin_ops import SqlAlchemyIngestionRunReader
-from andromeda.infrastructure.repositories.admission_fit import (
-    SqlAlchemyAdmissionFitReader,
+from andromeda.infrastructure.jev.runtime import (
+    build_admission_candidate_selector,
+    build_decision_policy,
 )
+from andromeda.infrastructure.jev_tree.adapter import JevTreeAdapter
+from andromeda.infrastructure.jev_tree.config import JevTreeConfig
+from andromeda.infrastructure.jev_tree.transport import NodeJevTreeTransport
+from andromeda.infrastructure.jevql.adapter import JevQLAdapter
+from andromeda.infrastructure.jevql.config import JevQLConfig, JevQLMode
+from andromeda.infrastructure.repositories.admin_ops import SqlAlchemyIngestionRunReader
 from andromeda.infrastructure.repositories.admission_benefits import (
     SqlAlchemyAdmissionBenefitsRepository,
+)
+from andromeda.infrastructure.repositories.admission_fit import (
+    SqlAlchemyAdmissionFitReader,
 )
 from andromeda.infrastructure.repositories.admissions import (
     SqlAlchemyAdmissionRepository,
@@ -39,11 +48,11 @@ from andromeda.infrastructure.repositories.decision_candidates import (
 from andromeda.infrastructure.repositories.derived_refresh import (
     SqlAlchemyDerivedRefreshAdapter,
 )
-from andromeda.infrastructure.repositories.entity_resolution import (
-    SqlAlchemyEntityResolutionRepository,
-)
 from andromeda.infrastructure.repositories.disciplines import (
     SqlAlchemyDisciplineRepository,
+)
+from andromeda.infrastructure.repositories.entity_resolution import (
+    SqlAlchemyEntityResolutionRepository,
 )
 from andromeda.infrastructure.repositories.events import SqlAlchemyEventRepository
 from andromeda.infrastructure.repositories.ingestion import (
@@ -81,12 +90,6 @@ from andromeda.infrastructure.repositories.university_catalog import (
     SqlAlchemyUniversityCatalogCanonicalReader,
     SqlAlchemyUniversityCatalogRepository,
 )
-from andromeda.infrastructure.jev.runtime import build_decision_policy
-from andromeda.infrastructure.jevql.adapter import JevQLAdapter
-from andromeda.infrastructure.jevql.config import JevQLConfig, JevQLMode
-from andromeda.infrastructure.jev_tree.adapter import JevTreeAdapter
-from andromeda.infrastructure.jev_tree.config import JevTreeConfig
-from andromeda.infrastructure.jev_tree.transport import NodeJevTreeTransport
 from andromeda.infrastructure.repositories.university_events import (
     SqlAlchemyUniversityEditorialEventRepository,
 )
@@ -95,14 +98,16 @@ from andromeda.infrastructure.repositories.user_profiles import (
 )
 from andromeda.infrastructure.security.passwords import Argon2PasswordHasher
 from andromeda.modules.admin_ops.services.ingestion_runs import IngestionRunService
-from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
-from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
 from andromeda.modules.admission_benefits.repository.ports import AdmissionBenefitReader
-from andromeda.modules.admission_benefits.services.admission_decision import AdmissionDecisionService
+from andromeda.modules.admission_benefits.services.admission_decision import (
+    AdmissionDecisionService,
+)
 from andromeda.modules.admission_benefits.services.facade import (
     AdmissionBenefitCatalogService,
     AdmissionEligibilityService,
 )
+from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
+from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
 from andromeda.modules.admissions.services.admissions import AdmissionService
 from andromeda.modules.analytics.services.cache import AnalyticsResultCache
 from andromeda.modules.analytics.services.executor import AnalyticsExecutor
@@ -119,20 +124,23 @@ from andromeda.modules.comparison.services.compare_programs import (
 from andromeda.modules.comparison.services.compare_summary import (
     ComparisonSummaryService,
 )
-from andromeda.modules.conversation.services.assistant import AssistantService
 from andromeda.modules.conversation.contracts.policy import DecisionPolicyPort
+from andromeda.modules.conversation.services.assistant import AssistantService
 from andromeda.modules.conversation.services.engine import ConversationEngine
 from andromeda.modules.curricula.repository.ports import CurriculumReader
 from andromeda.modules.decision.services.analytics import DecisionAnalyticsService
 from andromeda.modules.decision.services.candidates import DecisionCandidatePipeline
 from andromeda.modules.decision.services.decision import DecisionService
 from andromeda.modules.disciplines.repository.ports import DisciplineReader
-from andromeda.modules.events.services.events import EventService
+from andromeda.modules.entity_resolution.contracts.ports import BoundedCandidateSelector
+from andromeda.modules.entity_resolution.services.hierarchical import (
+    HierarchicalResolutionService,
+)
 from andromeda.modules.entity_resolution.services.resolvers import (
     CachedEntityCatalog,
     EntityResolverService,
 )
-from andromeda.modules.entity_resolution.services.hierarchical import HierarchicalResolutionService
+from andromeda.modules.events.services.events import EventService
 from andromeda.modules.personal_route.services.personal_route import (
     PersonalRouteService,
 )
@@ -141,7 +149,6 @@ from andromeda.modules.presentation.services.rule_response_policy import (
 )
 from andromeda.modules.proftest.repository.ports import UserProfileRepository
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
-
 
 logger = logging.getLogger("andromeda.composition.container")
 from andromeda.modules.proftest.services.profile_persistence import (
@@ -197,6 +204,8 @@ class AndromedaContainer:
     settings: Settings
     analytics_cache: AnalyticsResultCache = field(default_factory=AnalyticsResultCache)
     _decision_policy_cache: DecisionPolicyPort | None = field(default=None, init=False, repr=False, compare=False)
+    _admission_candidate_selector_cache: BoundedCandidateSelector | None = field(default=None, init=False, repr=False, compare=False)
+    _admission_candidate_selector_built: bool = field(default=False, init=False, repr=False, compare=False)
 
     def program_reader(self, session: Session) -> ProgramReader:
         return SqlAlchemyProgramRepository(session)
@@ -278,6 +287,7 @@ class AndromedaContainer:
         return AdmissionEligibilityService(
             self.admission_benefit_repository(session),
             AdmissionDecisionService(),
+            self.admission_reader(session),
         )
 
     def comparison_service(self, session: Session) -> CompareProgramsService:
@@ -510,11 +520,24 @@ class AndromedaContainer:
         logger.info("jevql_composed mode=%s endpoint_configured=%s", config.mode.value, config.shared_endpoint is not None)
         return JevQLAdapter(config=config)
 
-    def entity_resolver(self) -> EntityResolverService:
+    def entity_resolver(self, session: Session | None = None) -> EntityResolverService:
         return EntityResolverService(
             CachedEntityCatalog(SqlAlchemyEntityResolutionRepository(self.engine)),
             hierarchical=self.jev_tree_resolver(),
+            admission_benefit_reader=(
+                self.admission_benefit_repository(session)
+                if session is not None
+                else None
+            ),
+            candidate_selector=self.admission_candidate_selector(),
         )
+
+    def admission_candidate_selector(self) -> BoundedCandidateSelector | None:
+        if not self._admission_candidate_selector_built:
+            selector, _ = build_admission_candidate_selector(self.settings)
+            object.__setattr__(self, "_admission_candidate_selector_cache", selector)
+            object.__setattr__(self, "_admission_candidate_selector_built", True)
+        return self._admission_candidate_selector_cache
 
     def jev_tree_resolver(self) -> HierarchicalResolutionService | None:
         """Compose jev-tree only for large candidate sets when explicitly enabled."""
@@ -543,7 +566,7 @@ class AndromedaContainer:
             self.analytics_executor(),
             self.admission_fit_service(session),
             self.program_reader(session),
-            entity_resolver=self.entity_resolver(),
+            entity_resolver=self.entity_resolver(session),
             ttl_seconds=self.settings.profile_ttl_seconds,
         )
 

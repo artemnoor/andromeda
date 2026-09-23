@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from decimal import Decimal
 
 from pydantic import Field
@@ -19,6 +18,9 @@ from andromeda.modules.admission_benefits.contracts.public import (
     ConfirmationSubjectRule,
 )
 from andromeda.modules.admission_benefits.contracts.results import EligibilityStatus
+from andromeda.modules.admissions.contracts.subject_identity import (
+    canonical_subject_key,
+)
 from andromeda.shared.contracts.base import ContractModel
 
 logger = logging.getLogger("andromeda.modules.admission_benefits.confirmation")
@@ -49,9 +51,9 @@ def evaluate_confirmation(
     if not subjects:
         return _result(EligibilityStatus.REVIEW_REQUIRED, "Confirmation subject or threshold is missing")
 
-    distinct_subjects = {_normalize_subject(item.subject) for item in subjects}
+    distinct_subjects = {canonical_subject_key(item.subject) for item in subjects}
     if selected_subject is not None:
-        normalized_selection = _normalize_subject(selected_subject)
+        normalized_selection = canonical_subject_key(selected_subject)
         if normalized_selection not in distinct_subjects:
             return _result(EligibilityStatus.REVIEW_REQUIRED, "Selected confirmation subject is not source-listed for this profile")
         subjects = tuple(item for item in subjects if _same_subject(item.subject, selected_subject))
@@ -114,11 +116,7 @@ def evaluate_confirmation(
 
 
 def _same_subject(left: str, right: str) -> bool:
-    return _normalize_subject(left) == _normalize_subject(right)
-
-
-def _normalize_subject(value: str) -> str:
-    return re.sub(r"[^\w]+", " ", value.casefold().replace("ё", "е")).strip()
+    return canonical_subject_key(left) == canonical_subject_key(right)
 
 
 def _result(status: EligibilityStatus, reason: str) -> ConfirmationEvaluation:

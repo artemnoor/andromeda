@@ -108,6 +108,10 @@ def evaluate_program_admission_eligibility(
     result = service.evaluate(
         eligibility_request(program_id, body),
         university_id=body.university_id,
+        offering_id=body.offering_id,
+        study_form=body.study_form,
+        funding_type=body.funding_type,
+        campus_id=body.campus_id,
     )
     response = eligibility_response(result)
     logger.info(

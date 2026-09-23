@@ -30,9 +30,12 @@ from andromeda.modules.admission_benefits.services.confirmation import (
     evaluate_confirmation,
 )
 from andromeda.modules.admission_benefits.services.validity import evaluate_validity
+from andromeda.modules.admissions.contracts.subject_identity import (
+    canonical_subject_key,
+)
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.enums import EducationLevel
-from andromeda.shared.contracts.ids import ProgramId
+from andromeda.shared.contracts.ids import AdmissionCampusId, ProgramId
 
 logger = logging.getLogger("andromeda.modules.admission_benefits.evaluator")
 
@@ -42,6 +45,7 @@ class AdmissionBenefitEvaluationInput(ContractModel):
     direction_code: str
     admission_year: int
     education_level: EducationLevel | None = None
+    campus_id: AdmissionCampusId | None = None
     nps: str | None = None
     applicant: ApplicantAdmissionFacts
     rules: tuple[AdmissionBenefitRule, ...] = ()
@@ -89,19 +93,6 @@ class AdmissionBenefitEvaluator:
             if not request.coverage_gaps:
                 source_gaps.append("admission benefit source coverage is incomplete")
         route = _route_for(eligible)
-        base_score = _score_sum(request.applicant)
-        score_change = sum(
-            (item.effective_score_change or Decimal(0))
-            for item in eligible
-            if item.benefit_type is BenefitType.ONE_HUNDRED_POINTS
-        )
-        effective_score = (
-            base_score + score_change
-            if base_score is not None
-            and eligible
-            and not any(item.benefit_type is BenefitType.BVI for item in eligible)
-            else None
-        )
         logger.info(
             "admission_benefit_evaluation_complete program_id=%s year=%d route=%s status=%s accepted=%d rejected=%d review=%d",
             request.program_id,
@@ -118,8 +109,8 @@ class AdmissionBenefitEvaluator:
             status=status,
             route=route,
             evaluations=tuple(evaluations),
-            base_competitive_score=base_score,
-            effective_competitive_score=effective_score,
+            base_competitive_score=None,
+            effective_competitive_score=None,
             source_gaps=tuple(dict.fromkeys(source_gaps)),
         )
 
@@ -215,6 +206,7 @@ class AdmissionBenefitEvaluator:
                 program_id=request.program_id,
                 nps=request.nps,
                 education_level=request.education_level,
+                campus_id=request.campus_id,
             )
             if scope.status.value != "applicable":
                 status = _scope_status(scope)
@@ -305,23 +297,17 @@ def _route_for(
     from .routes import route_for_benefit_type
 
     for item in evaluations:
+        if item.status is EligibilityStatus.ELIGIBLE and item.benefit_type is BenefitType.BVI:
+            return item.route or route_for_benefit_type(item.benefit_type)
+    for item in evaluations:
         route = item.route or route_for_benefit_type(item.benefit_type)
         if route is not None:
             return route
     return None
 
 
-def _score_sum(applicant: ApplicantAdmissionFacts) -> Decimal | None:
-    if not applicant.ege_scores:
-        return None
-    return sum((item.score for item in applicant.ege_scores), Decimal(0))
-
-
 def _same_subject(left: str, right: str) -> bool:
-    return (
-        left.casefold().replace("ё", "е").strip()
-        == right.casefold().replace("ё", "е").strip()
-    )
+    return canonical_subject_key(left) == canonical_subject_key(right)
 
 
 def _gap(status: EligibilityStatus, reason: str) -> tuple[str, ...]:

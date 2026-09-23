@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import logging
-from hashlib import sha256
+from collections.abc import Callable, Iterable
 from enum import StrEnum
-from typing import Any, Callable, Iterable, TypeVar, cast
+from hashlib import sha256
+from typing import Any, TypeVar, cast
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -34,7 +35,6 @@ from ..database.models import (
     AdmissionQuotaModel,
     AdmissionTuitionModel,
 )
-
 
 logger = logging.getLogger("andromeda.infrastructure.repositories.admissions")
 _Enum = TypeVar("_Enum", bound=StrEnum)
@@ -162,6 +162,7 @@ class SqlAlchemyAdmissionRepository(AdmissionRepository):
             "study_form": _enum_value(offering.study_form, StudyForm.UNKNOWN.value),
             "funding_type": _enum_value(offering.funding_type, FundingType.UNKNOWN.value),
             "scope": offering.scope.value,
+            "campus_id": offering.campus_id,
             "places": offering.places,
             "source_kind": primary.source_kind,
             "source_url": str(primary.source_url),
@@ -173,7 +174,14 @@ class SqlAlchemyAdmissionRepository(AdmissionRepository):
         if existing is None:
             self._session.add(AdmissionOfferingModel(**values))
             return
-        immutable = ("program_id", "admission_year", "study_form", "funding_type", "scope")
+        immutable = (
+            "program_id",
+            "admission_year",
+            "study_form",
+            "funding_type",
+            "scope",
+            "campus_id",
+        )
         for field in immutable:
             if getattr(existing, field) != values[field]:
                 logger.error("admission_identity_conflict offering_id=%s field=%s", offering.id, field)
@@ -260,6 +268,7 @@ class SqlAlchemyAdmissionRepository(AdmissionRepository):
             study_form=_optional_enum(StudyForm, model.study_form),
             funding_type=_optional_enum(FundingType, model.funding_type),
             scope=AdmissionScope(model.scope),
+            campus_id=model.campus_id,
             places=model.places,
             exams=tuple(_exam_contract(row) for row in exams),
             quotas=tuple(_quota_contract(row) for row in quotas),
@@ -323,6 +332,9 @@ def _exam_values(item: ExamRequirement, offering_id: str) -> dict[str, object]:
         "minimum_score": item.minimum_score,
         "is_choice": item.is_choice,
         "is_required": item.is_required,
+        "choice_group_id": item.choice_group_id,
+        "choice_group_min": item.choice_group_min,
+        "choice_group_max": item.choice_group_max,
         **_provenance_values(item.provenance),
     }
 
@@ -371,6 +383,9 @@ def _exam_contract(row: AdmissionExamRequirementModel) -> ExamRequirement:
         minimum_score=row.minimum_score,
         is_choice=row.is_choice,
         is_required=row.is_required,
+        choice_group_id=row.choice_group_id,
+        choice_group_min=row.choice_group_min,
+        choice_group_max=row.choice_group_max,
         provenance=_row_provenance(row),
     )
 

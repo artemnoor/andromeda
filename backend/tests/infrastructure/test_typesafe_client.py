@@ -6,13 +6,14 @@ from andromeda.infrastructure.jev.question_registry import QuestionRegistry
 from andromeda.infrastructure.jev.typesafe_client import TypeSafeJevTransport
 from andromeda.modules.conversation.contracts.decision_definitions import (
     DecisionDefinitionKind,
+    DecisionOutputSchema,
     DecisionPiiPolicy,
     DecisionTimeoutClass,
 )
-from andromeda.modules.conversation.contracts.policy import DecisionModelOperation
-from andromeda.modules.conversation.contracts.policy import DecisionModelSource
-from andromeda.modules.conversation.contracts.decision_definitions import DecisionOutputSchema
-
+from andromeda.modules.conversation.contracts.policy import (
+    DecisionModelOperation,
+    DecisionModelSource,
+)
 
 ROOT = Path(__file__).parents[2]
 REGISTRY = QuestionRegistry.from_file(ROOT / "config/jev/question-definitions.v1.yaml")
@@ -21,7 +22,11 @@ REGISTRY = QuestionRegistry.from_file(ROOT / "config/jev/question-definitions.v1
 class _FakeClient:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
-        self.models = SimpleNamespace(list=lambda **_: SimpleNamespace(models=(SimpleNamespace(name="jev-latest"),)))
+        self.models = SimpleNamespace(
+            list=lambda **_: SimpleNamespace(
+                models=(SimpleNamespace(name="jev-latest"),)
+            )
+        )
         self.last_state = None
         self.last_questions = None
 
@@ -68,10 +73,17 @@ def test_official_sdk_adapter_sends_only_registered_typed_question() -> None:
 
     assert response.identity.provider == "typesafe"
     assert response.identity.source is DecisionModelSource.JEV
-    assert response.payload == {"metric_code": "math", "candidates": ("math",), "confidence": "high"}
+    assert response.payload == {
+        "metric_code": "math",
+        "candidates": ("math",),
+        "confidence": "high",
+    }
     assert set(holder["client"].last_questions) == {"answer"}
     question = holder["client"].last_questions["answer"]
-    assert question.model_dump(mode="json")["criteria"] == {"math": "math", "physics": "physics"}
+    assert question.model_dump(mode="json")["criteria"] == {
+        "math": "math",
+        "physics": "physics",
+    }
     assert transport.health_check() is True
 
 
@@ -87,3 +99,75 @@ def test_client_rejects_non_https_provider_endpoint() -> None:
         assert "HTTPS" in str(exc)
     else:
         raise AssertionError("non-HTTPS endpoint must be rejected")
+
+
+def test_official_sdk_uses_only_supplied_olympiad_profile_choices() -> None:
+    registry = QuestionRegistry.from_file(
+        ROOT / "config/jev/question-definitions.admission.v1.yaml"
+    )
+    holder = {}
+
+    class ResolutionClient(_FakeClient):
+        def system_one(self, *, state, questions, **_):
+            self.last_state = state
+            self.last_questions = questions
+            return SimpleNamespace(
+                model="jev-admission-test",
+                usage=SimpleNamespace(input_tokens=8, output_tokens=1),
+                choices={
+                    "answer": SimpleNamespace(
+                        choice="olympiad-profile:shag-engineering",
+                        confidence=0.95,
+                    )
+                },
+            )
+
+    def factory(**kwargs):
+        holder["client"] = ResolutionClient(**kwargs)
+        return holder["client"]
+
+    transport = TypeSafeJevTransport(
+        api_key="secret-key",
+        endpoint="https://polza.ai/api",
+        model="typesafe/jev",
+        registry=registry,
+        client_factory=factory,
+    )
+    request = JevRequestEnvelope(
+        definition_id="olympiad-profile-resolution.v1",
+        definition_version="olympiad-profile-resolution-definition.v1",
+        definition_kind=DecisionDefinitionKind.ENTITY_RESOLUTION,
+        operation=DecisionModelOperation.RESOLVE_OLYMPIAD_PROFILE,
+        redacted_payload={
+            "text": "шаг будущее инженерное дело",
+            "candidates": (
+                {
+                    "candidate_id": "olympiad-profile:shag-engineering",
+                    "label": "Шаг в будущее — Инженерное дело",
+                },
+                {
+                    "candidate_id": "olympiad-profile:shag-programming",
+                    "label": "Шаг в будущее — Программирование",
+                },
+            ),
+        },
+        correlation_id="jev:test-admission-resolution",
+        timeout_seconds=2.0,
+        timeout_class=DecisionTimeoutClass.INTERACTIVE,
+        pii_policy=DecisionPiiPolicy.SANITIZED,
+        output_schema=DecisionOutputSchema(fields=("candidate_id", "confidence")),
+    )
+
+    response = transport.request_envelope(request)
+    client = holder["client"]
+
+    assert response.payload == {
+        "candidate_id": "olympiad-profile:shag-engineering",
+        "confidence": "high",
+    }
+    assert client.last_questions["answer"].model_dump(mode="json")["criteria"] == {
+        "olympiad-profile:shag-engineering": "Шаг в будущее — Инженерное дело",
+        "olympiad-profile:shag-programming": "Шаг в будущее — Программирование",
+        "unresolved": "The phrase does not identify one supplied candidate.",
+    }
+    assert client.last_state["text"] == "шаг будущее инженерное дело"

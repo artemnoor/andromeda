@@ -22,6 +22,12 @@ from andromeda.modules.admission_benefits.services.admission_decision import (
 from andromeda.modules.admission_benefits.services.evaluator import (
     AdmissionBenefitEvaluationInput,
 )
+from andromeda.modules.admissions.contracts.public import (
+    AdmissionOffering,
+    FundingType,
+    StudyForm,
+)
+from andromeda.modules.admissions.repository.ports import AdmissionReader
 from andromeda.shared.contracts.enums import EducationLevel
 from andromeda.shared.contracts.ids import (
     DirectionCode,
@@ -65,9 +71,10 @@ class AdmissionBenefitCatalogService:
         admission_year: EducationYear,
         *,
         include_review: bool = False,
+        campus_id: str | None = None,
     ) -> tuple[AdmissionBenefitRule, ...]:
         return self._reader.get_rules_for_program(
-            program_id, admission_year, include_review=include_review
+            program_id, admission_year, include_review=include_review, campus_id=campus_id
         )
 
     def direction_rules(
@@ -127,9 +134,11 @@ class AdmissionEligibilityService:
         self,
         reader: AdmissionBenefitReader,
         decision_service: AdmissionDecisionService | None = None,
+        admission_reader: AdmissionReader | None = None,
     ) -> None:
         self._reader = reader
         self._decision_service = decision_service or AdmissionDecisionService()
+        self._admission_reader = admission_reader
 
     def evaluate(
         self,
@@ -137,12 +146,25 @@ class AdmissionEligibilityService:
         *,
         university_id: UniversityId,
         include_review: bool = True,
+        offering_id: str | None = None,
+        study_form: StudyForm | None = None,
+        funding_type: FundingType | None = None,
+        campus_id: str | None = None,
     ) -> AdmissionDecisionResult:
         started = perf_counter()
+        offering, available_offerings, offering_gap = self._select_offering(
+            request.program_id,
+            request.admission_year,
+            offering_id=offering_id,
+            study_form=study_form,
+            funding_type=funding_type,
+            campus_id=campus_id,
+        )
         rules = self._reader.get_rules_for_program(
             request.program_id,
             request.admission_year,
             include_review=include_review,
+            campus_id=offering.campus_id if offering is not None else None,
         )
         catalog = self._reader.get_catalog(
             university_id, request.admission_year, request.education_level
@@ -156,6 +178,7 @@ class AdmissionEligibilityService:
         result = self._decision_service.evaluate(
             request.model_copy(
                 update={
+                    "campus_id": offering.campus_id if offering is not None else None,
                     "rules": rules,
                     "coverage": catalog.coverage if catalog is not None else None,
                     "coverage_gaps": tuple(gap.message for gap in catalog.source_gaps)
@@ -164,7 +187,20 @@ class AdmissionEligibilityService:
                 }
             ),
             individual_policy=policy,
+            offering=offering,
         )
+        if offering_gap:
+            score = result.competitive_score
+            if score is not None:
+                score = score.model_copy(
+                    update={
+                        "available_offering_ids": tuple(item.id for item in available_offerings),
+                        "source_gaps": tuple(dict.fromkeys((*score.source_gaps, offering_gap))),
+                    }
+                )
+                result = result.model_copy(
+                    update={"competitive_score": score, "source_gaps": tuple(dict.fromkeys((*result.source_gaps, offering_gap)))}
+                )
         logger.info(
             "admission_eligibility_service_complete program_id=%s university_id=%s year=%d rules=%d policy=%s status=%s duration_ms=%d",
             request.program_id,
@@ -176,6 +212,39 @@ class AdmissionEligibilityService:
             _elapsed_ms(started),
         )
         return result
+
+    def _select_offering(
+        self,
+        program_id: ProgramId,
+        admission_year: EducationYear,
+        *,
+        offering_id: str | None,
+        study_form: StudyForm | None,
+        funding_type: FundingType | None,
+        campus_id: str | None,
+    ) -> tuple[AdmissionOffering | None, tuple[AdmissionOffering, ...], str | None]:
+        if self._admission_reader is None:
+            return None, (), "Source-backed admission offering lookup is unavailable"
+        catalog = self._admission_reader.get_for_program(program_id)
+        matches = tuple(
+            item
+            for item in catalog.offerings
+            if item.admission_year == admission_year
+            and (offering_id is None or item.id == offering_id)
+            and (study_form is None or item.study_form is study_form)
+            and (funding_type is None or item.funding_type is funding_type)
+            and (campus_id is None or item.campus_id == campus_id)
+        )
+        if len(matches) == 1:
+            return matches[0], matches, None
+        if not matches:
+            reason = (
+                "Requested offering id does not match this program/year"
+                if offering_id is not None
+                else "No source-backed admission offering matches the requested program/year/selectors"
+            )
+            return None, (), reason
+        return None, matches, "Multiple source-backed offerings match; select one offering or narrow form/funding/campus"
 
 
 def _elapsed_ms(started: float) -> int:

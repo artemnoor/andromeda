@@ -42,7 +42,9 @@ def test_failed_confirmation_does_not_replace_subject_with_100() -> None:
     )
     result = AdmissionBenefitEvaluator().evaluate(request)
     assert result.status is EligibilityStatus.NOT_ELIGIBLE
-    assert result.base_competitive_score == Decimal(74)
+    # An offering is required to calculate a competitive score; legal
+    # eligibility evaluation alone must not infer one from arbitrary inputs.
+    assert result.base_competitive_score is None
     assert result.effective_competitive_score is None
 
 

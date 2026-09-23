@@ -35,6 +35,7 @@ class DecisionModelOperation(StrEnum):
     CHOOSE_NEXT_ACTION = "choose_next_action"
     CHOOSE_PRESENTATION = "choose_presentation"
     CLASSIFY_SEMANTIC_FEATURES = "classify_semantic_features"
+    RESOLVE_OLYMPIAD_PROFILE = "resolve_olympiad_profile"
 
 
 class DecisionModelSource(StrEnum):
@@ -115,6 +116,20 @@ class SemanticFeatureDecision(ContractModel):
     fallback_reason: str | None = Field(default=None, max_length=256)
 
 
+class CandidateResolutionOption(ContractModel):
+    candidate_id: str = Field(min_length=1, max_length=256)
+    label: str = Field(min_length=1, max_length=512)
+
+
+class CandidateResolutionDecision(ContractModel):
+    operation: DecisionModelOperation = DecisionModelOperation.RESOLVE_OLYMPIAD_PROFILE
+    candidate_id: str | None = Field(default=None, max_length=256)
+    source: DecisionModelSource = DecisionModelSource.DETERMINISTIC
+    confidence: ConfidenceBucket = ConfidenceBucket.LOW
+    model_version: str = "rule-based.v1"
+    fallback_reason: str | None = Field(default=None, max_length=256)
+
+
 class DecisionModelPort(Protocol):
     def resolve_intent(self, text: str) -> IntentDecision: ...
 
@@ -143,6 +158,13 @@ class DecisionModelPort(Protocol):
         feature_codes: tuple[str, ...] = (),
     ) -> SemanticFeatureDecision: ...
 
+    def resolve_olympiad_profile(
+        self,
+        text: str,
+        *,
+        candidates: tuple[CandidateResolutionOption, ...],
+    ) -> CandidateResolutionDecision: ...
+
 
 class DecisionPolicyPort(Protocol):
     def decide(
@@ -156,8 +178,10 @@ class DecisionPolicyPort(Protocol):
 
 
 __all__ = [
-    "DataCapabilities",
+    "CandidateResolutionDecision",
+    "CandidateResolutionOption",
     "ConfidenceBucket",
+    "DataCapabilities",
     "DecisionAction",
     "DecisionModelOperation",
     "DecisionModelPort",

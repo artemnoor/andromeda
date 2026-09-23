@@ -140,6 +140,7 @@ def test_100_points_replaces_only_the_corresponding_ege_subject_after_confirmati
         )
     )
     assert passed.status is EligibilityStatus.ELIGIBLE
-    assert passed.effective_competitive_score == Decimal(190)
+    assert passed.effective_competitive_score is None
+    assert passed.evaluations[0].effective_score_change == Decimal(20)
     assert failed.status is EligibilityStatus.NOT_ELIGIBLE
     assert failed.effective_competitive_score is None

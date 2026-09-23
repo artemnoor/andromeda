@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import os
-from dataclasses import dataclass, field
-import re
-from urllib.parse import unquote, urlsplit
-
 import logging
-
+import os
+import re
+from dataclasses import dataclass, field
+from urllib.parse import unquote, urlsplit
 
 DEFAULT_DATABASE_URL = "sqlite:///./data/andromeda.db"
 DEFAULT_FRONTEND_ORIGIN = "http://localhost:3000,http://127.0.0.1:3000"
@@ -30,7 +28,9 @@ DEFAULT_JEV_MAX_CHARS = 32_000
 DEFAULT_JEV_MAX_CONCURRENCY = 4
 VALID_ENVIRONMENTS = frozenset(("test", "development", "staging", "production"))
 VALID_SAMESITE_VALUES = frozenset(("lax", "strict", "none"))
-JEV_ALLOWED_HOSTS = frozenset(("api.typesafe.ai",))
+JEV_ALLOWED_ENDPOINTS = frozenset(
+    ("https://api.typesafe.ai", "https://polza.ai/api")
+)
 
 logger = logging.getLogger("andromeda.infrastructure.config")
 
@@ -76,6 +76,8 @@ class Settings:
     jev_endpoint: str = DEFAULT_JEV_ENDPOINT
     jev_model: str = "jev-latest"
     jev_api_key: str | None = field(default=None, repr=False)
+    jev_admission_resolution_enabled: bool = False
+    jev_admission_resolution_lock_path: str | None = None
     jev_align_capture_enabled: bool = False
     jevql_enabled: bool = False
     jevql_endpoint: str | None = None
@@ -152,6 +154,12 @@ class Settings:
             jev_endpoint=os.environ.get("JEV_ENDPOINT", DEFAULT_JEV_ENDPOINT).strip(),
             jev_model=os.environ.get("JEV_MODEL", "jev-latest").strip(),
             jev_api_key=_optional_secret_from_environment("TYPESAFE_API_KEY"),
+            jev_admission_resolution_enabled=_bool_from_environment(
+                "JEV_ADMISSION_RESOLUTION_ENABLED", False
+            ),
+            jev_admission_resolution_lock_path=_optional_text_from_environment(
+                "JEV_ADMISSION_RESOLUTION_LOCK_PATH"
+            ),
             jev_align_capture_enabled=_bool_from_environment("JEV_ALIGN_CAPTURE_ENABLED", False),
             jevql_enabled=_bool_from_environment("JEVQL_ENABLED", False),
             jevql_endpoint=_optional_text_from_environment("JEVQL_ENDPOINT"),
@@ -329,7 +337,10 @@ def _validate_jev_settings(settings: Settings) -> None:
         raise ValueError("JEV_CALIBRATION_MODE must be fixture_only, shadow_only or production")
     if settings.jev_allow_fixture_runtime and settings.environment == "production":
         raise ValueError("JEV_ALLOW_FIXTURE_RUNTIME is forbidden in production")
-    _validate_endpoint("JEV_ENDPOINT", settings.jev_endpoint, JEV_ALLOWED_HOSTS)
+    if settings.jev_endpoint not in JEV_ALLOWED_ENDPOINTS:
+        raise ValueError(
+            "JEV_ENDPOINT must match an approved TypeSafe-compatible endpoint"
+        )
     if settings.jevql_enabled:
         if settings.jevql_endpoint is not None:
             _validate_endpoint("JEVQL_ENDPOINT", settings.jevql_endpoint, frozenset(("localhost", "127.0.0.1", "jevql")), allow_internal=True)
@@ -347,6 +358,23 @@ def _validate_jev_settings(settings: Settings) -> None:
             raise ValueError("JEV_ENABLED requires calibration gate and lock path")
     if settings.environment == "test" and (settings.jev_enabled or settings.jev_shadow_enabled):
         raise ValueError("Jev runtime must remain disabled in test environment")
+    if settings.jev_admission_resolution_enabled:
+        if settings.jev_api_key is None:
+            raise ValueError(
+                "JEV_ADMISSION_RESOLUTION_ENABLED requires TYPESAFE_API_KEY"
+            )
+        if not settings.jev_calibration_enabled:
+            raise ValueError(
+                "JEV_ADMISSION_RESOLUTION_ENABLED requires JEV_CALIBRATION_ENABLED"
+            )
+        if not settings.jev_admission_resolution_lock_path:
+            raise ValueError(
+                "JEV_ADMISSION_RESOLUTION_ENABLED requires JEV_ADMISSION_RESOLUTION_LOCK_PATH"
+            )
+        if settings.environment == "test":
+            raise ValueError(
+                "Jev admission resolution must remain disabled in test environment"
+            )
 
 
 def _validate_endpoint(name: str, value: str, allowed_hosts: frozenset[str], *, allow_internal: bool = False) -> None:

@@ -1572,6 +1572,12 @@ export interface components {
             educationLevel?: components["schemas"]["EducationLevel"] | null;
             /** Nps */
             nps?: string | null;
+            /** Offeringid */
+            offeringId?: string | null;
+            studyForm?: components["schemas"]["StudyForm"] | null;
+            fundingType?: components["schemas"]["FundingType"] | null;
+            /** Campusid */
+            campusId?: string | null;
             applicant: components["schemas"]["ApplicantAdmissionFactsRequest"];
         };
         /** AdmissionEligibilityResponse */
@@ -1591,6 +1597,7 @@ export interface components {
             /** Effectivecompetitivescore */
             effectiveCompetitiveScore?: string | null;
             individualAchievements?: components["schemas"]["IndividualAchievementBreakdownResponse"] | null;
+            competitiveScore?: components["schemas"]["EffectiveCompetitiveScoreResponse"] | null;
             /** Sourcegaps */
             sourceGaps: string[];
         };
@@ -2385,7 +2392,7 @@ export interface components {
          * BenefitTargetKind
          * @enum {string}
          */
-        BenefitTargetKind: "direction" | "program" | "nps" | "education_level";
+        BenefitTargetKind: "direction" | "program" | "nps" | "education_level" | "campus";
         /** BenefitTargetResponse */
         BenefitTargetResponse: {
             kind: components["schemas"]["BenefitTargetKind"];
@@ -2750,6 +2757,28 @@ export interface components {
             /** Credits */
             credits: string;
         };
+        /** CompetitiveExamScoreResponse */
+        CompetitiveExamScoreResponse: {
+            /** Subject */
+            subject: string;
+            /** Sourcename */
+            sourceName: string;
+            /** Rawscore */
+            rawScore?: string | null;
+            /** Effectivescore */
+            effectiveScore?: string | null;
+            /** Minimumscore */
+            minimumScore?: string | null;
+            /** Appliedbenefitruleids */
+            appliedBenefitRuleIds: string[];
+            /** Provenance */
+            provenance: components["schemas"]["AdmissionProvenanceResponse"][];
+        };
+        /**
+         * CompetitiveScoreStatus
+         * @enum {string}
+         */
+        CompetitiveScoreStatus: "available" | "partial" | "insufficient_data" | "not_applicable";
         /** ConfidenceResponse */
         "ConfidenceResponse-Input": {
             /** Value */
@@ -3415,6 +3444,32 @@ export interface components {
          * @enum {string}
          */
         EducationLevel: "bachelor" | "specialist" | "master" | "postgraduate";
+        /** EffectiveCompetitiveScoreResponse */
+        EffectiveCompetitiveScoreResponse: {
+            status: components["schemas"]["CompetitiveScoreStatus"];
+            /** Offeringid */
+            offeringId?: string | null;
+            /** Availableofferingids */
+            availableOfferingIds: string[];
+            /** Selectedexamcombination */
+            selectedExamCombination: string[];
+            /** Examscoresbefore */
+            examScoresBefore: components["schemas"]["CompetitiveExamScoreResponse"][];
+            /** Examscoresafterbenefits */
+            examScoresAfterBenefits: components["schemas"]["CompetitiveExamScoreResponse"][];
+            /** Candidateexamsconsidered */
+            candidateExamsConsidered: number;
+            /** Baseexamscore */
+            baseExamScore?: string | null;
+            /** Postbenefitexamscore */
+            postBenefitExamScore?: string | null;
+            /** Individualachievementpoints */
+            individualAchievementPoints?: string | null;
+            /** Effectivetotal */
+            effectiveTotal?: string | null;
+            /** Sourcegaps */
+            sourceGaps: string[];
+        };
         /**
          * EligibilityStatus
          * @enum {string}

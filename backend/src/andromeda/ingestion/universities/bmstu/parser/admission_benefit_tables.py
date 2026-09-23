@@ -201,7 +201,16 @@ def _candidates(document_kind: str, headers: list[str], values: list[str], conte
             scope_text = values[-1]
             if scope_text:
                 result.append(RawAdmissionBenefitCandidate(field="scope_text", value=scope_text))
-                if "все" in _normalize(scope_text):
+                normalized_scope = _normalize(scope_text)
+                if "все нп" in normalized_scope and "кф" in normalized_scope and "мф" in normalized_scope:
+                    result.extend(
+                        (
+                            RawAdmissionBenefitCandidate(field="scope_mode", value="only"),
+                            RawAdmissionBenefitCandidate(field="scope_campus_id", value="campus:bmstu-kaluga"),
+                            RawAdmissionBenefitCandidate(field="scope_campus_id", value="campus:bmstu-mytishchi"),
+                        )
+                    )
+                elif "все" in normalized_scope:
                     result.append(RawAdmissionBenefitCandidate(field="scope_mode", value="all"))
         result.append(RawAdmissionBenefitCandidate(field="benefit_granted", value="yes"))
     if context_scope:

@@ -23,6 +23,8 @@ def _clear_jev(monkeypatch: pytest.MonkeyPatch) -> None:
         "JEVQL_TOKEN",
         "JEV_TREE_ENABLED",
         "JEV_TREE_ENDPOINT",
+        "JEV_ADMISSION_RESOLUTION_ENABLED",
+        "JEV_ADMISSION_RESOLUTION_LOCK_PATH",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -37,6 +39,8 @@ def test_test_defaults_keep_all_external_runtimes_disabled(monkeypatch: pytest.M
     assert settings.jev_shadow_enabled is False
     assert settings.jevql_enabled is False
     assert settings.jev_tree_enabled is False
+    assert settings.jev_admission_resolution_enabled is False
+    assert settings.jev_admission_resolution_lock_path is None
     assert settings.jev_api_key is None
     assert "secret" not in repr(Settings(jev_api_key="secret"))
 
@@ -60,5 +64,5 @@ def test_jev_endpoint_is_allow_listed(monkeypatch: pytest.MonkeyPatch) -> None:
     _clear_jev(monkeypatch)
     monkeypatch.setenv("JEV_ENDPOINT", "https://169.254.169.254/latest")
 
-    with pytest.raises(ValueError, match="allow-listed"):
+    with pytest.raises(ValueError, match="approved TypeSafe-compatible endpoint"):
         Settings.from_environment()

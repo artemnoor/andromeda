@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import logging
 
+from andromeda.modules.analytics.contracts.results import AnalyticsResult
 from andromeda.modules.presentation.contracts.policy import (
     PresentationCapabilities,
     ResponseFormat,
     ResponseRequest,
 )
-from andromeda.modules.semantic.contracts.public import SemanticFeatureValue
-from andromeda.modules.analytics.contracts.results import AnalyticsResult
 
 from ..contracts.policy import (
+    CandidateResolutionDecision,
+    CandidateResolutionOption,
     ConfidenceBucket,
     DataCapabilities,
     DecisionAction,
@@ -125,6 +126,20 @@ class RuleBasedDecisionModel(DecisionModelPort):
             confidence=ConfidenceBucket.UNAVAILABLE,
             model_version=self.version,
             fallback_reason="semantic_classification_requires_semantic_classifier_port",
+        )
+
+    def resolve_olympiad_profile(
+        self,
+        text: str,
+        *,
+        candidates: tuple[CandidateResolutionOption, ...],
+    ) -> CandidateResolutionDecision:
+        del text, candidates
+        return CandidateResolutionDecision(
+            source=DecisionModelSource.FALLBACK,
+            confidence=ConfidenceBucket.UNAVAILABLE,
+            model_version=self.version,
+            fallback_reason="bounded_candidate_selection_unavailable",
         )
 
 

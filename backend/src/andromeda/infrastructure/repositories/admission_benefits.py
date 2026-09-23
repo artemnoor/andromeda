@@ -48,6 +48,7 @@ from andromeda.modules.admission_benefits.repository.ports import (
 )
 from andromeda.shared.contracts.enums import EducationLevel, SourceKind
 from andromeda.shared.contracts.ids import (
+    AdmissionCampusId,
     DirectionCode,
     EducationYear,
     IngestRunId,
@@ -316,6 +317,7 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
         admission_year: EducationYear,
         *,
         include_review: bool = False,
+        campus_id: AdmissionCampusId | None = None,
     ) -> tuple[AdmissionBenefitRule, ...]:
         resolved_program_id = canonical_program_id(program_id)
         program = self._session.get(ProgramModel, resolved_program_id)
@@ -353,6 +355,7 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
                 direction_code=direction.code,
                 program_id=resolved_program_id,
                 education_level=direction.education_level,
+                campus_id=campus_id,
                 scope_rows=rule_scopes.get(_rule_identity(row), ()),
             )
         )
@@ -372,6 +375,7 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
         *,
         education_level: EducationLevel | None = None,
         include_review: bool = False,
+        campus_id: AdmissionCampusId | None = None,
     ) -> tuple[AdmissionBenefitRule, ...]:
         rows = self._rule_models(
             university_id=university_id,
@@ -392,6 +396,7 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
                 row,
                 direction_code=direction_code,
                 education_level=education_level,
+                campus_id=campus_id,
                 scope_rows=rule_scopes.get(_rule_identity(row), ()),
             )
         )
@@ -683,6 +688,7 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
         direction_code: str | None = None,
         program_id: str | None = None,
         education_level: EducationLevel | str | None = None,
+        campus_id: AdmissionCampusId | None = None,
         scope_rows: tuple[AdmissionBenefitRuleScopeModel, ...] | None = None,
     ) -> bool:
         if scope_rows is None:
@@ -738,13 +744,18 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
                 row.admission_year,
             )
             return False
-        return (
-            scope.applies_to(
+        applicability = scope.applies_to(
                 direction_code=direction_code,
                 program_id=program_id,
                 education_level=education_level,
-            ).status.value
-            == "applicable"
+                campus_id=campus_id,
+            )
+        if applicability.status.value == "applicable":
+            return True
+        return (
+            campus_id is None
+            and applicability.status.value == "insufficient_data"
+            and any(target.kind is BenefitTargetKind.CAMPUS for target in (*scope.targets, *scope.excluded_targets))
         )
 
     def _rule_scope_rows(
@@ -1005,10 +1016,23 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
         provenance = value.provenance[0]
         identity = (value.id, value.admission_year, provenance.source_snapshot_hash)
         row = self._session.get(AdmissionBenefitOlympiadProfileModel, identity)
+        olympiad_source_hash = self._session.scalar(
+            select(AdmissionBenefitOlympiadModel.source_snapshot_hash)
+            .where(
+                AdmissionBenefitOlympiadModel.id == value.olympiad_id,
+                AdmissionBenefitOlympiadModel.admission_year == value.admission_year,
+            )
+            .order_by(AdmissionBenefitOlympiadModel.source_snapshot_hash)
+            .limit(1)
+        )
+        if olympiad_source_hash is None:
+            raise ValueError(
+                "olympiad profile cannot be persisted without its source-backed parent"
+            )
         values = {
             "id": value.id,
             "olympiad_id": value.olympiad_id,
-            "olympiad_source_snapshot_hash": provenance.source_snapshot_hash,
+            "olympiad_source_snapshot_hash": olympiad_source_hash,
             "admission_year": value.admission_year,
             "profile_name": value.profile_name,
             "status": RuleDataStatus.ACTIVE.value,

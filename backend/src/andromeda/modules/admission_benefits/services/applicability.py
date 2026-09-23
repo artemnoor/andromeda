@@ -18,12 +18,14 @@ def evaluate_scope(
     program_id: str | None = None,
     nps: str | None = None,
     education_level: EducationLevel | str | None = None,
+    campus_id: str | None = None,
 ) -> ScopeApplicability:
     result = rule.scope.applies_to(
         direction_code=direction_code,
         program_id=program_id,
         nps=nps,
         education_level=education_level,
+        campus_id=campus_id,
     )
     logger.info(
         "admission_benefit_scope_evaluated rule_id=%s mode=%s status=%s",

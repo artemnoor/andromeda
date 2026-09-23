@@ -9,7 +9,13 @@ from pydantic import Field, HttpUrl, model_validator
 
 from ...modules.admission_benefits.contracts.coverage import AdmissionBenefitCoverage
 from ...shared.contracts.base import ContractModel
-from ...shared.contracts.ids import IngestRunId, SourceHash, UniversityId
+from ...shared.contracts.ids import (
+    AdmissionCampusId,
+    AdmissionExamChoiceGroupId,
+    IngestRunId,
+    SourceHash,
+    UniversityId,
+)
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
@@ -210,6 +216,25 @@ class RawAdmissionExamRequirement(ContractModel):
     minimum_score: Decimal | None = Field(default=None, strict=True, ge=0, le=100, max_digits=5, decimal_places=2)
     is_choice: bool = False
     is_required: bool = True
+    choice_group_id: AdmissionExamChoiceGroupId | None = None
+    choice_group_min: int | None = Field(default=None, strict=True, ge=1, le=20)
+    choice_group_max: int | None = Field(default=None, strict=True, ge=1, le=20)
+
+    @model_validator(mode="after")
+    def validate_choice_metadata(self) -> RawAdmissionExamRequirement:
+        if self.choice_group_id is None and (
+            self.choice_group_min is not None or self.choice_group_max is not None
+        ):
+            raise ValueError("exam choice cardinality requires a choice group")
+        if (
+            self.choice_group_min is not None
+            and self.choice_group_max is not None
+            and self.choice_group_min > self.choice_group_max
+        ):
+            raise ValueError("exam choice group minimum cannot exceed its maximum")
+        if self.choice_group_id is not None and not self.is_choice:
+            raise ValueError("exam choice group members must be marked as choices")
+        return self
 
 
 class RawAdmissionQuota(ContractModel):
@@ -259,6 +284,7 @@ class RawAdmissionRecord(ContractModel):
     study_form: str | None = Field(default=None, min_length=1, max_length=64)
     funding_type: str | None = Field(default=None, min_length=1, max_length=64)
     scope: str = Field(default="program", min_length=1, max_length=32)
+    campus_id: AdmissionCampusId | None = None
     places: int | None = Field(default=None, strict=True, ge=0, le=100_000)
     exams: tuple[RawAdmissionExamRequirement, ...] = ()
     quotas: tuple[RawAdmissionQuota, ...] = ()

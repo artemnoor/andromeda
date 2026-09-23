@@ -7,6 +7,7 @@ from enum import StrEnum
 
 from pydantic import Field
 
+from andromeda.modules.admissions.contracts.public import AdmissionProvenance
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.ids import (
     AdmissionBenefitRuleId,
@@ -82,6 +83,40 @@ class IndividualAchievementBreakdown(ContractModel):
     source_gaps: tuple[ShortText, ...] = ()
 
 
+class CompetitiveScoreStatus(StrEnum):
+    AVAILABLE = "available"
+    PARTIAL = "partial"
+    INSUFFICIENT_DATA = "insufficient_data"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class CompetitiveExamScore(ContractModel):
+    subject: NonEmptyText
+    source_name: NonEmptyText
+    raw_score: Decimal | None = Field(default=None, strict=True, ge=Decimal(0), le=Decimal(100), max_digits=5, decimal_places=2)
+    effective_score: Decimal | None = Field(default=None, strict=True, ge=Decimal(0), le=Decimal(100), max_digits=5, decimal_places=2)
+    minimum_score: Decimal | None = Field(default=None, strict=True, ge=Decimal(0), le=Decimal(100), max_digits=5, decimal_places=2)
+    applied_benefit_rule_ids: tuple[AdmissionBenefitRuleId, ...] = ()
+    provenance: tuple[AdmissionProvenance, ...] = Field(min_length=1)
+
+
+class EffectiveCompetitiveScore(ContractModel):
+    """Offering-specific and reproducible competitive-score calculation."""
+
+    status: CompetitiveScoreStatus
+    offering_id: NonEmptyText | None = None
+    available_offering_ids: tuple[NonEmptyText, ...] = ()
+    selected_exam_combination: tuple[NonEmptyText, ...] = ()
+    exam_scores_before: tuple[CompetitiveExamScore, ...] = ()
+    exam_scores_after_benefits: tuple[CompetitiveExamScore, ...] = ()
+    candidate_exams_considered: int = Field(default=0, strict=True, ge=0)
+    base_exam_score: Decimal | None = Field(default=None, strict=True, ge=Decimal(0), le=Decimal(500), max_digits=6, decimal_places=2)
+    post_benefit_exam_score: Decimal | None = Field(default=None, strict=True, ge=Decimal(0), le=Decimal(500), max_digits=6, decimal_places=2)
+    individual_achievement_points: Decimal | None = Field(default=None, strict=True, ge=Decimal(0), le=Decimal(100), max_digits=6, decimal_places=2)
+    effective_total: Decimal | None = Field(default=None, strict=True, ge=Decimal(0), le=Decimal(600), max_digits=6, decimal_places=2)
+    source_gaps: tuple[ShortText, ...] = ()
+
+
 class AdmissionEligibilityResult(ContractModel):
     program_id: ProgramId
     admission_year: EducationYear
@@ -106,6 +141,7 @@ class AdmissionDecisionResult(ContractModel):
     base_competitive_score: Decimal | None = None
     individual_achievement_points: Decimal | None = None
     effective_competitive_score: Decimal | None = None
+    competitive_score: EffectiveCompetitiveScore | None = None
     source_gaps: tuple[ShortText, ...] = ()
 
 

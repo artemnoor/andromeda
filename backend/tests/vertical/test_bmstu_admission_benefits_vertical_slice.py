@@ -50,6 +50,7 @@ def _client(tmp_path: Path) -> TestClient:
                 *captured.snapshots,
                 _rules_snapshot(),
                 _benefit_snapshot("appendix-5-1-extract.json", "appendix_5_1"),
+                _benefit_snapshot("appendix-5-2-extract.json", "appendix_5_2"),
                 _benefit_snapshot("appendix-5-3-extract.json", "appendix_5_3"),
                 _benefit_snapshot("appendix-5-4-extract.json", "appendix_5_4"),
                 _benefit_snapshot("appendix-5-5-extract.json", "appendix_5_5"),
@@ -57,6 +58,11 @@ def _client(tmp_path: Path) -> TestClient:
                 _benefit_snapshot(
                     "shag-engineering.html.extract.json",
                     "engineering",
+                    source_prefix="bmstu_olympiad_profile",
+                ),
+                _benefit_snapshot(
+                    "shag-programming.html.extract.json",
+                    "programming",
                     source_prefix="bmstu_olympiad_profile",
                 ),
             ),
@@ -93,15 +99,22 @@ def test_official_fixture_reaches_catalog_and_provenance_api(tmp_path: Path) -> 
     assert len(evidence["sourceSnapshotHash"]) == 64
     assert evidence["sourceRunId"] == RUN_ID
     assert evidence["row"] is not None
+    shag_olympiad_id = next(
+        item["id"]
+        for item in payload["olympiads"]
+        if "шаг в будущее" in item["officialName"].casefold()
+    )
     bvi_rule = next(
         rule
         for rule in payload["benefitRules"]
-        if rule["benefitType"] == "bvi" and rule["route"] == "olympiad"
+        if rule["benefitType"] == "bvi"
+        and rule["route"] == "olympiad"
+        and rule["olympiadId"] == shag_olympiad_id
     )
     assert bvi_rule["validity"]["maxAgeYears"] == 4
     assert any(
-        condition["kind"] == "confirmation_score" and condition["normalizedValue"] == "75"
-        for condition in bvi_rule["conditions"]
+        str(subject["minimumScore"]) in {"75", "75.00"}
+        for subject in bvi_rule["confirmationSubjects"]
     )
     infochemistry = next(
         rule
@@ -176,7 +189,8 @@ def test_applicant_request_keeps_historical_bvi_separate_from_eligibility(tmp_pa
     assert payload["route"] is None
     assert payload["evaluations"]
     assert not any(item["status"] == "eligible" for item in payload["evaluations"])
-    assert payload["effectiveCompetitiveScore"] == "95"
+    assert payload["effectiveCompetitiveScore"] is None
+    assert payload["competitiveScore"]["status"] == "insufficient_data"
 
 
 def test_source_backed_active_bvi_rule_reaches_program_and_eligibility_api(tmp_path: Path) -> None:
@@ -196,6 +210,7 @@ def test_source_backed_active_bvi_rule_reaches_program_and_eligibility_api(tmp_p
     )
     assert program_rules.status_code == 200
     assert shag_winner["id"] in {rule["id"] for rule in program_rules.json()["rules"]}
+    confirmation_subject = shag_winner["confirmationSubjects"][0]["subject"]
 
     response = client.post(
         f"/programs/{PROGRAM_ID}/admission-eligibility",
@@ -204,13 +219,14 @@ def test_source_backed_active_bvi_rule_reaches_program_and_eligibility_api(tmp_p
             "directionCode": "09.03.01",
             "admissionYear": 2026,
             "applicant": {
-                "egeScores": [{"subject": "Информатика", "score": 95}],
+                "egeScores": [{"subject": confirmation_subject, "score": 95}],
                 "olympiadAchievements": [
                     {
                         "olympiadId": shag_winner["olympiadId"],
                         "olympiadProfileId": shag_winner["olympiadProfileId"],
                         "resultYear": 2026,
                         "resultType": "winner",
+                        "confirmationSubject": confirmation_subject,
                     }
                 ],
             },

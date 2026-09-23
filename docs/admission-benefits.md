@@ -69,9 +69,17 @@ POST /programs/{program_id}/admission-eligibility
 
 `POST /programs/{program_id}/admission-eligibility` принимает ЕГЭ, внутренние экзамены, олимпиады и ИД. Ответ содержит route, status, breakdown, effective score и evidence. При БВИ effective score не используется как основной результат; при 100 баллах score change применяется только после проверки всех условий. Исторические observations не участвуют в этом вычислении.
 
+## Offering-aware competitive score
+
+The eligibility endpoint may select one source-backed `AdmissionOffering` by `offeringId`, or by the requested form/funding/campus. If none or multiple match, Andromeda does not pick an arbitrary offering. The response includes `competitiveScore`: selected offering, permitted exam combination, scores before/after rights, ID points, effective total, evidence and source gaps.
+
+The legal route is evaluated first. Confirmed BVI makes the general competitive score `not_applicable`. Otherwise only required exams and source-defined choice-group cardinalities are counted; unused EGE scores are not added. A confirmed 100-point right replaces only its target subject, even when the applicant did not provide a raw score for that subject. Verified individual-achievement points are then composed under the persisted caps.
+
+Olympiad/profile name resolution reads only the persisted source-backed catalog for the requested university and admission year. Exact deterministic matches bypass Jev. An unresolved candidate set may be sent to the optional bounded selector (maximum eight candidates), whose only valid output is one supplied canonical ID. Its dedicated production calibration lock is separate and opt-in. Jev never decides legal eligibility.
+
 ## Current data-quality boundary
 
-Покрытие проверяется отдельным отчётом. Нельзя заявлять «полностью покрыли МГТУ», если manifest показывает missing documents, unresolved directions, conflicts или review rows. Для неполного source run API возвращает status/provenance/source gaps, а не скрывает их пустым списком.
+Покрытие persisted snapshot проверяется командой `uv run --project backend --locked --extra dev python backend/scripts/check_bmstu_admission_benefits_release.py --year 2026`. Код `2` означает, что набор не готов к production serving: обязательные документы/парсинг неполны, есть конфликт или небезопасное активное правило. `review_required` строки видимы, но не считаются поддержанными правами. Нельзя заявлять «полностью покрыли МГТУ», если manifest показывает missing documents, unresolved targets, conflicts или review rows. Для неполного source run API возвращает status/provenance/source gaps, а не скрывает их пустым списком.
 
 ## Adding another university
 

@@ -25,6 +25,7 @@ class BenefitTargetKind(StrEnum):
     PROGRAM = "program"
     NPS = "nps"
     EDUCATION_LEVEL = "education_level"
+    CAMPUS = "campus"
 
 
 class BenefitConditionKind(StrEnum):
@@ -76,6 +77,9 @@ class BenefitTarget(ContractModel):
                 value = EducationLevel(value.casefold()).value
             except ValueError:
                 raise ValueError("education level target is unsupported")
+        elif kind is BenefitTargetKind.CAMPUS:
+            if re.fullmatch(r"campus:[a-z0-9][a-z0-9-]{0,62}", value) is None:
+                raise ValueError("campus target must use a canonical campus id")
         else:
             value = value.casefold()
         return {**data, "value": value}
@@ -122,6 +126,7 @@ class BenefitScope(ContractModel):
         program_id: str | None = None,
         nps: str | None = None,
         education_level: EducationLevel | str | None = None,
+        campus_id: str | None = None,
     ) -> ScopeApplicability:
         if self.unresolved_targets:
             return ScopeApplicability(
@@ -133,6 +138,7 @@ class BenefitScope(ContractModel):
             BenefitTargetKind.PROGRAM: _normalize_candidate(BenefitTargetKind.PROGRAM, program_id),
             BenefitTargetKind.NPS: _normalize_candidate(BenefitTargetKind.NPS, nps),
             BenefitTargetKind.EDUCATION_LEVEL: _normalize_candidate(BenefitTargetKind.EDUCATION_LEVEL, education_level),
+            BenefitTargetKind.CAMPUS: _normalize_candidate(BenefitTargetKind.CAMPUS, campus_id),
         }
         if self.mode is BenefitScopeMode.ONLY:
             return _evaluate_only(self.targets, candidates)
@@ -190,6 +196,8 @@ def _normalize_candidate(kind: BenefitTargetKind, value: object) -> str | None:
             return EducationLevel(str(value).casefold()).value
         except ValueError:
             return str(value).casefold().strip()
+    if kind is BenefitTargetKind.CAMPUS:
+        return str(value).strip().casefold()
     return str(value).casefold().strip()
 
 
