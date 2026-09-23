@@ -30,6 +30,14 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(
     engine = create_engine(database_url)
     try:
         inspector = inspect(engine)
+        version_column = next(
+            column
+            for column in inspector.get_columns("alembic_version")
+            if column["name"] == "version_num"
+        )
+        assert version_column["type"].length >= len(
+            "0038_admission_offering_scope_and_exam_choices"
+        )
         assert "educational_programs" in inspector.get_table_names()
         assert "discipline_areas" in inspector.get_table_names()
         assert "user_profiles" in inspector.get_table_names()
