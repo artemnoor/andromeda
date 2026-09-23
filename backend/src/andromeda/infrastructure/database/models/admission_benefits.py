@@ -487,11 +487,11 @@ class AdmissionBenefitIngestionCoverageModel(Base):
     __tablename__ = "admission_benefit_ingestion_coverage"
 
     university_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("universities.id"), primary_key=True
+        String(64), ForeignKey("universities.id", ondelete="CASCADE"), primary_key=True
     )
     admission_year: Mapped[int] = mapped_column(Integer, primary_key=True)
     source_run_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("ingest_runs.id"), primary_key=True
+        String(64), ForeignKey("ingest_runs.id", ondelete="CASCADE"), primary_key=True
     )
     manifest_hash: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("source_snapshots.content_sha256"), nullable=True
