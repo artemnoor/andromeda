@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from andromeda.infrastructure.jev.question_registry import QuestionRegistry, QuestionRegistryExport
+from andromeda.infrastructure.jev.question_registry import (
+    QuestionRegistry,
+    QuestionRegistryExport,
+)
 
 
 class EvaluationExportError(ValueError):
@@ -24,6 +27,8 @@ class JevcalExportBundle:
 def build_jevcal_bundle(
     registry: QuestionRegistry,
     source_rows: tuple[dict[str, object], ...],
+    *,
+    definition_ids: tuple[str, ...] | None = None,
 ) -> JevcalExportBundle:
     """Convert validated Andromeda rows to jevcal ``questions``/``labels`` input."""
 
@@ -32,7 +37,16 @@ def build_jevcal_bundle(
     if len(by_id) != len(exports):
         raise EvaluationExportError("registry export contains duplicate definition IDs")
 
-    labels_by_definition: dict[str, set[str]] = {definition_id: set() for definition_id in by_id}
+    selected_ids = tuple(definition_ids) if definition_ids is not None else tuple(by_id)
+    if not selected_ids or len(selected_ids) != len(set(selected_ids)):
+        raise EvaluationExportError("selected definition IDs must be non-empty and unique")
+    unknown_ids = set(selected_ids) - set(by_id)
+    if unknown_ids:
+        raise EvaluationExportError(
+            "unknown selected definition IDs: " + ", ".join(sorted(unknown_ids))
+        )
+
+    labels_by_definition: dict[str, set[str]] = {definition_id: set() for definition_id in selected_ids}
     native_rows: list[dict[str, object]] = []
     seen_case_ids: set[str] = set()
     for row in source_rows:
@@ -41,6 +55,10 @@ def build_jevcal_bundle(
             raise EvaluationExportError(f"duplicate case ID: {case_id}")
         seen_case_ids.add(case_id)
         definition_id = _required_string(row, "definition_id")
+        if definition_id not in labels_by_definition:
+            raise EvaluationExportError(
+                f"case {case_id} is outside the selected calibration definitions"
+            )
         definition = by_id.get(definition_id)
         if definition is None:
             raise EvaluationExportError(f"unknown definition ID: {definition_id}")
@@ -67,8 +85,8 @@ def build_jevcal_bundle(
         )
 
     questions = {
-        definition.definition_id: _question_for(definition, labels_by_definition[definition.definition_id])
-        for definition in exports
+        definition_id: _question_for(by_id[definition_id], labels_by_definition[definition_id])
+        for definition_id in selected_ids
     }
     return JevcalExportBundle(
         questions=questions,
@@ -83,9 +101,7 @@ def _question_for(definition: QuestionRegistryExport, observed_labels: set[str])
         criteria = {option["code"]: option["description"] for option in definition.options}
     elif definition.kind == "metric":
         criteria = {value: value for value in sorted(observed_labels) if value}
-    elif definition.kind == "next_action":
-        criteria = {value: value for value in definition.output_allowed_values}
-    elif definition.kind == "presentation":
+    elif definition.kind == "next_action" or definition.kind == "presentation":
         criteria = {value: value for value in definition.output_allowed_values}
     elif definition.kind == "semantic_feature":
         criteria = {value: value for value in sorted(observed_labels) if value}

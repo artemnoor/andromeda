@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from andromeda.shared.contracts.versions import DECISION_POLICY_VERSION
 from andromeda.modules.analytics.contracts.results import AnalyticsResult
+from andromeda.shared.contracts.versions import DECISION_POLICY_VERSION
 
 from ..contracts.policy import (
     DataCapabilities,
@@ -30,6 +30,8 @@ class RuleBasedDecisionPolicy:
         if session.next_action in {
             NextAction.ASK_FOR_EXAMS,
             NextAction.ASK_FOR_UNIVERSITY_SCOPE,
+            NextAction.ASK_FOR_FUNDING,
+            NextAction.ASK_FOR_STUDY_FORM,
             NextAction.ASK_FOR_METRIC,
             NextAction.ASK_FOR_ENTITY,
             NextAction.CLARIFY,
@@ -62,6 +64,20 @@ def _clarification(session: QuerySession) -> DecisionPolicyResult:
             question="Искать по конкретному вузу, нескольким вузам или по всем?",
             options=("Конкретный вуз", "Несколько вузов", "Любые вузы"),
             reason="Admission search needs an explicit university scope",
+        )
+    if session.next_action is NextAction.ASK_FOR_FUNDING:
+        return DecisionPolicyResult(
+            action=DecisionAction.ASK_CLARIFICATION,
+            question="Рассматривать бюджет или платное обучение?",
+            options=("Бюджет", "Платное"),
+            reason="Funding type materially changes admission offerings and fit",
+        )
+    if session.next_action is NextAction.ASK_FOR_STUDY_FORM:
+        return DecisionPolicyResult(
+            action=DecisionAction.ASK_CLARIFICATION,
+            question="Уточните форму обучения: очная, заочная, вечерняя или онлайн?",
+            options=("Очная", "Заочная", "Вечерняя", "Онлайн"),
+            reason="The request mentions more than one study form",
         )
     if session.next_action is NextAction.ASK_FOR_METRIC:
         question = "Какой показатель сравнить: математику, программирование, AI или другой?"

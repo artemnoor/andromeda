@@ -330,7 +330,7 @@ npm ci --ignore-scripts                 # from backend/jev-tree-bridge
 uv run --locked --extra evaluation --extra dev python scripts/evaluate_jev_ecosystem.py --output .tmp/jev-report.json --check
 ```
 
-The report labels provider paths as unavailable/not-run when credentials or an
-engine are absent. That is a safe degraded result, not a production
+The offline report never invokes provider paths and marks them `not_run_offline`;
+that is not a credential or service-health check and is not a production
 calibration claim. The official TypeSafe client and System One benchmark are
 opt-in; raw provider prompts, responses, cookies and keys are never committed.

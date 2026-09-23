@@ -38,7 +38,7 @@
     },
     {
       "case_id": "f-admission-complete",
-      "text": "Куда я прохожу с 270: русский 90, математика 90, информатика 90, university:bmstu",
+      "text": "Куда я прохожу с 270: русский 90, математика 90, информатика 90, university:bmstu, бюджет",
       "expected_intent": "admission_search",
       "expected_metric": null,
       "expected_action": "execute_query"

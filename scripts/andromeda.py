@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import argparse
 import os
-from pathlib import Path
 import shutil
 import socket
 import subprocess
 import sys
 import tempfile
-from typing import Sequence
-
+from collections.abc import Sequence
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
@@ -148,30 +147,52 @@ def _migration_gate() -> None:
 
 
 def _production_smoke() -> None:
-    with tempfile.TemporaryDirectory(prefix="andromeda-production-smoke-") as temp_dir:
+    with (
+        tempfile.TemporaryDirectory(prefix="andromeda-production-smoke-") as temp_dir,
+        tempfile.TemporaryDirectory(prefix=".next-smoke-", dir=FRONTEND) as next_dist_dir,
+    ):
         database = Path(temp_dir) / "fixture.db"
         api_port = _free_local_port()
         frontend_port = _free_local_port()
         while frontend_port == api_port:
             frontend_port = _free_local_port()
-        _run(
-            "production-like fixture smoke",
-            _backend_command(
-                "backend/scripts/run_andromeda_demo.py",
-                "--mode",
-                "fixture",
-                "--database-url",
-                f"sqlite:///{database.as_posix()}",
-                "--api-port",
-                str(api_port),
-                "--frontend-port",
-                str(frontend_port),
-                "--check",
-                "--log-level",
-                "INFO",
-                browser=True,
-            ),
-        )
+        tsconfig_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                prefix="tsconfig-smoke-",
+                suffix=".json",
+                dir=FRONTEND,
+                delete=False,
+            ) as tsconfig_file:
+                tsconfig_path = Path(tsconfig_file.name)
+            shutil.copyfile(FRONTEND / "tsconfig.json", tsconfig_path)
+            environment = {
+                **os.environ,
+                "ANDROMEDA_NEXT_DEV_DIST_DIR": Path(next_dist_dir).name,
+                "ANDROMEDA_NEXT_DEV_TSCONFIG_PATH": tsconfig_path.name,
+            }
+            _run(
+                "production-like fixture smoke",
+                _backend_command(
+                    "backend/scripts/run_andromeda_demo.py",
+                    "--mode",
+                    "fixture",
+                    "--database-url",
+                    f"sqlite:///{database.as_posix()}",
+                    "--api-port",
+                    str(api_port),
+                    "--frontend-port",
+                    str(frontend_port),
+                    "--check",
+                    "--log-level",
+                    "INFO",
+                    browser=True,
+                ),
+                env=environment,
+            )
+        finally:
+            if tsconfig_path is not None:
+                tsconfig_path.unlink(missing_ok=True)
 
 
 def _free_local_port() -> int:

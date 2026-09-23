@@ -64,6 +64,7 @@ def build_decision_policy(
                 min_support=settings.jev_calibration_min_support,
                 min_heldout=settings.jev_calibration_min_heldout,
                 max_age_seconds=settings.jev_calibration_max_age_seconds,
+                required_definition_ids=("next-action.v1",),
             )
             lock_id = calibration.artifact_id
         if settings.jev_api_key is None:

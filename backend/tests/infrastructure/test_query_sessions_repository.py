@@ -4,15 +4,21 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from sqlalchemy.orm import Session
+
 from andromeda.infrastructure.database import Base, create_engine_for_url
 from andromeda.infrastructure.repositories.query_sessions import (
     SqlAlchemyQuerySessionRepository,
 )
-from andromeda.modules.conversation.contracts.public import QuerySession
+from andromeda.modules.admissions.contracts.public import FundingType
+from andromeda.modules.conversation.contracts.public import (
+    ConversationSlot,
+    NextAction,
+    QuerySession,
+)
 from andromeda.modules.conversation.services.engine import ConversationEngine
 from andromeda.modules.proftest.contracts.public import ProfileScope
 from andromeda.shared.contracts.errors import ConflictError
-from sqlalchemy.orm import Session
 
 NOW = datetime.now(UTC) - timedelta(minutes=1)
 
@@ -76,5 +82,52 @@ def test_query_session_repository_purges_expired_rows_with_a_bound(tmp_path: Pat
             assert repository.purge_expired(now=NOW, limit=1) == 1
             assert repository.get(expired.session_id, owner_scope=scope) is None
             assert repository.get(active.session_id, owner_scope=scope) is not None
+    finally:
+        engine.dispose()
+
+
+def test_admission_funding_fact_survives_query_session_json_round_trip(tmp_path: Path) -> None:
+    engine = create_engine_for_url(f"sqlite:///{(tmp_path / 'query-sessions-funding.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    scope = ProfileScope(session_key_hash="c" * 64)
+    try:
+        with Session(engine) as database_session:
+            repository = SqlAlchemyQuerySessionRepository(database_session)
+            conversation = ConversationEngine()
+            session = conversation.apply(
+                _session(scope),
+                "Куда я прохожу с 270: русский 90, математика 90, физика 90, university:bmstu",
+                now=NOW + timedelta(seconds=1),
+            )
+            assert session.next_action is NextAction.ASK_FOR_FUNDING
+            repository.save(session)
+
+            restored = repository.get(session.session_id, owner_scope=scope)
+            assert restored is not None
+            funded = conversation.apply(
+                restored,
+                "бюджет",
+                expected_revision=restored.revision,
+                now=NOW + timedelta(seconds=2),
+            )
+
+            assert funded.next_action is NextAction.EXECUTE_QUERY
+            assert funded.missing_slots == ()
+            assert funded.known_slots["funding_type"] is FundingType.BUDGET
+            assert funded.confirmed_parameters["funding_type"].value is FundingType.BUDGET
+            repository.save(funded, expected_revision=restored.revision)
+
+            funded_restored = repository.get(funded.session_id, owner_scope=scope)
+            assert funded_restored is not None
+            assert funded_restored.known_slots["funding_type"] is FundingType.BUDGET
+            assert funded_restored.confirmed_parameters["funding_type"].value is FundingType.BUDGET
+            changed = conversation.apply(
+                funded_restored,
+                "платное",
+                expected_revision=funded_restored.revision,
+                now=NOW + timedelta(seconds=3),
+            )
+            assert changed.next_action is NextAction.EXECUTE_QUERY
+            assert changed.confirmed_parameters["funding_type"].value is FundingType.PAID
     finally:
         engine.dispose()

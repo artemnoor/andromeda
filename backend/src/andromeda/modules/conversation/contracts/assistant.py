@@ -33,6 +33,7 @@ class AssistantResult(ContractModel):
     response: ResponseEnvelope | None = None
     query: QuerySpec | None = None
     admission_request: BatchAdmissionFitRequest | None = None
+    admission_requests: tuple[BatchAdmissionFitRequest, ...] = Field(default=(), max_length=100)
     admission_result: BatchAdmissionFitResult | None = None
 
 

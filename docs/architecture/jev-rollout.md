@@ -7,20 +7,36 @@ Andromeda ships with deterministic decision and analytics behavior. `JEV_*`,
 TypeSafe Python SDK is an optional `jev` extra; it is not imported by the core
 composition unless a validated capability is explicitly enabled.
 
-The current code is architecture/evaluation-ready, not a production Jev
-enablement approval. The generated fixture calibration lock is fixture-only until a
-held-out evaluation and provider ownership review produce a production-ready
-lock. System One Adapter, jevcal and jev-align remain development/evaluation
-tools.
+The current production calibration artifact
+`next-action.typesafe-jev.v2.lock.json` covers only `next-action.v1` using
+`next-action-definition.v2`; it does not enable Jev intent, metric, semantic,
+presentation, or admission-profile decisions. It was built from 120 live
+provider responses to a synthetic typed-state corpus (56 held out) using
+upstream `jevcal` 0.1.0. The measured accuracy was 100% on the captured corpus
+and held-out split, with 100% held-out coverage; upstream selected threshold
+`0.64` (measure `top_prob`). A first v1 instruction set scored 75% and was
+superseded; its artifacts are retained only as audit evidence. These results
+are limited evidence for this definition, typed-state corpus, provider route,
+and observed model version `jev-1.13.0`, not a claim that all Jev operations or
+natural-language understanding are production-calibrated.
+
+The runtime still validates schema, action availability, and state applicability
+after the upstream confidence gate. Unsupported actions fall back to the
+deterministic policy. The production lock is bound to the registry hash and
+observed model version, so definition/model changes fail closed. The fixture
+lock remains fixture-only. System One Adapter and jev-align remain
+evaluation/development tools.
 
 ## Enablement gates
 
 Before enabling `JEV_ENABLED=true`, all of the following must be available:
 
-- a rotated `TYPESAFE_API_KEY` in a secret manager;
-- allow-listed `https://api.typesafe.ai` provider health and model version;
+- a rotated `TYPESAFE_API_KEY` (or the `JEV_API_KEY` alias) in a secret manager;
+- allow-listed TypeSafe-compatible provider health and observed model version
+  (the validated Polza route is `https://polza.ai/api`);
 - a current Question Registry and production-ready calibration lock;
-- held-out corpus evidence and an approved per-definition acceptance threshold;
+- a current production lock with per-definition held-out evidence; runtime
+  confidence acceptance is delegated to upstream `jevcal.runtime.Cascade`;
 - bounded timeout/retry/concurrency and a tested deterministic rollback;
 - security/license/package review and an owner for provider spend and outages.
 

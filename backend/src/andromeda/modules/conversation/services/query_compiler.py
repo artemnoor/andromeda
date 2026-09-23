@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import TypeVar, cast
 
 from andromeda.modules.admission_fit.contracts.public import (
     ApplicantAdmissionProfile,
     ApplicantSubjectScore,
     BatchAdmissionFitRequest,
 )
+from andromeda.modules.admissions.contracts.public import FundingType, StudyForm
 from andromeda.modules.analytics.contracts.metrics import (
     MetricAggregation,
     MetricEntityType,
@@ -31,6 +32,8 @@ from ..contracts.public import (
     NextAction,
     QuerySession,
 )
+
+_ParameterT = TypeVar("_ParameterT")
 
 
 def compile_session(session: QuerySession, *, candidate_program_ids: tuple[ProgramId, ...] = ()) -> ConversationCompilation:
@@ -89,15 +92,33 @@ def _compile_admission(session: QuerySession, candidate_program_ids: tuple[Progr
             applicant=applicant,
             university_scope_ids=tuple(university_ids),
         )
-    if len(program_ids) > 50:
-        raise ContractError(ErrorCode.INVALID_QUERY, "Admission candidate set is bounded to 50 programs")
-    request = BatchAdmissionFitRequest(program_ids=program_ids, applicant=applicant)
+    if len(program_ids) > 5000:
+        raise ContractError(ErrorCode.INVALID_QUERY, "Admission candidate set exceeds the 5000-program safety bound")
+    requests = tuple(
+        BatchAdmissionFitRequest(
+            program_ids=program_ids[index : index + 50],
+            applicant=applicant,
+            admission_year=_parameter_value(session, "admission_year", int),
+            study_form=_parameter_value(session, "study_form", StudyForm),
+            funding_type=_parameter_value(session, "funding_type", FundingType),
+        )
+        for index in range(0, len(program_ids), 50)
+    )
+    request = requests[0] if len(requests) == 1 else None
     return ConversationCompilation(
         next_action=NextAction.EXECUTE_QUERY,
         admission_request=request,
+        admission_requests=requests,
         applicant=applicant,
         university_scope_ids=tuple(university_ids),
     )
+
+
+def _parameter_value(session: QuerySession, key: str, expected_type: type[_ParameterT]) -> _ParameterT | None:
+    fact = session.confirmed_parameters.get(key) or session.inferred_parameters.get(key)
+    if fact is not None and isinstance(fact.value, expected_type):
+        return fact.value
+    return None
 
 
 __all__ = ["compile_session"]

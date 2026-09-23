@@ -1,6 +1,8 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
+
 from andromeda.infrastructure.jev.contracts import JevRequestEnvelope
 from andromeda.infrastructure.jev.question_registry import QuestionRegistry
 from andromeda.infrastructure.jev.typesafe_client import TypeSafeJevTransport
@@ -99,6 +101,57 @@ def test_client_rejects_non_https_provider_endpoint() -> None:
         assert "HTTPS" in str(exc)
     else:
         raise AssertionError("non-HTTPS endpoint must be rejected")
+
+
+def test_polza_health_check_accepts_its_openai_compatible_model_list(
+    monkeypatch,
+) -> None:
+    calls = {}
+
+    class _Response:
+        def raise_for_status(self) -> None:
+            return None
+
+        @staticmethod
+        def json() -> dict[str, object]:
+            return {"object": "list", "data": [{"id": "typesafe/jev"}]}
+
+    def fake_get(url, *, headers, timeout):
+        calls.update(url=url, headers=headers, timeout=timeout)
+        return _Response()
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    transport = TypeSafeJevTransport(
+        api_key="secret-key",
+        endpoint="https://polza.ai/api",
+        model="typesafe/jev",
+        registry=REGISTRY,
+    )
+
+    assert transport.health_check() is True
+    assert calls["url"] == "https://polza.ai/api/v1/models"
+    assert calls["headers"] == {"Authorization": "Bearer secret-key"}
+    assert calls["timeout"] == 2.0
+
+
+def test_polza_health_check_fails_closed_when_model_is_not_listed(monkeypatch) -> None:
+    class _Response:
+        def raise_for_status(self) -> None:
+            return None
+
+        @staticmethod
+        def json() -> dict[str, object]:
+            return {"object": "list", "data": [{"id": "another-model"}]}
+
+    monkeypatch.setattr(httpx, "get", lambda *_args, **_kwargs: _Response())
+    transport = TypeSafeJevTransport(
+        api_key="secret-key",
+        endpoint="https://polza.ai/api",
+        model="typesafe/jev",
+        registry=REGISTRY,
+    )
+
+    assert transport.health_check() is False
 
 
 def test_official_sdk_uses_only_supplied_olympiad_profile_choices() -> None:

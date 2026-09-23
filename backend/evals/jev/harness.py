@@ -79,7 +79,7 @@ def build_offline_report(
         calibration_artifact_id=artifact_id,
         paths={
             "deterministic": PathOutcome("available", deterministic_count, unavailable_count, fallback_count),
-            "official_jev": PathOutcome("not_run_without_external_credentials", 0, len(cases), 0),
+            "official_jev": PathOutcome("not_run_offline", 0, len(cases), 0),
             "system_one": PathOutcome("eval_only_not_run", 0, len(cases), 0),
             "jevql": PathOutcome("optional_not_run", 0, len(cases), 0),
         },

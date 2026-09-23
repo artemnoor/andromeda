@@ -392,6 +392,7 @@ describe("canonical API client", () => {
       response: null,
       query: null,
       admission_request: null,
+      admission_requests: [],
       admission_result: null,
     }), { status: 200, headers: { "Content-Type": "application/json" } })));
 

@@ -9,11 +9,17 @@ from __future__ import annotations
 import re
 from decimal import Decimal
 
+from andromeda.modules.admissions.contracts.public import FundingType, StudyForm
 from andromeda.modules.analytics.contracts.metrics import MetricAggregation
 from andromeda.modules.analytics.contracts.query import QueryScope
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
 
-from ..contracts.public import ConversationIntent, ExamScore, ParsedQuery
+from ..contracts.public import (
+    AdmissionUniversityScope,
+    ConversationIntent,
+    ExamScore,
+    ParsedQuery,
+)
 
 _METRIC_ALIASES = {
     "математик": "math_share",
@@ -48,7 +54,7 @@ _SUBJECT_ALIASES = (
 
 
 class RuleBasedQueryParser:
-    version = "conversation-parser.v1"
+    version = "conversation-parser.v3"
     max_input_length = 2000
 
     def parse(self, text: str) -> ParsedQuery:
@@ -68,17 +74,33 @@ class RuleBasedQueryParser:
         if exam_scores and not any(marker in normalized for marker in ("где больше", "где меньше", "сравни", "по математике")):
             metric_codes = ()
         university_queries, direction_queries, program_queries = _parse_canonical_entities(normalized)
-        intent = _parse_intent(normalized, total_score, exam_scores, metric_codes)
+        funding_type = _parse_funding_type(normalized)
+        study_form, study_form_ambiguous = _parse_study_form(normalized)
+        admission_year = _parse_admission_year(normalized)
+        intent = _parse_intent(
+            normalized,
+            total_score,
+            exam_scores,
+            metric_codes,
+            funding_type,
+            study_form,
+            admission_year,
+        )
         aggregation = MetricAggregation.MEAN if "в среднем" in normalized else None
         scope = QueryScope.UNIVERSITY if "вуз" in normalized or "университет" in normalized else None
         return ParsedQuery(
             intent=intent,
+            admission_university_scope=_parse_admission_university_scope(normalized),
             metric_codes=metric_codes,
             university_queries=university_queries,
             direction_queries=direction_queries,
             program_queries=program_queries,
             total_score=total_score,
             exam_scores=exam_scores,
+            funding_type=funding_type,
+            study_form=study_form,
+            study_form_ambiguous=study_form_ambiguous,
+            admission_year=admission_year,
             aggregation=aggregation,
             scope=scope,
             semester=_parse_semester(normalized),
@@ -87,16 +109,82 @@ class RuleBasedQueryParser:
         )
 
 
-def _parse_intent(text: str, total_score: Decimal | None, exam_scores: tuple[ExamScore, ...], metrics: tuple[str, ...]) -> ConversationIntent:
-    admission_words = ("куда", "прохожу", "поступить", "егэ", "бюджет", "проходной")
+def _parse_admission_university_scope(text: str) -> AdmissionUniversityScope | None:
+    any_university_phrases = (
+        "любые вузы",
+        "любой вуз",
+        "по всем вузам",
+        "все вузы",
+        "в любом вузе",
+        "любые университеты",
+        "любой университет",
+        "все университеты",
+        "в любом университете",
+    )
+    return (
+        AdmissionUniversityScope.ANY_UNIVERSITY
+        if any(phrase in text for phrase in any_university_phrases)
+        else None
+    )
+
+
+def _parse_intent(
+    text: str,
+    total_score: Decimal | None,
+    exam_scores: tuple[ExamScore, ...],
+    metrics: tuple[str, ...],
+    funding_type: FundingType | None,
+    study_form: StudyForm | None,
+    admission_year: int | None,
+) -> ConversationIntent:
+    admission_words = ("куда", "прохожу", "поступ", "егэ", "бюджет", "платн", "проходной")
     compare_words = ("сравни", "сравнить", "между", " vs ", "versus")
-    if total_score is not None or exam_scores or any(word in text for word in admission_words):
+    if (
+        total_score is not None
+        or exam_scores
+        or funding_type is not None
+        or study_form is not None
+        or admission_year is not None
+        or any(word in text for word in admission_words)
+    ):
         return ConversationIntent.ADMISSION_SEARCH
     if any(word in text for word in compare_words):
         return ConversationIntent.COMPARE_PROGRAMS
     if metrics or any(word in text for word in ("где больше", "где меньше", "топ", "покажи программы")):
         return ConversationIntent.ANALYTICS_QUERY
     return ConversationIntent.UNKNOWN
+
+
+def _parse_funding_type(text: str) -> FundingType | None:
+    budget = bool(re.search(r"\bбюджет\w*\b", text))
+    paid = bool(re.search(r"\b(?:платн\w*|коммерческ\w*|за деньги)\b", text))
+    if budget == paid:
+        return None
+    return FundingType.BUDGET if budget else FundingType.PAID
+
+
+def _parse_study_form(text: str) -> tuple[StudyForm | None, bool]:
+    matches: set[StudyForm] = set()
+    if re.search(r"\b(?:очн\w*|дневн\w*)\b", text):
+        matches.add(StudyForm.FULL_TIME)
+    if re.search(r"\bзаочн\w*\b", text):
+        matches.add(StudyForm.PART_TIME)
+    if re.search(r"\bвечерн\w*\b", text):
+        matches.add(StudyForm.EVENING)
+    if re.search(r"\b(?:дистанционн\w*|онлайн)\b", text):
+        matches.add(StudyForm.ONLINE)
+    if len(matches) > 1:
+        return None, True
+    return (next(iter(matches)), False) if matches else (None, False)
+
+
+def _parse_admission_year(text: str) -> int | None:
+    patterns = (
+        r"(?:при[её]м\w*|поступлен\w*|кампан\w*|набор\w*)\s*(?:на|в)?\s*(20\d{2})",
+        r"\b(?:на|в)\s*(20\d{2})\s*(?:году|год|г\.)",
+    )
+    years = {int(match) for pattern in patterns for match in re.findall(pattern, text)}
+    return next(iter(years)) if len(years) == 1 else None
 
 
 def _parse_total_score(text: str) -> Decimal | None:

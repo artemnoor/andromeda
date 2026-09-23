@@ -11102,6 +11102,51 @@
             ],
             "title": "Nps"
           },
+          "offeringId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offeringid"
+          },
+          "studyForm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudyForm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fundingType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundingType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "campusId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^campus:[a-z0-9][a-z0-9-]{0,62}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campusid"
+          },
           "applicant": {
             "$ref": "#/components/schemas/ApplicantAdmissionFactsRequest"
           }
@@ -11186,6 +11231,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/IndividualAchievementBreakdownResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "competitiveScore": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EffectiveCompetitiveScoreResponse"
               },
               {
                 "type": "null"
@@ -13378,6 +13433,15 @@
               }
             ]
           },
+          "admission_requests": {
+            "items": {
+              "$ref": "#/components/schemas/BatchAdmissionFitRequest"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Admission Requests",
+            "default": []
+          },
           "admission_result": {
             "anyOf": [
               {
@@ -13578,7 +13642,7 @@
               }
             },
             "type": "object",
-            "maxProperties": 50,
+            "maxProperties": 5000,
             "title": "By Program Id"
           }
         },
@@ -13790,7 +13854,8 @@
           "direction",
           "program",
           "nps",
-          "education_level"
+          "education_level",
+          "campus"
         ],
         "title": "BenefitTargetKind"
       },
@@ -14764,6 +14829,87 @@
           "credits"
         ],
         "title": "ComparisonTotalsResponse"
+      },
+      "CompetitiveExamScoreResponse": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "sourceName": {
+            "type": "string",
+            "title": "Sourcename"
+          },
+          "rawScore": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rawscore"
+          },
+          "effectiveScore": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectivescore"
+          },
+          "minimumScore": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimumscore"
+          },
+          "appliedBenefitRuleIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Appliedbenefitruleids"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/AdmissionProvenanceResponse"
+            },
+            "type": "array",
+            "title": "Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject",
+          "sourceName",
+          "appliedBenefitRuleIds",
+          "provenance"
+        ],
+        "title": "CompetitiveExamScoreResponse"
+      },
+      "CompetitiveScoreStatus": {
+        "type": "string",
+        "enum": [
+          "available",
+          "partial",
+          "insufficient_data",
+          "not_applicable"
+        ],
+        "title": "CompetitiveScoreStatus"
       },
       "ConfidenceResponse-Input": {
         "properties": {
@@ -16934,6 +17080,123 @@
           "postgraduate"
         ],
         "title": "EducationLevel"
+      },
+      "EffectiveCompetitiveScoreResponse": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/CompetitiveScoreStatus"
+          },
+          "offeringId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offeringid"
+          },
+          "availableOfferingIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Availableofferingids"
+          },
+          "selectedExamCombination": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Selectedexamcombination"
+          },
+          "examScoresBefore": {
+            "items": {
+              "$ref": "#/components/schemas/CompetitiveExamScoreResponse"
+            },
+            "type": "array",
+            "title": "Examscoresbefore"
+          },
+          "examScoresAfterBenefits": {
+            "items": {
+              "$ref": "#/components/schemas/CompetitiveExamScoreResponse"
+            },
+            "type": "array",
+            "title": "Examscoresafterbenefits"
+          },
+          "candidateExamsConsidered": {
+            "type": "integer",
+            "title": "Candidateexamsconsidered"
+          },
+          "baseExamScore": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseexamscore"
+          },
+          "postBenefitExamScore": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postbenefitexamscore"
+          },
+          "individualAchievementPoints": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Individualachievementpoints"
+          },
+          "effectiveTotal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectivetotal"
+          },
+          "sourceGaps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sourcegaps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "availableOfferingIds",
+          "selectedExamCombination",
+          "examScoresBefore",
+          "examScoresAfterBenefits",
+          "candidateExamsConsidered",
+          "sourceGaps"
+        ],
+        "title": "EffectiveCompetitiveScoreResponse"
       },
       "EligibilityStatus": {
         "type": "string",

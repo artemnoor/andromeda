@@ -34,7 +34,11 @@ from andromeda.modules.conversation.contracts.policy import (
     PresentationDecision,
     SemanticFeatureDecision,
 )
-from andromeda.modules.conversation.contracts.public import QuerySession
+from andromeda.modules.conversation.contracts.public import (
+    ConversationIntent,
+    NextAction,
+    QuerySession,
+)
 from andromeda.modules.presentation.contracts.policy import (
     PresentationCapabilities,
     ResponseRequest,
@@ -125,7 +129,7 @@ _LEGACY_DEFINITIONS: dict[DecisionModelOperation, _DefinitionMetadata] = {
     ),
     DecisionModelOperation.CHOOSE_NEXT_ACTION: _DefinitionMetadata(
         "next-action.v1",
-        "next-action-definition.v1",
+        "next-action-definition.v2",
         DecisionDefinitionKind.NEXT_ACTION,
         DecisionTimeoutClass.INTERACTIVE,
         DecisionPiiPolicy.SANITIZED,
@@ -202,6 +206,7 @@ class JevDecisionModelAdapter(DecisionModelPort):
                 update={
                     "operation": DecisionModelOperation.RESOLVE_INTENT,
                     "source": DecisionModelSource.JEV,
+                    "model_version": response.identity.model_version,
                 }
             )
         except (TypeError, ValueError):
@@ -233,6 +238,7 @@ class JevDecisionModelAdapter(DecisionModelPort):
                 update={
                     "operation": DecisionModelOperation.RESOLVE_METRIC,
                     "source": DecisionModelSource.JEV,
+                    "model_version": response.identity.model_version,
                 }
             )
         except (TypeError, ValueError):
@@ -263,10 +269,41 @@ class JevDecisionModelAdapter(DecisionModelPort):
             value = NextActionDecision.model_validate(response.payload, strict=False)
             if value.decision.action not in available_actions:
                 raise ValueError("provider returned a forbidden action")
+            deterministic = self._fallback.choose_next_action(
+                session,
+                available_actions=available_actions,
+                capabilities=capabilities,
+                last_result=last_result,
+            )
+            if not _action_is_applicable(
+                value.decision.action,
+                session,
+                last_result=last_result,
+                deterministic_action=deterministic.decision.action,
+            ):
+                return self._fallback_next_action(
+                    session,
+                    available_actions,
+                    capabilities,
+                    last_result,
+                    "action_not_applicable",
+                )
+            if value.decision.action is DecisionAction.ASK_CLARIFICATION:
+                # The model selects whether to ask; exact wording/options remain deterministic.
+                value = value.model_copy(
+                    update={
+                        "decision": deterministic.decision.model_copy(
+                            update={
+                                "reason": "TypeSafe selected clarification; prompt supplied by deterministic policy"
+                            }
+                        )
+                    }
+                )
             return value.model_copy(
                 update={
                     "operation": DecisionModelOperation.CHOOSE_NEXT_ACTION,
                     "source": DecisionModelSource.JEV,
+                    "model_version": response.identity.model_version,
                 }
             )
         except (TypeError, ValueError):
@@ -306,6 +343,7 @@ class JevDecisionModelAdapter(DecisionModelPort):
                 update={
                     "operation": DecisionModelOperation.CHOOSE_PRESENTATION,
                     "source": DecisionModelSource.JEV,
+                    "model_version": response.identity.model_version,
                 }
             )
         except (TypeError, ValueError):
@@ -345,6 +383,7 @@ class JevDecisionModelAdapter(DecisionModelPort):
                 update={
                     "operation": DecisionModelOperation.CLASSIFY_SEMANTIC_FEATURES,
                     "source": DecisionModelSource.JEV,
+                    "model_version": response.identity.model_version,
                 }
             )
         except (TypeError, ValueError):
@@ -401,6 +440,7 @@ class JevDecisionModelAdapter(DecisionModelPort):
                 update={
                     "operation": DecisionModelOperation.RESOLVE_OLYMPIAD_PROFILE,
                     "source": DecisionModelSource.JEV,
+                    "model_version": response.identity.model_version,
                 }
             )
         except (TypeError, ValueError):
@@ -486,7 +526,9 @@ class JevDecisionModelAdapter(DecisionModelPort):
                             detail_code="calibration_evidence_missing",
                         )
                     gate = self._calibration.evaluate(
-                        request.definition_id, response.evidence
+                        request.definition_id,
+                        response.evidence,
+                        model_version=response.identity.model_version,
                     )
                     if not gate.accepted:
                         logger.warning(
@@ -503,10 +545,13 @@ class JevDecisionModelAdapter(DecisionModelPort):
 
                 self._failures = 0
                 logger.info(
-                    "jev_request_completed operation=%s definition_version=%s source=%s latency_ms=%s retry_count=%s confidence_bucket=%s input_tokens=%s output_tokens=%s",
+                    "[FIX:jev-model-identity] jev_request_completed operation=%s definition_version=%s source=%s provider=%s model=%s model_version=%s latency_ms=%s retry_count=%s confidence_bucket=%s input_tokens=%s output_tokens=%s",
                     request.operation.value,
                     request.definition_version,
                     response.identity.source.value,
+                    response.identity.provider,
+                    response.identity.model,
+                    response.identity.model_version,
                     int((time.monotonic() - started) * 1000),
                     attempt,
                     "unknown",
@@ -825,6 +870,31 @@ def _sanitize_candidate_query(
         )
     )
     return " ".join(selected)[:1200]
+
+
+def _action_is_applicable(
+    action: DecisionAction,
+    session: QuerySession,
+    *,
+    last_result: AnalyticsResult | None,
+    deterministic_action: DecisionAction,
+) -> bool:
+    """Reject unsafe/impossible actions before they reach application orchestration."""
+
+    if action is DecisionAction.ASK_CLARIFICATION:
+        return deterministic_action is DecisionAction.ASK_CLARIFICATION
+    if action is DecisionAction.EXECUTE_QUERY:
+        return deterministic_action is not DecisionAction.ASK_CLARIFICATION
+    if action is DecisionAction.COMPARE:
+        return (
+            session.intent is ConversationIntent.COMPARE_PROGRAMS
+            and session.next_action is NextAction.EXECUTE_QUERY
+        )
+    if action is DecisionAction.SHOW_RESULT:
+        return last_result is not None
+    # These actions are declared for future clients but are not executable by
+    # the current AssistantService transport path, so fail closed for now.
+    return False
 
 
 __all__ = [

@@ -1,14 +1,14 @@
 {
   "jevcal_version": "0.1.0",
-  "created": "2026-09-21T23:41:38+00:00",
+  "created": "2026-09-23T14:17:54+00:00",
   "provider": "deterministic-fixture",
   "model_requested": "jev-latest",
   "model_observed": [
-    "calibration-observations.v1"
+    "fixture-only"
   ],
-  "questions_sha": "57c498fe2889a232a46f760802c12a570a029be64f4891402541aadb3ae8dcdf",
-  "dataset_sha": "2c7eefc83e15b68b8584f27293d800a40ba70e745913c642ae73527bcd4f21d7",
-  "n_rows": 15,
+  "questions_sha": "7e5a508c6cc78b501c64005220cb3d323fe80cd6c1fc7426f2b482d0333b8178",
+  "dataset_sha": "ac9acc764d01e96ae0fd9dc53fd0315d54587dc77923027bc1a7ed8e0bd6c53b",
+  "n_rows": 12,
   "holdout": 0.5,
   "seed": 7,
   "questions": {
@@ -58,7 +58,7 @@
     },
     "next-action.v1": {
       "type": "choice",
-      "instructions": "Choose one allowed next action for the current typed conversation state.",
+      "instructions": "Select the next action from the typed state and available actions. If intent is compare_programs and next_action is execute_query, choose compare; this asks the application to execute the same typed query and render it as a comparison. For another executable intent, choose execute_query. Choose ask_clarification only when a required slot is missing or unresolved. Never choose a report or mini-app action unless that capability is explicitly available.",
       "criteria": {
         "ask_clarification": "ask_clarification",
         "execute_query": "execute_query",
@@ -101,27 +101,6 @@
         "holdout_accepted_accuracy": null,
         "holdout_coverage": 0.0,
         "ece": 0.17333333333333334
-      }
-    },
-    "semantic-feature.v1": {
-      "type": "choice",
-      "instructions": "Propose feature values for a canonical discipline candidate.",
-      "criteria": {
-        "calculus": "calculus",
-        "databases": "databases",
-        "review_required": "review_required"
-      },
-      "target": 0.8,
-      "measure": "top_prob",
-      "threshold": null,
-      "status": "no_threshold",
-      "baseline": {
-        "accuracy_all": 1.0,
-        "accepted_accuracy": null,
-        "coverage": 0.0,
-        "holdout_accepted_accuracy": null,
-        "holdout_coverage": 0.0,
-        "ece": 0.29
       }
     }
   },

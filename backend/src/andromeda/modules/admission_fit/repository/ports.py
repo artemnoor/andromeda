@@ -23,4 +23,10 @@ class AdmissionFitDataReader(Protocol):
     def read(self, program_id: ProgramId) -> AdmissionFitProgramData | None: ...
 
 
-__all__ = ["AdmissionFitDataReader", "AdmissionFitProgramData"]
+class BatchAdmissionFitDataReader(AdmissionFitDataReader, Protocol):
+    """Optional bulk path used for catalog-wide deterministic searches."""
+
+    def read_many(self, program_ids: tuple[ProgramId, ...]) -> dict[ProgramId, AdmissionFitProgramData]: ...
+
+
+__all__ = ["AdmissionFitDataReader", "AdmissionFitProgramData", "BatchAdmissionFitDataReader"]

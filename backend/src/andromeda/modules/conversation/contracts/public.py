@@ -13,6 +13,7 @@ from andromeda.modules.admission_fit.contracts.public import (
     ApplicantAdmissionProfile,
     BatchAdmissionFitRequest,
 )
+from andromeda.modules.admissions.contracts.public import FundingType, StudyForm
 from andromeda.modules.analytics.contracts.metrics import MetricAggregation
 from andromeda.modules.analytics.contracts.query import (
     QueryFilter,
@@ -23,7 +24,7 @@ from andromeda.modules.analytics.contracts.query import (
 from andromeda.modules.entity_resolution.contracts.public import ResolutionEntityType
 from andromeda.modules.proftest.contracts.public import ProfileScope
 from andromeda.shared.contracts.base import ContractModel
-from andromeda.shared.contracts.ids import Semester, UniversityId
+from andromeda.shared.contracts.ids import EducationYear, Semester, UniversityId
 from andromeda.shared.contracts.versions import DECISION_POLICY_VERSION
 
 QuerySessionId: TypeAlias = Annotated[str, StringConstraints(pattern=r"^query-session:[0-9a-f]{32}$")]
@@ -34,6 +35,12 @@ class ConversationIntent(StrEnum):
     ANALYTICS_QUERY = "analytics_query"
     COMPARE_PROGRAMS = "compare_programs"
     ADMISSION_SEARCH = "admission_search"
+
+
+class AdmissionUniversityScope(StrEnum):
+    """Explicit applicant choice for searching the whole university catalog."""
+
+    ANY_UNIVERSITY = "any_university"
 
 
 class ConversationSlot(StrEnum):
@@ -52,6 +59,8 @@ class NextAction(StrEnum):
     ASK_FOR_ENTITY = "ask_for_entity"
     ASK_FOR_EXAMS = "ask_for_exams"
     ASK_FOR_UNIVERSITY_SCOPE = "ask_for_university_scope"
+    ASK_FOR_FUNDING = "ask_for_funding"
+    ASK_FOR_STUDY_FORM = "ask_for_study_form"
     EXECUTE_QUERY = "execute_query"
     CLARIFY = "clarify"
 
@@ -75,6 +84,7 @@ class QueryFrame(ContractModel):
     """The current typed question, separate from explicit decision state."""
 
     intent: ConversationIntent = ConversationIntent.UNKNOWN
+    admission_university_scope: AdmissionUniversityScope | None = None
     entities: dict[ResolutionEntityType, tuple[str, ...]] = Field(default_factory=dict, max_length=8)
     metrics: tuple[str, ...] = Field(default=(), max_length=8)
     scope: QueryScope = QueryScope.ALL
@@ -100,6 +110,7 @@ class ParsedQuery(ContractModel):
     """Typed partial parser output; unresolved text is intentionally retained."""
 
     intent: ConversationIntent = ConversationIntent.UNKNOWN
+    admission_university_scope: AdmissionUniversityScope | None = None
     metric_codes: tuple[str, ...] = Field(default=(), max_length=8)
     entity_queries: tuple[str, ...] = Field(default=(), max_length=20)
     university_queries: tuple[str, ...] = Field(default=(), max_length=20)
@@ -107,6 +118,10 @@ class ParsedQuery(ContractModel):
     program_queries: tuple[str, ...] = Field(default=(), max_length=20)
     total_score: Decimal | None = Field(default=None, strict=True, ge=Decimal(0), le=Decimal(400))
     exam_scores: tuple[ExamScore, ...] = Field(default=(), max_length=16)
+    funding_type: FundingType | None = None
+    study_form: StudyForm | None = None
+    study_form_ambiguous: bool = False
+    admission_year: EducationYear | None = None
     scope: QueryScope | None = None
     aggregation: MetricAggregation | None = None
     semester: Semester | None = None
@@ -118,6 +133,7 @@ class QuerySession(ContractModel):
     session_id: QuerySessionId
     owner_scope: ProfileScope
     intent: ConversationIntent = ConversationIntent.UNKNOWN
+    admission_university_scope: AdmissionUniversityScope | None = None
     frame: QueryFrame = Field(default_factory=QueryFrame)
     entities: dict[ResolutionEntityType, tuple[str, ...]] = Field(default_factory=dict, max_length=8)
     metrics: tuple[str, ...] = Field(default=(), max_length=8)
@@ -138,7 +154,7 @@ class QuerySession(ContractModel):
     last_question: str | None = Field(default=None, max_length=512)
     last_action: NextAction = NextAction.NONE
     revision: int = Field(default=1, strict=True, ge=1)
-    parser_version: str = "conversation-parser.v1"
+    parser_version: str = "conversation-parser.v3"
     policy_version: str = DECISION_POLICY_VERSION
     created_at: datetime
     updated_at: datetime
@@ -149,19 +165,49 @@ class QuerySession(ContractModel):
     def hydrate_known_slots(cls, values: object) -> object:
         if not isinstance(values, dict):
             return values
-        known_slots = values.get("known_slots")
-        if not isinstance(known_slots, dict) or "exam_scores" not in known_slots:
-            return values
-        raw_scores = known_slots["exam_scores"]
-        if not isinstance(raw_scores, (list, tuple)):
-            return values
         hydrated = dict(values)
-        hydrated_slots = dict(known_slots)
-        hydrated_slots["exam_scores"] = tuple(
-            score if isinstance(score, ExamScore) else ExamScore.model_validate(score, strict=False)
-            for score in raw_scores
-        )
-        hydrated["known_slots"] = hydrated_slots
+        known_slots = values.get("known_slots")
+        if isinstance(known_slots, dict):
+            hydrated_slots = dict(known_slots)
+            raw_scores = known_slots.get("exam_scores")
+            if isinstance(raw_scores, (list, tuple)):
+                hydrated_slots["exam_scores"] = tuple(
+                    score if isinstance(score, ExamScore) else ExamScore.model_validate(score, strict=False)
+                    for score in raw_scores
+                )
+            for key, enum_type in (
+                ("funding_type", FundingType),
+                ("study_form", StudyForm),
+            ):
+                value = hydrated_slots.get(key)
+                if isinstance(value, str):
+                    try:
+                        hydrated_slots[key] = enum_type(value)
+                    except ValueError:
+                        pass
+            hydrated["known_slots"] = hydrated_slots
+
+        for field_name in ("confirmed_parameters", "inferred_parameters"):
+            facts = values.get(field_name)
+            if not isinstance(facts, dict):
+                continue
+            hydrated_facts = dict(facts)
+            for key, enum_type in (
+                ("funding_type", FundingType),
+                ("study_form", StudyForm),
+            ):
+                raw_fact = facts.get(key)
+                if not isinstance(raw_fact, dict):
+                    continue
+                fact = dict(raw_fact)
+                value = fact.get("value")
+                if isinstance(value, str):
+                    try:
+                        fact["value"] = enum_type(value)
+                    except ValueError:
+                        pass
+                hydrated_facts[key] = fact
+            hydrated[field_name] = hydrated_facts
         return hydrated
 
     @model_validator(mode="after")
@@ -178,11 +224,13 @@ class ConversationCompilation(ContractModel):
     missing_slots: tuple[ConversationSlot, ...] = Field(default=(), max_length=8)
     analytics_query: QuerySpec | None = None
     admission_request: BatchAdmissionFitRequest | None = None
+    admission_requests: tuple[BatchAdmissionFitRequest, ...] = Field(default=(), max_length=100)
     applicant: ApplicantAdmissionProfile | None = None
     university_scope_ids: tuple[UniversityId, ...] = Field(default=(), max_length=20)
 
 
 __all__ = [
+    "AdmissionUniversityScope",
     "ConversationCompilation",
     "ConversationIntent",
     "ConversationSlot",

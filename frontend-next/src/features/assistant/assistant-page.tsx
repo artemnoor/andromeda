@@ -67,7 +67,7 @@ export function AssistantPage(_props: { navigate: (route: Route) => void }) {
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
-            {SUGGESTIONS.map((suggestion) => <Button key={suggestion} type="button" size="sm" variant="outline" disabled={pending} onClick={() => void submit(undefined, suggestion)}>{suggestion}</Button>)}
+            {SUGGESTIONS.map((suggestion) => <Button key={suggestion} type="button" size="sm" variant="outline" className="max-w-full whitespace-normal text-left" disabled={pending} onClick={() => void submit(undefined, suggestion)}>{suggestion}</Button>)}
           </div>
           <form className="flex gap-2" onSubmit={(event) => void submit(event)}>
             <Input value={input} onChange={(event) => setInput(event.target.value)} placeholder="Например: где меньше физики?" disabled={pending} aria-label="Вопрос к Andromeda" />
@@ -98,6 +98,50 @@ function assistantText(result: AssistantQueryResponse): string {
         return [`• ${String(item.entity_id ?? "Результат")}${values.length ? ` — ${values.join(", ")}` : ""}`];
       })
     : [];
-  const sourceNote = plan?.has_source_gaps ? "Есть пробелы в исходных данных — проверьте evidence." : "Расчёт выполнен по доступным source-backed данным.";
-  return [plan?.text || envelope?.text || "Результат готов.", ...rowLines, sourceNote].join("\n");
+  const admissionOutcomes = _admissionOutcomeLines(envelope?.data?.outcomes);
+  const hasAdmissionGaps = _hasAdmissionGaps(envelope?.data?.outcomes);
+  const sourceNote = plan?.has_source_gaps || hasAdmissionGaps
+    ? "Для части программ данных недостаточно или они неоднозначны; это не подтверждение поступления."
+    : "Расчёт выполнен по доступным source-backed данным.";
+  return [plan?.text || envelope?.text || "Результат готов.", ...rowLines, ...admissionOutcomes, sourceNote].join("\n");
+}
+
+function _admissionOutcomeLines(value: unknown): string[] {
+  if (!_isRecord(value) || !_isRecord(value.by_program_id)) return [];
+  const entries = Object.entries(value.by_program_id);
+  return entries.slice(0, 5).map(([programId, rawOutcome]) => {
+    if (!_isRecord(rawOutcome)) return `• ${_programLabel(programId)} — результат недоступен`;
+    const status = _admissionStatusLabel(rawOutcome.status);
+    const result = _isRecord(rawOutcome.result) ? rawOutcome.result : null;
+    const score = typeof result?.score === "number" ? `; оценка соответствия ${result.score}/100` : "";
+    const rawGaps = Array.isArray(rawOutcome.data_gaps) ? rawOutcome.data_gaps : [];
+    const gap = rawGaps.find((item) => _isRecord(item) && typeof item.message === "string");
+    const explanation = _isRecord(gap) && typeof gap.message === "string" ? ` — ${gap.message}` : "";
+    return `• ${_programLabel(programId)} — ${status}${score}${explanation}`;
+  });
+}
+
+function _hasAdmissionGaps(value: unknown): boolean {
+  if (!_isRecord(value) || !_isRecord(value.by_program_id)) return false;
+  return Object.values(value.by_program_id).some(
+    (item) => _isRecord(item) && Array.isArray(item.data_gaps) && item.data_gaps.length > 0,
+  );
+}
+
+function _admissionStatusLabel(value: unknown): string {
+  switch (value) {
+    case "realistic": return "по имеющимся данным выглядит реалистично";
+    case "borderline": return "пограничная оценка";
+    case "unlikely": return "низкая оценка соответствия";
+    case "insufficient_data": return "недостаточно данных";
+    default: return "статус не определён";
+  }
+}
+
+function _programLabel(value: string): string {
+  return value.split(":").at(-1) ?? value;
+}
+
+function _isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

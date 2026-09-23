@@ -58,7 +58,7 @@ export function AppShell({
             </span>
           </button>
 
-          <nav aria-label="Основные разделы" className="hidden min-w-0 flex-1 items-center gap-1 lg:flex">
+          <nav aria-label="Основные разделы" className="hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex">
             {primary.map((item) => {
               const Icon = ICONS[item.icon];
               const active = route.view === item.view || (route.view === "event" && item.view === "events");
@@ -82,35 +82,39 @@ export function AppShell({
             })}
           </nav>
 
-          <div className="ml-auto flex min-w-0 shrink-0 items-center gap-2">
-            <nav aria-label="Дополнительные разделы" className="hidden min-w-0 items-center gap-1 md:flex">
-              {secondary.map((item) => {
-                const Icon = ICONS[item.icon];
-                const active = route.view === item.view;
-                return (
-                  <button
-                    key={item.view}
-                    onClick={() => navigate({ view: item.view })}
-                    aria-current={active ? "page" : undefined}
-                    data-testid={`secondary-nav-${item.view}`}
-                    title={item.label}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium transition",
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                    )}
-                  >
-                    {Icon && <Icon className="h-4 w-4" />}
-                    <span className="hidden 2xl:inline">{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <ShortlistControl onOpen={() => setDrawerOpen(true)} />
             <AuthPanel onNavigate={(view: View) => navigate({ view })} />
           </div>
         </div>
+
+        <nav
+          aria-label="Дополнительные разделы"
+          className="mx-auto hidden w-full max-w-6xl items-center justify-center gap-1 px-4 pb-3 md:px-6 lg:flex"
+        >
+          {secondary.map((item) => {
+            const Icon = ICONS[item.icon];
+            const active = route.view === item.view;
+            return (
+              <button
+                key={item.view}
+                onClick={() => navigate({ view: item.view })}
+                aria-current={active ? "page" : undefined}
+                data-testid={`secondary-nav-${item.view}`}
+                title={item.label}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium transition",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                {Icon && <Icon className="h-4 w-4" />}
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
 
         {/* Mobile nav keeps task-oriented entry points visually primary. */}
         <nav aria-label="Основные разделы (мобильное)" className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden warm-scroll">

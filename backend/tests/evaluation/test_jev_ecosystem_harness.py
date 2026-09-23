@@ -18,7 +18,7 @@ def test_offline_harness_report_is_fixture_only_and_safe(tmp_path: Path) -> None
     assert report["schema_version"] == "andromeda-jev-ecosystem-report.v1"
     assert report["calibration_status"] == "fixture_only"
     assert report["paths"]["deterministic"]["status"] == "available"
-    assert report["paths"]["official_jev"]["status"] == "not_run_without_external_credentials"
+    assert report["paths"]["official_jev"]["status"] == "not_run_offline"
 
 
 def test_offline_harness_rejects_mixed_registry_hash(monkeypatch, tmp_path: Path) -> None:

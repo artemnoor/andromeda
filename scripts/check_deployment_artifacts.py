@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -45,7 +44,39 @@ def main() -> int:
         raise AssertionError(f"{compose_path} contains obsolete backend:8000 fallback")
 
     _require(backend_dockerfile, "backend/Dockerfile", "EXPOSE 8020")
+    _require(backend_dockerfile, "backend/Dockerfile", "uv sync --frozen --no-dev --extra jev")
+    _require(
+        backend_dockerfile,
+        "backend/Dockerfile",
+        "COPY config/jev/question-definitions.v1.yaml ./config/jev/question-definitions.v1.yaml",
+    )
+    _require(
+        backend_dockerfile,
+        "backend/Dockerfile",
+        "COPY config/jev/locks/next-action.typesafe-jev.v2.lock.json ./config/jev/locks/next-action.typesafe-jev.v2.lock.json",
+    )
+    _require(
+        backend_dockerfile,
+        "backend/Dockerfile",
+        "COPY config/jev/locks/next-action.typesafe-jev.v2.lock.json.meta.json ./config/jev/locks/next-action.typesafe-jev.v2.lock.json.meta.json",
+    )
     _require(backend_entrypoint, "backend/docker-entrypoint.sh", "--port \"${PORT:-8020}\"")
+
+    _require(compose, compose_path, 'JEV_ENABLED: "${JEV_ENABLED:-false}"')
+    _require(compose, compose_path, 'JEV_SHADOW_ENABLED: "${JEV_SHADOW_ENABLED:-false}"')
+    _require(compose, compose_path, 'JEV_CALIBRATION_ENABLED: "${JEV_CALIBRATION_ENABLED:-false}"')
+    _require(compose, compose_path, 'JEV_CALIBRATION_MODE: "${JEV_CALIBRATION_MODE:-production}"')
+    _require(
+        compose,
+        compose_path,
+        'JEV_CALIBRATION_LOCK_PATH: "${JEV_CALIBRATION_LOCK_PATH:-/app/config/jev/locks/next-action.typesafe-jev.v2.lock.json}"',
+    )
+    _require(compose, compose_path, 'JEV_RUNTIME_PROVIDER: "${JEV_RUNTIME_PROVIDER:-typesafe}"')
+    _require(compose, compose_path, 'JEV_ENDPOINT: "${JEV_ENDPOINT:-https://polza.ai/api}"')
+    _require(compose, compose_path, 'JEV_MODEL: "${JEV_MODEL:-typesafe/jev}"')
+    _require(compose, compose_path, 'TYPESAFE_API_KEY: "${TYPESAFE_API_KEY:-}"')
+    _require(compose, compose_path, 'JEV_API_KEY: "${JEV_API_KEY:-}"')
+
     _require(frontend_dockerfile, "frontend-next/Dockerfile", "COPY --from=builder /app/.next/standalone ./")
     _require(frontend_dockerfile, "frontend-next/Dockerfile", 'CMD ["node", "server.js"]')
     _require(frontend_config, "frontend-next/next.config.ts", 'output: "standalone"')

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from andromeda.infrastructure.jev.adapter import (
@@ -18,13 +20,21 @@ from andromeda.infrastructure.jev.contracts import (
 from andromeda.infrastructure.jev.question_registry import QuestionRegistry
 from andromeda.modules.conversation.contracts.policy import (
     CandidateResolutionOption,
+    DecisionAction,
     DecisionModelOperation,
     DecisionModelSource,
+)
+from andromeda.modules.conversation.contracts.public import (
+    ConversationIntent,
+    ConversationSlot,
+    NextAction,
+    QuerySession,
 )
 from andromeda.modules.conversation.services.decision_model import (
     RuleBasedDecisionModel,
 )
 from andromeda.modules.presentation.contracts.policy import ResponseRequest
+from andromeda.modules.proftest.contracts.public import ProfileScope
 
 
 class _UnavailableTransport:
@@ -49,17 +59,26 @@ class _EnvelopeTransport:
 
     def request_envelope(self, request: JevRequestEnvelope) -> object:
         self.requests.append(request)
-        return {
-            "intent": "analytics_query",
-            "source": "jev",
-            "confidence": "high",
-        }
+        return JevResponseEnvelope(
+            payload={
+                "intent": "analytics_query",
+                "source": "jev",
+                "confidence": "high",
+            },
+            identity=ModelIdentity(
+                model_version="jev-observed-test",
+                artifact_id="intent.v1@intent-definition.v1",
+            ),
+        )
 
 
 class _RejectedCalibration:
     artifact_id = "fixture-artifact"
 
-    def evaluate(self, definition_id: str, evidence: JevAnswerEvidence):
+    def evaluate(
+        self, definition_id: str, evidence: JevAnswerEvidence, *, model_version: str | None = None
+    ):
+        del model_version
         assert definition_id == "intent.v1"
         assert evidence.answer_value == "analytics_query"
         return type(
@@ -76,7 +95,10 @@ class _RejectedCalibration:
 class _AcceptedCandidateCalibration:
     artifact_id = "admission-fixture-artifact"
 
-    def evaluate(self, definition_id: str, evidence: JevAnswerEvidence):
+    def evaluate(
+        self, definition_id: str, evidence: JevAnswerEvidence, *, model_version: str | None = None
+    ):
+        del model_version
         assert definition_id == "olympiad-profile-resolution.v1"
         assert evidence.answer_value == "olympiad-profile:shag-engineering"
         return type(
@@ -127,6 +149,7 @@ def test_typed_transport_receives_registry_definition_and_schema() -> None:
     decision = adapter.resolve_intent("Где больше математики?")
 
     assert decision.source is DecisionModelSource.JEV
+    assert decision.model_version == "jev-observed-test"
     assert len(transport.requests) == 1
     request = transport.requests[0]
     assert request.definition_id == "intent.v1"
@@ -196,6 +219,98 @@ def test_calibration_gate_rejects_provider_answer_before_domain_parsing() -> Non
     assert decision.fallback_reason == JevFailureReason.CALIBRATION_REJECTED.value
 
 
+def test_jev_clarification_action_uses_deterministic_question_text() -> None:
+    class Transport:
+        def request_envelope(self, request: JevRequestEnvelope) -> object:
+            assert request.definition_id == "next-action.v1"
+            return JevResponseEnvelope(
+                payload={
+                    "decision": {
+                        "action": "ask_clarification",
+                        "question": None,
+                        "options": [],
+                        "reason": "model selected clarification",
+                    },
+                    "source": "jev",
+                    "confidence": "high",
+                },
+                identity=ModelIdentity(
+                    model_version="jev-1.13.0",
+                    artifact_id="next-action.v1@next-action-definition.v2",
+                ),
+            )
+
+    registry = QuestionRegistry.from_file(
+        Path(__file__).resolve().parents[2]
+        / "config"
+        / "jev"
+        / "question-definitions.v1.yaml"
+    )
+    adapter = JevDecisionModelAdapter(
+        Transport(), RuleBasedDecisionModel(), registry=registry
+    )
+
+    result = adapter.choose_next_action(
+        _query_session(NextAction.ASK_FOR_EXAMS, ConversationIntent.ADMISSION_SEARCH)
+    )
+
+    assert result.source is DecisionModelSource.JEV
+    assert result.model_version == "jev-1.13.0"
+    assert result.decision.action is DecisionAction.ASK_CLARIFICATION
+    assert result.decision.question == "Какие у вас баллы по предметам ЕГЭ?"
+    assert result.decision.options
+
+
+def test_jev_impossible_action_falls_back_to_deterministic_policy() -> None:
+    class Transport:
+        def request_envelope(self, request: JevRequestEnvelope) -> object:
+            return {
+                "decision": {
+                    "action": "open_mini_app",
+                    "question": None,
+                    "options": [],
+                    "reason": "model selected unsupported action",
+                },
+                "source": "jev",
+                "confidence": "high",
+                "model_version": "jev-live-test",
+            }
+
+    registry = QuestionRegistry.from_file(
+        Path(__file__).resolve().parents[2]
+        / "config"
+        / "jev"
+        / "question-definitions.v1.yaml"
+    )
+    adapter = JevDecisionModelAdapter(
+        Transport(), RuleBasedDecisionModel(), registry=registry
+    )
+
+    result = adapter.choose_next_action(
+        _query_session(NextAction.EXECUTE_QUERY, ConversationIntent.COMPARE_PROGRAMS)
+    )
+
+    assert result.source is DecisionModelSource.FALLBACK
+    assert result.fallback_reason == "action_not_applicable"
+    assert result.decision.action is DecisionAction.COMPARE
+
+
+def _query_session(next_action: NextAction, intent: ConversationIntent) -> QuerySession:
+    timestamp = datetime(2026, 9, 23, tzinfo=UTC)
+    digest = hashlib.sha256(b"jev-adapter-policy-test").hexdigest()
+    return QuerySession(
+        session_id=f"query-session:{digest[:32]}",
+        owner_scope=ProfileScope(session_key_hash=digest),
+        intent=intent,
+        next_action=next_action,
+        missing_slots=(ConversationSlot.EXAMS,) if next_action is NextAction.ASK_FOR_EXAMS else (),
+        revision=1,
+        created_at=timestamp,
+        updated_at=timestamp,
+        expires_at=timestamp + timedelta(hours=1),
+    )
+
+
 def test_olympiad_resolution_fails_closed_without_calibration() -> None:
     class Transport:
         calls = 0
@@ -249,6 +364,7 @@ def test_olympiad_resolution_accepts_only_calibrated_candidate_from_allowlist() 
                 identity=ModelIdentity(
                     provider="typesafe",
                     model="jev",
+                    model_version="jev-1.13.0",
                     source=DecisionModelSource.JEV,
                     artifact_id="olympiad-profile-resolution.v1@v1",
                 ),
@@ -294,6 +410,7 @@ def test_olympiad_resolution_accepts_only_calibrated_candidate_from_allowlist() 
 
     assert decision.candidate_id == "olympiad-profile:shag-engineering"
     assert decision.source is DecisionModelSource.JEV
+    assert decision.model_version == "jev-1.13.0"
     payload = transport.requests[0].redacted_payload
     assert "телефон" not in str(payload).casefold()
     assert "+7" not in str(payload)

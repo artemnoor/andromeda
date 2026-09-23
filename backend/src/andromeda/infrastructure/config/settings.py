@@ -151,9 +151,15 @@ class Settings:
             jev_calibration_max_age_seconds=_optional_bounded_int_from_environment("JEV_CALIBRATION_MAX_AGE_SECONDS", 1, 31_536_000),
             jev_allow_fixture_runtime=_bool_from_environment("JEV_ALLOW_FIXTURE_RUNTIME", False),
             jev_runtime_provider=os.environ.get("JEV_RUNTIME_PROVIDER", "typesafe").strip().lower(),
-            jev_endpoint=os.environ.get("JEV_ENDPOINT", DEFAULT_JEV_ENDPOINT).strip(),
+            jev_endpoint=os.environ.get(
+                "JEV_ENDPOINT",
+                os.environ.get("JEV_BASE_URL", DEFAULT_JEV_ENDPOINT),
+            ).strip(),
             jev_model=os.environ.get("JEV_MODEL", "jev-latest").strip(),
-            jev_api_key=_optional_secret_from_environment("TYPESAFE_API_KEY"),
+            jev_api_key=(
+                _optional_secret_from_environment("TYPESAFE_API_KEY")
+                or _optional_secret_from_environment("JEV_API_KEY")
+            ),
             jev_admission_resolution_enabled=_bool_from_environment(
                 "JEV_ADMISSION_RESOLUTION_ENABLED", False
             ),
@@ -192,6 +198,16 @@ class Settings:
             settings.profile_cookie_secure,
             settings.profile_cookie_samesite,
             settings.profile_ttl_seconds,
+        )
+        logger.debug(
+            "jev_settings_loaded enabled=%s shadow=%s provider=%s endpoint=%s model=%s calibration_mode=%s key_configured=%s",
+            settings.jev_enabled,
+            settings.jev_shadow_enabled,
+            settings.jev_runtime_provider,
+            settings.jev_endpoint,
+            settings.jev_model,
+            settings.jev_calibration_mode,
+            settings.jev_api_key is not None,
         )
         return settings
 

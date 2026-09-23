@@ -12,6 +12,7 @@ from .decision_definitions import (
 )
 from .ports import QuerySessionRepository
 from .public import (
+    AdmissionUniversityScope,
     ConversationCompilation,
     ConversationIntent,
     ConversationSlot,
@@ -22,20 +23,21 @@ from .public import (
 )
 
 __all__ = [
+    "AdmissionUniversityScope",
     "AssistantResult",
     "AssistantState",
+    "ConversationCompilation",
+    "ConversationIntent",
+    "ConversationSlot",
     "DecisionDefinition",
     "DecisionDefinitionKind",
     "DecisionOption",
     "DecisionOutputSchema",
     "DecisionPiiPolicy",
     "DecisionTimeoutClass",
-    "ConversationCompilation",
     "EvaluationCase",
     "EvaluationCaseResult",
     "EvaluationReport",
-    "ConversationIntent",
-    "ConversationSlot",
     "ExamScore",
     "NextAction",
     "ParsedQuery",

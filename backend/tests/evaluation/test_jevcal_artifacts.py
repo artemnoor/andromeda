@@ -22,24 +22,48 @@ def test_committed_calibration_lock_is_reproducible() -> None:
 
 
 def test_calibration_generation_rejects_missing_heldout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    corpus_rows = [
+        json.loads(line)
+        for line in jevcal_calibrate.CORPUS_PATH.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    intent_cases = [row for row in corpus_rows if row["definition_id"] == "intent.v1"]
     observations = tmp_path / "observations.jsonl"
     observations.write_text(
-        json.dumps(
-            {
-                "case_id": "intent-train-001",
-                "definition_id": "intent.v1",
-                "split": "train",
-                "probability": 0.9,
-                "correct": True,
-            }
-        )
-        + "\n",
+        "".join(
+            json.dumps(
+                {
+                    "case_id": row["case_id"],
+                    "definition_id": "intent.v1",
+                    "split": "train",
+                    "probability": 0.9,
+                    "correct": True,
+                }
+            )
+            + "\n"
+            for row in intent_cases
+        ),
         encoding="utf-8",
     )
     monkeypatch.setattr(jevcal_calibrate, "OBSERVATIONS_PATH", observations)
 
     with pytest.raises(jevcal_calibrate.CalibrationArtifactError, match="heldout observations"):
-        jevcal_calibrate._build_lock()
+        jevcal_calibrate._build_lock(
+            source_kind="fixture",
+            corpus_path=jevcal_calibrate.CORPUS_PATH,
+            observations_path=observations,
+        )
+
+
+def test_production_calibration_requires_full_multiclass_probabilities() -> None:
+    with pytest.raises(jevcal_calibrate.CalibrationArtifactError, match="full upstream probability"):
+        jevcal_calibrate._probability_distribution(
+            {
+                "case_id": "live-001",
+                "probabilities": {"ask_clarification": 0.8, "execute_query": 0.2},
+            },
+            ("ask_clarification", "execute_query", "compare", "show_result", "build_report", "open_mini_app"),
+        )
 
 
 def test_observation_hash_is_independent_of_windows_line_endings(tmp_path: Path) -> None:

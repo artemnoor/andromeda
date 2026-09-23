@@ -9,9 +9,12 @@ arbitrary prompts, SQL, or provider endpoints from a request.
 from __future__ import annotations
 
 import importlib
+import logging
 import time
 from collections.abc import Callable, Mapping
 from typing import Any
+
+import httpx
 
 from andromeda.modules.conversation.contracts.decision_definitions import (
     DecisionDefinition,
@@ -27,6 +30,8 @@ from .contracts import (
 )
 
 _ALLOWED_ENDPOINTS = frozenset(("https://api.typesafe.ai", "https://polza.ai/api"))
+_POLZA_ENDPOINT = "https://polza.ai/api"
+logger = logging.getLogger("andromeda.infrastructure.jev.typesafe_client")
 
 
 class TypeSafeJevTransport:
@@ -71,7 +76,7 @@ class TypeSafeJevTransport:
         return JevResponseEnvelope(
             payload=payload,
             identity=ModelIdentity(
-                provider="typesafe",
+                provider="polza" if self._endpoint == _POLZA_ENDPOINT else "typesafe",
                 model=self._model,
                 model_version=getattr(response, "model", self._model),
                 artifact_id=f"{definition.definition_id}@{definition.version}",
@@ -89,13 +94,52 @@ class TypeSafeJevTransport:
         )
 
     def health_check(self) -> bool:
+        started = time.monotonic()
         try:
+            if self._endpoint == _POLZA_ENDPOINT:
+                response = httpx.get(
+                    f"{self._endpoint}/v1/models",
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    timeout=self._timeout_seconds,
+                )
+                response.raise_for_status()
+                payload = response.json()
+                records = payload.get("data", payload.get("models", ()))
+                available = isinstance(records, list) and any(
+                    isinstance(item, Mapping)
+                    and (item.get("id") or item.get("name")) == self._model
+                    for item in records
+                )
+                logger.info(
+                    "typesafe_health_check provider=polza outcome=%s model=%s latency_ms=%s",
+                    "available" if available else "model_missing",
+                    self._model,
+                    int((time.monotonic() - started) * 1000),
+                )
+                return available
             response = self._client_or_create().models.list(
                 timeout=self._timeout_seconds
             )
             models = getattr(response, "models", ())
-            return any(getattr(item, "name", None) == self._model for item in models)
-        except Exception:
+            available = any(
+                getattr(item, "name", None) == self._model
+                or getattr(item, "id", None) == self._model
+                for item in models
+            )
+            logger.info(
+                "typesafe_health_check provider=typesafe outcome=%s model=%s latency_ms=%s",
+                "available" if available else "model_missing",
+                self._model,
+                int((time.monotonic() - started) * 1000),
+            )
+            return available
+        except Exception as exc:
+            logger.warning(
+                "typesafe_health_check outcome=unavailable provider=%s error=%s latency_ms=%s",
+                "polza" if self._endpoint == _POLZA_ENDPOINT else "typesafe",
+                type(exc).__name__,
+                int((time.monotonic() - started) * 1000),
+            )
             return False
 
     def close(self) -> None:

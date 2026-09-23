@@ -6,7 +6,6 @@ from pathlib import Path
 from andromeda.modules.conversation.contracts.evaluation import EvaluationCase
 from andromeda.modules.conversation.services.evaluation import DecisionModelEvaluator
 
-
 CORPUS = Path(__file__).parents[1] / "fixtures" / "evaluation" / "decision-corpus-v1.json"
 
 

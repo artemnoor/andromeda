@@ -2272,6 +2272,11 @@ export interface components {
             response?: components["schemas"]["ResponseEnvelope"] | null;
             query?: components["schemas"]["QuerySpec"] | null;
             admission_request?: components["schemas"]["BatchAdmissionFitRequest"] | null;
+            /**
+             * Admission Requests
+             * @default []
+             */
+            admission_requests: components["schemas"]["BatchAdmissionFitRequest"][];
             admission_result?: components["schemas"]["BatchAdmissionFitResult"] | null;
         };
         /**

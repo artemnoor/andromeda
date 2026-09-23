@@ -5,7 +5,6 @@ from fastapi.testclient import TestClient
 from andromeda.api.main import create_app
 from scripts.run_andromeda_bmstu import run_ingest
 
-
 FIXTURE_DIR = Path(__file__).parents[1] / "fixtures" / "tracer" / "raw"
 
 
@@ -36,7 +35,7 @@ def test_complete_admission_request_does_not_add_clarification_turn(tmp_path: Pa
         response = client.post(
             "/assistant/query",
             json={
-                "text": "Куда я прохожу с 270: русский 90, математика 90, информатика 90, university:bmstu",
+                "text": "Куда я прохожу с 270: русский 90, математика 90, информатика 90, university:bmstu, бюджет",
             },
         )
 

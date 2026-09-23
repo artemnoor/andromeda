@@ -746,5 +746,6 @@ export type AssistantQueryResponse = {
   response: AssistantResponseEnvelope | null;
   query: Record<string, unknown> | null;
   admission_request: Record<string, unknown> | null;
+  admission_requests: Record<string, unknown>[];
   admission_result: Record<string, unknown> | null;
 };

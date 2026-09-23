@@ -9,6 +9,8 @@ backend/pipeline_runs/
 output/
 frontend-next/node_modules/
 frontend-next/.next/
+frontend-next/.next-smoke*/
+frontend-next/tsconfig-smoke-*.json
 frontend-next/coverage/
 .coverage
 frontend-next/tsconfig.tsbuildinfo

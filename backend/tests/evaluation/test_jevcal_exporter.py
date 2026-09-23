@@ -6,7 +6,6 @@ from pathlib import Path
 from andromeda.infrastructure.jev.question_registry import QuestionRegistry
 from evals.jev.exporters import build_jevcal_bundle
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -44,3 +43,14 @@ def test_export_is_rejected_for_duplicate_case_id() -> None:
         assert "duplicate case ID" in str(exc)
     else:  # pragma: no cover - assertion keeps the failure explicit
         raise AssertionError("duplicate case ID was accepted")
+
+
+def test_export_can_scope_lock_to_runtime_calibrated_decisions() -> None:
+    cases = tuple(row for row in _rows() if row["definition_id"] == "next-action.v1")
+
+    bundle = build_jevcal_bundle(
+        _registry(), cases, definition_ids=("next-action.v1",)
+    )
+
+    assert set(bundle.questions) == {"next-action.v1"}
+    assert len(bundle.rows) == len(cases)

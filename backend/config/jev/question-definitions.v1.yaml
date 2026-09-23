@@ -66,11 +66,20 @@ definitions:
   - definition_id: next-action.v1
     kind: next_action
     operation: choose_next_action
-    version: next-action-definition.v1
-    instructions: Choose one allowed next action for the current typed conversation state.
+    version: next-action-definition.v2
+    instructions: >-
+      Select the next action from the typed state and available actions. If
+      intent is compare_programs and next_action is execute_query, choose
+      compare; this asks the application to execute the same typed query and
+      render it as a comparison. For another executable intent, choose
+      execute_query. Choose ask_clarification only when a required slot is
+      missing or unresolved. Never choose a report or mini-app action unless
+      that capability is explicitly available.
     criteria:
       - Choose only from available actions.
-      - Ask a question only when it materially changes or enables the result.
+      - For a ready compare_programs request, select compare rather than execute_query.
+      - Ask only when missing or unresolved information prevents a correct result.
+      - Do not choose build_report or open_mini_app unless the capability is explicitly available.
     input_fields:
       - session
       - available_actions
@@ -94,7 +103,7 @@ definitions:
     max_input_chars: 8000
     pii_policy: sanitized
     evidence_required: true
-    evaluation_dataset_key: decision.next_action.v1
+    evaluation_dataset_key: decision.next_action.v2
 
   - definition_id: presentation.v1
     kind: presentation
@@ -149,4 +158,3 @@ definitions:
     pii_policy: sanitized
     evidence_required: true
     evaluation_dataset_key: semantic.discipline-feature.v1
-

@@ -12,6 +12,10 @@ The optional System One adapter is invoked only by an explicit evaluation
 command. Its report stores case IDs, typed metadata, usage and sanitized
 structured output; it does not store raw state or provider debug transcripts.
 
+The offline ecosystem report does not call Jev, System One, or jevQL and reports
+those paths as not-run. It does not inspect whether provider credentials happen
+to exist in the environment; live smoke/evaluation is a separate explicit run.
+
 The calibration scripts are Andromeda-owned exporters/loaders around the
 upstream jevcal APIs. Calibration, threshold selection and ECE are not
 reimplemented locally. The committed

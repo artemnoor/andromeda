@@ -30,7 +30,12 @@ class ConversationEngine:
             raise ContractError(ErrorCode.INVALID_QUERY, "conversation timestamp must be timezone-aware")
         if timestamp >= session.expires_at:
             raise ContractError(ErrorCode.CONFLICT, "query session has expired")
-        return merge_parsed_query(session, self._parser.parse(text), updated_at=timestamp)
+        return merge_parsed_query(
+            session,
+            self._parser.parse(text),
+            updated_at=timestamp,
+            parser_version=self._parser.version,
+        )
 
 
 __all__ = ["ConversationEngine"]

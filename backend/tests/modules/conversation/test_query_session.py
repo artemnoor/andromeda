@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+from andromeda.modules.admissions.contracts.public import FundingType, StudyForm
 from andromeda.modules.conversation.contracts.public import (
+    AdmissionUniversityScope,
     ConversationIntent,
-    FactOrigin,
     ConversationSlot,
+    FactOrigin,
     NextAction,
     QuerySession,
 )
@@ -32,7 +34,7 @@ def test_parser_and_session_fill_admission_slots_in_two_turns() -> None:
     parser = RuleBasedQueryParser()
     first = parser.parse("Куда я прохожу с 270?")
     assert first.intent is ConversationIntent.ADMISSION_SEARCH
-    assert first.total_score == Decimal("270")
+    assert first.total_score == Decimal(270)
 
     session = merge_parsed_query(_session(), first, updated_at=NOW + timedelta(seconds=1))
     assert session.missing_slots == (ConversationSlot.EXAMS,)
@@ -45,7 +47,7 @@ def test_parser_and_session_fill_admission_slots_in_two_turns() -> None:
     completed = merge_parsed_query(session, second, updated_at=NOW + timedelta(seconds=2))
     assert completed.missing_slots == (ConversationSlot.UNIVERSITY_SCOPE,)
     assert completed.next_action is NextAction.ASK_FOR_UNIVERSITY_SCOPE
-    assert completed.known_slots["total_score"] == Decimal("270")
+    assert completed.known_slots["total_score"] == Decimal(270)
     assert completed.confirmed_parameters["total_score"].origin is FactOrigin.EXPLICIT_USER
     assert completed.frame.intent is ConversationIntent.ADMISSION_SEARCH
     assert completed.frame.missing_fields == (ConversationSlot.UNIVERSITY_SCOPE,)
@@ -91,11 +93,69 @@ def test_query_frame_keeps_inference_separate_from_user_facts() -> None:
     assert "aggregation" not in session.confirmed_parameters
 
 
-def test_all_in_one_admission_request_does_not_ask_redundant_questions() -> None:
+def test_all_in_one_admission_request_with_funding_does_not_ask_redundant_questions() -> None:
     parsed = RuleBasedQueryParser().parse(
-        "Куда я прохожу с 270: русский 90, математика 90, информатика 90, university:bmstu"
+        "Куда я прохожу с 270: русский 90, математика 90, информатика 90, university:bmstu, бюджет"
     )
     session = merge_parsed_query(_session(), parsed, updated_at=NOW + timedelta(seconds=1))
 
     assert session.next_action is NextAction.EXECUTE_QUERY
     assert session.missing_slots == ()
+    assert session.known_slots["funding_type"] is FundingType.BUDGET
+    assert session.confirmed_parameters["funding_type"].origin is FactOrigin.EXPLICIT_USER
+
+
+def test_explicit_any_university_scope_completes_admission_clarification() -> None:
+    parser = RuleBasedQueryParser()
+    session = merge_parsed_query(
+        _session(),
+        parser.parse("Куда я прохожу с 270?"),
+        updated_at=NOW + timedelta(seconds=1),
+    )
+    session = merge_parsed_query(
+        session,
+        parser.parse("русский 90, математика 90, информатика 90"),
+        updated_at=NOW + timedelta(seconds=2),
+    )
+    completed = merge_parsed_query(
+        session,
+        parser.parse("Любые вузы"),
+        updated_at=NOW + timedelta(seconds=3),
+    )
+
+    assert completed.next_action is NextAction.ASK_FOR_FUNDING
+    assert completed.missing_slots == (ConversationSlot.FUNDING,)
+    assert completed.parser_version == "conversation-parser.v3"
+    assert completed.admission_university_scope is AdmissionUniversityScope.ANY_UNIVERSITY
+    assert completed.confirmed_parameters["admission_university_scope"].confirmed is True
+
+    selected_funding = merge_parsed_query(
+        completed,
+        parser.parse("бюджет"),
+        updated_at=NOW + timedelta(seconds=4),
+    )
+    assert selected_funding.next_action is NextAction.EXECUTE_QUERY
+    assert selected_funding.missing_slots == ()
+    assert selected_funding.confirmed_parameters["funding_type"].value is FundingType.BUDGET
+
+    selected = merge_parsed_query(
+        selected_funding,
+        parser.parse("university:bmstu"),
+        updated_at=NOW + timedelta(seconds=5),
+    )
+    assert selected.admission_university_scope is None
+    assert selected.entities[ResolutionEntityType.UNIVERSITY] == ("university:bmstu",)
+
+
+def test_parser_recognizes_funding_and_admission_preferences() -> None:
+    parser = RuleBasedQueryParser()
+
+    budget = parser.parse("Куда поступить, бюджет")
+    assert budget.intent is ConversationIntent.ADMISSION_SEARCH
+    assert budget.funding_type is FundingType.BUDGET
+
+    paid = parser.parse("Смотрю платное обучение, очно в 2027 году")
+    assert paid.intent is ConversationIntent.ADMISSION_SEARCH
+    assert paid.funding_type is FundingType.PAID
+    assert paid.study_form is StudyForm.FULL_TIME
+    assert paid.admission_year == 2027

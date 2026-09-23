@@ -15,9 +15,11 @@ def _clear_jev(monkeypatch: pytest.MonkeyPatch) -> None:
         "JEV_CALIBRATION_MAX_AGE_SECONDS",
         "JEV_ALLOW_FIXTURE_RUNTIME",
         "JEV_ENDPOINT",
+        "JEV_BASE_URL",
         "JEV_RUNTIME_PROVIDER",
         "JEV_MODEL",
         "TYPESAFE_API_KEY",
+        "JEV_API_KEY",
         "JEVQL_ENABLED",
         "JEVQL_ENDPOINT",
         "JEVQL_TOKEN",
@@ -66,3 +68,34 @@ def test_jev_endpoint_is_allow_listed(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(ValueError, match="approved TypeSafe-compatible endpoint"):
         Settings.from_environment()
+
+
+def test_jev_alias_environment_variables_are_supported(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_jev(monkeypatch)
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("JEV_API_KEY", "jev-alias-secret")
+    monkeypatch.setenv("JEV_BASE_URL", "https://polza.ai/api")
+    monkeypatch.setenv("JEV_MODEL", "typesafe/jev")
+
+    settings = Settings.from_environment()
+
+    assert settings.jev_api_key == "jev-alias-secret"
+    assert settings.jev_endpoint == "https://polza.ai/api"
+    assert settings.jev_model == "typesafe/jev"
+    assert "jev-alias-secret" not in repr(settings)
+
+
+def test_official_environment_variables_take_precedence_over_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _clear_jev(monkeypatch)
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "official-secret")
+    monkeypatch.setenv("JEV_API_KEY", "alias-secret")
+    monkeypatch.setenv("JEV_ENDPOINT", "https://api.typesafe.ai")
+    monkeypatch.setenv("JEV_BASE_URL", "https://polza.ai/api")
+
+    settings = Settings.from_environment()
+
+    assert settings.jev_api_key == "official-secret"
+    assert settings.jev_endpoint == "https://api.typesafe.ai"

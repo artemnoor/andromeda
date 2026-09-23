@@ -34,6 +34,7 @@ class CascadeCalibrationAdapter:
         min_support: int = 30,
         min_heldout: int = 30,
         max_age_seconds: int | None = None,
+        required_definition_ids: tuple[str, ...] | None = None,
     ) -> None:
         self._lock_path = Path(lock_path)
         self._manifest_path = Path(manifest_path)
@@ -47,6 +48,7 @@ class CascadeCalibrationAdapter:
             min_support=min_support,
             min_heldout=min_heldout,
             max_age_seconds=max_age_seconds,
+            required_definition_ids=required_definition_ids,
         )
         try:
             from jevcal.runtime import Cascade  # type: ignore[import-untyped]
@@ -69,7 +71,13 @@ class CascadeCalibrationAdapter:
     def manifest(self) -> Mapping[str, object]:
         return self._manifest
 
-    def evaluate(self, definition_id: str, evidence: JevAnswerEvidence) -> "GateDecision":
+    def evaluate(
+        self,
+        definition_id: str,
+        evidence: JevAnswerEvidence,
+        *,
+        model_version: str | None = None,
+    ) -> "GateDecision":
         """Evaluate one provider answer using upstream Cascade semantics."""
 
         if definition_id not in self._lock["questions"]:
@@ -86,6 +94,26 @@ class CascadeCalibrationAdapter:
                 threshold=None,
                 source="unresolved",
                 reason="probabilities_missing",
+                artifact_id=self.artifact_id,
+            )
+        expected_model_version = self._manifest.get("model_observed")
+        if self._manifest.get("source_kind") == "production" and (
+            not isinstance(expected_model_version, str)
+            or model_version != expected_model_version
+        ):
+            logger.warning(
+                "jevcal_cascade_rejected definition_id=%s reason=model_version_mismatch expected=%s observed=%s",
+                definition_id,
+                expected_model_version or "missing",
+                model_version or "missing",
+            )
+            return GateDecision(
+                accepted=False,
+                answer=evidence.answer_value,
+                confidence=None,
+                threshold=None,
+                source="unresolved",
+                reason="model_version_mismatch",
                 artifact_id=self.artifact_id,
             )
 
@@ -173,6 +201,7 @@ def _load_compatible_artifact(
     min_support: int,
     min_heldout: int,
     max_age_seconds: int | None,
+    required_definition_ids: tuple[str, ...] | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     try:
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
@@ -199,16 +228,41 @@ def _load_compatible_artifact(
         raise CalibrationArtifactError("calibration definition versions are stale")
     if min_support < 1 or min_heldout < 1:
         raise CalibrationArtifactError("calibration support requirements must be positive")
+    raw_lock_questions = lock.get("questions")
+    lock_ids = set(raw_lock_questions) if isinstance(raw_lock_questions, dict) else set()
+    raw_calibrated_ids = manifest.get("calibrated_definition_ids")
+    if raw_calibrated_ids is None:
+        calibrated_ids = lock_ids
+    elif isinstance(raw_calibrated_ids, (list, tuple, set)):
+        calibrated_ids = set(raw_calibrated_ids)
+    else:
+        raise CalibrationArtifactError("calibration definition scope is missing")
+    if not calibrated_ids or calibrated_ids != lock_ids or not calibrated_ids.issubset(expected_versions):
+        raise CalibrationArtifactError("calibration definition scope is invalid")
+    required_ids = set(required_definition_ids) if required_definition_ids is not None else calibrated_ids
+    if not required_ids or not required_ids.issubset(expected_versions):
+        raise CalibrationArtifactError("required calibration definition scope is invalid")
     if production:
+        if not required_ids.issubset(calibrated_ids):
+            raise CalibrationArtifactError("production artifact omits a required definition")
         samples = manifest.get("samples_by_definition")
         if not isinstance(samples, dict):
             raise CalibrationArtifactError("calibration sample counts are missing")
-        for definition_id in expected_versions:
+        for definition_id in required_ids:
             value = samples.get(definition_id)
             if not isinstance(value, dict):
                 raise CalibrationArtifactError(f"calibration sample counts missing: {definition_id}")
             if int(value.get("total", 0)) < min_support or int(value.get("heldout", 0)) < min_heldout:
                 raise CalibrationArtifactError(f"calibration support is insufficient: {definition_id}")
+            quality = manifest.get("quality_by_definition")
+            result = quality.get(definition_id) if isinstance(quality, dict) else None
+            if not isinstance(result, dict) or result.get("status") != "ok" or result.get("threshold") is None:
+                raise CalibrationArtifactError(f"calibration quality gate failed: {definition_id}")
+        observed_models = lock.get("model_observed")
+        if not isinstance(observed_models, list) or len(observed_models) != 1:
+            raise CalibrationArtifactError("production artifact must identify one observed model version")
+        if manifest.get("model_observed") != observed_models[0]:
+            raise CalibrationArtifactError("production observed model version is inconsistent")
     if max_age_seconds is not None and max_age_seconds < 0:
         raise CalibrationArtifactError("calibration max age must not be negative")
     if max_age_seconds is not None:

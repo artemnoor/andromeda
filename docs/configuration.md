@@ -30,12 +30,12 @@
 | `ANDROMEDA_AUTH_RATE_LIMIT_MAX` | backend | `10` | Requests per window for login/register/guest import per client key |
 | `ANDROMEDA_SENSITIVE_RATE_LIMIT_MAX` | backend | `120` | Requests per window for decision/proftest state mutations |
 | `ANDROMEDA_OPS_RATE_LIMIT_MAX` | backend | `10` | Requests per window for Ops endpoints per client key |
-| `JEV_ENABLED` | backend | `false` | Enable calibrated production TypeSafe decisions; requires key, health and production lock |
+  | `JEV_ENABLED` | backend | `false` | Enable calibrated production Jev decisions through the TypeSafe SDK; requires key, health and production lock |
 | `JEV_SHADOW_ENABLED` | backend | `false` | Run TypeSafe decisions for aggregate comparison while returning deterministic decisions |
 | `JEV_CALIBRATION_ENABLED` | backend | `false` | Explicit calibration gate required by production Jev |
 | `JEV_CALIBRATION_LOCK_PATH` | backend | — | Environment/secret-manager path to a validated production decision lock |
-| `TYPESAFE_API_KEY` | backend | — | Optional provider secret; never commit or log |
-| `JEV_ENDPOINT` | backend | `https://api.typesafe.ai` | Fixed allow-listed TypeSafe endpoint; never user-controlled |
+| `TYPESAFE_API_KEY` | backend | — | Optional provider secret; never commit or log. `JEV_API_KEY` is a supported alias |
+  | `JEV_ENDPOINT` | backend | `https://api.typesafe.ai` | Fixed allow-listed TypeSafe-compatible endpoint; `https://polza.ai/api` is supported. Never user-controlled. `JEV_BASE_URL` is a supported alias |
 | `JEV_MODEL` | backend | `jev-latest` | TypeSafe model identity |
 | `JEVQL_ENABLED` | backend | `false` | Optional bounded semantic predicate runtime |
 | `JEV_TREE_ENABLED` | backend | `false` | Optional isolated Node 22 hierarchical resolver |
