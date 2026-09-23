@@ -65,6 +65,11 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(
         assert "ix_benefit_rules_olympiad_result" in {
             index["name"] for index in inspector.get_indexes("admission_benefit_rules")
         }
+        confirmation_subject_columns = {
+            column["name"]
+            for column in inspector.get_columns("admission_benefit_rule_subjects")
+        }
+        assert "applicant_category" in confirmation_subject_columns
         assert "ix_achievement_rules_source_refresh" in {
             index["name"]
             for index in inspector.get_indexes("individual_achievement_rules")
@@ -281,6 +286,46 @@ def test_admission_benefit_coverage_migration_round_trips_from_0035(
         assert (
             "admission_benefit_ingestion_coverage" in inspect(engine).get_table_names()
         )
+    finally:
+        engine.dispose()
+
+
+def test_confirmation_category_migration_is_reversible_from_0036(
+    tmp_path: Path, monkeypatch
+) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'confirmation-category.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    config = _alembic_config(database_url)
+
+    command.upgrade(config, "0036_admission_benefit_coverage")
+    command.upgrade(config, "head")
+    engine = create_engine(database_url)
+    try:
+        assert "applicant_category" in {
+            column["name"]
+            for column in inspect(engine).get_columns("admission_benefit_rule_subjects")
+        }
+    finally:
+        engine.dispose()
+
+    command.downgrade(config, "0036_admission_benefit_coverage")
+    engine = create_engine(database_url)
+    try:
+        assert "applicant_category" not in {
+            column["name"]
+            for column in inspect(engine).get_columns("admission_benefit_rule_subjects")
+        }
+    finally:
+        engine.dispose()
+
+    command.upgrade(config, "head")
+    engine = create_engine(database_url)
+    try:
+        assert "applicant_category" in {
+            column["name"]
+            for column in inspect(engine).get_columns("admission_benefit_rule_subjects")
+        }
     finally:
         engine.dispose()
 

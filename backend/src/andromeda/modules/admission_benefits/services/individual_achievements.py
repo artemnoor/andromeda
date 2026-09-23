@@ -123,14 +123,22 @@ class IndividualAchievementCalculator:
                 )
             )
 
-        self._deduplicate_basis(candidates, evaluations)
-        self._apply_combination_policy(policy, candidates, evaluations, source_gaps)
+        ordered_candidates = sorted(candidates, key=_candidate_source_order)
+        self._deduplicate_basis(ordered_candidates, evaluations)
+        self._apply_combination_policy(
+            policy, ordered_candidates, evaluations, source_gaps
+        )
         uncapped_points = sum(
             (item.awarded_points for item in evaluations if item.status is IndividualAchievementStatus.ACCEPTED),
             Decimal(0),
         )
-        self._apply_category_caps(candidates, evaluations, source_gaps)
-        self._apply_global_cap(policy.global_max_points, evaluations, source_gaps)
+        self._apply_category_caps(ordered_candidates, evaluations, source_gaps)
+        self._apply_global_cap(
+            policy.global_max_points,
+            ordered_candidates,
+            evaluations,
+            source_gaps,
+        )
         total_points = sum(
             (item.awarded_points for item in evaluations),
             Decimal(0),
@@ -216,7 +224,10 @@ class IndividualAchievementCalculator:
             grouped.setdefault(candidate.rule.combination_group, []).append(candidate)
 
         for group, group_candidates in grouped.items():
-            winner = max(group_candidates, key=lambda item: (item.rule.points, -item.index))
+            winner = min(
+                group_candidates,
+                key=lambda item: (-item.rule.points, _candidate_source_order(item)),
+            )
             for candidate in group_candidates:
                 if candidate is winner:
                     continue
@@ -262,13 +273,16 @@ class IndividualAchievementCalculator:
     @staticmethod
     def _apply_global_cap(
         global_cap: Decimal | None,
+        candidates: list[_Candidate],
         evaluations: list[IndividualAchievementEvaluation],
         source_gaps: list[str],
     ) -> None:
         if global_cap is None:
             return
         consumed = Decimal(0)
-        for index, evaluation in enumerate(evaluations):
+        for candidate in candidates:
+            index = candidate.index
+            evaluation = evaluations[index]
             if evaluation.status not in {IndividualAchievementStatus.ACCEPTED, IndividualAchievementStatus.CAPPED}:
                 continue
             available = max(Decimal(0), global_cap - consumed)
@@ -284,6 +298,16 @@ class IndividualAchievementCalculator:
                 )
         if consumed >= global_cap:
             source_gaps.append("individual achievement global cap applied")
+
+
+def _candidate_source_order(candidate: _Candidate) -> tuple[str, int, str, int, str]:
+    return (
+        candidate.rule.provenance.document_kind,
+        candidate.rule.provenance.row or 2**31,
+        candidate.rule.id,
+        candidate.fact.year or 2**31,
+        candidate.fact.evidence_reference or "",
+    )
 
 
 def _evaluation(

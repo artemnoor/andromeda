@@ -1425,10 +1425,18 @@ export interface components {
             status: components["schemas"]["AdmissionBenefitCoverageStatus"];
             /** Documentsdiscovered */
             documentsDiscovered: number;
+            /** Documentsselected */
+            documentsSelected: number;
             /** Documentscaptured */
             documentsCaptured: number;
             /** Documentsparsed */
             documentsParsed: number;
+            /** Requireddocumentsexpected */
+            requiredDocumentsExpected: number;
+            /** Requireddocumentsdiscovered */
+            requiredDocumentsDiscovered: number;
+            /** Requireddocumentscaptured */
+            requiredDocumentsCaptured: number;
             /** Recordsnormalized */
             recordsNormalized: number;
             /** Targetsresolved */
@@ -1439,6 +1447,8 @@ export interface components {
             conflicts: number;
             /** Reviewrequiredrows */
             reviewRequiredRows: number;
+            /** Manifesthash */
+            manifestHash: string | null;
             /** Sourcehashes */
             sourceHashes: string[];
         };
@@ -2126,6 +2136,7 @@ export interface components {
             olympiadAchievements?: components["schemas"]["ApplicantOlympiadAchievementRequest"][];
             /** Individualachievements */
             individualAchievements?: components["schemas"]["ApplicantIndividualAchievementRequest"][];
+            confirmationCategory?: components["schemas"]["ConfirmationApplicantCategory"] | null;
         };
         /**
          * ApplicantAdmissionProfile
@@ -2189,6 +2200,8 @@ export interface components {
             /** Resultyear */
             resultYear: number;
             resultType: components["schemas"]["OlympiadResultType"];
+            /** Confirmationsubject */
+            confirmationSubject?: string | null;
             /** Gradeorclass */
             gradeOrClass?: string | null;
             /** Evidencereference */
@@ -2321,7 +2334,7 @@ export interface components {
          * BenefitConditionKind
          * @enum {string}
          */
-        BenefitConditionKind: "confirmation_score" | "validity" | "required_document" | "result_type" | "target_scope" | "other";
+        BenefitConditionKind: "confirmation_score" | "confirmation_category" | "validity" | "required_document" | "result_type" | "target_scope" | "other";
         /** BenefitConditionResponse */
         BenefitConditionResponse: {
             kind: components["schemas"]["BenefitConditionKind"];
@@ -2329,6 +2342,7 @@ export interface components {
             sourceText: string;
             /** Normalizedvalue */
             normalizedValue?: string | null;
+            provenance?: components["schemas"]["BenefitProvenanceResponse"] | null;
         };
         /** BenefitProvenanceResponse */
         BenefitProvenanceResponse: {
@@ -2755,6 +2769,11 @@ export interface components {
             answeredAdaptive: number;
         };
         /**
+         * ConfirmationApplicantCategory
+         * @enum {string}
+         */
+        ConfirmationApplicantCategory: "standard" | "territorial_exception" | "unknown";
+        /**
          * ConfirmationExamKind
          * @enum {string}
          */
@@ -2771,6 +2790,7 @@ export interface components {
             /** Minimumscore */
             minimumScore?: string | null;
             examKind: components["schemas"]["ConfirmationExamKind"];
+            applicantCategory?: components["schemas"]["ConfirmationApplicantCategory"] | null;
             /** Sourcetext */
             sourceText: string;
         };

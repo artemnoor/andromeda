@@ -7,9 +7,9 @@ from typing import Literal, Self, TypeAlias
 
 from pydantic import Field, HttpUrl, model_validator
 
+from ...modules.admission_benefits.contracts.coverage import AdmissionBenefitCoverage
 from ...shared.contracts.base import ContractModel
 from ...shared.contracts.ids import IngestRunId, SourceHash, UniversityId
-from ...modules.admission_benefits.contracts.coverage import AdmissionBenefitCoverage, AdmissionBenefitCoverageStatus
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
@@ -46,6 +46,22 @@ class RawAdmissionBenefitRecordKind(StrEnum):
     SOURCE_GAP = "source_gap"
 
 
+class RawConfirmationThresholdCategory(StrEnum):
+    """Source-defined scope for an Olympiad confirmation threshold."""
+
+    GENERAL = "general"
+    TERRITORIAL_EXCEPTION = "territorial_exception"
+    UNKNOWN = "unknown"
+
+
+class RawAdmissionConfirmationThreshold(ContractModel):
+    minimum_score: Decimal = Field(strict=True, ge=0, le=100, max_digits=5, decimal_places=2)
+    applicant_category: RawConfirmationThresholdCategory
+    exam_kinds: tuple[Literal["ege", "internal_exam", "unknown"], ...] = Field(min_length=1)
+    source_text: str = Field(min_length=1, max_length=2_000)
+    locator: SourceLocator
+
+
 class RawAdmissionBenefitCell(ContractModel):
     header: str = Field(min_length=1, max_length=512)
     value: str = Field(min_length=1, max_length=10_000)
@@ -79,6 +95,14 @@ class RawAdmissionBenefitDocument(ContractModel):
     raw_page_text: str | None = Field(default=None, max_length=100_000)
 
 
+class RawIndividualAchievementDocumentNote(ContractModel):
+    """Verbatim document-level footnote with its own source locator."""
+
+    marker: str = Field(min_length=1, max_length=32)
+    source_text: str = Field(min_length=1, max_length=2_000)
+    locator: SourceLocator
+
+
 class RawAdmissionBenefitRecord(ContractModel):
     record_id: str = Field(min_length=1, max_length=384)
     record_kind: RawAdmissionBenefitRecordKind
@@ -101,6 +125,9 @@ class RawIndividualAchievementRecord(RawAdmissionBenefitRecord):
     record_kind: Literal[RawAdmissionBenefitRecordKind.INDIVIDUAL_ACHIEVEMENT] = RawAdmissionBenefitRecordKind.INDIVIDUAL_ACHIEVEMENT
     achievement_code_candidate: str | None = Field(default=None, min_length=1, max_length=256)
     official_name_candidate: str | None = Field(default=None, min_length=1, max_length=512)
+    variant_label: str | None = Field(default=None, min_length=1, max_length=256)
+    source_pages: tuple[int, ...] = ()
+    document_notes: tuple[RawIndividualAchievementDocumentNote, ...] = ()
     points_text: str | None = Field(default=None, min_length=1, max_length=512)
     cap_text: str | None = Field(default=None, min_length=1, max_length=512)
     combination_text: str | None = Field(default=None, min_length=1, max_length=2_000)

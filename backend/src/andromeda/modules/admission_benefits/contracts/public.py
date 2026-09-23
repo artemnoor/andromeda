@@ -71,10 +71,17 @@ class ConfirmationExamKind(StrEnum):
     UNKNOWN = "unknown"
 
 
+class ConfirmationApplicantCategory(StrEnum):
+    STANDARD = "standard"
+    TERRITORIAL_EXCEPTION = "territorial_exception"
+    UNKNOWN = "unknown"
+
+
 class ConfirmationSubjectRule(ContractModel):
     subject: NonEmptyText
     minimum_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=HUNDRED, max_digits=5, decimal_places=2)
     exam_kind: ConfirmationExamKind = ConfirmationExamKind.UNKNOWN
+    applicant_category: ConfirmationApplicantCategory | None = None
     source_text: NonEmptyText
 
 
@@ -101,6 +108,7 @@ class BenefitCondition(ContractModel):
     kind: BenefitConditionKind
     source_text: NonEmptyText
     normalized_value: NonEmptyText | None = None
+    provenance: BenefitProvenance | None = None
 
 
 class Olympiad(ContractModel):
@@ -239,11 +247,12 @@ class IndividualAchievementPolicy(ContractModel):
 
 
 __all__ = [
+    "AchievementCombinationPolicy",
     "AdmissionBenefitRule",
     "AdmissionRoute",
-    "AchievementCombinationPolicy",
     "BenefitCondition",
     "BenefitType",
+    "ConfirmationApplicantCategory",
     "ConfirmationExamKind",
     "ConfirmationRequirement",
     "ConfirmationSubjectRule",

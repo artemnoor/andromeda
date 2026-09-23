@@ -40,6 +40,7 @@ from andromeda.modules.admission_benefits.contracts.public import (
     AdmissionBenefitRule,
     AdmissionRoute,
     BenefitType,
+    ConfirmationApplicantCategory,
     ConfirmationExamKind,
     ConfirmationRequirement,
     ConfirmationSubjectRule,
@@ -162,6 +163,13 @@ def _snapshot(*, source_hash: str = SOURCE_HASH) -> AdmissionBenefitsSnapshot:
                 minimum_score=Decimal(75),
                 exam_kind=ConfirmationExamKind.EGE,
                 source_text="не менее 75 баллов ЕГЭ",
+            ),
+            ConfirmationSubjectRule(
+                subject="физика",
+                minimum_score=Decimal(65),
+                exam_kind=ConfirmationExamKind.EGE,
+                applicant_category=ConfirmationApplicantCategory.TERRITORIAL_EXCEPTION,
+                source_text="для выпускников с территорий — не менее 65 баллов ЕГЭ",
             ),
         ),
         validity=ValidityPolicy(
@@ -337,6 +345,14 @@ def test_repository_syncs_and_reads_both_query_directions(tmp_path: Path) -> Non
             BenefitType.BVI,
             BenefitType.ONE_HUNDRED_POINTS,
         }
+        bvi_rule = next(rule for rule in rules if rule.benefit_type is BenefitType.BVI)
+        assert [subject.minimum_score for subject in bvi_rule.confirmation_subjects] == [
+            Decimal("75.00"),
+            Decimal("65.00"),
+        ]
+        assert bvi_rule.confirmation_subjects[1].applicant_category is (
+            ConfirmationApplicantCategory.TERRITORIAL_EXCEPTION
+        )
         assert len(statements) <= 5
         assert repository.get_programs_for_olympiad(
             "olympiad:step-in-future", UNIVERSITY_ID, 2026

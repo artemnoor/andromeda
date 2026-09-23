@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import StrEnum
 
 from pydantic import Field, model_validator
@@ -33,6 +34,16 @@ class AdmissionBenefitCoverage(ContractModel):
     review_required_rows: int = Field(default=0, strict=True, ge=0)
     manifest_hash: SourceHash | None = None
     source_hashes: tuple[SourceHash, ...] = ()
+
+    @model_validator(mode="before")
+    @classmethod
+    def preserve_legacy_selected_count(cls, data: object) -> object:
+        if not isinstance(data, Mapping) or "documents_selected" in data:
+            return data
+        discovered = data.get("documents_discovered")
+        if isinstance(discovered, int) and not isinstance(discovered, bool):
+            return {**data, "documents_selected": discovered}
+        return data
 
     @model_validator(mode="after")
     def validate_document_counts(self) -> AdmissionBenefitCoverage:

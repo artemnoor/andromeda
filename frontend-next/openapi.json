@@ -10579,6 +10579,10 @@
             "type": "integer",
             "title": "Documentsdiscovered"
           },
+          "documentsSelected": {
+            "type": "integer",
+            "title": "Documentsselected"
+          },
           "documentsCaptured": {
             "type": "integer",
             "title": "Documentscaptured"
@@ -10586,6 +10590,18 @@
           "documentsParsed": {
             "type": "integer",
             "title": "Documentsparsed"
+          },
+          "requiredDocumentsExpected": {
+            "type": "integer",
+            "title": "Requireddocumentsexpected"
+          },
+          "requiredDocumentsDiscovered": {
+            "type": "integer",
+            "title": "Requireddocumentsdiscovered"
+          },
+          "requiredDocumentsCaptured": {
+            "type": "integer",
+            "title": "Requireddocumentscaptured"
           },
           "recordsNormalized": {
             "type": "integer",
@@ -10607,6 +10623,17 @@
             "type": "integer",
             "title": "Reviewrequiredrows"
           },
+          "manifestHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manifesthash"
+          },
           "sourceHashes": {
             "items": {
               "type": "string"
@@ -10620,13 +10647,18 @@
         "required": [
           "status",
           "documentsDiscovered",
+          "documentsSelected",
           "documentsCaptured",
           "documentsParsed",
+          "requiredDocumentsExpected",
+          "requiredDocumentsDiscovered",
+          "requiredDocumentsCaptured",
           "recordsNormalized",
           "targetsResolved",
           "unresolvedTargets",
           "conflicts",
           "reviewRequiredRows",
+          "manifestHash",
           "sourceHashes"
         ],
         "title": "AdmissionBenefitCoverageResponse"
@@ -12902,6 +12934,16 @@
             "type": "array",
             "maxItems": 100,
             "title": "Individualachievements"
+          },
+          "confirmationCategory": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfirmationApplicantCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -13098,6 +13140,19 @@
           },
           "resultType": {
             "$ref": "#/components/schemas/OlympiadResultType"
+          },
+          "confirmationSubject": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmationsubject"
           },
           "gradeOrClass": {
             "anyOf": [
@@ -13536,6 +13591,7 @@
         "type": "string",
         "enum": [
           "confirmation_score",
+          "confirmation_category",
           "validity",
           "required_document",
           "result_type",
@@ -13563,6 +13619,16 @@
               }
             ],
             "title": "Normalizedvalue"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BenefitProvenanceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -14764,6 +14830,15 @@
         ],
         "title": "ConfidenceResponse"
       },
+      "ConfirmationApplicantCategory": {
+        "type": "string",
+        "enum": [
+          "standard",
+          "territorial_exception",
+          "unknown"
+        ],
+        "title": "ConfirmationApplicantCategory"
+      },
       "ConfirmationExamKind": {
         "type": "string",
         "enum": [
@@ -14803,6 +14878,16 @@
           },
           "examKind": {
             "$ref": "#/components/schemas/ConfirmationExamKind"
+          },
+          "applicantCategory": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfirmationApplicantCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sourceText": {
             "type": "string",

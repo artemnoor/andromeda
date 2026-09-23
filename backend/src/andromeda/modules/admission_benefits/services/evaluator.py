@@ -128,16 +128,28 @@ class AdmissionBenefitEvaluator:
         rule: AdmissionBenefitRule,
         request: AdmissionBenefitEvaluationInput,
     ) -> tuple[AdmissionBenefitEvaluation, tuple[str, ...]]:
-        evidence = (
+        evidence_items: list[AdmissionBenefitEvidence] = [
             AdmissionBenefitEvidence(
                 rule_id=rule.id,
                 provenance=rule.provenance,
-                # Source rows are retained in full on the canonical rule, but
-                # the explainability contract intentionally carries a bounded
-                # excerpt so a long table row cannot break the eligibility API.
+                # Keep bounded excerpts; raw source snapshots remain the audit source.
                 excerpt=rule.source_text[:256],
-            ),
-        )
+            )
+        ]
+        seen_provenance = {rule.provenance.source_snapshot_hash}
+        for condition in rule.conditions:
+            provenance = condition.provenance
+            if provenance is None or provenance.source_snapshot_hash in seen_provenance:
+                continue
+            seen_provenance.add(provenance.source_snapshot_hash)
+            evidence_items.append(
+                AdmissionBenefitEvidence(
+                    rule_id=rule.id,
+                    provenance=provenance,
+                    excerpt=condition.source_text[:256],
+                )
+            )
+        evidence = tuple(evidence_items)
         if rule.status is not RuleDataStatus.ACTIVE:
             return self._evaluation(
                 rule, EligibilityStatus.REVIEW_REQUIRED, "Rule is not active", evidence
@@ -214,6 +226,8 @@ class AdmissionBenefitEvaluator:
                 rule.confirmation_subjects,
                 ege_scores=request.applicant.ege_scores,
                 internal_exam_scores=request.applicant.internal_exam_scores,
+                applicant_category=request.applicant.confirmation_category,
+                selected_subject=applicant_fact.confirmation_subject,
             )
             if confirmation.status is not EligibilityStatus.ELIGIBLE:
                 return self._evaluation(

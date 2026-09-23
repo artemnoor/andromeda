@@ -14,7 +14,7 @@ from andromeda.shared.contracts.ids import (
     OlympiadProfileId,
 )
 
-from .public import OlympiadResultType
+from .public import ConfirmationApplicantCategory, OlympiadResultType
 
 
 class ApplicantExamScore(ContractModel):
@@ -34,6 +34,7 @@ class ApplicantOlympiadAchievement(ContractModel):
     olympiad_profile_id: OlympiadProfileId | None = None
     result_year: EducationYear
     result_type: OlympiadResultType
+    confirmation_subject: NonEmptyText | None = None
     grade_or_class: NonEmptyText | None = None
     evidence_reference: NonEmptyText | None = None
 
@@ -50,6 +51,7 @@ class ApplicantAdmissionFacts(ContractModel):
     internal_exam_scores: tuple[ApplicantInternalExamScore, ...] = ()
     olympiad_achievements: tuple[ApplicantOlympiadAchievement, ...] = ()
     individual_achievements: tuple[ApplicantIndividualAchievement, ...] = ()
+    confirmation_category: ConfirmationApplicantCategory | None = None
 
     @model_validator(mode="after")
     def validate_exam_subjects(self) -> ApplicantAdmissionFacts:
@@ -62,7 +64,7 @@ class ApplicantAdmissionFacts(ContractModel):
 __all__ = [
     "ApplicantAdmissionFacts",
     "ApplicantExamScore",
-    "ApplicantInternalExamScore",
     "ApplicantIndividualAchievement",
+    "ApplicantInternalExamScore",
     "ApplicantOlympiadAchievement",
 ]

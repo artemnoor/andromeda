@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 
@@ -9,8 +10,12 @@ from andromeda.ingestion.contracts.admission_benefits import (
     AdmissionBenefitCoverage,
     AdmissionBenefitParserDiagnostic,
     RawAdmissionBenefitRecord,
+    RawAdmissionConfirmationThreshold,
+    RawConfirmationThresholdCategory,
+    RawIndividualAchievementDocumentNote,
     RawIndividualAchievementRecord,
 )
+from andromeda.ingestion.contracts.raw import SourceLocator
 from andromeda.ingestion.universities.bmstu.admission_benefits.coverage import (
     build_coverage,
 )
@@ -35,6 +40,7 @@ from andromeda.modules.admission_benefits.contracts.public import (
     AdmissionRoute,
     BenefitCondition,
     BenefitType,
+    ConfirmationApplicantCategory,
     ConfirmationExamKind,
     ConfirmationRequirement,
     ConfirmationSubjectRule,
@@ -80,6 +86,14 @@ class OlympiadProfileSourceEnrichment(ContractModel):
     source: BmstuOlympiadProfileSource
 
 
+@dataclass(frozen=True, slots=True)
+class _IndividualAchievementCombination:
+    global_max_points: Decimal
+    default_policy: AchievementCombinationPolicy
+    source_text: str
+    source_note: RawIndividualAchievementDocumentNote
+
+
 def normalize_olympiad_benefits(
     records: tuple[RawAdmissionBenefitRecord, ...],
     *,
@@ -90,6 +104,9 @@ def normalize_olympiad_benefits(
     olympiad_result_validity_text: str | None = None,
     olympiad_confirmation_min_score: Decimal | None = None,
     olympiad_confirmation_text: str | None = None,
+    olympiad_confirmation_thresholds: tuple[RawAdmissionConfirmationThreshold, ...] = (),
+    rule_policy_provenance: BenefitProvenance | None = None,
+    validity_locator: SourceLocator | None = None,
     profile_sources: tuple[OlympiadProfileSourceEnrichment, ...] = (),
     direction_index: Mapping[str, str] | None = None,
 ) -> OlympiadBenefitNormalizationResult:
@@ -233,16 +250,44 @@ def normalize_olympiad_benefits(
             if values.get("confirmation_required") == "no"
             else ConfirmationRequirement.UNKNOWN
         )
-        if (
-            confirmation_score is None
-            and olympiad_confirmation_min_score is not None
-            and benefit_type is BenefitType.BVI
+        applies_shared_confirmation = (
+            benefit_type in {BenefitType.BVI, BenefitType.ONE_HUNDRED_POINTS}
             and route is AdmissionRoute.OLYMPIAD
-            and profile_subjects
-        ):
-            confirmation_score = olympiad_confirmation_min_score
-            confirmation_subject = ", ".join(profile_subjects) if profile_subjects else None
-        if confirmation_score is not None:
+        )
+        thresholds = olympiad_confirmation_thresholds
+        if not thresholds and olympiad_confirmation_min_score is not None and applies_shared_confirmation:
+            thresholds = (
+                RawAdmissionConfirmationThreshold(
+                    minimum_score=olympiad_confirmation_min_score,
+                    applicant_category=RawConfirmationThresholdCategory.GENERAL,
+                    exam_kinds=("ege",),
+                    source_text=_bounded_text(
+                        olympiad_confirmation_text
+                        or "Confirmation threshold source text is unavailable"
+                    ),
+                    locator=record.locator,
+                ),
+            )
+        if applies_shared_confirmation and thresholds:
+            confirmation_subject = confirmation_subject or ", ".join(profile_subjects)
+            if confirmation_subject:
+                confirmation_subjects = tuple(
+                    ConfirmationSubjectRule(
+                        subject=subject,
+                        minimum_score=threshold.minimum_score,
+                        exam_kind=_confirmation_exam_kind(exam_kind),
+                        applicant_category=_confirmation_category(threshold.applicant_category),
+                        source_text=_bounded_text(threshold.source_text),
+                    )
+                    for subject in _subjects(confirmation_subject)
+                    for threshold in thresholds
+                    for exam_kind in threshold.exam_kinds
+                )
+                confirmation_requirement = ConfirmationRequirement.REQUIRED
+            else:
+                confirmation_requirement = ConfirmationRequirement.UNKNOWN
+                diagnostics.append(_review_diagnostic(record, "confirmation_subject_unknown", "confirmation threshold has no resolved subject"))
+        elif confirmation_score is not None:
             confirmation_requirement = ConfirmationRequirement.REQUIRED
             if confirmation_subject:
                 confirmation_subjects = tuple(
@@ -256,10 +301,69 @@ def normalize_olympiad_benefits(
                 )
             else:
                 diagnostics.append(_review_diagnostic(record, "confirmation_subject_unknown", "confirmation threshold has no resolved subject"))
+        if applies_shared_confirmation and not thresholds:
+            confirmation_requirement = ConfirmationRequirement.UNKNOWN
+            diagnostics.append(_review_diagnostic(record, "confirmation_policy_missing", "Rules confirmation thresholds were not source-resolved"))
+        confirmation_policy_needs_review = applies_shared_confirmation and (
+            not thresholds
+            or not confirmation_subjects
+            or rule_policy_provenance is None
+            or any(
+                threshold.applicant_category is RawConfirmationThresholdCategory.UNKNOWN
+                or "unknown" in threshold.exam_kinds
+                for threshold in thresholds
+            )
+        )
+        validity_policy_needs_review = (
+            route is AdmissionRoute.OLYMPIAD
+            and olympiad_result_max_age_years is None
+        )
+        if confirmation_policy_needs_review and thresholds:
+            diagnostics.append(_review_diagnostic(record, "confirmation_policy_incomplete", "threshold category, exam kind, subject or Rules provenance remains unresolved"))
+        if validity_policy_needs_review:
+            diagnostics.append(
+                _review_diagnostic(
+                    record,
+                    "olympiad_validity_policy_missing",
+                    "Rules validity period was not source-resolved",
+                )
+            )
         conditions = [
             BenefitCondition(kind=BenefitConditionKind.RESULT_TYPE, source_text=_bounded_text(record.raw_text), normalized_value=result_text),
         ]
-        if olympiad_confirmation_min_score is not None and benefit_type is BenefitType.BVI and route is AdmissionRoute.OLYMPIAD:
+        if rule_policy_provenance is not None and thresholds and applies_shared_confirmation:
+            if profile_source is not None and profile_subjects:
+                conditions.append(
+                    BenefitCondition(
+                        kind=BenefitConditionKind.OTHER,
+                        source_text=_bounded_text(profile_source.source.source_title),
+                        normalized_value="confirmation_subjects=" + ",".join(profile_subjects),
+                        provenance=_profile_source_provenance(profile_source.source),
+                    )
+                )
+            for threshold in thresholds:
+                policy_source = rule_policy_provenance.source.model_copy(
+                    update={"locator": f"page={threshold.locator.page};{threshold.locator.field}"}
+                )
+                conditions.append(
+                    BenefitCondition(
+                        kind=BenefitConditionKind.CONFIRMATION_SCORE,
+                        source_text=_bounded_text(threshold.source_text),
+                        normalized_value=(
+                            f"minimum_score={threshold.minimum_score};"
+                            f"applicant_category={threshold.applicant_category.value};"
+                            f"exam_kinds={','.join(threshold.exam_kinds)}"
+                        ),
+                        provenance=rule_policy_provenance.model_copy(
+                            update={
+                                "source": policy_source,
+                                "page": threshold.locator.page,
+                                "section": threshold.locator.field,
+                            }
+                        ),
+                    )
+                )
+        elif olympiad_confirmation_min_score is not None and applies_shared_confirmation:
             conditions.append(
                 BenefitCondition(
                     kind=BenefitConditionKind.CONFIRMATION_SCORE,
@@ -268,6 +372,39 @@ def normalize_olympiad_benefits(
                         or "Правила приёма устанавливают минимальный балл подтверждения олимпиады"
                     ),
                     normalized_value=str(olympiad_confirmation_min_score),
+                )
+            )
+        if (
+            rule_policy_provenance is not None
+            and olympiad_result_max_age_years is not None
+            and olympiad_result_validity_text
+        ):
+            validity_page = validity_locator.page if validity_locator else rule_policy_provenance.page
+            validity_field = (
+                validity_locator.field if validity_locator else None
+            ) or "section=1.11"
+            validity_source = rule_policy_provenance.source.model_copy(
+                update={
+                    "locator": (
+                        f"page={validity_page};{validity_field}"
+                        if validity_page is not None
+                        else validity_field
+                    )
+                }
+            )
+            validity_provenance = rule_policy_provenance.model_copy(
+                update={
+                    "source": validity_source,
+                    "page": validity_page,
+                    "section": validity_field.removeprefix("section="),
+                }
+            )
+            conditions.append(
+                BenefitCondition(
+                    kind=BenefitConditionKind.VALIDITY,
+                    source_text=_bounded_text(olympiad_result_validity_text),
+                    normalized_value=f"max_age_years={olympiad_result_max_age_years}",
+                    provenance=validity_provenance,
                 )
             )
         rules.append(
@@ -292,9 +429,13 @@ def normalize_olympiad_benefits(
                 ),
                 target_subject=target_subject,
                 points=Decimal(100) if benefit_type is BenefitType.ONE_HUNDRED_POINTS else None,
-                conditions=tuple(conditions),
+                conditions=tuple(_dedupe_conditions(conditions)),
                 source_text=_bounded_text(record.raw_text),
-                status=status,
+                status=(
+                    RuleDataStatus.REVIEW_REQUIRED
+                    if confirmation_policy_needs_review or validity_policy_needs_review
+                    else status
+                ),
                 policy_version=policy_version,
                 provenance=provenance,
             )
@@ -319,17 +460,61 @@ def normalize_individual_achievements(
     conflicts = detect_individual_achievement_conflicts(records)
     conflicted_ids = {record_id for group in conflicts for record_id in group.record_ids}
     diagnostics = [diagnostic for record in records for diagnostic in record.diagnostics]
+    combination = _individual_achievement_combination_policy(records)
+    if combination is None:
+        diagnostics.extend(
+            _review_diagnostic(
+                record,
+                "individual_achievement_combination_policy_unknown",
+                "The official source does not provide a complete, unambiguous sum-and-cap policy",
+            )
+            for record in records[:1]
+        )
     rules: list[IndividualAchievementRule] = []
+    variant_counts: dict[tuple[str, str, int | None], int] = {}
+    for record in records:
+        row_identity = (
+            record.source_snapshot_hash,
+            record.document_kind,
+            record.locator.row,
+        )
+        variant_counts[row_identity] = variant_counts.get(row_identity, 0) + 1
     for record in records:
         name = record.official_name_candidate or _candidate(record, "official_name")
         points_text = record.points_text or _candidate(record, "points")
         points = _decimal(points_text)
         if not name or points is None:
             continue
-        category = record.achievement_code_candidate or _candidate(record, "category") or "unresolved"
-        code = _code(name)
+        category = (
+            record.achievement_code_candidate
+            or _candidate(record, "category")
+            or (
+                f"{record.document_kind}:row:{record.locator.row}"
+                if record.locator.row is not None
+                else "unresolved"
+            )
+        )
+        variant_identity = record.variant_label or record.required_document_text
+        canonical_name = (
+            f"{name} — {variant_identity}" if variant_identity else name
+        )
+        code = _achievement_code(name, variant_identity)
+        row_identity = (
+            record.source_snapshot_hash,
+            record.document_kind,
+            record.locator.row,
+        )
+        has_sourced_variants = (
+            variant_counts.get(row_identity, 0) > 1
+            and combination is not None
+        )
+        combination_group = (
+            f"{record.document_kind}:{record.locator.row}"
+            if has_sourced_variants and record.locator.row is not None
+            else None
+        )
         status = RuleDataStatus.CONFLICT if record.record_id in conflicted_ids else RuleDataStatus.ACTIVE
-        if any(diagnostic.locator == record.locator for diagnostic in diagnostics):
+        if record.diagnostics and status is not RuleDataStatus.CONFLICT:
             status = RuleDataStatus.REVIEW_REQUIRED
         rules.append(
             IndividualAchievementRule(
@@ -339,15 +524,20 @@ def normalize_individual_achievements(
                 education_level=_education_level(record),
                 achievement_code=code,
                 category=category,
-                official_name=_bounded_text(name),
+                official_name=_bounded_text(canonical_name),
                 points=points,
-                combination_policy=_combination_policy(record),
+                combination_group=combination_group,
+                combination_policy=(
+                    AchievementCombinationPolicy.MAX_ONLY
+                    if combination_group is not None
+                    else (
+                        combination.default_policy
+                        if combination is not None
+                        else AchievementCombinationPolicy.UNKNOWN
+                    )
+                ),
                 required_document=_bounded_text(record.required_document_text or _candidate(record, "required_document")) if (record.required_document_text or _candidate(record, "required_document")) else None,
-                conditions=(
-                    BenefitCondition(kind=BenefitConditionKind.OTHER, source_text=_bounded_text(record.combination_text)),
-                )
-                if record.combination_text
-                else (),
+                conditions=_individual_achievement_source_conditions(record),
                 source_text=_bounded_text(record.raw_text),
                 status=status,
                 policy_version=policy_version,
@@ -356,15 +546,38 @@ def normalize_individual_achievements(
         )
     policy = None
     if rules:
+        policy_provenance = _individual_achievement_policy_provenance(
+            records, combination
+        )
         policy = IndividualAchievementPolicy(
             university_id=university_id,
             admission_year=rules[0].admission_year,
             education_level=None,
+            global_max_points=(
+                combination.global_max_points if combination is not None else None
+            ),
+            default_combination_policy=(
+                combination.default_policy
+                if combination is not None
+                else AchievementCombinationPolicy.UNKNOWN
+            ),
             rules=tuple(rules),
-            source_text="Нормализовано из официальной таблицы индивидуальных достижений",
-            status=RuleDataStatus.CONFLICT if conflicts else (RuleDataStatus.REVIEW_REQUIRED if diagnostics else RuleDataStatus.ACTIVE),
+            source_text=(
+                _bounded_text(combination.source_text)
+                if combination is not None
+                else "Политика суммирования ИД не подтверждена источником"
+            ),
+            status=(
+                RuleDataStatus.CONFLICT
+                if conflicts
+                else (
+                    RuleDataStatus.REVIEW_REQUIRED
+                    if diagnostics or combination is None
+                    else RuleDataStatus.ACTIVE
+                )
+            ),
             policy_version=policy_version,
-            provenance=_provenance(records[0]),
+            provenance=policy_provenance,
         )
     coverage = build_coverage(
         documents_discovered=documents_discovered if documents_discovered is not None else len({record.source_snapshot_hash for record in records}),
@@ -403,6 +616,104 @@ def normalize_direction_scope(
     return BenefitScope(mode=mode, targets=targets, original_text=original_text)
 
 
+def _individual_achievement_combination_policy(
+    records: tuple[RawIndividualAchievementRecord, ...],
+) -> _IndividualAchievementCombination | None:
+    notes: dict[str, RawIndividualAchievementDocumentNote] = {}
+    for record in records:
+        for note in record.document_notes:
+            existing = notes.get(note.marker)
+            if existing is not None and existing.source_text != note.source_text:
+                return None
+            notes[note.marker] = note
+
+    sum_note = notes.get("2")
+    category_note = notes.get("4")
+    if sum_note is None or category_note is None:
+        return None
+
+    sum_text = _normalize_policy_text(sum_note.source_text)
+    category_text = _normalize_policy_text(category_note.source_text)
+    permits_sum = re.search(
+        r"суммир\w*\s+балл\w*.*различн\w+\s+достижен\w+",
+        sum_text,
+    ) is not None
+    cap_match = re.search(
+        r"(?:не\s+более|не\s+может\s+быть\s+более|не\s+может\s+превышать)"
+        r"\s*(\d{1,2})\s+балл\w*",
+        sum_text,
+    )
+    single_category_award = (
+        re.search(r"достижен\w+.*(?:однократн\w*|один\s+раз)", category_text)
+        is not None
+        and re.search(
+            r"категор\w+.*(?:однократн\w*|один\s+раз)", category_text
+        )
+        is not None
+    )
+    if not permits_sum or cap_match is None or not single_category_award:
+        return None
+
+    cap = Decimal(cap_match.group(1))
+    if cap < 0 or cap > 100:
+        return None
+    return _IndividualAchievementCombination(
+        global_max_points=cap,
+        default_policy=AchievementCombinationPolicy.ADDITIVE,
+        source_text=f"{sum_note.source_text} {category_note.source_text}",
+        source_note=sum_note,
+    )
+
+
+def _individual_achievement_policy_provenance(
+    records: tuple[RawIndividualAchievementRecord, ...],
+    combination: _IndividualAchievementCombination | None,
+) -> BenefitProvenance:
+    if combination is None or not records:
+        return _provenance(records[0])
+    evidence_record = next(
+        (
+            record
+            for record in records
+            if combination.source_note in record.document_notes
+        ),
+        records[0],
+    )
+    return _provenance(
+        evidence_record.model_copy(update={"locator": combination.source_note.locator})
+    )
+
+
+def _individual_achievement_source_conditions(
+    record: RawIndividualAchievementRecord,
+) -> tuple[BenefitCondition, ...]:
+    conditions: list[BenefitCondition] = []
+    if record.combination_text:
+        conditions.append(
+            BenefitCondition(
+                kind=BenefitConditionKind.OTHER,
+                source_text=_bounded_text(record.combination_text),
+            )
+        )
+    for note in record.document_notes:
+        if note.marker not in {"2", "4"}:
+            continue
+        note_record = record.model_copy(update={"locator": note.locator})
+        conditions.append(
+            BenefitCondition(
+                kind=BenefitConditionKind.OTHER,
+                source_text=_bounded_text(note.source_text),
+                normalized_value=f"appendix_6_note:{note.marker}",
+                provenance=_provenance(note_record),
+            )
+        )
+    return tuple(conditions)
+
+
+def _normalize_policy_text(value: str) -> str:
+    return re.sub(r"\s+", " ", value.casefold()).strip()
+
+
 def _candidate(record: RawAdmissionBenefitRecord, field: str) -> str | None:
     return next((candidate.value for candidate in record.normalized_candidates if candidate.field == field), None)
 
@@ -438,9 +749,42 @@ def _subjects(value: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(part.strip() for part in parts if part.strip()))
 
 
+def _confirmation_exam_kind(value: str) -> ConfirmationExamKind:
+    try:
+        return ConfirmationExamKind(value)
+    except ValueError:
+        return ConfirmationExamKind.UNKNOWN
+
+
+def _confirmation_category(
+    value: RawConfirmationThresholdCategory,
+) -> ConfirmationApplicantCategory | None:
+    if value is RawConfirmationThresholdCategory.GENERAL:
+        return None
+    if value is RawConfirmationThresholdCategory.TERRITORIAL_EXCEPTION:
+        return ConfirmationApplicantCategory.TERRITORIAL_EXCEPTION
+    return ConfirmationApplicantCategory.UNKNOWN
+
+
+def _dedupe_conditions(conditions: list[BenefitCondition]) -> tuple[BenefitCondition, ...]:
+    unique: dict[str, BenefitCondition] = {}
+    for condition in conditions:
+        key = repr(condition.model_dump(mode="json"))
+        unique.setdefault(key, condition)
+    return tuple(unique.values())
+
+
 def _code(value: str) -> str:
     transliterated = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
     return f"bmstu-{transliterated or sha256(value.encode('utf-8')).hexdigest()[:16]}"
+
+
+def _achievement_code(name: str, variant: str | None) -> str:
+    base = _code(name)
+    if not variant:
+        return base
+    digest = sha256(f"{name.casefold()}|{variant.casefold()}".encode()).hexdigest()[:12]
+    return f"{base}-variant-{digest}"
 
 
 def _education_level(record: RawIndividualAchievementRecord) -> EducationLevel | None:

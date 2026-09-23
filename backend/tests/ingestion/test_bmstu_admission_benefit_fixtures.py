@@ -8,6 +8,7 @@ from pathlib import Path
 
 from andromeda.ingestion.contracts.raw import (
     RawAdmissionBenefitDocument,
+    RawConfirmationThresholdCategory,
     RawSourceSnapshot,
 )
 from andromeda.ingestion.universities.bmstu.normalizers.admission_benefits import (
@@ -256,22 +257,10 @@ def test_appendix_6_keeps_fixed_points_and_document_evidence() -> None:
     document = _document("appendix_6", payload["source_url"], payload["content_sha256"])
     records, diagnostics = parse_individual_achievement_tables(
         document,
-        (
-            {
-                "page": 1,
-                "table": 1,
-                "rows": [
-                    [
-                        "№",
-                        "Полное наименование индивидуального достижения",
-                        "Подтверждающий документ",
-                        "Баллы",
-                    ],
-                    *payload["rows"],
-                ],
-                "row_numbers": payload["row_numbers"],
-                "row_pages": payload["row_pages"],
-            },
+        payload["tables"],
+        document_pages=tuple(
+            (item["page"], item["text"])
+            for item in payload["text_layer_pages"]
         ),
     )
     result = normalize_individual_achievements(
@@ -281,8 +270,16 @@ def test_appendix_6_keeps_fixed_points_and_document_evidence() -> None:
     )
 
     assert diagnostics == ()
+    assert {record.locator.row for record in records} == set(range(1, 47))
+    assert len(records) == 82
     assert result.policy is not None
-    assert {rule.points for rule in result.policy.rules} == {10, 5}
+    assert result.policy.status is RuleDataStatus.ACTIVE
+    assert result.policy.global_max_points == 10
+    assert result.policy.default_combination_policy.value == "additive"
+    assert {rule.points for rule in result.policy.rules} >= {10, 5, 4, 3}
+    gto_rules = [rule for rule in result.policy.rules if rule.provenance.row == 5]
+    assert {rule.points for rule in gto_rules} == {5, 4, 3}
+    assert len({rule.combination_group for rule in gto_rules}) == 1
     assert all(
         rule.provenance.source_snapshot_hash == payload["content_sha256"]
         for rule in result.policy.rules
@@ -306,18 +303,15 @@ def test_rules_extract_preserves_validity_and_confirmation_policy() -> None:
     payload = json.loads(
         (FIXTURE_DIR / "rules-2026.extract.json").read_text(encoding="utf-8")
     )
-    assert payload["confirmation_thresholds"] == [
-        {
-            "minimum_score": 75,
-            "applicant_category": "general",
-            "locator": "section=1.12;page=12",
-        },
-        {
-            "minimum_score": 65,
-            "applicant_category": "graduates_from_DNR_LNR_Zaporizhzhia_Kherson",
-            "locator": "section=1.12;page=12",
-        },
+    thresholds = payload["confirmation_thresholds"]
+    assert [item["minimum_score"] for item in thresholds] == [75, 65]
+    assert [item["applicant_category"] for item in thresholds] == [
+        "general",
+        "graduates_from_DNR_LNR_Zaporizhzhia_Kherson",
     ]
+    assert all(item["exam_kinds"] == ["ege", "internal_exam"] for item in thresholds)
+    assert all(item["locator"] == "page=12;section=1.12" for item in thresholds)
+    assert all(item["source_text"] for item in thresholds)
     assert payload["conditional_threshold_requires_explicit_applicant_category"] is True
     document = _document("rules", payload["source_url"], payload["content_sha256"])
     snapshot = RawSourceSnapshot(
@@ -338,6 +332,27 @@ def test_rules_extract_preserves_validity_and_confirmation_policy() -> None:
     assert policy.olympiad_result_max_age_years == 4
     assert policy.olympiad_confirmation_min_score == 75
     assert "четырех лет" in (policy.olympiad_result_validity_text or "")
+    assert policy.validity_locator is not None
+    assert policy.validity_locator.page == 12
+    assert policy.validity_locator.field == "section=1.11"
+    assert [
+        (item.minimum_score, item.applicant_category, item.exam_kinds)
+        for item in policy.confirmation_thresholds
+    ] == [
+        (75, RawConfirmationThresholdCategory.GENERAL, ("ege", "internal_exam")),
+        (
+            65,
+            RawConfirmationThresholdCategory.TERRITORIAL_EXCEPTION,
+            ("ege", "internal_exam"),
+        ),
+    ]
+    assert all(item.locator.page == 12 for item in policy.confirmation_thresholds)
+    general_text = policy.confirmation_thresholds[0].source_text.casefold()
+    exception_text = policy.confirmation_thresholds[1].source_text.casefold()
+    assert "не ниже 75 баллов" in general_text
+    assert "не ниже 65 баллов" not in general_text
+    assert "для выпускников с территорий" in exception_text
+    assert "не ниже 65 баллов" in exception_text
 
 
 def test_official_olympiad_profile_extract_resolves_engineering_subjects() -> None:

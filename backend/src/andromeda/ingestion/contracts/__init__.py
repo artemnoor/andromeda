@@ -8,6 +8,9 @@ from .admission_benefits import (
     RawAdmissionBenefitDocument,
     RawAdmissionBenefitRecord,
     RawAdmissionBenefitRecordKind,
+    RawAdmissionConfirmationThreshold,
+    RawConfirmationThresholdCategory,
+    RawIndividualAchievementDocumentNote,
     RawIndividualAchievementRecord,
 )
 from .normalized import CanonicalSnapshot
@@ -35,9 +38,12 @@ __all__ = [
     "RawAdmissionBenefitDocument",
     "RawAdmissionBenefitRecord",
     "RawAdmissionBenefitRecordKind",
+    "RawAdmissionConfirmationThreshold",
     "RawCampusPointRecord",
+    "RawConfirmationThresholdCategory",
     "RawCurriculumRow",
     "RawDirectionRecord",
+    "RawIndividualAchievementDocumentNote",
     "RawIndividualAchievementRecord",
     "RawParserDiagnostic",
     "RawProgramRecord",

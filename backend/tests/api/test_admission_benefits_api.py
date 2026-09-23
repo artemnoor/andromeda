@@ -2,17 +2,23 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from andromeda.api.main import create_app
+from andromeda.api.schemas.admission_benefits import (
+    ApplicantAdmissionFactsRequest,
+    admission_facts,
+)
 from andromeda.infrastructure.database import Base, create_engine_for_url
-from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
+from andromeda.infrastructure.repositories.ingestion import (
+    SqlAlchemyIngestionRepository,
+)
 from andromeda.ingestion.contracts.raw import RawSourceSnapshot
 from andromeda.ingestion.contracts.source import CapturedSources
 from andromeda.ingestion.universities.bmstu import BmstuUniversityAdapter
-
 
 TRACER_FIXTURE_DIR = Path(__file__).parents[1] / "fixtures" / "tracer" / "raw"
 BENEFIT_FIXTURE_DIR = Path(__file__).parents[1] / "ingestion" / "fixtures" / "bmstu" / "admission_benefits"
@@ -71,6 +77,23 @@ def test_catalog_and_reverse_benefit_queries_return_provenance(tmp_path: Path) -
     assert catalog.status_code == 200
     assert catalog.json()["coverage"]["recordsNormalized"] > 0
     assert catalog.json()["benefitRules"][0]["provenance"]["sourceSnapshotHash"]
+    achievement_policy = catalog.json()["individualAchievementPolicy"]
+    assert Decimal(achievement_policy["globalMaxPoints"]) == 10
+    assert achievement_policy["defaultCombinationPolicy"] == "additive"
+    gto_rules = [
+        rule
+        for rule in achievement_policy["rules"]
+        if rule["provenance"]["row"] == 5
+    ]
+    assert {Decimal(rule["points"]) for rule in gto_rules} == {3, 4, 5}
+    note_four = next(
+        condition
+        for rule in gto_rules
+        for condition in rule["conditions"]
+        if condition["normalizedValue"] == "appendix_6_note:4"
+    )
+    assert note_four["provenance"]["page"] == 8
+    assert "document_note=4" in note_four["provenance"]["source"]["locator"]
     assert reverse.status_code == 200
 
 
@@ -104,3 +127,25 @@ def test_invalid_applicant_contract_uses_existing_validation_error(tmp_path: Pat
     )
     assert response.status_code == 422
     assert response.json()["code"] == "VALIDATION_ERROR"
+
+
+def test_applicant_confirmation_facts_are_typed_and_preserved() -> None:
+    request = ApplicantAdmissionFactsRequest.model_validate(
+        {
+            "olympiadAchievements": [
+                {
+                    "olympiadId": "olympiad:step-in-future",
+                    "olympiadProfileId": "olympiad-profile:engineering",
+                    "resultYear": 2024,
+                    "resultType": "prize_winner",
+                    "confirmationSubject": "физика",
+                }
+            ],
+            "confirmationCategory": "territorial_exception",
+        }
+    )
+
+    facts = admission_facts(request)
+
+    assert facts.confirmation_category.value == "territorial_exception"
+    assert facts.olympiad_achievements[0].confirmation_subject == "физика"

@@ -32,6 +32,7 @@ from andromeda.modules.admission_benefits.contracts.public import (
     AdmissionRoute,
     BenefitCondition,
     BenefitType,
+    ConfirmationApplicantCategory,
     ConfirmationExamKind,
     ConfirmationRequirement,
     ConfirmationSubjectRule,
@@ -95,6 +96,12 @@ JsonEducationLevel = Annotated[
     EducationLevel,
     BeforeValidator(lambda value: _enum_from_json(EducationLevel, value)),
 ]
+JsonConfirmationApplicantCategory = Annotated[
+    ConfirmationApplicantCategory,
+    BeforeValidator(
+        lambda value: _enum_from_json(ConfirmationApplicantCategory, value)
+    ),
+]
 
 
 class BenefitProvenanceResponse(ApiModel):
@@ -130,6 +137,7 @@ class ConfirmationSubjectResponse(ApiModel):
     subject: str
     minimum_score: Decimal | None = None
     exam_kind: ConfirmationExamKind
+    applicant_category: ConfirmationApplicantCategory | None = None
     source_text: str
 
 
@@ -144,6 +152,7 @@ class BenefitConditionResponse(ApiModel):
     kind: BenefitConditionKind
     source_text: str
     normalized_value: str | None = None
+    provenance: BenefitProvenanceResponse | None = None
 
 
 class OlympiadProfileSubjectResponse(ApiModel):
@@ -278,6 +287,7 @@ class ApplicantOlympiadAchievementRequest(ApiModel):
     )
     result_year: int = Field(strict=True, ge=2000, le=2100)
     result_type: JsonOlympiadResultType
+    confirmation_subject: str | None = Field(default=None, min_length=1, max_length=256)
     grade_or_class: str | None = Field(default=None, min_length=1, max_length=128)
     evidence_reference: str | None = Field(default=None, min_length=1, max_length=256)
 
@@ -302,6 +312,7 @@ class ApplicantAdmissionFactsRequest(ApiModel):
     individual_achievements: list[ApplicantIndividualAchievementRequest] = Field(
         default_factory=list, max_length=100
     )
+    confirmation_category: JsonConfirmationApplicantCategory | None = None
 
 
 class AdmissionEligibilityRequest(ApiModel):
@@ -407,6 +418,7 @@ def _condition(value: BenefitCondition) -> BenefitConditionResponse:
         kind=value.kind,
         source_text=value.source_text,
         normalized_value=value.normalized_value,
+        provenance=(provenance_response(value.provenance) if value.provenance else None),
     )
 
 
@@ -560,6 +572,7 @@ def admission_facts(value: ApplicantAdmissionFactsRequest) -> ApplicantAdmission
             ApplicantIndividualAchievement.model_validate(item.model_dump())
             for item in value.individual_achievements
         ),
+        confirmation_category=value.confirmation_category,
     )
 
 

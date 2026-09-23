@@ -312,6 +312,7 @@ class AdmissionBenefitRuleSubjectModel(Base):
     subject: Mapped[str] = mapped_column(String(256), nullable=False)
     minimum_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     exam_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    applicant_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
     source_text: Mapped[str] = mapped_column(String(512), nullable=False)
 
     __table_args__ = (
@@ -332,6 +333,10 @@ class AdmissionBenefitRuleSubjectModel(Base):
         CheckConstraint(
             "exam_kind IN ('ege', 'internal_exam', 'other', 'unknown')",
             name="ck_benefit_rule_subject_exam_kind",
+        ),
+        CheckConstraint(
+            "applicant_category IS NULL OR applicant_category IN ('standard', 'territorial_exception', 'unknown')",
+            name="ck_benefit_rule_subject_applicant_category",
         ),
         Index("ix_benefit_rule_subjects_subject", "subject", "admission_year"),
     )

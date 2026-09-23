@@ -11,6 +11,7 @@ from pydantic import HttpUrl
 
 from andromeda.ingestion.contracts.admission_benefits import AdmissionBenefitsSnapshot
 
+from ....modules.admission_benefits.contracts.provenance import BenefitProvenance
 from ....modules.admission_benefits.contracts.status import BenefitPolicyVersion
 from ....modules.disciplines.contracts.public import Discipline
 from ....modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
@@ -73,7 +74,7 @@ from .parser.events import load_event_fixture, parse_events
 from .parser.individual_achievements import parse_individual_achievement_tables
 from .parser.special_olympiads import parse_special_olympiad_tables
 from .parser.tracer import parse_captured
-from .pdf import extract_pdf_tables, is_pdf
+from .pdf import extract_pdf_pages_text, extract_pdf_tables, is_pdf
 from .selectors import (
     DEFAULT_CAMPUS_FIXTURE_DIR,
     DEFAULT_EVENT_FIXTURE_DIR,
@@ -521,13 +522,20 @@ def _parse_admission_benefits(
             profile_sources.append(
                 OlympiadProfileSourceEnrichment(source=profile_result.source)
             )
-    rule_policy = next(
-        (
-            parse_admission_rule_policy(snapshot)
-            for snapshot in snapshots
-            if snapshot.source_kind.rsplit(":", 1)[-1] == "rules"
-        ),
+    rules_snapshot = next(
+        (snapshot for snapshot in snapshots if snapshot.source_kind.rsplit(":", 1)[-1] == "rules"),
         None,
+    )
+    rule_policy = parse_admission_rule_policy(rules_snapshot) if rules_snapshot is not None else None
+    rule_policy_provenance = (
+        _admission_rules_provenance(
+            rules_snapshot,
+            source_run_id=source_run_id,
+            admission_year=admission_year,
+            page=rule_policy.validity_locator.page if rule_policy and rule_policy.validity_locator else None,
+        )
+        if rules_snapshot is not None and rule_policy is not None
+        else None
     )
     for snapshot in snapshots:
         document_kind = snapshot.source_kind.rsplit(":", 1)[-1]
@@ -547,11 +555,15 @@ def _parse_admission_benefits(
             parser_version=ADMISSION_BENEFITS_PARSER_VERSION,
         )
         tables = _benefit_fixture_tables(snapshot)
+        document_pages = _benefit_fixture_document_pages(snapshot)
         if tables is None and is_pdf(
             snapshot.body, snapshot.content_type, str(snapshot.requested_url)
         ):
             try:
                 tables = tuple(extract_pdf_tables(snapshot.body))
+                document_pages = tuple(
+                    enumerate(extract_pdf_pages_text(snapshot.body), start=1)
+                )
             except (OSError, RuntimeError, ValueError) as exc:
                 diagnostics.append(
                     AdmissionBenefitParserDiagnostic(
@@ -570,7 +582,11 @@ def _parse_admission_benefits(
                 tables = ()
         if document_kind in {"appendix_6", "appendix_7"}:
             parsed_achievements, parser_diagnostics = (
-                parse_individual_achievement_tables(document, tables or ())
+                parse_individual_achievement_tables(
+                    document,
+                    tables or (),
+                    document_pages=document_pages or (),
+                )
             )
             individual_records.extend(parsed_achievements)
         elif document_kind in {"appendix_5_4", "appendix_5_5"}:
@@ -630,6 +646,11 @@ def _parse_admission_benefits(
         olympiad_confirmation_text=(
             rule_policy.olympiad_confirmation_text if rule_policy is not None else None
         ),
+        olympiad_confirmation_thresholds=(
+            rule_policy.confirmation_thresholds if rule_policy is not None else ()
+        ),
+        rule_policy_provenance=rule_policy_provenance,
+        validity_locator=(rule_policy.validity_locator if rule_policy is not None else None),
         profile_sources=tuple(profile_sources),
         direction_index=direction_index,
     )
@@ -829,9 +850,60 @@ def _benefit_fixture_tables(
     return (table_payload,)
 
 
+def _benefit_fixture_document_pages(
+    snapshot: RawSourceSnapshot,
+) -> tuple[tuple[int, str], ...]:
+    try:
+        payload = json.loads(snapshot.body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return ()
+    if not isinstance(payload, dict) or not isinstance(payload.get("text_layer_pages"), list):
+        return ()
+    pages = tuple(
+        (item["page"], item["text"])
+        for item in payload["text_layer_pages"]
+        if isinstance(item, dict)
+        and isinstance(item.get("page"), int)
+        and item["page"] >= 1
+        and isinstance(item.get("text"), str)
+        and item["text"].strip()
+    )
+    return pages
+
+
 def _derived_benefit_run_id(captured: CapturedSources) -> IngestRunId:
     seed = "|".join(sorted(snapshot.content_sha256 for snapshot in captured.snapshots))
     return f"ingest:{sha256(seed.encode('utf-8')).hexdigest()[:32]}"
+
+
+def _admission_rules_provenance(
+    snapshot: RawSourceSnapshot,
+    *,
+    source_run_id: IngestRunId,
+    admission_year: int,
+    page: int | None,
+) -> BenefitProvenance:
+    locator = f"page={page};section=1.11-1.12" if page is not None else "section=1.11-1.12"
+    attribution = SourceAttribution(
+        kind=SourceKind.BMSTU_ADMISSION_RULES,
+        url=snapshot.requested_url,
+        captured_at=snapshot.captured_at,
+        content_sha256=snapshot.content_sha256,
+        locator=locator,
+        university_id="university:bmstu",
+        run_id=source_run_id,
+    )
+    return BenefitProvenance(
+        source=attribution,
+        source_snapshot_hash=snapshot.content_sha256,
+        source_run_id=source_run_id,
+        admission_year=admission_year,
+        document_title=f"Правила приёма в МГТУ им. Н.Э. Баумана в {admission_year} году",
+        document_kind="rules",
+        page=page,
+        section="1.11–1.12",
+        parser_version=ADMISSION_BENEFITS_PARSER_VERSION,
+    )
 
 
 def _canonicalize_admission_code(

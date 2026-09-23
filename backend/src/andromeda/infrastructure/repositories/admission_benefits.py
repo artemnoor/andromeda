@@ -23,6 +23,7 @@ from andromeda.modules.admission_benefits.contracts.public import (
     AdmissionRoute,
     BenefitCondition,
     BenefitType,
+    ConfirmationApplicantCategory,
     ConfirmationExamKind,
     ConfirmationRequirement,
     ConfirmationSubjectRule,
@@ -874,6 +875,11 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
                     subject=item.subject,
                     minimum_score=item.minimum_score,
                     exam_kind=ConfirmationExamKind(item.exam_kind),
+                    applicant_category=(
+                        ConfirmationApplicantCategory(item.applicant_category)
+                        if item.applicant_category
+                        else None
+                    ),
                     source_text=item.source_text,
                 )
                 for item in subjects
@@ -1185,6 +1191,7 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
                 subject=subject.subject,
                 minimum_score=subject.minimum_score,
                 exam_kind=subject.exam_kind.value,
+                applicant_category=(subject.applicant_category.value if subject.applicant_category else None),
                 source_text=subject.source_text,
             )
             for index, subject in enumerate(value.confirmation_subjects)
@@ -1458,6 +1465,9 @@ def _all_provenance(snapshot: AdmissionBenefitsSnapshot) -> Iterable[Any]:
         yield from profile.provenance
     for benefit_rule in snapshot.benefit_rules:
         yield benefit_rule.provenance
+        for condition in benefit_rule.conditions:
+            if condition.provenance is not None:
+                yield condition.provenance
     if snapshot.individual_achievement_policy is not None:
         yield snapshot.individual_achievement_policy.provenance
         for achievement_rule in snapshot.individual_achievement_policy.rules:

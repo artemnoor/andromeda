@@ -5,7 +5,13 @@ import re
 from collections.abc import Iterable
 from typing import Any
 
-from andromeda.ingestion.pdf_policy import DEFAULT_PDF_POLICY, PdfResourceError, validate_page_count, validate_pdf_payload, validate_text_size
+from andromeda.ingestion.pdf_policy import (
+    DEFAULT_PDF_POLICY,
+    PdfResourceError,
+    validate_page_count,
+    validate_pdf_payload,
+    validate_text_size,
+)
 
 
 def is_pdf(body: bytes, content_type: str | None = None, url: str = "") -> bool:
@@ -13,6 +19,12 @@ def is_pdf(body: bytes, content_type: str | None = None, url: str = "") -> bool:
 
 
 def extract_pdf_text(body: bytes) -> str:
+    return "\n\n".join(extract_pdf_pages_text(body)).strip()
+
+
+def extract_pdf_pages_text(body: bytes) -> tuple[str, ...]:
+    """Extract text page-by-page, retaining locators for source evidence."""
+
     validate_pdf_payload(body)
     try:
         import fitz  # type: ignore[import-untyped]
@@ -20,7 +32,9 @@ def extract_pdf_text(body: bytes) -> str:
         document = fitz.open(stream=body, filetype="pdf")
         try:
             validate_page_count(document.page_count)
-            return validate_text_size("\n\n".join(page.get_text() or "" for page in document).strip())
+            pages = tuple(page.get_text() or "" for page in document)
+            validate_text_size("\n\n".join(pages).strip())
+            return pages
         finally:
             document.close()
     except PdfResourceError:
@@ -32,14 +46,13 @@ def extract_pdf_text(body: bytes) -> str:
 
         reader = PdfReader(io.BytesIO(body))
         validate_page_count(len(reader.pages))
-        pages: list[str] = []
-        for page in reader.pages:
-            pages.append(page.extract_text() or "")
-        return validate_text_size("\n\n".join(pages).strip())
+        pages = tuple(page.extract_text() or "" for page in reader.pages)
+        validate_text_size("\n\n".join(pages).strip())
+        return pages
     except PdfResourceError:
         raise
     except Exception:
-        return ""
+        return ()
 
 
 def pdf_metadata(body: bytes) -> dict[str, Any]:

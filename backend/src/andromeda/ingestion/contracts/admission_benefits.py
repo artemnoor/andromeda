@@ -25,6 +25,9 @@ from .raw import (
     RawAdmissionBenefitDocument,
     RawAdmissionBenefitRecord,
     RawAdmissionBenefitRecordKind,
+    RawAdmissionConfirmationThreshold,
+    RawConfirmationThresholdCategory,
+    RawIndividualAchievementDocumentNote,
     RawIndividualAchievementRecord,
 )
 
@@ -53,5 +56,8 @@ __all__ = [
     "RawAdmissionBenefitDocument",
     "RawAdmissionBenefitRecord",
     "RawAdmissionBenefitRecordKind",
+    "RawAdmissionConfirmationThreshold",
+    "RawConfirmationThresholdCategory",
+    "RawIndividualAchievementDocumentNote",
     "RawIndividualAchievementRecord",
 ]

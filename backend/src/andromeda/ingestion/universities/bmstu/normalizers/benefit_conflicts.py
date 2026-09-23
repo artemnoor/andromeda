@@ -3,9 +3,10 @@ from __future__ import annotations
 from collections import defaultdict
 from hashlib import sha256
 
+from pydantic import Field
+
 from andromeda.ingestion.contracts.raw import RawIndividualAchievementRecord
 from andromeda.shared.contracts.base import ContractModel
-from pydantic import Field
 
 
 class BenefitConflictGroup(ContractModel):
@@ -21,7 +22,9 @@ def detect_individual_achievement_conflicts(
     grouped: dict[str, list[RawIndividualAchievementRecord]] = defaultdict(list)
     for record in records:
         name = record.official_name_candidate or record.raw_text.split(" | ", 1)[0]
-        grouped[name.casefold().strip()].append(record)
+        variant = record.variant_label or record.required_document_text or ""
+        identity = f"{name.casefold().strip()}|{variant.casefold().strip()}"
+        grouped[identity].append(record)
     conflicts: list[BenefitConflictGroup] = []
     for identity, group in grouped.items():
         values = tuple(dict.fromkeys(record.points_text or "unknown" for record in group))

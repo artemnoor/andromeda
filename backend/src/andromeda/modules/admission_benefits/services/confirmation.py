@@ -13,6 +13,7 @@ from andromeda.modules.admission_benefits.contracts.applicant import (
     ApplicantInternalExamScore,
 )
 from andromeda.modules.admission_benefits.contracts.public import (
+    ConfirmationApplicantCategory,
     ConfirmationExamKind,
     ConfirmationRequirement,
     ConfirmationSubjectRule,
@@ -38,6 +39,8 @@ def evaluate_confirmation(
     *,
     ege_scores: tuple[ApplicantExamScore, ...] = (),
     internal_exam_scores: tuple[ApplicantInternalExamScore, ...] = (),
+    applicant_category: ConfirmationApplicantCategory | None = None,
+    selected_subject: str | None = None,
 ) -> ConfirmationEvaluation:
     if requirement is ConfirmationRequirement.NOT_REQUIRED:
         return _result(EligibilityStatus.ELIGIBLE, "Source rule does not require confirmation")
@@ -46,8 +49,19 @@ def evaluate_confirmation(
     if not subjects:
         return _result(EligibilityStatus.REVIEW_REQUIRED, "Confirmation subject or threshold is missing")
 
+    distinct_subjects = {_normalize_subject(item.subject) for item in subjects}
+    if selected_subject is not None:
+        normalized_selection = _normalize_subject(selected_subject)
+        if normalized_selection not in distinct_subjects:
+            return _result(EligibilityStatus.REVIEW_REQUIRED, "Selected confirmation subject is not source-listed for this profile")
+        subjects = tuple(item for item in subjects if _same_subject(item.subject, selected_subject))
+    elif len(distinct_subjects) > 1:
+        return _result(EligibilityStatus.INSUFFICIENT_DATA, "Applicant must select the profile section/confirmation subject")
+
     insufficient = False
     below_threshold = False
+    conditional_category = False
+    unresolved_source_policy = False
     for subject_rule in subjects:
         if subject_rule.minimum_score is None:
             return _result(EligibilityStatus.REVIEW_REQUIRED, "Confirmation threshold is unknown")
@@ -62,6 +76,19 @@ def evaluate_confirmation(
         if score is None:
             insufficient = True
             continue
+        category = applicant_category
+        if category is ConfirmationApplicantCategory.UNKNOWN:
+            category = None
+        if subject_rule.applicant_category is ConfirmationApplicantCategory.UNKNOWN:
+            unresolved_source_policy = True
+            continue
+        if subject_rule.applicant_category is ConfirmationApplicantCategory.TERRITORIAL_EXCEPTION:
+            if category is ConfirmationApplicantCategory.STANDARD:
+                continue
+            if category is None:
+                if score >= subject_rule.minimum_score:
+                    conditional_category = True
+                continue
         if score >= subject_rule.minimum_score:
             return ConfirmationEvaluation(
                 status=EligibilityStatus.ELIGIBLE,
@@ -72,6 +99,10 @@ def evaluate_confirmation(
                 exam_kind=subject_rule.exam_kind,
             )
         below_threshold = True
+    if conditional_category:
+        return _result(EligibilityStatus.INSUFFICIENT_DATA, "Applicant category is required to apply the lower source confirmation threshold")
+    if unresolved_source_policy:
+        return _result(EligibilityStatus.REVIEW_REQUIRED, "Source threshold category is unresolved")
     if insufficient:
         return _result(EligibilityStatus.INSUFFICIENT_DATA, "Applicant confirmation subject is missing")
     if below_threshold:

@@ -29,6 +29,7 @@ class BenefitTargetKind(StrEnum):
 
 class BenefitConditionKind(StrEnum):
     CONFIRMATION_SCORE = "confirmation_score"
+    CONFIRMATION_CATEGORY = "confirmation_category"
     VALIDITY = "validity"
     REQUIRED_DOCUMENT = "required_document"
     RESULT_TYPE = "result_type"
