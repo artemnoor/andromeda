@@ -1669,7 +1669,7 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 - [x] T29 — Extend capture/calibration tooling without changing the existing next-action artifact
 - [ ] T30 — Capture and evaluate the wired Olympiad-profile resolver with official candidates (live bounded selection verified; production enablement remains opt-in pending independent/diverse review and complete source-backed vertical proof)
 - [ ] T31 — Verify live/deterministic/fallback vertical slices and operation-specific readiness
-- [ ] T32 — Publish detailed acceptance evidence, commit, push and verify hosted CI
+- [x] T32 — Publish detailed acceptance evidence, commit, push and verify hosted CI (run for `7c232e0a` passed; documentation closeout commit is rechecked separately)
 
 ## Commit checkpoints
 

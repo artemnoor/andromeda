@@ -169,7 +169,8 @@ uv run --locked --extra evaluation --extra dev python scripts/jev_operation_eval
 - Архитектурные проверки: `35 passed`; Jev ecosystem offline contract subset: `61 passed`; ingestion preflight BMSTU + HSE: ready.
 - Изменённые Python-файлы: `ruff check` и `ruff format --check` пройдены; общий OpenAPI export/client drift прошёл; frontend unit `25 passed`; frontend lint прошёл.
 - Repository docs audit: 121 Markdown files; deployment artifact contract passed; `git diff --check` пройден.
-- Hosted GitHub Actions для финального pushed SHA — обязательный release gate; до получения результата его нельзя обозначать зелёным.
+- Hosted GitHub Actions: [run 35971052788](https://github.com/artemnoor/andromeda/actions/runs/35971052788) на SHA `7c232e0a46f9df593593a36419d011d361019b24` завершён с итогом **success**. Все 10 jobs зелёные: `jev-ecosystem-offline`, `backend`, `telegram-bot`, `documentation`, `dependency-audit`, `frontend-next`, `packaging`, `postgresql-integration`, `proftest-integration`, `fullstack`.
+- План Phase 10 отмечает T32 завершённым после этой проверки. Текущий change к плану/report — только документационное обновление; его новый commit повторно проверяется hosted Actions отдельно, а финальная handoff указывает его SHA и результат.
 
 Общий `ruff check src tests scripts evals` не является CI-командой и обнаружил многочисленные ранее существовавшие lint findings в широком дереве проекта; поэтому это не трактуется как регрессия данной работы. CI workflow выполняет полный backend pytest, архитектурный gate и mypy, но не запускает такой repo-wide Ruff command.
 
