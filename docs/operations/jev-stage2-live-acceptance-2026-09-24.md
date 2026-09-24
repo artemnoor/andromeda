@@ -191,3 +191,56 @@ uv run --locked --extra evaluation --extra dev python scripts/jev_operation_eval
 3. Новый live capture выполняется на reviewed corpus с зафиксированными provider/model versions; текущие observations остаются как отдельный pilot.
 4. Upstream Jevcal повторно строит calibration, а `Cascade` проверяет lock; production lock публикуется только после независимого review, quality gates и end-to-end persisted source-backed eligibility test.
 5. Разрешается feature flag только для этого узкого candidate-resolution use case. Само юридическое решение по-прежнему никогда не делегируется Jev.
+
+## T30/T31 closeout — 2026-09-24
+
+### T30 — Olympiad profile resolver: `BLOCKED_EXTERNAL_REVIEW`
+
+Для этой проверки не был предоставлен независимый human-reviewed corpus и reviewer/adjudicator. Поэтому новый реалистичный corpus не объявляется reviewed, live profile-resolution capture повторно не запускался, новый Jevcal threshold/ECE не рассчитывался и production lock не создавался. Значения пилотного `olympiad-profile-resolution.v2` выше остаются только историческим synthetic/source-fixture pilot и не являются новыми метриками или production calibration evidence.
+
+`JEV_ADMISSION_RESOLUTION_ENABLED` оставлен выключенным; активного admission resolver lock по-прежнему нет. Это намеренный fail-closed результат, а не успешное закрытие production acceptance. T30 остаётся незакрытым до независимой разметки и adjudication разнообразных формулировок, включая aliases, typos, ambiguity и unresolved cases.
+
+### T31 — scenario and fallback acceptance
+
+| Case | Result | Evidence and boundary |
+|---|---|---|
+| A — admission, 270 points | `LIVE_VERIFIED` for one shadow turn; full clarification flow `OFFLINE_VERIFIED` | Один запрос прошёл по `/assistant/query` через реальный TypeSafe SDK `choose_next_action` в shadow. HTTP 200, детерминированно запрошены баллы ЕГЭ. Следующие slots, scope, вопрос «бюджет/платное», defaults и complete admission result проверены API regression suite. Это не live admission decision от Jev. |
+| B — math comparison | `OFFLINE_VERIFIED` for typed canonical programs; user aliases `ИУ5/ИУ7` safely unresolved | Два canonical BMSTU program IDs дали math comparison из persisted projections с непустым evidence, workload basis и metric values. Голые `ИУ5/ИУ7` не являются program IDs в текущем analytics contract и не имеют подтверждённой department-to-curriculum mapping; assistant просит уточнить программы, ничего не сопоставляет наугад. Intent/metric Jev остаются evaluation-only. |
+| C — similar programs | `UNSUPPORTED`, safe clarification verified offline | Отдельная similarity capability отсутствует. `/assistant/query` просит уточнить metric; не возвращает список похожих программ, ID или similarity claims. |
+| D — “Шаг в будущее / Инженерное дело” | `BLOCKED_EXTERNAL` for active Jev runtime; fallback `OFFLINE_VERIFIED` | Без human review/совместимого lock production selector выключен. Историческая v2 capture/replay выше — только `LIVE_EVALUATION` и отдельная deterministic source-rule evaluation, не active-runtime proof. Benefit и provenance определяет admission module. |
+| E — BVI eligibility | `OFFLINE_VERIFIED` | Admission-benefit vertical tests подтверждают source-backed eligibility; historical BVI observation не даёт текущего права. |
+| F — individual achievements | `OFFLINE_VERIFIED` | Appendix 6 fixture → parser/normalized policy → persistence/API/calculator проверено; points/caps берутся только из загруженной policy. |
+| G — compare two programs | `OFFLINE_VERIFIED` | Canonical program IDs → QuerySession/compiler → analytics → response envelope; данные и evidence source-backed. Если названия программ не указаны, система уточняет, а не выбирает их сама. |
+| H — “А где лучше?” | `OFFLINE_VERIFIED` | API возвращает clarification о metric; неподдержанный score/recommendation и выдуманные программы не выдаются. |
+
+### LIVE VERIFIED
+
+Live shadow observation от 2026-09-24: provider `polza` (`polza.ai`), requested model `typesafe/jev`, observed model `jev-1.13.0`, operation `choose_next_action`, latency `1031 ms`, usage `535` input / `73` output tokens. Запрос был синтетическим; credentials, provider body и персональные данные не сохранялись. Shadow вернул пользователю тот же deterministic result — clarification по ЕГЭ. Для этого smoke runtime был сконфигурирован только внутри временного процесса; постоянные flags, production lock и `next-action.v2` artifacts не менялись.
+
+### OFFLINE VERIFIED
+
+Live outage scenarios не имитировались как реальные: timeout/auth/5xx, unavailable SDK/model, schema/out-of-candidate, missing/stale/model-incompatible calibration, low probability и circuit-open проверены только offline fake/artifact tests. В том числе добавлен API-level fake timeout test: active shadow transport вызывается, а `/assistant/query` возвращает deterministic clarification с HTTP 200, не 500.
+
+### Offline verification for closeout
+
+- Targeted Jev/admission/analytics/assistant suite: `142 passed`, `31 warnings`.
+- Command: `uv run --locked --extra dev --extra jev pytest -q tests/infrastructure/test_typesafe_client.py tests/infrastructure/test_jev_adapter.py tests/infrastructure/test_jevcal_cascade.py tests/infrastructure/test_jev_runtime.py tests/evaluation tests/e2e/test_jev_ecosystem_scenarios.py tests/api/test_assistant_query.py tests/api/test_analytics_api.py tests/api/test_admission_benefits_api.py tests/integration/test_analytics_engine.py tests/integration/test_andromeda_comparison.py tests/integration/test_bmstu_admission_benefits_ingestion.py tests/vertical/test_bmstu_admission_benefits_vertical_slice.py tests/modules/conversation/test_shadow_policy.py tests/modules/admission_benefits` (run from `backend/`).
+- Ruff lint passed for the three changed Python test files. Formatting checks passed for the new E2E and shadow-policy test files; the pre-existing assistant API test file contains older formatting outside this change and is not a CI formatter target.
+- `next-action.typesafe-jev.v2.lock.json` SHA-256 remains `1f881b527794f9c54aad6633f40e2d8bc92b8ddc56150c011844eb036f4d2ea4`; manifest SHA-256 remains `c09100f4f3c3c3b9d143436fa48665d7d87160178b81bc7c8c54f4aa94dc96a7`. No lock, registry, capture, or calibration artifact was changed or added.
+- Added regressions prove shadow calls the model but returns the exact deterministic policy result, telemetry hashes session IDs and excludes query/profile sentinels, provider failure remains non-fatal at the API boundary, and unsupported/incomplete prompts do not fabricate program identities.
+
+### NOT VERIFIED / BLOCKED EXTERNAL
+
+- Independent human review/adjudication, a diverse reviewed Olympiad corpus and its new live capture/Jevcal calibration are unavailable; T30 remains open and the resolver remains disabled.
+- Live provider outage/fallback rates, production p95, production-enabled Olympiad eligibility, and a live jevQL/jev-tree benchmark were not measured. Their failure behavior is covered only by offline fake/artifact tests where stated above.
+- A natural-language `ИУ5/ИУ7` department-to-curriculum mapping and a similarity-search capability are unsupported; the assistant safely asks for clarification and returns no guessed program IDs.
+
+### Operation disposition after T31
+
+- `choose_next_action`: compatible calibrated artifact and composition path exist; one live shadow request passed. Jev influences no response in shadow. Runtime production activation still depends on explicit deployment flags/configuration.
+- `resolve_olympiad_profile`: disabled; evaluation/pilot evidence only; production blocked on independent review and new calibration gates.
+- `resolve_intent`, `resolve_metric`, `choose_presentation`, semantic classification: evaluation or deterministic product behavior only; no production callsite is enabled by this closeout.
+- JevQL/jev-tree: existing adapters/wiring unchanged; no live selection benchmark is claimed.
+- Admission rights, score calculation, semantic facts and analytics remain deterministic/source-backed; Jev is never legal eligibility or factual analytics authority.
+
+T31's safety/available-path verification is complete. T30 remains open due to external review; T32 remains open until commit/push and hosted Actions are green for the exact final HEAD.
