@@ -31,6 +31,13 @@ from .contracts import (
 
 _ALLOWED_ENDPOINTS = frozenset(("https://api.typesafe.ai", "https://polza.ai/api"))
 _POLZA_ENDPOINT = "https://polza.ai/api"
+_INTENT_LABEL_TO_DOMAIN = {
+    "catalog_search": "analytics_query",
+    "comparison": "compare_programs",
+    "admission_search": "admission_search",
+    "recommendation": "unknown",
+    "unknown": "unknown",
+}
 logger = logging.getLogger("andromeda.infrastructure.jev.typesafe_client")
 
 
@@ -133,7 +140,7 @@ class TypeSafeJevTransport:
                 int((time.monotonic() - started) * 1000),
             )
             return available
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - a health probe must degrade closed for SDK/provider failures
             logger.warning(
                 "typesafe_health_check outcome=unavailable provider=%s error=%s latency_ms=%s",
                 "polza" if self._endpoint == _POLZA_ENDPOINT else "typesafe",
@@ -165,7 +172,7 @@ class TypeSafeJevTransport:
 def _official_client_factory(**kwargs: Any) -> Any:
     try:
         module = importlib.import_module("typesafe_sdk")
-        client_type = getattr(module, "TypeSafeClient")
+        client_type = module.TypeSafeClient
     except ImportError as exc:
         raise RuntimeError("typesafe-sdk optional dependency is not installed") from exc
     return client_type(**kwargs)
@@ -229,7 +236,13 @@ def _dynamic_options(
 ) -> dict[str, str]:
     if definition.operation == "resolve_metric":
         candidates = _string_tuple(payload.get("candidates"))
-        return {candidate: candidate for candidate in candidates[:8]}
+        options = {
+            candidate: candidate
+            for candidate in candidates[:8]
+            if candidate != "unresolved"
+        }
+        options["unresolved"] = "The phrase does not identify one supplied metric."
+        return options
     if definition.operation == "choose_next_action":
         candidates = _string_tuple(payload.get("available_actions"))
         return {candidate: candidate for candidate in candidates[:16]}
@@ -261,11 +274,19 @@ def _payload_for(definition: DecisionDefinition, response: Any) -> dict[str, obj
     choice = raw_choice if isinstance(raw_choice, str) else ""
     confidence = _confidence_bucket(getattr(answer, "confidence", None))
     if definition.operation == "resolve_intent":
-        return {"intent": choice, "confidence": confidence}
-    if definition.operation == "resolve_metric":
+        # The registry vocabulary is intentionally stable for calibration, while
+        # the application contract uses product-domain names. Keep provider
+        # probabilities untouched in JevAnswerEvidence; translate only the
+        # validated payload that enters the domain adapter.
         return {
-            "metric_code": choice,
-            "candidates": (choice,) if choice else (),
+            "intent": _INTENT_LABEL_TO_DOMAIN.get(choice, choice),
+            "confidence": confidence,
+        }
+    if definition.operation == "resolve_metric":
+        metric_code = choice if choice and choice != "unresolved" else None
+        return {
+            "metric_code": metric_code,
+            "candidates": (metric_code,) if metric_code else (),
             "confidence": confidence,
         }
     if definition.operation == "choose_next_action":
@@ -306,12 +327,34 @@ def _payload_for(definition: DecisionDefinition, response: Any) -> dict[str, obj
 def _evidence_for(response: Any) -> JevAnswerEvidence | None:
     choices = getattr(response, "choices", {})
     if not isinstance(choices, Mapping):
-        return None
+        choices = {}
     answer = choices.get("answer")
     if answer is None and choices:
         answer = next(iter(choices.values()))
     if answer is None:
-        return None
+        # The official SDK exposes SystemOneResponse.choices as only the
+        # ChoiceAnswer subset. Noul answers are keyed by question in
+        # SystemOneResponse.answers / .nouls and carry their positive-class
+        # probability in ``noul``. Preserve those raw probabilities for
+        # evaluation without translating them into semantic feature values.
+        answers = getattr(response, "answers", {})
+        if not isinstance(answers, Mapping):
+            return None
+        noul_probabilities = {
+            name: float(probability)
+            for name, item in answers.items()
+            if isinstance(name, str)
+            and isinstance(probability := getattr(item, "noul", None), (int, float))
+            and 0 <= probability <= 1
+        }
+        if not noul_probabilities:
+            return None
+        return JevAnswerEvidence(
+            answer_kind="noul_batch",
+            answer_value=noul_probabilities,
+            probabilities=noul_probabilities,
+            has_probability_evidence=True,
+        )
     raw_probabilities = getattr(answer, "probabilities", None)
     probabilities: dict[str, float] = {}
     if isinstance(raw_probabilities, Mapping):

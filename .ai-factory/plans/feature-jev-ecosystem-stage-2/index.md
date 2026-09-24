@@ -1601,6 +1601,7 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 7. [Phase 07: Runtime wiring](phase-07-runtime-wiring-observability.md) — Tasks T18–T21
 8. [Phase 08: Vertical slices](phase-08-vertical-slices-and-performance.md) — Tasks T22–T24
 9. [Phase 09: Rollout and handoff](phase-09-rollout-documentation-and-gates.md) — Tasks T25–T26
+10. [Phase 10: Live acceptance remediation](phase-10-live-acceptance-and-evidence.md) — Tasks T27–T32
 
 ## Tasks
 
@@ -1661,6 +1662,15 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 - [x] T25 — Security review and architecture enforcement
 - [x] T26 — Documentation and final gates
 
+### Phase 10 — Live acceptance remediation
+
+- [x] T27 — Normalize live TypeSafe intent labels at the provider boundary
+- [x] T28 — Add bounded, explicitly curated live evaluation cases for registered operations (fixture/source-derived labels; not independently human-reviewed, no typo/abbreviation strata)
+- [x] T29 — Extend capture/calibration tooling without changing the existing next-action artifact
+- [ ] T30 — Capture and evaluate the wired Olympiad-profile resolver with official candidates (live bounded selection verified; production enablement remains opt-in pending independent/diverse review and complete source-backed vertical proof)
+- [ ] T31 — Verify live/deterministic/fallback vertical slices and operation-specific readiness
+- [ ] T32 — Publish detailed acceptance evidence, commit, push and verify hosted CI
+
 ## Commit checkpoints
 
 - C0 after T00: clean Stage 1 baseline and Stage 2 branch.
@@ -1672,6 +1682,8 @@ Until these gates are satisfied, “architecture/evaluation ready” is the corr
 - C6 after T18–T21: disabled-by-default runtime wiring, production client and packaging.
 - C7 after T22–T24: vertical scenarios and benchmark evidence.
 - C8 after T25–T26: final docs/security/release gate.
+- C9 after T27–T29: provider-boundary correction and reproducible operation evaluation tooling.
+- C10 after T30–T32: live resolver evidence, final report and hosted CI verification.
 
 Each checkpoint must be a normal reviewable commit on the clean Stage 2 branch created by T00. Do not reset, force-push, rewrite published history or commit pre-existing unrelated changes. The original dirty feature/university-admin-control branch remains preserved.
 
@@ -1733,7 +1745,8 @@ The stage is complete only when:
 - phase-07-runtime-wiring-observability.md
 - phase-08-vertical-slices-and-performance.md
 - phase-09-rollout-documentation-and-gates.md
+- phase-10-live-acceptance-and-evidence.md
 
 ## Next step
 
-STOP after planning. Run implementation only through the approved plan, one checkpoint at a time, preserving the deterministic path and the production-disabled Jev gate until the open questions and evidence requirements are satisfied.
+Phase 10 is an evidence-gated continuation of the existing plan. Execute one checkpoint at a time, preserve deterministic behavior and the existing production lock, and do not claim production calibration unless upstream jevcal and real held-out evidence support it.

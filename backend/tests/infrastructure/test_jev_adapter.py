@@ -76,7 +76,11 @@ class _RejectedCalibration:
     artifact_id = "fixture-artifact"
 
     def evaluate(
-        self, definition_id: str, evidence: JevAnswerEvidence, *, model_version: str | None = None
+        self,
+        definition_id: str,
+        evidence: JevAnswerEvidence,
+        *,
+        model_version: str | None = None,
     ):
         del model_version
         assert definition_id == "intent.v1"
@@ -96,7 +100,11 @@ class _AcceptedCandidateCalibration:
     artifact_id = "admission-fixture-artifact"
 
     def evaluate(
-        self, definition_id: str, evidence: JevAnswerEvidence, *, model_version: str | None = None
+        self,
+        definition_id: str,
+        evidence: JevAnswerEvidence,
+        *,
+        model_version: str | None = None,
     ):
         del model_version
         assert definition_id == "olympiad-profile-resolution.v1"
@@ -120,6 +128,58 @@ def test_jev_unavailable_falls_back_without_changing_deterministic_intent() -> N
     assert decision.source is DecisionModelSource.FALLBACK
     assert decision.intent.value == "analytics_query"
     assert decision.fallback_reason == "provider_unavailable"
+
+
+def test_timeout_auth_and_provider_errors_fail_closed() -> None:
+    failure_cases = (
+        (TimeoutError("provider timeout"), "provider_unavailable"),
+        (PermissionError("provider auth"), "provider_unavailable"),
+        (RuntimeError("provider 500"), "provider_unavailable"),
+    )
+
+    for error, expected_reason in failure_cases:
+
+        class FailingTransport:
+            def request(self, operation, payload, *, timeout_seconds, error=error):
+                del operation, payload, timeout_seconds
+                raise error
+
+        adapter = JevDecisionModelAdapter(
+            FailingTransport(),
+            RuleBasedDecisionModel(),
+            config=JevAdapterConfig(max_retries=0),
+        )
+
+        decision = adapter.resolve_intent("Где больше математики?")
+
+        assert decision.source is DecisionModelSource.FALLBACK
+        assert decision.intent.value == "analytics_query"
+        assert decision.fallback_reason == expected_reason
+
+
+def test_repeated_provider_failure_opens_circuit_without_more_calls() -> None:
+    class FailingTransport:
+        calls = 0
+
+        def request(self, operation, payload, *, timeout_seconds):
+            del operation, payload, timeout_seconds
+            self.calls += 1
+            raise RuntimeError("provider unavailable")
+
+    transport = FailingTransport()
+    adapter = JevDecisionModelAdapter(
+        transport,
+        RuleBasedDecisionModel(),
+        config=JevAdapterConfig(max_retries=0, max_failures=1),
+    )
+
+    first = adapter.resolve_intent("Где больше математики?")
+    second = adapter.resolve_intent("Где больше физики?")
+
+    assert first.source is DecisionModelSource.FALLBACK
+    assert second.source is DecisionModelSource.FALLBACK
+    assert second.fallback_reason == "provider_unavailable"
+    assert transport.calls == 1
 
 
 def test_invalid_provider_intent_and_template_are_not_trusted() -> None:
@@ -303,7 +363,9 @@ def _query_session(next_action: NextAction, intent: ConversationIntent) -> Query
         owner_scope=ProfileScope(session_key_hash=digest),
         intent=intent,
         next_action=next_action,
-        missing_slots=(ConversationSlot.EXAMS,) if next_action is NextAction.ASK_FOR_EXAMS else (),
+        missing_slots=(ConversationSlot.EXAMS,)
+        if next_action is NextAction.ASK_FOR_EXAMS
+        else (),
         revision=1,
         created_at=timestamp,
         updated_at=timestamp,
@@ -416,3 +478,68 @@ def test_olympiad_resolution_accepts_only_calibrated_candidate_from_allowlist() 
     assert "+7" not in str(payload)
     assert "999" not in str(payload)
     assert "123-45-67" not in str(payload)
+
+
+def test_olympiad_resolution_rejects_provider_candidate_outside_allowlist() -> None:
+    class Transport:
+        def request_envelope(self, request: JevRequestEnvelope) -> JevResponseEnvelope:
+            del request
+            return JevResponseEnvelope(
+                payload={"candidate_id": "olympiad-profile:not-supplied"},
+                identity=ModelIdentity(
+                    model_version="jev-1.13.0",
+                    artifact_id="olympiad-profile-resolution.v1@v1",
+                ),
+                evidence=JevAnswerEvidence(
+                    answer_kind="choice",
+                    answer_value="olympiad-profile:not-supplied",
+                    probabilities={"olympiad-profile:not-supplied": 1.0},
+                    has_probability_evidence=True,
+                ),
+            )
+
+    class AcceptAllCalibration:
+        artifact_id = "fixture-accepted-artifact"
+
+        def evaluate(self, definition_id, evidence, *, model_version=None):
+            del definition_id, evidence, model_version
+            return type(
+                "Gate",
+                (),
+                {
+                    "accepted": True,
+                    "artifact_id": self.artifact_id,
+                    "reason": "accepted",
+                },
+            )()
+
+    registry = QuestionRegistry.from_file(
+        Path(__file__).resolve().parents[2]
+        / "config"
+        / "jev"
+        / "question-definitions.admission.v1.yaml"
+    )
+    adapter = JevDecisionModelAdapter(
+        Transport(),
+        RuleBasedDecisionModel(),
+        registry=registry,
+        calibration=AcceptAllCalibration(),
+    )
+
+    decision = adapter.resolve_olympiad_profile(
+        "Шаг в будущее — инженерное дело",
+        candidates=(
+            CandidateResolutionOption(
+                candidate_id="olympiad-profile:shag-engineering",
+                label="Шаг в будущее — Инженерное дело",
+            ),
+            CandidateResolutionOption(
+                candidate_id="olympiad-profile:shag-programming",
+                label="Шаг в будущее — Программирование",
+            ),
+        ),
+    )
+
+    assert decision.candidate_id is None
+    assert decision.source is DecisionModelSource.FALLBACK
+    assert decision.fallback_reason == "invalid_provider_output"
