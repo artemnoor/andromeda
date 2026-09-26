@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pytest
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect, text
 
 from alembic import command
 
 BACKEND_ROOT = Path(__file__).parents[2]
+STAGE2_HEAD = "0038_admission_offering_scope_and_exam_choices"
+CURRENT_HEAD = "0054_claim_predicate_lookup_index"
 
 
 def _alembic_config(database_url: str) -> Config:
@@ -36,7 +40,7 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(
             if column["name"] == "version_num"
         )
         assert version_column["type"].length >= len(
-            "0038_admission_offering_scope_and_exam_choices"
+            "0052_policy_approval_preview_fingerprint"
         )
         assert "educational_programs" in inspector.get_table_names()
         assert "discipline_areas" in inspector.get_table_names()
@@ -97,6 +101,204 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(
             "university_editorial_event_program_links",
             "university_editorial_event_category_links",
         }.issubset(set(inspector.get_table_names()))
+        assert {
+            "knowledge_sources",
+            "knowledge_source_registry_revisions",
+            "knowledge_source_allowlist",
+            "knowledge_source_observations",
+        }.issubset(set(inspector.get_table_names()))
+        assert {"admission_cycles", "admission_cycle_evidence"}.issubset(
+            set(inspector.get_table_names())
+        )
+        assert {
+            "knowledge_claims",
+            "knowledge_claim_evidence",
+            "knowledge_change_events",
+            "knowledge_change_event_claims",
+            "knowledge_change_event_evidence",
+        }.issubset(set(inspector.get_table_names()))
+        assert "knowledge_source_poll_attempts" in set(inspector.get_table_names())
+        assert {
+            "policy_projection_refresh_state",
+            "policy_projection_refresh_attempts",
+        }.issubset(set(inspector.get_table_names()))
+        assert "ix_policy_projection_refresh_pending" in {
+            index["name"] for index in inspector.get_indexes("policy_projection_refresh_state")
+        }
+        assert {
+            "knowledge_claim_candidate_clusters",
+            "knowledge_claim_candidate_cluster_members",
+        }.issubset(set(inspector.get_table_names()))
+        assert {
+            "policy_rule_revisions",
+            "policy_rule_relations",
+            "policy_rule_revision_claims",
+            "policy_rule_revision_evidence",
+            "policy_approval_events",
+        }.issubset(set(inspector.get_table_names()))
+        assert "owner_revision_hash" in {
+            column["name"] for column in inspector.get_columns("policy_rule_revisions")
+        }
+        assert {
+            "knowledge_conflict_groups",
+            "knowledge_conflict_participants",
+            "knowledge_conflict_evidence",
+            "knowledge_conflict_events",
+        }.issubset(set(inspector.get_table_names()))
+        assert {
+            "knowledge_claim_relations",
+            "knowledge_claim_relation_evidence",
+        }.issubset(set(inspector.get_table_names()))
+        assert "knowledge_review_actions" in set(inspector.get_table_names())
+        review_action_columns = {
+            column["name"] for column in inspector.get_columns("knowledge_review_actions")
+        }
+        assert {
+            "event_id",
+            "idempotency_key",
+            "request_fingerprint",
+            "target_kind",
+            "target_id",
+            "target_revision",
+            "target_hash",
+            "result_revision",
+            "result_hash",
+            "actor_account_id",
+            "capability",
+            "reason",
+            "recorded_at",
+        }.issubset(review_action_columns)
+        relation_columns = {
+            column["name"] for column in inspector.get_columns("knowledge_claim_relations")
+        }
+        assert {
+            "relation_id",
+            "revision",
+            "content_hash",
+            "relation_kind",
+            "source_claim_id",
+            "source_claim_revision",
+            "target_claim_id",
+            "target_claim_revision",
+            "valid_start",
+            "valid_end",
+            "review_state",
+            "recorded_at",
+        }.issubset(relation_columns)
+        conflict_group_columns = {
+            column["name"] for column in inspector.get_columns("knowledge_conflict_groups")
+        }
+        assert {
+            "conflict_id",
+            "revision",
+            "content_hash",
+            "conflict_kind",
+            "scope_level",
+            "scope_id",
+            "valid_start",
+            "valid_end",
+            "recorded_at",
+        }.issubset(conflict_group_columns)
+        conflict_event_columns = {
+            column["name"] for column in inspector.get_columns("knowledge_conflict_events")
+        }
+        assert {
+            "event_id",
+            "conflict_id",
+            "group_revision",
+            "group_hash",
+            "sequence",
+            "event_kind",
+            "actor_account_id",
+            "resolution_participant_ordinal",
+        }.issubset(conflict_event_columns)
+        policy_rule_columns = {
+            column["name"] for column in inspector.get_columns("policy_rule_revisions")
+        }
+        assert {
+            "rule_id",
+            "revision",
+            "content_hash",
+            "schema_version",
+            "family_id",
+            "authority_level",
+            "selector_json",
+            "scope_level",
+            "scope_id",
+            "owner_module",
+            "owner_rule_id",
+            "lifecycle",
+            "valid_start",
+            "valid_end",
+            "effective_start",
+            "effective_end",
+            "captured_at",
+            "recorded_at",
+        }.issubset(policy_rule_columns)
+        approval_columns = {
+            column["name"] for column in inspector.get_columns("policy_approval_events")
+        }
+        assert {
+            "event_id",
+            "rule_id",
+            "revision",
+            "sequence",
+            "revision_hash",
+            "kind",
+            "actor_account_id",
+            "capability",
+            "reason",
+            "recorded_at",
+            "preview_fingerprint",
+        }.issubset(approval_columns)
+        cluster_columns = {
+            column["name"]
+            for column in inspector.get_columns("knowledge_claim_candidate_clusters")
+        }
+        assert {"cluster_id", "fingerprint", "fingerprint_version", "created_at"}.issubset(
+            cluster_columns
+        )
+        cluster_member_indexes = {
+            index["name"]
+            for index in inspector.get_indexes("knowledge_claim_candidate_cluster_members")
+        }
+        assert "ix_knowledge_claim_cluster_members_claim" in cluster_member_indexes
+        poll_attempt_columns = {
+            column["name"]
+            for column in inspector.get_columns("knowledge_source_poll_attempts")
+        }
+        assert {
+            "source_id",
+            "registry_revision",
+            "outcome",
+            "parser_version",
+            "previous_snapshot_sha256",
+            "last_successful_snapshot_sha256",
+            "source_observation_id",
+            "retry_count",
+            "next_retry_at",
+        }.issubset(poll_attempt_columns)
+        assert {
+            index["name"]
+            for index in inspector.get_indexes("knowledge_source_poll_attempts")
+        } >= {
+            "ix_knowledge_poll_attempt_source_time",
+            "ix_knowledge_poll_attempt_next_retry",
+        }
+        cycle_columns = {
+            column["name"] for column in inspector.get_columns("admission_cycles")
+        }
+        assert {
+            "cycle_id",
+            "revision",
+            "university_id",
+            "admission_year",
+            "academic_year",
+            "application_start",
+            "enrollment_start",
+            "approved_by_account_id",
+            "recorded_at",
+        }.issubset(cycle_columns)
         membership_columns = {
             column["name"]
             for column in inspector.get_columns("university_admin_memberships")
@@ -181,6 +383,24 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(
         assert {"university_id", "run_id", "field", "record_key", "inferred"}.issubset(
             admission_columns
         )
+        admission_revision_columns = {
+            column["name"]
+            for column in inspector.get_columns("admission_offering_revisions")
+        }
+        assert {
+            "domain_rule_id",
+            "revision",
+            "offering_id",
+            "program_id",
+            "admission_year",
+            "content_hash",
+            "recorded_at",
+            "payload_json",
+        }.issubset(admission_revision_columns)
+        assert "ix_admission_offering_revisions_program_year" in {
+            index["name"]
+            for index in inspector.get_indexes("admission_offering_revisions")
+        }
         ingest_columns = {
             column["name"] for column in inspector.get_columns("ingest_runs")
         }
@@ -207,6 +427,28 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(
             "source_profile",
             "projection_target",
         ]
+        source_observation_columns = {
+            column["name"]
+            for column in inspector.get_columns("knowledge_source_observations")
+        }
+        assert {
+            "source_id",
+            "registry_revision",
+            "idempotency_key",
+            "ingest_run_id",
+            "snapshot_sha256",
+            "requested_url",
+            "final_url",
+            "captured_at",
+            "observed_at",
+        }.issubset(source_observation_columns)
+        observation_uniques = {
+            constraint["name"]
+            for constraint in inspector.get_unique_constraints(
+                "knowledge_source_observations"
+            )
+        }
+        assert "uq_knowledge_source_observation_idempotency" in observation_uniques
         assert {
             index["name"] for index in inspector.get_indexes("source_snapshots")
         } >= {"ix_source_snapshots_ingest_run_id"}
@@ -235,6 +477,109 @@ def test_current_0016_database_reaches_current_head(
         assert "uq_ingest_runs_active_identity" in {
             index["name"] for index in inspector.get_indexes("ingest_runs")
         }
+    finally:
+        engine.dispose()
+
+
+def test_clean_stage2_head_upgrades_additively_to_one_current_head(
+    tmp_path: Path, monkeypatch
+) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'stage2-to-current.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    config = _alembic_config(database_url)
+    script = ScriptDirectory.from_config(config)
+
+    assert script.get_heads() == [CURRENT_HEAD]
+    revision = script.get_revision(CURRENT_HEAD)
+    seen: set[str] = set()
+    while revision.revision != STAGE2_HEAD:
+        assert revision.revision not in seen
+        seen.add(revision.revision)
+        assert isinstance(revision.down_revision, str)
+        revision = script.get_revision(revision.down_revision)
+    assert revision.revision == STAGE2_HEAD
+
+    command.upgrade(config, STAGE2_HEAD)
+    engine = create_engine(database_url)
+    source_hash = hashlib.sha256(b"preserved Stage 2 snapshot").hexdigest()
+    try:
+        with engine.begin() as connection:
+            version = connection.scalar(text("SELECT version_num FROM alembic_version"))
+            assert version == STAGE2_HEAD
+            connection.execute(
+                text(
+                    "INSERT INTO ingest_runs "
+                    "(id, started_at, status, university_id, heartbeat_at) "
+                    "VALUES (:id, :started_at, 'completed', :university_id, :started_at)"
+                ),
+                {
+                    "id": "ingest:" + "a" * 32,
+                    "started_at": "2026-01-01T00:00:00+00:00",
+                    "university_id": "university:legacy",
+                },
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO source_snapshots "
+                    "(content_sha256, ingest_run_id, source_kind, requested_url, final_url, "
+                    "status_code, content_type, captured_at, body) "
+                    "VALUES (:digest, :run_id, 'official_fixture', :url, :url, 200, "
+                    "'text/plain', :captured_at, :body)"
+                ),
+                {
+                    "digest": source_hash,
+                    "run_id": "ingest:" + "a" * 32,
+                    "url": "https://official.example/stage2-fixture.txt",
+                    "captured_at": "2026-01-01T00:00:00+00:00",
+                    "body": b"preserved Stage 2 snapshot",
+                },
+            )
+
+        command.upgrade(config, "head")
+        with engine.connect() as connection:
+            assert connection.scalar(text("SELECT version_num FROM alembic_version")) == CURRENT_HEAD
+            assert connection.scalar(
+                text("SELECT content_sha256 FROM source_snapshots WHERE content_sha256 = :digest"),
+                {"digest": source_hash},
+            ) == source_hash
+        table_names = set(inspect(engine).get_table_names())
+        assert {
+            "source_snapshots",
+            "knowledge_source_observations",
+            "policy_rule_revisions",
+            "policy_approval_events",
+        }.issubset(table_names)
+    finally:
+        engine.dispose()
+
+
+def test_admission_owner_revision_migration_refuses_to_drop_persisted_history(
+    tmp_path: Path, monkeypatch
+) -> None:
+    database_url = f"sqlite:///{(tmp_path / 'admission-owner-history.db').as_posix()}"
+    monkeypatch.setenv("ANDROMEDA_ENV", "test")
+    monkeypatch.setenv("BMSTU_DATABASE_URL", database_url)
+    config = _alembic_config(database_url)
+    command.upgrade(config, "head")
+    engine = create_engine(database_url)
+    domain_rule_id = "admission:offering:" + "a" * 64
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO admission_offering_revisions "
+                    "(domain_rule_id, revision, offering_id, program_id, admission_year, "
+                    "content_hash, recorded_at, payload_json) "
+                    "VALUES (:domain_rule_id, 1, 'admission-offering:test', "
+                    "'program:bmstu:09.03.01-02', 2028, :content_hash, "
+                    "'2027-12-15 00:00:00', '{}')"
+                ),
+                {"domain_rule_id": domain_rule_id, "content_hash": "b" * 64},
+            )
+        with pytest.raises(RuntimeError, match="persisted admission owner revisions"):
+            command.downgrade(config, "0052_policy_approval_preview_fingerprint")
+        assert "admission_offering_revisions" in inspect(engine).get_table_names()
     finally:
         engine.dispose()
 

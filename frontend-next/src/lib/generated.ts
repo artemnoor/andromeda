@@ -645,6 +645,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ops/knowledge/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register Knowledge Source */
+        post: operations["register_knowledge_source"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/knowledge/sources/{source_id}/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attach Knowledge Source Snapshot */
+        post: operations["attach_knowledge_source_snapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/knowledge/claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Manual Knowledge Claim Candidate */
+        post: operations["submit_manual_knowledge_claim_candidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/knowledge/claims/{claim_id}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Correct Manual Knowledge Claim Metadata */
+        put: operations["correct_manual_knowledge_claim_metadata"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/knowledge/policy-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Manual Policy Rule Candidate */
+        post: operations["submit_manual_policy_rule_candidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/knowledge/review-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Knowledge Review Queue */
+        get: operations["list_knowledge_review_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/knowledge/review-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Knowledge Policy Review */
+        post: operations["preview_knowledge_policy_review"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/knowledge/review-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply Knowledge Review Action */
+        post: operations["apply_knowledge_review_action"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/register": {
         parameters: {
             query?: never;
@@ -1457,6 +1593,25 @@ export interface components {
          * @enum {string}
          */
         AdmissionBenefitCoverageStatus: "complete" | "partial" | "review_required" | "unavailable";
+        /** AdmissionBenefitEvaluation */
+        AdmissionBenefitEvaluation: {
+            /** Rule Id */
+            rule_id: string;
+            benefit_type: components["schemas"]["BenefitType"];
+            route?: components["schemas"]["AdmissionRoute"] | null;
+            status: components["schemas"]["EligibilityStatus"];
+            result_type?: components["schemas"]["OlympiadResultType"] | null;
+            /** Matched Applicant Fact */
+            matched_applicant_fact?: string | null;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+            /** Effective Score Change */
+            effective_score_change?: string | null;
+            /** Points Contribution */
+            points_contribution?: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["AdmissionBenefitEvidence"][];
+        };
         /** AdmissionBenefitEvaluationResponse */
         AdmissionBenefitEvaluationResponse: {
             /** Ruleid */
@@ -1476,6 +1631,14 @@ export interface components {
             /** Evidence */
             evidence: components["schemas"]["AdmissionBenefitEvidenceResponse"][];
         };
+        /** AdmissionBenefitEvidence */
+        AdmissionBenefitEvidence: {
+            /** Rule Id */
+            rule_id: string;
+            provenance: components["schemas"]["BenefitProvenance"];
+            /** Excerpt */
+            excerpt?: string | null;
+        };
         /** AdmissionBenefitEvidenceResponse */
         AdmissionBenefitEvidenceResponse: {
             /** Ruleid */
@@ -1484,6 +1647,21 @@ export interface components {
             /** Excerpt */
             excerpt?: string | null;
         };
+        /** AdmissionBenefitPolicyEvaluation */
+        AdmissionBenefitPolicyEvaluation: {
+            status: components["schemas"]["AdmissionBenefitPolicyEvaluationStatus"];
+            decision?: components["schemas"]["AdmissionDecisionResult"] | null;
+            /**
+             * Missing Input Codes
+             * @default []
+             */
+            missing_input_codes: string[];
+        };
+        /**
+         * AdmissionBenefitPolicyEvaluationStatus
+         * @enum {string}
+         */
+        AdmissionBenefitPolicyEvaluationStatus: "evaluated" | "insufficient_data" | "unavailable";
         /** AdmissionBenefitRuleListResponse */
         AdmissionBenefitRuleListResponse: {
             /** Admissionyear */
@@ -1555,6 +1733,32 @@ export interface components {
          * @enum {string}
          */
         AdmissionCompetitionType: "general" | "special_quota" | "separate_quota" | "targeted" | "bvi" | "other";
+        /**
+         * AdmissionDecisionResult
+         * @description Legal eligibility plus optional individual-achievement score composition.
+         */
+        AdmissionDecisionResult: {
+            /** Program Id */
+            program_id: string;
+            /** Admission Year */
+            admission_year: number;
+            status: components["schemas"]["EligibilityStatus"];
+            route?: components["schemas"]["AdmissionRoute"] | null;
+            eligibility?: components["schemas"]["AdmissionEligibilityResult"] | null;
+            individual_achievements?: components["schemas"]["IndividualAchievementBreakdown"] | null;
+            /** Base Competitive Score */
+            base_competitive_score?: string | null;
+            /** Individual Achievement Points */
+            individual_achievement_points?: string | null;
+            /** Effective Competitive Score */
+            effective_competitive_score?: string | null;
+            competitive_score?: components["schemas"]["EffectiveCompetitiveScore"] | null;
+            /**
+             * Source Gaps
+             * @default []
+             */
+            source_gaps: string[];
+        };
         /** AdmissionEligibilityRequest */
         AdmissionEligibilityRequest: {
             /**
@@ -1600,6 +1804,31 @@ export interface components {
             competitiveScore?: components["schemas"]["EffectiveCompetitiveScoreResponse"] | null;
             /** Sourcegaps */
             sourceGaps: string[];
+        };
+        /** AdmissionEligibilityResult */
+        AdmissionEligibilityResult: {
+            /** Program Id */
+            program_id: string;
+            /** Admission Year */
+            admission_year: number;
+            status: components["schemas"]["EligibilityStatus"];
+            route?: components["schemas"]["AdmissionRoute"] | null;
+            /**
+             * Evaluations
+             * @default []
+             */
+            evaluations: components["schemas"]["AdmissionBenefitEvaluation"][];
+            /** Base Competitive Score */
+            base_competitive_score?: string | null;
+            /** Individual Achievement Points */
+            individual_achievement_points?: string | null;
+            /** Effective Competitive Score */
+            effective_competitive_score?: string | null;
+            /**
+             * Source Gaps
+             * @default []
+             */
+            source_gaps: string[];
         };
         /** AdmissionFitBreakdown */
         AdmissionFitBreakdown: {
@@ -2133,6 +2362,42 @@ export interface components {
             /** Intensity */
             intensity: string;
         };
+        /**
+         * ApplicantAdmissionContext
+         * @description Explicit, short-lived facts plus dimensions the applicant confirmed complete.
+         */
+        ApplicantAdmissionContext: {
+            facts?: components["schemas"]["ApplicantAdmissionFacts"];
+            /**
+             * Complete Dimensions
+             * @default []
+             */
+            complete_dimensions: components["schemas"]["ApplicantFactDimension"][];
+        };
+        /** ApplicantAdmissionFacts */
+        ApplicantAdmissionFacts: {
+            /**
+             * Ege Scores
+             * @default []
+             */
+            ege_scores: components["schemas"]["ApplicantExamScore"][];
+            /**
+             * Internal Exam Scores
+             * @default []
+             */
+            internal_exam_scores: components["schemas"]["ApplicantInternalExamScore"][];
+            /**
+             * Olympiad Achievements
+             * @default []
+             */
+            olympiad_achievements: components["schemas"]["ApplicantOlympiadAchievement"][];
+            /**
+             * Individual Achievements
+             * @default []
+             */
+            individual_achievements: components["schemas"]["ApplicantIndividualAchievement"][];
+            confirmation_category?: components["schemas"]["ConfirmationApplicantCategory"] | null;
+        };
         /** ApplicantAdmissionFactsRequest */
         ApplicantAdmissionFactsRequest: {
             /** Egescores */
@@ -2173,12 +2438,35 @@ export interface components {
             /** Scores */
             scores?: components["schemas"]["ApplicantSubjectScoreRequest"][];
         };
+        /** ApplicantExamScore */
+        ApplicantExamScore: {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: number | string;
+        };
         /** ApplicantExamScoreRequest */
         ApplicantExamScoreRequest: {
             /** Subject */
             subject: string;
             /** Score */
             score: number | string;
+        };
+        /**
+         * ApplicantFactDimension
+         * @enum {string}
+         */
+        ApplicantFactDimension: "ege_scores" | "internal_exam_scores" | "olympiad_achievements" | "individual_achievements" | "confirmation_category";
+        /** ApplicantIndividualAchievement */
+        ApplicantIndividualAchievement: {
+            /** Achievement Code */
+            achievement_code: string;
+            /** Year */
+            year?: number | null;
+            /** Details */
+            details?: string | null;
+            /** Evidence Reference */
+            evidence_reference?: string | null;
         };
         /** ApplicantIndividualAchievementRequest */
         ApplicantIndividualAchievementRequest: {
@@ -2191,12 +2479,38 @@ export interface components {
             /** Evidencereference */
             evidenceReference?: string | null;
         };
+        /**
+         * ApplicantInternalExamScore
+         * @description Applicant result from a university internal entrance exam.
+         */
+        ApplicantInternalExamScore: {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: number | string;
+        };
         /** ApplicantInternalExamScoreRequest */
         ApplicantInternalExamScoreRequest: {
             /** Subject */
             subject: string;
             /** Score */
             score: number | string;
+        };
+        /** ApplicantOlympiadAchievement */
+        ApplicantOlympiadAchievement: {
+            /** Olympiad Id */
+            olympiad_id: string;
+            /** Olympiad Profile Id */
+            olympiad_profile_id?: string | null;
+            /** Result Year */
+            result_year: number;
+            result_type: components["schemas"]["OlympiadResultType"];
+            /** Confirmation Subject */
+            confirmation_subject?: string | null;
+            /** Grade Or Class */
+            grade_or_class?: string | null;
+            /** Evidence Reference */
+            evidence_reference?: string | null;
         };
         /** ApplicantOlympiadAchievementRequest */
         ApplicantOlympiadAchievementRequest: {
@@ -2236,6 +2550,26 @@ export interface components {
          * @enum {string}
          */
         AssessmentType: "exam" | "credit" | "graded_credit" | "coursework" | "course_project" | "state_exam";
+        /** AssistantPolicyAnswer */
+        AssistantPolicyAnswer: {
+            focus: components["schemas"]["PolicyQueryFocus"];
+            status: components["schemas"]["PolicyAnswerStatus"];
+            resolution_trace?: components["schemas"]["ResolutionTrace"] | null;
+            cycle_comparison?: components["schemas"]["PolicyCycleComparison"] | null;
+            domain_evaluation?: components["schemas"]["AdmissionBenefitPolicyEvaluation"] | null;
+            /**
+             * Source Claims
+             * @default []
+             */
+            source_claims: components["schemas"]["KnowledgeClaimLookup"][];
+            /** Reason Code */
+            reason_code: string;
+            /**
+             * Missing Input Codes
+             * @default []
+             */
+            missing_input_codes: string[];
+        };
         /** AssistantQueryRequest */
         AssistantQueryRequest: {
             /** Text */
@@ -2249,6 +2583,7 @@ export interface components {
              * @default false
              */
             interactive: boolean;
+            applicantAdmissionContext?: components["schemas"]["ApplicantAdmissionContext"] | null;
         };
         /** AssistantResult */
         AssistantResult: {
@@ -2356,6 +2691,35 @@ export interface components {
             normalizedValue?: string | null;
             provenance?: components["schemas"]["BenefitProvenanceResponse"] | null;
         };
+        /**
+         * BenefitProvenance
+         * @description Document-level evidence for a canonical admission-benefit fact.
+         */
+        BenefitProvenance: {
+            source: components["schemas"]["SourceAttribution"];
+            /** Source Snapshot Hash */
+            source_snapshot_hash: string;
+            /** Source Run Id */
+            source_run_id: string;
+            /** Admission Year */
+            admission_year: number;
+            /** Document Title */
+            document_title: string;
+            /** Document Kind */
+            document_kind: string;
+            /** Appendix Number */
+            appendix_number?: string | null;
+            /** Page */
+            page?: number | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Parser Version */
+            parser_version: string;
+        };
         /** BenefitProvenanceResponse */
         BenefitProvenanceResponse: {
             source: components["schemas"]["SourceAttributionResponse"];
@@ -2413,6 +2777,31 @@ export interface components {
          * @enum {string}
          */
         BenefitType: "bvi" | "one_hundred_points" | "max_internal_exam_score" | "special_right" | "preferential_right" | "special_quota" | "separate_quota" | "targeted_route" | "other_review_required";
+        /**
+         * BitemporalRevision
+         * @description Immutable revision clock: valid time plus when this revision was recorded.
+         */
+        BitemporalRevision: {
+            /** Revision */
+            revision: number;
+            valid_time?: components["schemas"]["TemporalInterval"] | null;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+        };
+        /** Body_attach_knowledge_source_snapshot */
+        Body_attach_knowledge_source_snapshot: {
+            /** Requested Url */
+            requested_url: string;
+            /** Reason */
+            reason: string;
+            /** Document */
+            document: string;
+            /** Expires At */
+            expires_at?: string | null;
+        };
         /** CampusDepartmentReferenceResponse */
         CampusDepartmentReferenceResponse: {
             /** Id */
@@ -2624,6 +3013,233 @@ export interface components {
          * @enum {string}
          */
         CategoryKind: "subject" | "program" | "event" | "general";
+        /** Claim */
+        Claim: {
+            /** Claim Id */
+            claim_id: string;
+            clock: components["schemas"]["BitemporalRevision"];
+            /** Source Observation Id */
+            source_observation_id: string;
+            /** Text Start Offset */
+            text_start_offset: number;
+            /** Text End Offset */
+            text_end_offset: number;
+            /** Assertion Text */
+            assertion_text: string;
+            /** Assertion Text Sha256 */
+            assertion_text_sha256: string;
+            proposition?: components["schemas"]["ClaimProposition"] | null;
+            claimed_stage: components["schemas"]["ClaimedPolicyStage"];
+            /** @default needs_review */
+            review_state: components["schemas"]["ClaimReviewState"];
+            source_milestones: components["schemas"]["SourceMilestones"];
+            extraction_method: components["schemas"]["ClaimExtractionMethod"];
+            /** Extractor Id */
+            extractor_id: string;
+            /** Extractor Version */
+            extractor_version: string;
+            /** Extraction Confidence */
+            extraction_confidence?: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["ClaimEvidenceLink"][];
+        };
+        /** ClaimBooleanValueRequest */
+        ClaimBooleanValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "boolean";
+            /** Value */
+            value: boolean;
+        };
+        /** ClaimDateTimeValueRequest */
+        ClaimDateTimeValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "datetime";
+            /**
+             * Value
+             * Format: date-time
+             */
+            value: string;
+        };
+        /** ClaimDateValueRequest */
+        ClaimDateValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "date";
+            /**
+             * Value
+             * Format: date
+             */
+            value: string;
+        };
+        /** ClaimDecimalValueRequest */
+        ClaimDecimalValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "decimal";
+            /** Value */
+            value: number | string;
+        };
+        /** ClaimEvidenceLink */
+        ClaimEvidenceLink: {
+            relationship: components["schemas"]["ClaimEvidenceRelationship"];
+            evidence: components["schemas"]["EvidenceRef"];
+        };
+        /**
+         * ClaimEvidenceRelationship
+         * @enum {string}
+         */
+        ClaimEvidenceRelationship: "originates_from" | "supports" | "contradicts" | "qualifies";
+        /**
+         * ClaimExtractionMethod
+         * @enum {string}
+         */
+        ClaimExtractionMethod: "structured_document" | "deterministic_parser" | "manual" | "jev_suggestion";
+        /** ClaimIdentifierValueRequest */
+        ClaimIdentifierValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "identifier";
+            /** Value */
+            value: string;
+        };
+        /**
+         * ClaimProposition
+         * @description A bounded typed proposition, not a rule or executable expression.
+         */
+        ClaimProposition: {
+            /** Predicate */
+            predicate: string;
+            subject_kind: components["schemas"]["ClaimSubjectKind"];
+            /** Subject Id */
+            subject_id?: string | null;
+            /** Value */
+            value: components["schemas"]["ClaimValueText"] | components["schemas"]["ClaimValueDecimal"] | components["schemas"]["ClaimValueBoolean"] | components["schemas"]["ClaimValueDate"] | components["schemas"]["ClaimValueDateTime"] | components["schemas"]["ClaimValueIdentifier"];
+            /** Unit */
+            unit?: string | null;
+        };
+        /** ClaimPropositionRequest */
+        ClaimPropositionRequest: {
+            /** Predicate */
+            predicate: string;
+            subjectKind: components["schemas"]["ClaimSubjectKind"];
+            /** Subjectid */
+            subjectId?: string | null;
+            /** Value */
+            value: components["schemas"]["ClaimTextValueRequest"] | components["schemas"]["ClaimDecimalValueRequest"] | components["schemas"]["ClaimBooleanValueRequest"] | components["schemas"]["ClaimDateValueRequest"] | components["schemas"]["ClaimDateTimeValueRequest"] | components["schemas"]["ClaimIdentifierValueRequest"];
+            /** Unit */
+            unit?: string | null;
+        };
+        /**
+         * ClaimReviewState
+         * @enum {string}
+         */
+        ClaimReviewState: "unreviewed" | "needs_review" | "accepted_as_source_assertion" | "rejected" | "unresolved" | "duplicate";
+        /** ClaimRevisionRef */
+        ClaimRevisionRef: {
+            /** Claim Id */
+            claim_id: string;
+            /** Revision */
+            revision: number;
+        };
+        /**
+         * ClaimSubjectKind
+         * @enum {string}
+         */
+        ClaimSubjectKind: "unknown" | "document" | "university" | "admission_cycle" | "education_level" | "direction" | "program" | "exam" | "olympiad" | "olympiad_profile" | "individual_achievement" | "applicant_category";
+        /** ClaimTextValueRequest */
+        ClaimTextValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "text";
+            /** Value */
+            value: string;
+        };
+        /** ClaimValueBoolean */
+        ClaimValueBoolean: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "boolean";
+            /** Value */
+            value: boolean;
+        };
+        /** ClaimValueDate */
+        ClaimValueDate: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "date";
+            /**
+             * Value
+             * Format: date
+             */
+            value: string;
+        };
+        /** ClaimValueDateTime */
+        ClaimValueDateTime: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "datetime";
+            /**
+             * Value
+             * Format: date-time
+             */
+            value: string;
+        };
+        /** ClaimValueDecimal */
+        ClaimValueDecimal: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "decimal";
+            /** Value */
+            value: string;
+        };
+        /** ClaimValueIdentifier */
+        ClaimValueIdentifier: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "identifier";
+            /** Value */
+            value: string;
+        };
+        /** ClaimValueText */
+        ClaimValueText: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "text";
+            /** Value */
+            value: string;
+        };
+        /**
+         * ClaimedPolicyStage
+         * @description What the source asserts about a proposal or norm, not resolver state.
+         * @enum {string}
+         */
+        ClaimedPolicyStage: "rumor" | "hypothesis" | "announced" | "proposal" | "draft" | "under_review" | "adopted" | "published" | "future_effective" | "effective" | "superseded" | "repealed" | "withdrawn" | "rejected" | "unknown";
         /**
          * CompareStatus
          * @enum {string}
@@ -2762,6 +3378,26 @@ export interface components {
             /** Credits */
             credits: string;
         };
+        /** CompetitiveExamScore */
+        CompetitiveExamScore: {
+            /** Subject */
+            subject: string;
+            /** Source Name */
+            source_name: string;
+            /** Raw Score */
+            raw_score?: string | null;
+            /** Effective Score */
+            effective_score?: string | null;
+            /** Minimum Score */
+            minimum_score?: string | null;
+            /**
+             * Applied Benefit Rule Ids
+             * @default []
+             */
+            applied_benefit_rule_ids: string[];
+            /** Provenance */
+            provenance: components["schemas"]["AdmissionProvenance"][];
+        };
         /** CompetitiveExamScoreResponse */
         CompetitiveExamScoreResponse: {
             /** Subject */
@@ -2828,11 +3464,50 @@ export interface components {
             /** Sourcetext */
             sourceText: string;
         };
+        /** ConsideredPolicyRule */
+        ConsideredPolicyRule: {
+            /** Rule Id */
+            rule_id: string;
+            /** Revision */
+            revision: number;
+            /** Revision Hash */
+            revision_hash: string;
+            lifecycle: components["schemas"]["PolicyRevisionLifecycle"];
+            /** Valid Interval */
+            valid_interval: [
+                string | null,
+                string | null
+            ];
+            /** Effective Interval */
+            effective_interval?: [
+                string | null,
+                string | null
+            ] | null;
+            domain_rule: components["schemas"]["DomainRuleRef"];
+            /** Family Id */
+            family_id?: string | null;
+            authority?: components["schemas"]["PolicyAuthorityLevel"] | null;
+            scope: components["schemas"]["PolicyScope"];
+            scope_state: components["schemas"]["PolicyScopeMatchState"];
+            scope_reason: components["schemas"]["PolicyScopeMatchReason"];
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceRef"][];
+            filter_state: components["schemas"]["PolicyRuleFilterState"];
+            reason: components["schemas"]["PolicyRuleFilterReason"];
+            /** Selector Trace */
+            selector_trace: components["schemas"]["SelectorNodeTrace"][];
+            selection?: components["schemas"]["PolicySelection"] | null;
+        };
+        /** ConsideredRuleView */
+        ConsideredRuleView: {
+            rule: components["schemas"]["ResponseRuleReference"];
+            disposition: components["schemas"]["RuleDisposition"];
+        };
         /**
          * ConversationSlot
          * @enum {string}
          */
-        ConversationSlot: "metric" | "entity" | "exams" | "total_score" | "university_scope" | "funding" | "study_form";
+        ConversationSlot: "metric" | "entity" | "exams" | "total_score" | "university_scope" | "funding" | "study_form" | "admission_year";
         /** CurriculumItemResponse */
         CurriculumItemResponse: {
             /** Id */
@@ -3363,6 +4038,11 @@ export interface components {
             /** Missingdata */
             missingData: string[];
         };
+        /**
+         * DiffObjectState
+         * @enum {string}
+         */
+        DiffObjectState: "present" | "absent_confirmed" | "unknown";
         /** DisciplineAreaCatalogResponse */
         DisciplineAreaCatalogResponse: {
             /** Items */
@@ -3414,6 +4094,44 @@ export interface components {
             primaryArea: components["schemas"]["DisciplineAreaCode"];
         };
         /**
+         * DomainImpactStatus
+         * @enum {string}
+         */
+        DomainImpactStatus: "evaluated" | "no_domain_change" | "insufficient_data" | "unavailable";
+        /** DomainRuleImpactObservation */
+        DomainRuleImpactObservation: {
+            owner_module: components["schemas"]["PolicyDomainOwner"];
+            before_rule?: components["schemas"]["DomainRuleRef"] | null;
+            after_rule?: components["schemas"]["DomainRuleRef"] | null;
+            status: components["schemas"]["DomainImpactStatus"];
+            actionability?: components["schemas"]["ImpactActionability"] | null;
+            /**
+             * Changes
+             * @default []
+             */
+            changes: components["schemas"]["PolicyDiffEntry"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["EvidenceRef"][];
+            /**
+             * Missing Input Codes
+             * @default []
+             */
+            missing_input_codes: string[];
+        };
+        /** DomainRuleRef */
+        DomainRuleRef: {
+            owner_module: components["schemas"]["PolicyDomainOwner"];
+            /** Canonical Rule Id */
+            canonical_rule_id: string;
+            /** Owner Revision */
+            owner_revision: number;
+            /** Owner Revision Hash */
+            owner_revision_hash?: string | null;
+        };
+        /**
          * EditorialAudienceMode
          * @enum {string}
          */
@@ -3449,6 +4167,53 @@ export interface components {
          * @enum {string}
          */
         EducationLevel: "bachelor" | "specialist" | "master" | "postgraduate";
+        /**
+         * EffectiveCompetitiveScore
+         * @description Offering-specific and reproducible competitive-score calculation.
+         */
+        EffectiveCompetitiveScore: {
+            status: components["schemas"]["CompetitiveScoreStatus"];
+            /** Offering Id */
+            offering_id?: string | null;
+            /**
+             * Available Offering Ids
+             * @default []
+             */
+            available_offering_ids: string[];
+            /**
+             * Selected Exam Combination
+             * @default []
+             */
+            selected_exam_combination: string[];
+            /**
+             * Exam Scores Before
+             * @default []
+             */
+            exam_scores_before: components["schemas"]["CompetitiveExamScore"][];
+            /**
+             * Exam Scores After Benefits
+             * @default []
+             */
+            exam_scores_after_benefits: components["schemas"]["CompetitiveExamScore"][];
+            /**
+             * Candidate Exams Considered
+             * @default 0
+             */
+            candidate_exams_considered: number;
+            /** Base Exam Score */
+            base_exam_score?: string | null;
+            /** Post Benefit Exam Score */
+            post_benefit_exam_score?: string | null;
+            /** Individual Achievement Points */
+            individual_achievement_points?: string | null;
+            /** Effective Total */
+            effective_total?: string | null;
+            /**
+             * Source Gaps
+             * @default []
+             */
+            source_gaps: string[];
+        };
         /** EffectiveCompetitiveScoreResponse */
         EffectiveCompetitiveScoreResponse: {
             status: components["schemas"]["CompetitiveScoreStatus"];
@@ -3474,6 +4239,41 @@ export interface components {
             effectiveTotal?: string | null;
             /** Sourcegaps */
             sourceGaps: string[];
+        };
+        /** EffectivePolicyDiffSnapshot */
+        EffectivePolicyDiffSnapshot: {
+            /** Trace Id */
+            trace_id: string;
+            /** University Id */
+            university_id: string;
+            /** Admission Year */
+            admission_year: number;
+            /** Cycle Id */
+            cycle_id?: string | null;
+            /** Cycle Revision */
+            cycle_revision?: number | null;
+            /** Context Fingerprint */
+            context_fingerprint: string;
+            /** Valid As Of */
+            valid_as_of?: string | null;
+            /**
+             * As Known At
+             * Format: date-time
+             */
+            as_known_at: string;
+            status: components["schemas"]["PolicyResolutionStatus"];
+            /**
+             * Effective Rules
+             * @default []
+             */
+            effective_rules: components["schemas"]["PolicySelection"][];
+            /**
+             * Conflicting Rules
+             * @default []
+             */
+            conflicting_rules: components["schemas"]["PolicySelection"][];
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceRef"][];
         };
         /**
          * EligibilityStatus
@@ -3602,11 +4402,61 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** EvidenceLocator */
+        EvidenceLocator: {
+            /** Page */
+            page?: number | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Field */
+            field?: string | null;
+            /** Record Key */
+            record_key?: string | null;
+        };
+        /** EvidenceLocatorRequest */
+        EvidenceLocatorRequest: {
+            /** Page */
+            page?: number | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Field */
+            field?: string | null;
+            /** Recordkey */
+            recordKey?: string | null;
+        };
         /** EvidenceMetricResponse */
         EvidenceMetricResponse: {
             /** Value */
             value?: string | null;
             status: components["schemas"]["EvidenceStatus"];
+        };
+        /** EvidenceRef */
+        EvidenceRef: {
+            /** Source Id */
+            source_id: string;
+            /** Source Observation Id */
+            source_observation_id: string;
+            /** Snapshot Sha256 */
+            snapshot_sha256: string;
+            /**
+             * Source Url
+             * Format: uri
+             */
+            source_url: string;
+            locator?: components["schemas"]["EvidenceLocator"];
+            /**
+             * Inferred
+             * @default false
+             */
+            inferred: boolean;
         };
         /**
          * EvidenceSignal
@@ -3661,6 +4511,47 @@ export interface components {
          * @enum {string}
          */
         GapSeverity: "blocking" | "degradable" | "informational";
+        /**
+         * ImpactActionability
+         * @enum {string}
+         */
+        ImpactActionability: "not_applicable" | "future_only" | "informational" | "action_recommended" | "action_required" | "uncertain" | "blocked_by_missing_data";
+        /** ImpactAffectedObject */
+        ImpactAffectedObject: {
+            node: components["schemas"]["PolicyDependencyNode"];
+            /** Relation Path */
+            relation_path: string[];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["EvidenceRef"][];
+        };
+        /**
+         * ImpactReason
+         * @enum {string}
+         */
+        ImpactReason: "no_effective_policy_change" | "future_policy_only" | "policy_change_informational" | "domain_owner_recommends_action" | "domain_owner_requires_action" | "policy_conflict" | "context_mismatch" | "domain_owner_result_missing" | "resolution_blocked" | "dependency_cycle" | "dependency_truncated" | "unknown_applicability";
+        /** IndividualAchievementBreakdown */
+        IndividualAchievementBreakdown: {
+            status: components["schemas"]["EligibilityStatus"];
+            /** Total Points */
+            total_points: string;
+            /** Uncapped Points */
+            uncapped_points: string;
+            /** Global Cap */
+            global_cap?: string | null;
+            /**
+             * Evaluations
+             * @default []
+             */
+            evaluations: components["schemas"]["IndividualAchievementEvaluation"][];
+            /**
+             * Source Gaps
+             * @default []
+             */
+            source_gaps: string[];
+        };
         /** IndividualAchievementBreakdownResponse */
         IndividualAchievementBreakdownResponse: {
             status: components["schemas"]["EligibilityStatus"];
@@ -3674,6 +4565,28 @@ export interface components {
             evaluations: components["schemas"]["IndividualAchievementEvaluationResponse"][];
             /** Sourcegaps */
             sourceGaps: string[];
+        };
+        /** IndividualAchievementEvaluation */
+        IndividualAchievementEvaluation: {
+            /** Rule Id */
+            rule_id?: string | null;
+            /** Achievement Code */
+            achievement_code: string;
+            status: components["schemas"]["IndividualAchievementStatus"];
+            /** Applicant Year */
+            applicant_year?: number | null;
+            /** Rule Points */
+            rule_points?: string | null;
+            /** Awarded Points */
+            awarded_points: string;
+            combination_policy?: components["schemas"]["AchievementCombinationPolicy"] | null;
+            /** Reason */
+            reason: string;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["AdmissionBenefitEvidence"][];
         };
         /** IndividualAchievementEvaluationResponse */
         IndividualAchievementEvaluationResponse: {
@@ -3755,6 +4668,11 @@ export interface components {
             };
             provenance: components["schemas"]["BenefitProvenanceResponse"];
         };
+        /**
+         * IndividualAchievementStatus
+         * @enum {string}
+         */
+        IndividualAchievementStatus: "accepted" | "rejected" | "review_required" | "deduplicated" | "capped" | "excluded";
         /** IngestionRetryRequestBody */
         IngestionRetryRequestBody: {
             /**
@@ -3991,6 +4909,179 @@ export interface components {
              */
             evidence: components["schemas"]["ComparisonEvidenceResponse"][];
         };
+        /**
+         * KnowledgeAnswerState
+         * @enum {string}
+         */
+        KnowledgeAnswerState: "source_assertion" | "policy_resolved" | "conflict" | "no_evidence" | "insufficient_data" | "outside_coverage" | "historical_state_unavailable" | "review_required" | "uncertain";
+        /**
+         * KnowledgeClaimLookup
+         * @description An exact claim revision with reliability metadata for its origin source.
+         */
+        KnowledgeClaimLookup: {
+            claim: components["schemas"]["Claim"];
+            /** Source Display Name */
+            source_display_name: string;
+            source_kind: components["schemas"]["KnowledgeSourceKind"];
+            source_reliability: components["schemas"]["SourceReliabilityTier"];
+        };
+        /** KnowledgeManualClaimResponse */
+        KnowledgeManualClaimResponse: {
+            /** Claimid */
+            claimId: string;
+            /** Revision */
+            revision: number;
+            /** Reviewstate */
+            reviewState: string;
+            /** Sourceobservationid */
+            sourceObservationId: string;
+            /**
+             * Recordedat
+             * Format: date-time
+             */
+            recordedAt: string;
+        };
+        /** KnowledgeResponseSection */
+        KnowledgeResponseSection: {
+            /**
+             * Schema Version
+             * @default knowledge-response.v1
+             * @constant
+             */
+            schema_version: "knowledge-response.v1";
+            status: components["schemas"]["KnowledgeAnswerState"];
+            /** @default uncertain */
+            actionability: components["schemas"]["ResponseActionability"];
+            /**
+             * Source Assertions
+             * @default []
+             */
+            source_assertions: components["schemas"]["SourceAssertionView"][];
+            /**
+             * Known Facts
+             * @default []
+             */
+            known_facts: components["schemas"]["ResponseFact"][];
+            /**
+             * Affected Scope
+             * @default []
+             */
+            affected_scope: components["schemas"]["ResponseRuleReference"][];
+            /**
+             * Exceptions
+             * @default []
+             */
+            exceptions: components["schemas"]["RuleExceptionView"][];
+            /**
+             * Impact Delta
+             * @default []
+             */
+            impact_delta: components["schemas"]["ResponseFact"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ResponseEvidenceReference"][];
+            resolution?: components["schemas"]["ResolutionExplanation"] | null;
+            cycle_comparison?: components["schemas"]["ResponseCycleComparison"] | null;
+            /**
+             * Uncertainties
+             * @default []
+             */
+            uncertainties: components["schemas"]["ResponseUncertainty"][];
+            /**
+             * Missing Data
+             * @default []
+             */
+            missing_data: string[];
+            /** As Known At */
+            as_known_at?: string | null;
+            /** Last Checked */
+            last_checked?: string | null;
+        };
+        /**
+         * KnowledgeReviewAction
+         * @enum {string}
+         */
+        KnowledgeReviewAction: "approve" | "reject" | "edit" | "merge" | "resolve_identity" | "mark_unresolved" | "mark_duplicate";
+        /**
+         * KnowledgeReviewTargetKind
+         * @enum {string}
+         */
+        KnowledgeReviewTargetKind: "claim" | "change_event" | "policy_rule";
+        /**
+         * KnowledgeSourceKind
+         * @enum {string}
+         */
+        KnowledgeSourceKind: "normative_document" | "ministry_publication" | "university_admission_rules" | "university_order" | "official_appendix" | "official_news" | "official_feed" | "official_api";
+        /** KnowledgeSourceObservationResponse */
+        KnowledgeSourceObservationResponse: {
+            /** Sourceobservationid */
+            sourceObservationId: string;
+            /** Sourceid */
+            sourceId: string;
+            /** Registryrevision */
+            registryRevision: number;
+            /** Snapshotsha256 */
+            snapshotSha256: string;
+            /**
+             * Capturedat
+             * Format: date-time
+             */
+            capturedAt: string;
+            /** Accessmode */
+            accessMode: string;
+            /** Contenttype */
+            contentType?: string | null;
+        };
+        /** KnowledgeSourceRegistrationRequest */
+        KnowledgeSourceRegistrationRequest: {
+            /** Sourceid */
+            sourceId: string;
+            /** Issuerid */
+            issuerId: string;
+            jurisdiction: components["schemas"]["SourceJurisdiction"];
+            /** Identitykey */
+            identityKey: string;
+            /** Displayname */
+            displayName: string;
+            sourceKind: components["schemas"]["KnowledgeSourceKind"];
+            reliabilityTier: components["schemas"]["SourceReliabilityTier"];
+            /** Adapterid */
+            adapterId: string;
+            /** Adapterversion */
+            adapterVersion: string;
+            /**
+             * Starturl
+             * Format: uri
+             */
+            startUrl: string;
+            /** Allowlist */
+            allowlist: components["schemas"]["SourceAllowedRouteRequest"][];
+            /** Pollintervalseconds */
+            pollIntervalSeconds: number;
+            /** Freshnessbudgetseconds */
+            freshnessBudgetSeconds: number;
+            /** Reason */
+            reason: string;
+        };
+        /** KnowledgeSourceRegistrationResponse */
+        KnowledgeSourceRegistrationResponse: {
+            /** Sourceid */
+            sourceId: string;
+            /** Revision */
+            revision: number;
+            reliabilityTier: components["schemas"]["SourceReliabilityTier"];
+            /** Enabled */
+            enabled: boolean;
+            /** Approvedbyaccountid */
+            approvedByAccountId: string;
+            /**
+             * Recordedat
+             * Format: date-time
+             */
+            recordedAt: string;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -4000,6 +5091,63 @@ export interface components {
              * Format: password
              */
             password: string;
+        };
+        /** ManualClaimMetadataCorrectionRequest */
+        ManualClaimMetadataCorrectionRequest: {
+            /** Expectedrevision */
+            expectedRevision: number;
+            /** Expectedrevisionhash */
+            expectedRevisionHash: string;
+            proposition?: components["schemas"]["ClaimPropositionRequest"] | null;
+            claimedStage: components["schemas"]["ClaimedPolicyStage"];
+            /** Reason */
+            reason: string;
+            /** Expiresat */
+            expiresAt?: string | null;
+        };
+        /** ManualClaimSubmissionRequest */
+        ManualClaimSubmissionRequest: {
+            /** Sourceobservationid */
+            sourceObservationId: string;
+            /** Sourcetext */
+            sourceText: string;
+            /** Assertiontext */
+            assertionText: string;
+            locator: components["schemas"]["EvidenceLocatorRequest"];
+            proposition?: components["schemas"]["ClaimPropositionRequest"] | null;
+            claimedStage: components["schemas"]["ClaimedPolicyStage"];
+            sourceMilestones: components["schemas"]["SourceMilestonesRequest"];
+            validTime?: components["schemas"]["TemporalIntervalRequest"] | null;
+            /** Reason */
+            reason: string;
+            /** Expiresat */
+            expiresAt?: string | null;
+        };
+        /** ManualPolicyRuleCandidateRequest */
+        ManualPolicyRuleCandidateRequest: {
+            revision: components["schemas"]["PolicyRuleRevision"];
+            /** Reason */
+            reason: string;
+        };
+        /** ManualPolicyRuleCandidateResponse */
+        ManualPolicyRuleCandidateResponse: {
+            /** Ruleid */
+            ruleId: string;
+            /** Revision */
+            revision: number;
+            /** Revisionhash */
+            revisionHash: string;
+            /** Approvaleventid */
+            approvalEventId: string;
+            /** Reviewstate */
+            reviewState: string;
+            /** Submittedbyaccountid */
+            submittedByAccountId: string;
+            /**
+             * Submittedat
+             * Format: date-time
+             */
+            submittedAt: string;
         };
         /** MatchScoreResponse */
         MatchScoreResponse: {
@@ -4216,6 +5364,453 @@ export interface components {
             point?: components["schemas"]["CampusPointDetailResponse"] | null;
             /** Startsat */
             startsAt?: string | null;
+        };
+        /**
+         * PolicyAnswerStatus
+         * @enum {string}
+         */
+        PolicyAnswerStatus: "resolved" | "policy_resolved_domain_result_unavailable" | "source_assertions_found" | "review_required" | "conflict" | "no_match" | "blocked_by_missing_data" | "indeterminate" | "outside_coverage" | "historical_state_unavailable";
+        /** PolicyApplicabilityContext */
+        PolicyApplicabilityContext: {
+            /**
+             * Values
+             * @default []
+             */
+            values: components["schemas"]["PolicyContextValue"][];
+        };
+        /**
+         * PolicyApprovalState
+         * @enum {string}
+         */
+        PolicyApprovalState: "not_submitted" | "pending" | "approved" | "rejected" | "withdrawn" | "invalid";
+        /**
+         * PolicyAuthorityLevel
+         * @description Legal/normative force, kept separate from source reliability.
+         * @enum {string}
+         */
+        PolicyAuthorityLevel: "federal_normative" | "regulator_normative" | "university_normative" | "unresolved";
+        /**
+         * PolicyContextAvailability
+         * @enum {string}
+         */
+        PolicyContextAvailability: "present" | "unknown" | "unavailable";
+        /**
+         * PolicyContextField
+         * @enum {string}
+         */
+        PolicyContextField: "jurisdiction" | "regulator_id" | "university_id" | "campus_id" | "faculty_id" | "department_id" | "education_level" | "direction_id" | "program_id" | "admission_cycle_id" | "admission_year" | "academic_year" | "application_start_date" | "application_end_date" | "enrollment_start_date" | "enrollment_end_date" | "admission_route" | "competition_type" | "applicant_category" | "olympiad_id" | "olympiad_profile_id" | "subject_id";
+        /**
+         * PolicyContextOrigin
+         * @enum {string}
+         */
+        PolicyContextOrigin: "user_provided" | "source_backed_cycle" | "derived_from_explicit_input";
+        /** PolicyContextValue */
+        PolicyContextValue: {
+            field: components["schemas"]["PolicyContextField"];
+            availability: components["schemas"]["PolicyContextAvailability"];
+            /** @default user_provided */
+            origin: components["schemas"]["PolicyContextOrigin"];
+            /** Value */
+            value?: string | number | boolean | null;
+        };
+        /** PolicyCycleComparison */
+        PolicyCycleComparison: {
+            before_trace: components["schemas"]["ResolutionTrace"];
+            after_trace: components["schemas"]["ResolutionTrace"];
+            diff: components["schemas"]["PolicySemanticDiff"];
+        };
+        /** PolicyDependencyNode */
+        PolicyDependencyNode: {
+            kind: components["schemas"]["PolicyDependencyNodeKind"];
+            /** Object Id */
+            object_id: string;
+            /** Revision */
+            revision?: number | null;
+            /** Content Hash */
+            content_hash?: string | null;
+            /** Owner Module */
+            owner_module?: string | null;
+        };
+        /**
+         * PolicyDependencyNodeKind
+         * @enum {string}
+         */
+        PolicyDependencyNodeKind: "policy_rule" | "domain_rule" | "scope";
+        /**
+         * PolicyDiffChangeKind
+         * @enum {string}
+         */
+        PolicyDiffChangeKind: "added" | "removed" | "changed";
+        /** PolicyDiffEntry */
+        PolicyDiffEntry: {
+            /** Path */
+            path: string;
+            kind: components["schemas"]["PolicyDiffChangeKind"];
+            /** Before */
+            before?: string | null;
+            /** After */
+            after?: string | null;
+            /**
+             * Before Evidence
+             * @default []
+             */
+            before_evidence: components["schemas"]["EvidenceRef"][];
+            /**
+             * After Evidence
+             * @default []
+             */
+            after_evidence: components["schemas"]["EvidenceRef"][];
+            /** Reason Code */
+            reason_code: string;
+        };
+        /**
+         * PolicyDiffLayer
+         * @enum {string}
+         */
+        PolicyDiffLayer: "policy_revision" | "effective_policy";
+        /**
+         * PolicyDiffStatus
+         * @enum {string}
+         */
+        PolicyDiffStatus: "complete" | "incomplete" | "ambiguous";
+        /**
+         * PolicyDomainOwner
+         * @enum {string}
+         */
+        PolicyDomainOwner: "admission_benefits" | "admissions" | "admission_fit";
+        /** PolicyHypotheticalPreview */
+        PolicyHypotheticalPreview: {
+            /**
+             * Schema Version
+             * @default policy-hypothetical-preview.v1
+             * @constant
+             */
+            schema_version: "policy-hypothetical-preview.v1";
+            /**
+             * Hypothetical
+             * @default true
+             * @constant
+             */
+            hypothetical: true;
+            /**
+             * Approval State
+             * @default pending
+             * @constant
+             */
+            approval_state: "pending";
+            target: components["schemas"]["PolicyReviewPreviewTarget"];
+            /** Approved Snapshot Hash */
+            approved_snapshot_hash: string;
+            current_trace: components["schemas"]["ResolutionTrace"];
+            candidate_trace: components["schemas"]["ResolutionTrace"];
+            effective_diff: components["schemas"]["PolicySemanticDiff"];
+            impact: components["schemas"]["PolicyImpactPreview"];
+            /**
+             * Calculated At
+             * Format: date-time
+             */
+            calculated_at: string;
+            /** Preview Id */
+            preview_id: string;
+        };
+        /** PolicyImpactPreview */
+        PolicyImpactPreview: {
+            /**
+             * Schema Version
+             * @default policy-impact.v1
+             */
+            schema_version: string;
+            /** University Id */
+            university_id: string;
+            /** Admission Year */
+            admission_year: number;
+            /** Context Fingerprint */
+            context_fingerprint: string;
+            /** Current Trace Id */
+            current_trace_id: string;
+            /** Candidate Trace Id */
+            candidate_trace_id: string;
+            /** Policy Diff Id */
+            policy_diff_id: string;
+            status: components["schemas"]["PolicyImpactStatus"];
+            actionability: components["schemas"]["ImpactActionability"];
+            reason: components["schemas"]["ImpactReason"];
+            /**
+             * Affected Objects
+             * @default []
+             */
+            affected_objects: components["schemas"]["ImpactAffectedObject"][];
+            /**
+             * Domain Results
+             * @default []
+             */
+            domain_results: components["schemas"]["DomainRuleImpactObservation"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["EvidenceRef"][];
+            /**
+             * Missing Input Codes
+             * @default []
+             */
+            missing_input_codes: string[];
+            /**
+             * Dependency Cycles
+             * @default []
+             */
+            dependency_cycles: string[];
+            /**
+             * Dependency Truncated
+             * @default false
+             */
+            dependency_truncated: boolean;
+            /**
+             * Calculated At
+             * Format: date-time
+             */
+            calculated_at: string;
+            /** Impact Id */
+            impact_id: string;
+        };
+        /**
+         * PolicyImpactStatus
+         * @enum {string}
+         */
+        PolicyImpactStatus: "complete" | "partial" | "unavailable";
+        /** PolicyPrecedenceDecision */
+        PolicyPrecedenceDecision: {
+            left: components["schemas"]["PolicySelection"];
+            right: components["schemas"]["PolicySelection"];
+            outcome: components["schemas"]["PolicyPrecedenceOutcome"];
+            reason: components["schemas"]["PolicyPrecedenceReason"];
+            winner?: components["schemas"]["PolicySelection"] | null;
+            relation_kind?: components["schemas"]["PolicyRuleRelationKind"] | null;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["EvidenceRef"][];
+        };
+        /**
+         * PolicyPrecedenceOutcome
+         * @enum {string}
+         */
+        PolicyPrecedenceOutcome: "left_prevails" | "right_prevails" | "conflict" | "indeterminate";
+        /**
+         * PolicyPrecedenceReason
+         * @enum {string}
+         */
+        PolicyPrecedenceReason: "exact_relation" | "authorized_exception" | "authority" | "specificity" | "equal_precedence" | "incomparable_scope" | "crossing_authority_and_scope" | "unresolved_authority" | "ambiguous_relation_set" | "precedence_cycle";
+        /**
+         * PolicyQueryFocus
+         * @enum {string}
+         */
+        PolicyQueryFocus: "status" | "change" | "applicability" | "impact" | "history" | "what_if";
+        /**
+         * PolicyResolutionBlocker
+         * @enum {string}
+         */
+        PolicyResolutionBlocker: "valid_as_of_required" | "admission_cycle_unresolved" | "admission_cycle_identity_mismatch" | "admission_cycle_cancelled_or_unknown";
+        /**
+         * PolicyResolutionMode
+         * @enum {string}
+         */
+        PolicyResolutionMode: "approved_effective" | "hypothetical";
+        /**
+         * PolicyResolutionStatus
+         * @enum {string}
+         */
+        PolicyResolutionStatus: "candidates_found" | "resolved" | "conflict" | "no_match" | "blocked_by_missing_data" | "indeterminate";
+        /** PolicyReviewPreviewTarget */
+        PolicyReviewPreviewTarget: {
+            /** Rule Id */
+            rule_id: string;
+            /** Revision */
+            revision: number;
+            /** Revision Hash */
+            revision_hash: string;
+        };
+        /** PolicyRevisionDiffSnapshot */
+        PolicyRevisionDiffSnapshot: {
+            selection: components["schemas"]["PolicySelection"];
+            approval_state: components["schemas"]["PolicyApprovalState"];
+            /** Normalizer Version */
+            normalizer_version: string;
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceRef"][];
+        };
+        /**
+         * PolicyRevisionLifecycle
+         * @enum {string}
+         */
+        PolicyRevisionLifecycle: "rumor" | "hypothesis" | "announced" | "proposal" | "draft" | "under_review" | "adopted" | "published" | "future_effective" | "effective" | "superseded" | "repealed" | "withdrawn" | "rejected" | "unknown";
+        /**
+         * PolicyRuleFilterReason
+         * @enum {string}
+         */
+        PolicyRuleFilterReason: "selector_matched" | "selector_not_matched" | "required_context_unknown" | "lifecycle_not_applicable" | "valid_time_missing" | "outside_valid_time" | "effective_time_missing" | "future_effective" | "effective_time_ended" | "owner_port_not_registered" | "owner_rule_not_found" | "owner_lookup_unavailable" | "admission_cycle_unresolved" | "admission_cycle_blocked" | "valid_as_of_missing" | "approval_state_unresolved" | "scope_not_matched" | "scope_context_unknown" | "legal_authority_unresolved";
+        /**
+         * PolicyRuleFilterState
+         * @enum {string}
+         */
+        PolicyRuleFilterState: "candidate" | "not_applicable" | "future" | "expired" | "indeterminate" | "unsupported" | "blocked";
+        /** PolicyRuleRelation */
+        PolicyRuleRelation: {
+            kind: components["schemas"]["PolicyRuleRelationKind"];
+            /** Target Rule Id */
+            target_rule_id: string;
+            /** Target Revision */
+            target_revision: number;
+            /** Target Hash */
+            target_hash: string;
+            source_claim: components["schemas"]["ClaimRevisionRef"];
+            evidence: components["schemas"]["EvidenceRef"];
+        };
+        /**
+         * PolicyRuleRelationKind
+         * @enum {string}
+         */
+        PolicyRuleRelationKind: "exception_to" | "authorized_exception_to" | "overrides" | "supersedes" | "amends" | "requires";
+        /** PolicyRuleRevision */
+        PolicyRuleRevision: {
+            /** Rule Id */
+            rule_id: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Schema Version
+             * @default policy-rule.v2
+             * @enum {string}
+             */
+            schema_version: "policy-rule.v1" | "policy-rule.v2" | "policy-rule.v3";
+            /** Family Id */
+            family_id?: string | null;
+            authority?: components["schemas"]["PolicyAuthorityLevel"] | null;
+            selector: components["schemas"]["PolicySelectorAst"];
+            scope: components["schemas"]["PolicyScope"];
+            domain_rule: components["schemas"]["DomainRuleRef"];
+            lifecycle: components["schemas"]["PolicyRevisionLifecycle"];
+            temporal: components["schemas"]["PolicyTemporalRevision"];
+            /** Source Claims */
+            source_claims: components["schemas"]["ClaimRevisionRef"][];
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceRef"][];
+            /**
+             * Relations
+             * @default []
+             */
+            relations: components["schemas"]["PolicyRuleRelation"][];
+            /** Content Hash */
+            content_hash: string;
+        };
+        /** PolicyScope */
+        PolicyScope: {
+            level: components["schemas"]["PolicyScopeLevel"];
+            /** Scope Id */
+            scope_id?: string | null;
+        };
+        /**
+         * PolicyScopeLevel
+         * @enum {string}
+         */
+        PolicyScopeLevel: "federal" | "ministry" | "university" | "campus" | "faculty" | "department" | "education_level" | "direction" | "program" | "admission_route" | "competition_type" | "applicant_category" | "olympiad" | "olympiad_profile" | "subject";
+        /**
+         * PolicyScopeMatchReason
+         * @enum {string}
+         */
+        PolicyScopeMatchReason: "federal_scope" | "context_matched" | "context_unknown" | "context_unavailable" | "context_mismatched";
+        /**
+         * PolicyScopeMatchState
+         * @enum {string}
+         */
+        PolicyScopeMatchState: "match" | "no_match" | "indeterminate";
+        /**
+         * PolicySelection
+         * @description An exact owner-managed rule reference; this contract contains no domain result.
+         */
+        PolicySelection: {
+            /** Rule Id */
+            rule_id: string;
+            /** Revision */
+            revision: number;
+            /** Revision Hash */
+            revision_hash: string;
+            domain_rule: components["schemas"]["DomainRuleRef"];
+        };
+        /** PolicySelectorAst */
+        PolicySelectorAst: {
+            /**
+             * Schema Version
+             * @default policy-selector.v1
+             * @constant
+             */
+            schema_version: "policy-selector.v1";
+            /** Nodes */
+            nodes: components["schemas"]["PolicySelectorNode"][];
+        };
+        /** PolicySelectorNode */
+        PolicySelectorNode: {
+            /** Node Id */
+            node_id: string;
+            /** Parent Id */
+            parent_id?: string | null;
+            kind: components["schemas"]["PolicySelectorNodeKind"];
+            field?: components["schemas"]["PolicyContextField"] | null;
+            /** Value */
+            value?: string | number | boolean | null;
+            /**
+             * Values
+             * @default []
+             */
+            values: (string | number | boolean)[];
+        };
+        /**
+         * PolicySelectorNodeKind
+         * @enum {string}
+         */
+        PolicySelectorNodeKind: "all" | "any" | "equals" | "in" | "exists";
+        /** PolicySemanticDiff */
+        PolicySemanticDiff: {
+            /**
+             * Schema Version
+             * @default policy-diff.v1
+             */
+            schema_version: string;
+            /** Diff Id */
+            diff_id: string;
+            layer: components["schemas"]["PolicyDiffLayer"];
+            status: components["schemas"]["PolicyDiffStatus"];
+            before_state: components["schemas"]["DiffObjectState"];
+            after_state: components["schemas"]["DiffObjectState"];
+            /** Before */
+            before?: components["schemas"]["PolicyRevisionDiffSnapshot"] | components["schemas"]["EffectivePolicyDiffSnapshot"] | null;
+            /** After */
+            after?: components["schemas"]["PolicyRevisionDiffSnapshot"] | components["schemas"]["EffectivePolicyDiffSnapshot"] | null;
+            /**
+             * Changes
+             * @default []
+             */
+            changes: components["schemas"]["PolicyDiffEntry"][];
+            /**
+             * Uncertainty Codes
+             * @default []
+             */
+            uncertainty_codes: string[];
+            /** Before Trace Id */
+            before_trace_id?: string | null;
+            /** After Trace Id */
+            after_trace_id?: string | null;
+            /** Source Diff Hash */
+            source_diff_hash?: string | null;
+        };
+        /**
+         * PolicyTemporalRevision
+         * @description Immutable policy revision with valid-time and system-time semantics.
+         */
+        PolicyTemporalRevision: {
+            clock: components["schemas"]["BitemporalRevision"];
+            source_milestones: components["schemas"]["SourceMilestones"];
         };
         /** PreliminaryProfileResponse */
         PreliminaryProfileResponse: {
@@ -4795,6 +6390,112 @@ export interface components {
              */
             password: string;
         };
+        /** ResolutionExplanation */
+        ResolutionExplanation: {
+            /** Trace Reference */
+            trace_reference: string;
+            /** Trace Version */
+            trace_version: string;
+            state: components["schemas"]["ResponseResolutionState"];
+            /** Valid As Of */
+            valid_as_of?: string | null;
+            /**
+             * Selected Rules
+             * @default []
+             */
+            selected_rules: components["schemas"]["ResponseRuleReference"][];
+            /**
+             * Considered Rules
+             * @default []
+             */
+            considered_rules: components["schemas"]["ConsideredRuleView"][];
+            /**
+             * Conflicts
+             * @default []
+             */
+            conflicts: components["schemas"]["RuleConflictView"][];
+            /**
+             * Exceptions
+             * @default []
+             */
+            exceptions: components["schemas"]["RuleExceptionView"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ResponseEvidenceReference"][];
+            /**
+             * Blockers
+             * @default []
+             */
+            blockers: string[];
+        };
+        /** ResolutionTrace */
+        ResolutionTrace: {
+            /**
+             * Trace Version
+             * @default policy-resolution-trace.v2
+             * @constant
+             */
+            trace_version: "policy-resolution-trace.v2";
+            /** @default approved_effective */
+            mode: components["schemas"]["PolicyResolutionMode"];
+            /** University Id */
+            university_id: string;
+            /** Admission Year */
+            admission_year: number;
+            /** Cycle Id */
+            cycle_id?: string | null;
+            /** Cycle Revision */
+            cycle_revision?: number | null;
+            /**
+             * Cycle Evidence
+             * @default []
+             */
+            cycle_evidence: components["schemas"]["EvidenceRef"][];
+            /** Valid As Of */
+            valid_as_of?: string | null;
+            /**
+             * As Known At
+             * Format: date-time
+             */
+            as_known_at: string;
+            /** Context Fingerprint */
+            context_fingerprint: string;
+            status: components["schemas"]["PolicyResolutionStatus"];
+            /**
+             * Blockers
+             * @default []
+             */
+            blockers: components["schemas"]["PolicyResolutionBlocker"][];
+            /**
+             * Considered
+             * @default []
+             */
+            considered: components["schemas"]["ConsideredPolicyRule"][];
+            /**
+             * Candidates
+             * @default []
+             */
+            candidates: components["schemas"]["PolicySelection"][];
+            /**
+             * Effective Rules
+             * @default []
+             */
+            effective_rules: components["schemas"]["PolicySelection"][];
+            /**
+             * Conflicting Rules
+             * @default []
+             */
+            conflicting_rules: components["schemas"]["PolicySelection"][];
+            /**
+             * Precedence Decisions
+             * @default []
+             */
+            precedence_decisions: components["schemas"]["PolicyPrecedenceDecision"][];
+            /** Trace Id */
+            trace_id: string;
+        };
         /**
          * ResponseAction
          * @enum {string}
@@ -4810,9 +6511,53 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /**
+         * ResponseActionability
+         * @enum {string}
+         */
+        ResponseActionability: "not_applicable" | "future_only" | "informational" | "action_recommended" | "action_required" | "uncertain" | "blocked_by_missing_data";
+        /**
+         * ResponseAssertionReviewState
+         * @enum {string}
+         */
+        ResponseAssertionReviewState: "reviewed_as_source_assertion" | "needs_review" | "unresolved";
+        /**
+         * ResponseClaimStage
+         * @enum {string}
+         */
+        ResponseClaimStage: "possible" | "announced" | "proposal" | "adopted" | "published" | "future_effective" | "effective" | "superseded" | "repealed" | "withdrawn" | "rejected" | "unknown";
+        /** ResponseCycleComparison */
+        ResponseCycleComparison: {
+            /** Before Admission Year */
+            before_admission_year: number;
+            /** After Admission Year */
+            after_admission_year: number;
+            before_resolution: components["schemas"]["ResolutionExplanation"];
+            after_resolution: components["schemas"]["ResolutionExplanation"];
+            /** Diff Reference */
+            diff_reference: string;
+            diff_status: components["schemas"]["ResponseDiffStatus"];
+            /**
+             * Changes
+             * @default []
+             */
+            changes: components["schemas"]["ResponsePolicyDiffEntry"][];
+        };
+        /**
+         * ResponseDiffChangeKind
+         * @enum {string}
+         */
+        ResponseDiffChangeKind: "added" | "removed" | "changed";
+        /**
+         * ResponseDiffStatus
+         * @enum {string}
+         */
+        ResponseDiffStatus: "complete" | "incomplete" | "ambiguous";
         /** ResponseEnvelope */
         ResponseEnvelope: {
             response_type: components["schemas"]["ResponseFormat"];
+            /** @default deterministic */
+            response_mode: components["schemas"]["ResponseMode"];
             /**
              * Text
              * @default
@@ -4844,6 +6589,7 @@ export interface components {
              * @default []
              */
             evidence: components["schemas"]["EvidenceSummary"][];
+            knowledge?: components["schemas"]["KnowledgeResponseSection"] | null;
             /**
              * Policy Version
              * @default response-policy.v1
@@ -4851,11 +6597,67 @@ export interface components {
             policy_version: string;
             plan?: components["schemas"]["ResponsePlan"] | null;
         };
+        /** ResponseEvidenceLocator */
+        ResponseEvidenceLocator: {
+            /** Page */
+            page?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Field */
+            field?: string | null;
+            /** Record Key */
+            record_key?: string | null;
+        };
+        /** ResponseEvidenceReference */
+        ResponseEvidenceReference: {
+            /** Source Reference */
+            source_reference: string;
+            /** Observation Reference */
+            observation_reference: string;
+            /** Snapshot Sha256 */
+            snapshot_sha256: string;
+            /**
+             * Url
+             * Format: uri
+             */
+            url: string;
+            locator?: components["schemas"]["ResponseEvidenceLocator"];
+            /** Source Name */
+            source_name?: string | null;
+            /** @default unknown */
+            source_category: components["schemas"]["ResponseSourceCategory"];
+            /** @default unknown */
+            reliability: components["schemas"]["ResponseSourceReliability"];
+            /** Published At */
+            published_at?: string | null;
+            /** Captured At */
+            captured_at?: string | null;
+        };
+        /** ResponseFact */
+        ResponseFact: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+            /** Unit */
+            unit?: string | null;
+            /** Subject Label */
+            subject_label?: string | null;
+        };
         /**
          * ResponseFormat
          * @enum {string}
          */
         ResponseFormat: "text" | "image" | "image_collection" | "pdf" | "mini_app";
+        /**
+         * ResponseMode
+         * @enum {string}
+         */
+        ResponseMode: "deterministic" | "source_backed_verbalization" | "unverified_fallback";
         /**
          * ResponsePlan
          * @description Prepared presentation input; it contains no query or aggregation logic.
@@ -4896,6 +6698,348 @@ export interface components {
              */
             policy_version: string;
         };
+        /** ResponsePolicyDiffEntry */
+        ResponsePolicyDiffEntry: {
+            /** Path */
+            path: string;
+            kind: components["schemas"]["ResponseDiffChangeKind"];
+            /** Before */
+            before?: string | null;
+            /** After */
+            after?: string | null;
+            /**
+             * Before Evidence
+             * @default []
+             */
+            before_evidence: components["schemas"]["ResponseEvidenceReference"][];
+            /**
+             * After Evidence
+             * @default []
+             */
+            after_evidence: components["schemas"]["ResponseEvidenceReference"][];
+            /** Reason Code */
+            reason_code: string;
+        };
+        /**
+         * ResponseResolutionState
+         * @enum {string}
+         */
+        ResponseResolutionState: "resolved" | "conflict" | "no_match" | "blocked" | "indeterminate" | "candidates";
+        /** ResponseRuleReference */
+        ResponseRuleReference: {
+            /** Rule Reference */
+            rule_reference: string;
+            /** Revision */
+            revision: number;
+            /** Revision Hash */
+            revision_hash: string;
+            scope_kind: components["schemas"]["ResponseScopeKind"];
+            /** Scope Reference */
+            scope_reference?: string | null;
+        };
+        /**
+         * ResponseScopeKind
+         * @enum {string}
+         */
+        ResponseScopeKind: "federal" | "university" | "direction" | "program" | "admission_route" | "other";
+        /**
+         * ResponseSourceCategory
+         * @enum {string}
+         */
+        ResponseSourceCategory: "official_document" | "regulator" | "university" | "secondary_media" | "community" | "user_supplied" | "unknown";
+        /**
+         * ResponseSourceReliability
+         * @enum {string}
+         */
+        ResponseSourceReliability: "primary_official" | "official" | "trusted_secondary" | "unverified_secondary" | "community" | "user_supplied" | "unknown";
+        /**
+         * ResponseUncertainty
+         * @enum {string}
+         */
+        ResponseUncertainty: "no_source_assertion_found" | "source_assertion_needs_review" | "source_assertions_disagree" | "effective_date_unknown" | "scope_unknown" | "domain_result_unavailable" | "policy_conflict_unresolved" | "outside_knowledge_coverage" | "evidence_unavailable" | "historical_state_unavailable";
+        /** ReviewActionHistoryResponse */
+        ReviewActionHistoryResponse: {
+            /** Action */
+            action: string;
+            /** Actoraccountid */
+            actorAccountId: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Recordedat
+             * Format: date-time
+             */
+            recordedAt: string;
+            /** Resultrevision */
+            resultRevision: number;
+            /** Resulthash */
+            resultHash: string;
+            /** Policypreviewfingerprint */
+            policyPreviewFingerprint?: string | null;
+        };
+        /** ReviewConflictParticipantResponse */
+        ReviewConflictParticipantResponse: {
+            /** Kind */
+            kind: string;
+            /** Objectid */
+            objectId: string;
+            /** Revision */
+            revision: number;
+            /** Contenthash */
+            contentHash?: string | null;
+            /** Role */
+            role: string;
+            /** Evidence */
+            evidence: components["schemas"]["ReviewEvidenceResponse"][];
+        };
+        /** ReviewConflictResponse */
+        ReviewConflictResponse: {
+            /** Conflictid */
+            conflictId: string;
+            /** Kind */
+            kind: string;
+            /** State */
+            state: string;
+            /** Scope */
+            scope?: string | null;
+            /** Participants */
+            participants: components["schemas"]["ReviewConflictParticipantResponse"][];
+        };
+        /** ReviewDecisionRequest */
+        ReviewDecisionRequest: {
+            target: components["schemas"]["ReviewTargetResponse"];
+            action: components["schemas"]["KnowledgeReviewAction"];
+            /** Reason */
+            reason: string;
+            /** Idempotencykey */
+            idempotencyKey: string;
+            /** Policypreviewfingerprint */
+            policyPreviewFingerprint?: string | null;
+            policyPreviewContext?: components["schemas"]["ReviewPolicyPreviewContext"] | null;
+            editedProposition?: components["schemas"]["ClaimPropositionRequest"] | null;
+            /** Canonicalsubjectid */
+            canonicalSubjectId?: string | null;
+            relatedTarget?: components["schemas"]["ReviewTargetResponse"] | null;
+        };
+        /** ReviewDecisionResponse */
+        ReviewDecisionResponse: {
+            /** Eventid */
+            eventId: string;
+            target: components["schemas"]["ReviewTargetResponse"];
+            action: components["schemas"]["KnowledgeReviewAction"];
+            /** Status */
+            status: string;
+            /** Actoraccountid */
+            actorAccountId: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Recordedat
+             * Format: date-time
+             */
+            recordedAt: string;
+            /** Resultrevision */
+            resultRevision: number;
+            /** Resulthash */
+            resultHash: string;
+            /** Policypreviewfingerprint */
+            policyPreviewFingerprint?: string | null;
+        };
+        /** ReviewDiffEntryResponse */
+        ReviewDiffEntryResponse: {
+            /** Path */
+            path: string;
+            /** Kind */
+            kind: string;
+            /** Before */
+            before?: string | null;
+            /** After */
+            after?: string | null;
+            /** Reasoncode */
+            reasonCode: string;
+        };
+        /** ReviewEvidenceResponse */
+        ReviewEvidenceResponse: {
+            /** Sourceid */
+            sourceId: string;
+            /** Sourceobservationid */
+            sourceObservationId: string;
+            /** Snapshotsha256 */
+            snapshotSha256: string;
+            /** Sourcename */
+            sourceName?: string | null;
+            /** Reliabilitytier */
+            reliabilityTier?: string | null;
+            /** Sourceurl */
+            sourceUrl: string;
+            /** Page */
+            page?: number | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Field */
+            field?: string | null;
+            /** Recordkey */
+            recordKey?: string | null;
+            /**
+             * Inferred
+             * @default false
+             */
+            inferred: boolean;
+        };
+        /** ReviewPolicyPreviewContext */
+        ReviewPolicyPreviewContext: {
+            /** Universityid */
+            universityId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            applicability?: components["schemas"]["PolicyApplicabilityContext"];
+            /**
+             * Validasof
+             * Format: date-time
+             */
+            validAsOf: string;
+        };
+        /** ReviewPolicyPreviewRequest */
+        ReviewPolicyPreviewRequest: {
+            target: components["schemas"]["ReviewTargetResponse"];
+            context: components["schemas"]["ReviewPolicyPreviewContext"];
+        };
+        /** ReviewPolicyPreviewResponse */
+        ReviewPolicyPreviewResponse: {
+            preview: components["schemas"]["PolicyHypotheticalPreview"];
+        };
+        /** ReviewQueueItemResponse */
+        ReviewQueueItemResponse: {
+            target: components["schemas"]["ReviewTargetResponse"];
+            /** Reviewstate */
+            reviewState: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Title */
+            title: string;
+            /** Assertiontext */
+            assertionText?: string | null;
+            proposition?: components["schemas"]["ClaimProposition"] | null;
+            /** Extractionmethod */
+            extractionMethod?: string | null;
+            /** Extractor */
+            extractor?: string | null;
+            /** Confidence */
+            confidence?: string | null;
+            /** Claimedstage */
+            claimedStage?: string | null;
+            /** Changeeventkind */
+            changeEventKind?: string | null;
+            /**
+             * Linkedclaimids
+             * @default []
+             */
+            linkedClaimIds: string[];
+            /**
+             * Relatedassertions
+             * @default []
+             */
+            relatedAssertions: string[];
+            /** Policylifecycle */
+            policyLifecycle?: string | null;
+            /** Policyauthority */
+            policyAuthority?: string | null;
+            /** Policyscope */
+            policyScope?: string | null;
+            /** Domainruleid */
+            domainRuleId?: string | null;
+            /** Canonicalsummary */
+            canonicalSummary: string;
+            /** Effectivefrom */
+            effectiveFrom?: string | null;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ReviewEvidenceResponse"][];
+            /**
+             * Diff
+             * @default []
+             */
+            diff: components["schemas"]["ReviewDiffEntryResponse"][];
+            /**
+             * Impactstatus
+             * @default not_required
+             * @enum {string}
+             */
+            impactStatus: "not_required" | "unavailable";
+            /** Impactreason */
+            impactReason?: string | null;
+            /**
+             * Conflicts
+             * @default []
+             */
+            conflicts: components["schemas"]["ReviewConflictResponse"][];
+            /**
+             * Conflictstruncated
+             * @default false
+             */
+            conflictsTruncated: boolean;
+            /** Currenttraceid */
+            currentTraceId?: string | null;
+            /** Candidatetraceid */
+            candidateTraceId?: string | null;
+            /**
+             * Actionhistory
+             * @default []
+             */
+            actionHistory: components["schemas"]["ReviewActionHistoryResponse"][];
+        };
+        /** ReviewQueueResponse */
+        ReviewQueueResponse: {
+            /** Items */
+            items: components["schemas"]["ReviewQueueItemResponse"][];
+            /** Truncated */
+            truncated: boolean;
+        };
+        /** ReviewTargetResponse */
+        ReviewTargetResponse: {
+            kind: components["schemas"]["KnowledgeReviewTargetKind"];
+            /** Objectid */
+            objectId: string;
+            /** Revision */
+            revision: number;
+            /** Revisionhash */
+            revisionHash: string;
+        };
+        /** RuleConflictView */
+        RuleConflictView: {
+            /** Rules */
+            rules: components["schemas"]["ResponseRuleReference"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ResponseEvidenceReference"][];
+        };
+        /**
+         * RuleDisposition
+         * @enum {string}
+         */
+        RuleDisposition: "selected" | "considered" | "not_applicable" | "future" | "expired" | "incomplete_scope" | "incomplete_data" | "unavailable" | "conflict" | "unresolved";
+        /** RuleExceptionView */
+        RuleExceptionView: {
+            /** Rules */
+            rules: components["schemas"]["ResponseRuleReference"][];
+            selected_rule?: components["schemas"]["ResponseRuleReference"] | null;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ResponseEvidenceReference"][];
+        };
         /** ScoreBreakdownResponse */
         ScoreBreakdownResponse: {
             /** Subjectfit */
@@ -4908,6 +7052,23 @@ export interface components {
             antiPenalty: string;
             /** Rawcontentfit */
             rawContentFit: string;
+        };
+        /**
+         * SelectorNodeReason
+         * @enum {string}
+         */
+        SelectorNodeReason: "value_matched" | "value_did_not_match" | "value_present" | "field_unknown" | "field_unavailable" | "all_children_matched" | "any_child_matched" | "child_did_not_match" | "child_result_unknown";
+        /**
+         * SelectorNodeState
+         * @enum {string}
+         */
+        SelectorNodeState: "match" | "no_match" | "indeterminate";
+        /** SelectorNodeTrace */
+        SelectorNodeTrace: {
+            /** Node Id */
+            node_id: string;
+            state: components["schemas"]["SelectorNodeState"];
+            reason: components["schemas"]["SelectorNodeReason"];
         };
         /** SemanticClassificationEvidence */
         SemanticClassificationEvidence: {
@@ -4992,6 +7153,37 @@ export interface components {
          * @enum {string}
          */
         ShortlistRole: "primary" | "alternative";
+        /** SourceAllowedRouteRequest */
+        SourceAllowedRouteRequest: {
+            /** Host */
+            host: string;
+            /** Pathprefix */
+            pathPrefix: string;
+        };
+        /** SourceAssertionView */
+        SourceAssertionView: {
+            /** Assertion */
+            assertion: string;
+            stage: components["schemas"]["ResponseClaimStage"];
+            review_state: components["schemas"]["ResponseAssertionReviewState"];
+            /** Source Name */
+            source_name: string;
+            source_category: components["schemas"]["ResponseSourceCategory"];
+            reliability: components["schemas"]["ResponseSourceReliability"];
+            asserted_value?: components["schemas"]["ResponseFact"] | null;
+            /** Published At */
+            published_at?: string | null;
+            /** Announced At */
+            announced_at?: string | null;
+            /** Adopted At */
+            adopted_at?: string | null;
+            /** Effective From */
+            effective_from?: string | null;
+            /** Effective To */
+            effective_to?: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["ResponseEvidenceReference"][];
+        };
         /** SourceAttribution */
         SourceAttribution: {
             kind: components["schemas"]["SourceKind"];
@@ -5144,15 +7336,67 @@ export interface components {
             items: components["schemas"]["SourceHealthItemResponse"][];
         };
         /**
+         * SourceJurisdiction
+         * @enum {string}
+         */
+        SourceJurisdiction: "federal" | "regional" | "university" | "international" | "unknown";
+        /**
          * SourceKind
          * @enum {string}
          */
         SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_curriculum_metadata" | "bmstu_admission_orders_index" | "bmstu_admission_orders_document" | "bmstu_admission_document_index" | "bmstu_admission_rules" | "bmstu_admission_benefits" | "bmstu_admission_individual_achievements" | "bmstu_events" | "bmstu_campus_points" | "hse_common" | "hse_program_catalog" | "hse_program_detail" | "hse_curriculum_index" | "hse_curriculum_document" | "hse_admission_rules" | "hse_admission_places" | "hse_tuition" | "hse_passing_scores" | "hse_enrollment_index" | "hse_enrollment_document";
         /**
+         * SourceMilestones
+         * @description Source dates; unknown milestones remain absent instead of being inferred.
+         */
+        SourceMilestones: {
+            /** Published At */
+            published_at?: string | null;
+            /** Announced At */
+            announced_at?: string | null;
+            /** Adopted At */
+            adopted_at?: string | null;
+            effective_time?: components["schemas"]["TemporalInterval"] | null;
+            /** Captured At */
+            captured_at?: string | null;
+        };
+        /** SourceMilestonesRequest */
+        SourceMilestonesRequest: {
+            /** Publishedat */
+            publishedAt?: string | null;
+            /** Announcedat */
+            announcedAt?: string | null;
+            /** Adoptedat */
+            adoptedAt?: string | null;
+            effectiveTime?: components["schemas"]["TemporalIntervalRequest"] | null;
+        };
+        /**
+         * SourceReliabilityTier
+         * @enum {string}
+         */
+        SourceReliabilityTier: "primary_normative" | "official_issuer" | "official_university" | "trusted_secondary" | "unverified_secondary" | "community" | "user_supplied" | "unknown";
+        /**
          * StudyForm
          * @enum {string}
          */
         StudyForm: "full_time" | "part_time" | "evening" | "online" | "unknown";
+        /**
+         * TemporalInterval
+         * @description A half-open valid-time interval [start, end), with optional open bounds.
+         */
+        TemporalInterval: {
+            /** Start */
+            start?: string | null;
+            /** End */
+            end?: string | null;
+        };
+        /** TemporalIntervalRequest */
+        TemporalIntervalRequest: {
+            /** Start */
+            start?: string | null;
+            /** End */
+            end?: string | null;
+        };
         /** TradeoffResponse */
         TradeoffResponse: {
             /** Programid */
@@ -9348,6 +11592,715 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionAnalyticsFunnelResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    register_knowledge_source: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeSourceRegistrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeSourceRegistrationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    attach_knowledge_source_snapshot: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_attach_knowledge_source_snapshot"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeSourceObservationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_manual_knowledge_claim_candidate: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualClaimSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeManualClaimResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    correct_manual_knowledge_claim_metadata: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                university_id: string;
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualClaimMetadataCorrectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeManualClaimResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_manual_policy_rule_candidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualPolicyRuleCandidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManualPolicyRuleCandidateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_knowledge_review_queue: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewQueueResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    preview_knowledge_policy_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewPolicyPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPolicyPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    apply_knowledge_review_action: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewDecisionResponse"];
                 };
             };
             /** @description Bad Request */

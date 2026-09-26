@@ -9,9 +9,11 @@ from .admission_benefits import (
     IndividualAchievementPolicyModel,
     IndividualAchievementRuleModel,
 )
+from .admission_cycles import AdmissionCycleEvidenceModel, AdmissionCycleModel
 from .admissions import (
     AdmissionExamRequirementModel,
     AdmissionOfferingModel,
+    AdmissionOfferingRevisionModel,
     AdmissionPassingScoreModel,
     AdmissionQuotaModel,
     AdmissionTuitionModel,
@@ -45,6 +47,39 @@ from .events import (
     VenueUniversityLinkModel,
 )
 from .ingestion import IngestRunModel, RawSourceRecordModel, SourceSnapshotModel
+from .knowledge import (
+    KnowledgeSourceAllowlistModel,
+    KnowledgeSourceModel,
+    KnowledgeSourceObservationModel,
+    KnowledgeSourcePollAttemptModel,
+    KnowledgeSourceRegistryRevisionModel,
+)
+from .knowledge_candidates import (
+    KnowledgeChangeEventClaimModel,
+    KnowledgeChangeEventEvidenceModel,
+    KnowledgeChangeEventModel,
+    KnowledgeClaimCandidateClusterMemberModel,
+    KnowledgeClaimCandidateClusterModel,
+    KnowledgeClaimEvidenceModel,
+    KnowledgeClaimModel,
+)
+from .knowledge_conflicts import (
+    KnowledgeConflictEventModel,
+    KnowledgeConflictEvidenceModel,
+    KnowledgeConflictGroupModel,
+    KnowledgeConflictParticipantModel,
+)
+from .knowledge_relations import KnowledgeClaimRelationEvidenceModel, KnowledgeClaimRelationModel
+from .knowledge_review import KnowledgeReviewActionModel
+from .knowledge_manual import KnowledgeManualSubmissionModel
+from .policy import (
+    PolicyApprovalEventModel,
+    PolicyRuleRelationModel,
+    PolicyRuleRevisionClaimModel,
+    PolicyRuleRevisionEvidenceModel,
+    PolicyRuleRevisionModel,
+)
+from .policy_refresh import PolicyProjectionRefreshAttemptModel, PolicyProjectionRefreshModel
 from .proftest import UserProfileModel
 from .proftest_sessions import ProftestAnalyticsEventModel, ProftestAnswerSessionModel
 from .programs import EducationalProgramModel, ProgramModel
@@ -83,8 +118,11 @@ __all__ = [
     "AdmissionBenefitRuleModel",
     "AdmissionBenefitRuleScopeModel",
     "AdmissionBenefitRuleSubjectModel",
+    "AdmissionCycleEvidenceModel",
+    "AdmissionCycleModel",
     "AdmissionExamRequirementModel",
     "AdmissionOfferingModel",
+    "AdmissionOfferingRevisionModel",
     "AdmissionPassingScoreModel",
     "AdmissionQuotaModel",
     "AdmissionTuitionModel",
@@ -111,6 +149,33 @@ __all__ = [
     "IndividualAchievementPolicyModel",
     "IndividualAchievementRuleModel",
     "IngestRunModel",
+    "KnowledgeChangeEventClaimModel",
+    "KnowledgeChangeEventEvidenceModel",
+    "KnowledgeChangeEventModel",
+    "KnowledgeClaimCandidateClusterMemberModel",
+    "KnowledgeClaimCandidateClusterModel",
+    "KnowledgeClaimEvidenceModel",
+    "KnowledgeClaimModel",
+    "KnowledgeClaimRelationEvidenceModel",
+    "KnowledgeClaimRelationModel",
+    "KnowledgeReviewActionModel",
+    "KnowledgeManualSubmissionModel",
+    "KnowledgeConflictEventModel",
+    "KnowledgeConflictEvidenceModel",
+    "KnowledgeConflictGroupModel",
+    "KnowledgeConflictParticipantModel",
+    "KnowledgeSourceAllowlistModel",
+    "KnowledgeSourceModel",
+    "KnowledgeSourceObservationModel",
+    "KnowledgeSourcePollAttemptModel",
+    "KnowledgeSourceRegistryRevisionModel",
+    "PolicyApprovalEventModel",
+    "PolicyProjectionRefreshAttemptModel",
+    "PolicyProjectionRefreshModel",
+    "PolicyRuleRelationModel",
+    "PolicyRuleRevisionClaimModel",
+    "PolicyRuleRevisionEvidenceModel",
+    "PolicyRuleRevisionModel",
     "ProftestAnalyticsEventModel",
     "ProftestAnswerSessionModel",
     "ProgramMetricEvidenceModel",

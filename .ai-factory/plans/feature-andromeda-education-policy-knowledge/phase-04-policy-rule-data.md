@@ -42,6 +42,14 @@ Depends on: Phase 01 and Phase 02; candidate staging from Phase 03
 - Риски: accidental general-purpose language; keep registry intentionally small.
 - Вне scope: formulas, scripts, user-authored SQL, LLM executable output.
 
+### Выполнение Task 10
+
+- Реализовано в `backend/src/andromeda/modules/policy/` и `backend/src/andromeda/infrastructure/`: закрытый AST `policy-selector.v1`; source-backed, content-hashed `PolicyRuleRevision`; immutable approval event contracts/service/repository; PostgreSQL models и additive migration `0044_policy_selector_approval.py`.
+- `SqlAlchemyPolicyRuleRepository.submit_revision()` валидирует accepted source assertions и evidence allowlist, затем атомарно пишет exact revision, claim/evidence references и `PENDING_SUBMITTED`. `PolicyApprovalCommandService` требует typed capability и привязывает каждое решение к exact revision hash. Неподтверждённые revision records не имеют resolver read path; resolver появится в следующих задачах и обязан читать только approved history.
+- AST v1 содержит только bounded `all`/`any`/`equals`/`in`/`exists` predicates по закрытому registry; policy хранит `DomainRuleRef` и не вычисляет eligibility, benefit, confirmation или points.
+- Проверено: `23 passed` для `tests/unit/test_policy_ast.py`, `tests/infrastructure/test_knowledge_candidate_repository.py`, `tests/infrastructure/test_alembic_migrations.py`; targeted Mypy `18 source files`; targeted Ruff; `alembic heads` → `0044_policy_selector_approval (head)`; `git diff --check`.
+- При чтении строгих JSON/tuple contracts SQL JSON arrays/enums преобразуются в зарегистрированные tuple/enum типы до validation; некорректные stored nodes отклоняются как persisted conflict.
+
 <a id="task-11"></a>
 
 ## Task 11: Добавить deterministic applicability validation и domain dispatch
@@ -59,6 +67,15 @@ Depends on: Phase 01 and Phase 02; candidate staging from Phase 03
 - Откат: feature flag bypasses new selector; existing owner services remain active.
 - Риски: ambiguous/incompatible owner references must block dispatch and surface in ResolutionTrace.
 - Вне scope: generic domain calculator, benefit evaluator replacement, or auto-activation of candidates.
+
+### Выполнение Task 11
+
+- Добавлены чистый трёхзначный evaluator selector AST и typed context (`PRESENT` / `UNKNOWN` / `UNAVAILABLE`); неизвестное поле остаётся `INDETERMINATE`, а смешанные `all`/`any` обрабатываются детерминированно.
+- `PolicyApplicabilityService` принимает только `ApprovedPolicyRuleReader`, сверяет exact revision hash, затем обращается к typed owner read port за тем же `DomainRuleRef`. Pending/stale revisions, неизвестный context, отсутствующий owner port/rule и недоступный owner дают отдельные fail-closed состояния без selection.
+- На этом шаге owner port только подтверждает точную domain revision. Он не считает eligibility/points; вызов существующих доменных evaluator остаётся интеграционным Task 24, когда появится полный typed admission context.
+- Новые файлы: `modules/policy/contracts/applicability.py`, `domain/applicability.py`, `services/applicability.py`, `services/ports.py`, `tests/unit/test_policy_applicability.py`; расширен закрытый field registry и approved-only repository read port.
+- Проверено: 14 policy unit/repository tests passed; 7 module-boundary architecture tests passed; targeted Mypy `19 source files`; Ruff policy paths.
+- Effective resolver с temporal cycle mapping, scope precedence, overrides и mandatory `ResolutionTrace` остаётся Tasks 12–14; данный selector assessment сам по себе не заявляет effective applicability.
 
 
 ## Риски фазы и меры снижения

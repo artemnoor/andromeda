@@ -2,16 +2,21 @@
 
 from .contracts.assistant import AssistantResult, AssistantState
 from .contracts.public import (
+    CONVERSATION_PARSER_VERSION,
     ConversationCompilation,
     ConversationIntent,
     ConversationSlot,
     ExamScore,
     NextAction,
+    PolicyQueryContext,
+    PolicyQueryFocus,
+    PolicyQueryYear,
     ParsedQuery,
     QuerySession,
 )
 
 __all__ = [
+    "CONVERSATION_PARSER_VERSION",
     "AssistantResult",
     "AssistantState",
     "ConversationCompilation",
@@ -19,6 +24,9 @@ __all__ = [
     "ConversationSlot",
     "ExamScore",
     "NextAction",
+    "PolicyQueryContext",
+    "PolicyQueryFocus",
+    "PolicyQueryYear",
     "ParsedQuery",
     "QuerySession",
 ]

@@ -40,6 +40,11 @@ Evolve current vertical slices additively from the reconciled Stage 2 baseline. 
 - Риски: Stage 2 active benefit data has no generic approval event. Never infer approval from `ACTIVE`; keep the existing evaluator path until explicit per-revision adoption is audited.
 - Вне scope: migration implementation during current planning turn.
 
+### Результат выполнения Task 36
+
+- Confirmed a single linear Alembic head `0054_claim_predicate_lookup_index`, descending directly from Stage 2 head `0038_admission_offering_scope_and_exam_choices`; revisions 0039–0054 are additive and applied only after 0038. Added a SQLite regression that upgrades to Stage 2 head, inserts an existing-format ingest run and immutable source snapshot, then upgrades to 0054 and asserts both the snapshot/hash and policy approval tables survive. The targeted test passes. PostgreSQL upgrade/constraint parity is still a deployment gate because a usable PostgreSQL test DSN is unavailable locally.
+- `test_clean_stage2_head_upgrades_additively_to_one_current_head` passed (**1 passed**); `uv run alembic heads` reports exactly `0054_claim_predicate_lookup_index`.
+
 <a id="task-37"></a>
 
 ## Task 37: Backfill recoverable provenance и сохранить legacy contracts
@@ -57,22 +62,31 @@ Evolve current vertical slices additively from the reconciled Stage 2 baseline. 
 - Риски: untracked local user data may not represent production; use a separately approved sanitized baseline.
 - Вне scope: converting every catalog record into a universal Fact.
 
+### Результат выполнения Task 37
+
+- No historical generic approval, policy lifecycle or revision boundary can safely be inferred from Stage 2 `ACTIVE` rows. Did not perform a backfill. Added `scripts/report_knowledge_provenance.py`, which is SELECT-only and reports existing benefit source snapshot/run/locator coverage and gaps without inventing trust or legal dates; empty database behavior is covered by a test. Existing admissions offering and benefit contracts remain readable, and exact owner revisions are appended by future successful syncs.
+- The inventory command was tested against an empty SQLite database only; run it against the approved sanitized production snapshot before deciding whether any owner-specific source attribution repair is justified.
+
 <a id="task-38"></a>
 
 ## Task 38: Включать rollout по capabilities и мониторить parity
 
 ### Контракт выполнения
 
-- Файлы: feature flag configuration/defaults, AndromedaContainer wiring, operations runbook, API/frontend/channel release settings.
-- Rollout order: per-phase additive schema; allowlisted source observations/candidates; immutable approval gate (before any policy candidate write/resolver); full internal review UI; candidate diff/impact; read-only approved-only policy resolver for shadow comparison; selected benefits/admission cohort; assistant verified mode; optional verbalizer/fallback last. Each feature flag has owner, default, metric and rollback trigger. Existing Stage 2 Jev flags remain unchanged and disabled unless separately approved.
-- Monitor: migration errors, source capture/parser failure, review queue age, conflict count, stale dependency projection, old/new resolver mismatch by context, API latency, Jev calibration and fallback. Stop rollout on unexplained policy mismatch.
+- Файлы: `Settings`, `.env.example`, `AndromedaContainer`, assistant policy-query gate and knowledge operations runbook.
+- Rollout order: additive schema; allowlisted source observations/candidates; immutable approval gate; authenticated review; candidate diff/impact; approved-only resolver; domain-owner adapters; assistant verified mode; optional verbalizer last. `ANDROMEDA_KNOWLEDGE_POLICY_ASSISTANT_ENABLED` defaults false and gates assistant claim reads/resolution; source registry is empty/disabled by default, source polling is one-shot/manual, and reviewer/steward account allowlists default empty. Jev flags remain unchanged/off. Production enablement and parity monitoring require deployment owners and are not performed by this implementation.
+- Monitor before widening: migration errors, source capture/parser failure, review queue age, conflict count, stale dependency projection, old/new resolver mismatch by context, API latency, Jev calibration and fallback. Stop rollout on unexplained policy mismatch.
 - Compatibility: old endpoints/contracts continue; generated OpenAPI is additive; Telegram/Web/MAX call same assistant seam and never evaluate rules.
 - Критерии приёмки: each stage has parity/rollback evidence; existing catalog/curricula/analytics/comparison/admissions/benefits/admission_fit/decision/recommendations/proftest remain runnable after every release.
 - Будущая проверка: run focused smoke/regression tests per flag and deployment health checks.
 - Зависимости: Tasks 33-37 and release owners.
-- Откат: flags disable new reads/writes; additive schema remains; no force push/reset/rebase or destructive DB rollback.
+- Откат: set `ANDROMEDA_KNOWLEDGE_POLICY_ASSISTANT_ENABLED=false` for the user read path; clear the specific reviewer/steward capabilities to stop new writes. Additive schema and audit history remain; no destructive rollback.
 - Риски: mixed old/new projections; surface version and fall back to explicit unavailable, not stale silent answer.
 - Вне scope: deployment to production in this plan.
+
+### Результат выполнения Task 38
+
+- Added the fail-closed assistant rollout flag with an explicit `false` default and container wiring. When off, policy intent returns typed `outside_coverage` before any claim lookup. Added environment/default and no-read-path tests. Runbook documents separate source/reviewer capability gates, manual one-shot polling, rollback and deployment metrics. No Jev flags were modified; no production rollout or parity measurement was performed.
 
 <a id="task-39"></a>
 
@@ -90,6 +104,11 @@ Evolve current vertical slices additively from the reconciled Stage 2 baseline. 
 - Откат: documentation reverts independently; no runtime impact.
 - Риски: speculative docs may become false contracts; mark future phases planned until shipped.
 - Вне scope: claiming full source-backed coverage before corpus/operator staffing exists.
+
+### Результат выполнения Task 39
+
+- Updated the architecture/API/runbook/performance/PostgreSQL/testing/roadmap documentation to distinguish implemented, disabled-by-default and still unavailable behavior; documented migration head 0054, rollout flag, source and human capability gates, no-backfill rationale, DB validation limits, and the assistant-to-domain-owner impact gap. OpenAPI/generated frontend types were refreshed in the earlier response-contract task; this phase's config gate does not change the public schema.
+- Frontend verification: `npm run test:unit` (**28 passed**), `npm run lint` passed, and `OPENAPI_FILE=openapi.json npm run check-api-drift` passed against the checked-in exported spec. Live-server drift check was unavailable because no backend was listening on `127.0.0.1:8000`.
 
 
 ## Риски фазы и меры снижения

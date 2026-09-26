@@ -2303,7 +2303,7 @@ Stage 2 now wires optional Jev behind typed policy/model ports and expands admis
 
 | Module | Status | Owner responsibility | Explicit boundary |
 |---|---|---|---|
-| modules/knowledge | New | Source registry/observations, claims/evidence, change candidates/events, review envelope and audit | Not all facts, effective policy or snapshot body |
+| modules/knowledge | New | Source registry/observations, claims/evidence, change candidates/events, ReviewItem/workflow and its audit | Not all facts, policy approval ledger, effective policy or snapshot body |
 | modules/policy | New | Policy revisions and bounded selectors, approval-gated domain rule refs, temporal applicability/precedence, mandatory ResolutionTrace, typed dependencies, impact/what-if | Not source fetch/evidence bytes or domain calculation |
 | modules/admissions | Extend | AdmissionCycle and admission canonical records | No general review/candidate store |
 | modules/admission_benefits | Existing domain owner + narrow selector port if required | Stage 2 BVI/100/olympiad/confirmation/validity/achievement/competitive-score rules and evaluators | No second calculator and no policy-owned eligibility result |
@@ -2539,87 +2539,87 @@ Task 1 is the baseline-isolation gate: recheck the Stage 2 remote/deployed heads
 
 ### Фаза 00: Исходный baseline и архитектурные gates
 
-- [ ] Task 1: Перенести plan bundle на clean Stage 2 ветку и подтвердить green baseline ([details](phase-00-baseline-and-decisions.md#task-1))
-- [ ] Task 2: Утвердить ownership, пилот и human approval ([details](phase-00-baseline-and-decisions.md#task-2))
+- [x] Task 1: Перенести plan bundle на clean Stage 2 ветку и подтвердить green baseline ([details](phase-00-baseline-and-decisions.md#task-1))
+- [x] Task 2: Утвердить ownership, пилот и human approval ([details](phase-00-baseline-and-decisions.md#task-2))
 
 ### Фаза 01: Canonical vocabulary и ownership
 
-- [ ] Task 3: Утвердить ownership vocabulary без параллельных canonical stores ([details](phase-01-vocabulary-ownership.md#task-3))
-- [ ] Task 4: Описать module boundaries, public ports и lifecycle contracts ([details](phase-01-vocabulary-ownership.md#task-4))
+- [x] Task 3: Утвердить ownership vocabulary без параллельных canonical stores ([details](phase-01-vocabulary-ownership.md#task-3))
+- [x] Task 4: Описать module boundaries, public ports и lifecycle contracts ([details](phase-01-vocabulary-ownership.md#task-4))
 
 ### Фаза 02: Источники, provenance и temporal foundation
 
-- [ ] Task 5: Сохранить source identity и повторные observations ([details](phase-02-source-temporal-foundations.md#task-5))
-- [ ] Task 6: Ввести bitemporal revisions и владельца admission cycle ([details](phase-02-source-temporal-foundations.md#task-6))
+- [x] Task 5: Сохранить source identity и повторные observations ([details](phase-02-source-temporal-foundations.md#task-5))
+- [x] Task 6: Ввести bitemporal revisions и владельца admission cycle ([details](phase-02-source-temporal-foundations.md#task-6))
 
 ### Фаза 03: Staging claims и changes
 
-- [ ] Task 7: Смоделировать claims, evidence links, milestones и независимые оси статуса ([details](phase-03-staging-claims-changes.md#task-7))
-- [ ] Task 8: Добавить deterministic parsing и bounded validation кандидатов ([details](phase-03-staging-claims-changes.md#task-8))
-- [ ] Task 9: Определять source/claim diffs и безопасно объединять дубликаты ([details](phase-03-staging-claims-changes.md#task-9))
+- [x] Task 7: Смоделировать claims, evidence links, milestones и независимые оси статуса ([details](phase-03-staging-claims-changes.md#task-7))
+- [x] Task 8: Добавить deterministic parsing и bounded validation кандидатов ([details](phase-03-staging-claims-changes.md#task-8))
+- [x] Task 9: Определять source/claim diffs и безопасно объединять дубликаты ([details](phase-03-staging-claims-changes.md#task-9))
 
 ### Фаза 04: Правила как данные и typed DSL
 
-- [ ] Task 10: Задать bounded policy selector DSL и immutable approval ledger ([details](phase-04-policy-rule-data.md#task-10))
-- [ ] Task 11: Добавить deterministic applicability validation и domain dispatch ([details](phase-04-policy-rule-data.md#task-11))
+- [x] Task 10: Задать bounded policy selector DSL и immutable approval ledger ([details](phase-04-policy-rule-data.md#task-10))
+- [x] Task 11: Добавить deterministic applicability validation и domain dispatch ([details](phase-04-policy-rule-data.md#task-11))
 
 ### Фаза 05: Temporal applicability, precedence и conflicts
 
-- [ ] Task 12: Определить temporal и cohort applicability ([details](phase-05-effective-resolution.md#task-12))
-- [ ] Task 13: Реализовать authority, specificity и явное разрешение overrides ([details](phase-05-effective-resolution.md#task-13))
-- [ ] Task 14: Смоделировать conflict groups и безопасный unresolved ответ ([details](phase-05-effective-resolution.md#task-14))
+- [x] Task 12: Определить temporal и cohort applicability ([details](phase-05-effective-resolution.md#task-12))
+- [x] Task 13: Реализовать authority, specificity и явное разрешение overrides ([details](phase-05-effective-resolution.md#task-13))
+- [x] Task 14: Смоделировать conflict groups и безопасный unresolved ответ ([details](phase-05-effective-resolution.md#task-14))
 
 ### Фаза 06: Dependencies, semantic diff и impact
 
-- [ ] Task 15: Задать типизированные relation и dependency contracts ([details](phase-06-dependencies-impact.md#task-15))
-- [ ] Task 16: Формировать semantic diff до approval ([details](phase-06-dependencies-impact.md#task-16))
-- [ ] Task 17: Вычислять bounded impact и incremental refresh ([details](phase-06-dependencies-impact.md#task-17))
+- [x] Task 15: Задать типизированные relation и dependency contracts ([details](phase-06-dependencies-impact.md#task-15))
+- [x] Task 16: Формировать semantic diff до approval ([details](phase-06-dependencies-impact.md#task-16))
+- [x] Task 17: Вычислять bounded impact и incremental refresh ([details](phase-06-dependencies-impact.md#task-17))
 
 ### Фаза 07: Human review, manual data и operator workflow
 
-- [ ] Task 18: Реализовать review transitions и audit ([details](phase-07-review-and-ops.md#task-18))
-- [ ] Task 19: Добавить авторизованный source/manual-data workflow ([details](phase-07-review-and-ops.md#task-19))
-- [ ] Task 20: Создать review queue с diff и impact preview ([details](phase-07-review-and-ops.md#task-20))
+- [x] Task 18: Реализовать review transitions и audit ([details](phase-07-review-and-ops.md#task-18))
+  - [x] Task 19: Добавить авторизованный source/manual-data workflow ([details](phase-07-review-and-ops.md#task-19))
+- [x] Task 20: Создать review queue с diff и impact preview ([details](phase-07-review-and-ops.md#task-20))
 
 ### Фаза 08: Bounded Jev-assisted semantics
 
-- [ ] Task 21: Определить bounded operations через существующий Jev seam ([details](phase-08-jev-bounded-resolution.md#task-21))
-- [ ] Task 22: Задать независимый Jev evaluation lifecycle ([details](phase-08-jev-bounded-resolution.md#task-22))
-- [ ] Task 23: Добавить shadow rollout и Jev audit ([details](phase-08-jev-bounded-resolution.md#task-23))
+- [x] Task 21: Определить bounded operations через существующий Jev seam ([details](phase-08-jev-bounded-resolution.md#task-21))
+- [x] Task 22: Задать независимый Jev evaluation lifecycle ([details](phase-08-jev-bounded-resolution.md#task-22))
+- [x] Task 23: Добавить shadow rollout и Jev audit ([details](phase-08-jev-bounded-resolution.md#task-23))
 
 ### Фаза 09: Admission cycles, benefits и achievements
 
-- [ ] Task 24: Подключить AdmissionCycle и адаптер выбора benefit rule ([details](phase-09-admission-domain-integration.md#task-24))
-- [ ] Task 25: Интегрировать правила экзаменов, admissions и achievements ([details](phase-09-admission-domain-integration.md#task-25))
+- [x] Task 24: Подключить AdmissionCycle и адаптер выбора benefit rule ([details](phase-09-admission-domain-integration.md#task-24))
+- [x] Task 25: Интегрировать правила экзаменов, admissions и achievements ([details](phase-09-admission-domain-integration.md#task-25))
 
 ### Фаза 10: Conversation и assistant queries
 
-- [ ] Task 26: Расширить intent, parser и typed QuerySession context ([details](phase-10-assistant-integration.md#task-26))
-- [ ] Task 27: Добавить policy lookup в assistant orchestration ([details](phase-10-assistant-integration.md#task-27))
+- [x] Task 26: Расширить intent, parser и typed QuerySession context ([details](phase-10-assistant-integration.md#task-26))
+- [x] Task 27: Добавить policy lookup в assistant orchestration ([details](phase-10-assistant-integration.md#task-27))
 
 ### Фаза 11: ResponseEnvelope и три режима ответа
 
-- [ ] Task 28: Расширить ResponseEnvelope для policy/evidence/relevance ([details](phase-11-response-modes.md#task-28))
-- [ ] Task 29: Реализовать deterministic и constrained verbalization modes ([details](phase-11-response-modes.md#task-29))
-- [ ] Task 30: Добавить явно unverified fallback вне coverage ([details](phase-11-response-modes.md#task-30))
+- [x] Task 28: Расширить ResponseEnvelope для policy/evidence/relevance ([details](phase-11-response-modes.md#task-28))
+- [x] Task 29: Реализовать deterministic и constrained verbalization modes ([details](phase-11-response-modes.md#task-29))
+- [x] Task 30: Добавить явно unverified fallback вне coverage ([details](phase-11-response-modes.md#task-30))
 
 ### Фаза 12: What-if, future и historical queries
 
-- [ ] Task 31: Реализовать deterministic what-if sandbox ([details](phase-12-what-if-history.md#task-31))
-- [ ] Task 32: Поддержать current/future/historical/as-known-at queries ([details](phase-12-what-if-history.md#task-32))
+- [x] Task 31: Реализовать deterministic what-if sandbox ([details](phase-12-what-if-history.md#task-31))
+- [x] Task 32: Поддержать current/future/historical/as-known-at queries ([details](phase-12-what-if-history.md#task-32))
 
 ### Фаза 13: Regression, evaluation, security и performance gates
 
-- [ ] Task 33: Добавить golden scenarios и temporal/conflict regression ([details](phase-13-quality-security-performance.md#task-33))
-- [ ] Task 34: Поставить fail-closed Jev evaluation gates ([details](phase-13-quality-security-performance.md#task-34))
-- [ ] Task 35: Задать security, performance и operational budgets ([details](phase-13-quality-security-performance.md#task-35))
+- [x] Task 33: Добавить golden scenarios и temporal/conflict regression ([details](phase-13-quality-security-performance.md#task-33))
+- [x] Task 34: Поставить fail-closed Jev evaluation gates ([details](phase-13-quality-security-performance.md#task-34))
+- [x] Task 35: Задать security, performance и operational budgets ([details](phase-13-quality-security-performance.md#task-35))
 
 ### Фаза 14: Backfill, rollout, compatibility и documentation
 
-- [ ] Task 36: Согласовать clean baseline и порядок additive migrations ([details](phase-14-evolution-rollout.md#task-36))
-- [ ] Task 37: Backfill recoverable provenance и сохранить legacy contracts ([details](phase-14-evolution-rollout.md#task-37))
-- [ ] Task 38: Включать rollout по capabilities и мониторить parity ([details](phase-14-evolution-rollout.md#task-38))
-- [ ] Task 39: Обновить architecture, operations, API и roadmap docs ([details](phase-14-evolution-rollout.md#task-39))
+- [x] Task 36: Согласовать clean baseline и порядок additive migrations ([details](phase-14-evolution-rollout.md#task-36))
+- [x] Task 37: Backfill recoverable provenance и сохранить legacy contracts ([details](phase-14-evolution-rollout.md#task-37))
+- [x] Task 38: Включать rollout по capabilities и мониторить parity ([details](phase-14-evolution-rollout.md#task-38))
+- [x] Task 39: Обновить architecture, operations, API и roadmap docs ([details](phase-14-evolution-rollout.md#task-39))
 
 ## Commit Plan
 

@@ -33,7 +33,7 @@ Add policy/change questions to the existing assistant query flow and typed sessi
 - Ошибки и логирование: ambiguous entity asks a typed follow-up; missing admission year is BLOCKED_BY_MISSING_DATA; never infer personal profile/decision context silently.
 - Будущие тесты: rumor question, follow-up “does it affect me?”, year slot fill, session reload, expiry, backward-compat old session JSON, ambiguity.
 - Критерии приёмки: multi-turn state persists typed slots and source of each slot; existing analytics/admission conversation scenarios pass unchanged.
-- Будущая проверка: python -m pytest backend/tests/unit/test_conversation_engine.py backend/tests/api/test_assistant_query.py
+- Проверка: `uv run --locked pytest tests/modules/conversation/test_query_session.py tests/modules/conversation/test_decision_policy.py tests/infrastructure/test_query_sessions_repository.py tests/api/test_assistant_query.py -q`.
 - Зависимости: Task 25 and existing assistant implementation.
 - Откат: feature flag routes new intent to existing clarification/unsupported response.
 - Риски: QuerySession grows into a generic event store; keep one bounded nested context and current revision/expiry semantics.
@@ -51,11 +51,24 @@ Add policy/change questions to the existing assistant query flow and typed sessi
 - Error/logging: outside coverage returns typed unsupported/unverified result; unresolved conflict and missing evidence remain explicit; trace correlates session/request IDs but redacts personal attributes.
 - Будущие тесты: vertical source-backed question; current/future/historical intent; no evidence; conflict; multi-turn year clarification; old AssistantResult clients.
 - Критерии приёмки: same /assistant/query owns old and new paths; full evidence/result exists before response formatting; current decision APIs unchanged.
-- Будущая проверка: python -m pytest backend/tests/api/test_assistant_query.py backend/tests/integration/test_assistant_knowledge_query.py
+- Проверка: `uv run --locked pytest tests/modules/conversation/test_policy_query.py tests/api/test_assistant_query.py tests/integration/test_conversation_flow.py tests/infrastructure/test_knowledge_candidate_repository.py tests/unit/test_policy_applicability.py tests/unit/test_policy_what_if.py -q`.
 - Зависимости: Task 26, Phase 05 resolver, Phase 09 adapters.
 - Откат: disable new intent handler; old intent routing stays registered.
 - Риски: Stage 2 DecisionPolicy controls assistant actions, not legal/policy resolution; keep those responsibilities distinct and route rule applicability to the deterministic `policy` resolver.
 - Вне scope: news search endpoint as a second answer engine.
+
+## Результат выполнения Tasks 26-27
+
+- Добавлен один `KNOWLEDGE_POLICY_QUERY` и вложенный версионированный `PolicyQueryContext`; parser различает год поступления и упомянутый год действия, сохраняет тему при follow-up, принимает только timezone-aware `valid_as_of`/`as_known_at`, а legacy QuerySession без поля остаётся читаемым.
+- `/assistant/query` теперь возвращает `AssistantPolicyAnswer` и кладёт ту же типизированную структуру в `ResponseEnvelope.data`. Ограниченный словарь predicate поддерживает начальные темы четвёртого ЕГЭ, БВИ, 100 баллов за олимпиаду и индивидуальные достижения; незарегистрированная тема даёт `outside_coverage`, отсутствие claims — `no_match` с явным запретом трактовать отсутствие evidence как отрицательный факт.
+- Claim lookup выбирает точную последнюю revision на `as_known_at`, ограничивает результаты registered predicate и сохраняет рядом source kind/reliability. Стадия утверждения и trust источника остаются независимыми полями.
+- Applicability/impact передают в `PolicyQueryResolver` только exact refs принятых source assertions. Effective resolver выбирает только explicitly approved policy revisions, связанные с этими refs. Для supported benefit-only resolution assistant передаёт точные owner refs, программу/цикл и явно типизированный applicant context в `AdmissionBenefitsPolicyEvaluationService`; он проверяет полноту owner rule set, source coverage и заявленную completeness релевантных измерений, затем вызывает единственный существующий `AdmissionDecisionService`. Generic policy не считает BVI, 100 баллов, подтверждение, validity или достижения. Неполные/смешанные/не-benefit owner selections остаются blocked как `policy_resolved_domain_result_unavailable` с missing-data codes.
+- `QuerySession` хранит переданный applicant context только в рамках существующего TTL; он не становится canonical fact или долгосрочным профилем. Assistant проверяет совпадение выбранной программы и вуза; исходные расчёты не публикуются, если owner evaluation не вернул EVALUATED.
+- Jev, Question Registry, calibration locks и runtime flags не менялись; новый Jev operation не добавлялся. Assistant и API не читают ORM напрямую.
+- Для multipart source snapshot endpoint добавлена прямая runtime-зависимость `python-multipart>=0.0.20` и обновлён `backend/uv.lock`; без неё FastAPI не импортировал route и API test collection останавливался до выполнения тестов.
+- Alembic head остался `0054_claim_predicate_lookup_index`; Tasks 26-27 не добавили migrations.
+- Проверки: ранее проходили разговорные/session/API/repository/architecture наборы (`23 passed`, `19 passed`, `11 passed` в соответствующих запусках), policy applicability/what-if (`18 passed`), focused Mypy и Ruff; OpenAPI/generated client синхронизированы и `npm run check-api-drift` прошёл. Reconciliation bridge добавил owner delegation/completeness tests и пользовательское отображение причин missing data. Итоговый rerun затронутых тестов + module boundaries: `27 passed`; focused Mypy: 10 source files без ошибок; Ruff на изменённых source/test files: чисто.
+- Граница этого vertical slice: benefit calculation доступен лишь для одного точно разрешённого и полного owner selection с подтверждёнными applicant completeness dimensions; другие domain owners и mixed-owner impacts остаются blocked. Semantic diff/history и три response modes реализованы отдельными контрактами последующих фаз и не входят в этот bridge.
 
 
 ## Риски фазы и меры снижения

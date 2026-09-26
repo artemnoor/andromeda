@@ -718,12 +718,14 @@ export type AssistantQueryInput = {
 
 export type AssistantResponseEnvelope = {
   response_type: "text" | "image" | "image_collection" | "pdf" | "mini_app";
+  response_mode: components["schemas"]["ResponseMode"];
   text: string;
   template: string;
   data: Record<string, unknown>;
   actions: Array<Record<string, unknown>>;
   metadata: Record<string, unknown>;
   evidence?: Array<Record<string, unknown>>;
+  knowledge: components["schemas"]["KnowledgeResponseSection"] | null;
   plan?: {
     response_format: "text" | "image" | "image_collection" | "pdf" | "mini_app";
     template: string;

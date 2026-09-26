@@ -14,7 +14,7 @@ from ..contracts.policy import (
     DecisionPolicyPort,
     DecisionPolicyResult,
 )
-from ..contracts.public import QuerySession
+from ..contracts.public import ConversationIntent, QuerySession
 from .rule_decision_policy import RuleBasedDecisionPolicy
 
 logger = logging.getLogger("andromeda.modules.conversation.model_decision_policy")
@@ -35,6 +35,13 @@ class ModelBackedDecisionPolicy(DecisionPolicyPort):
         capabilities: DataCapabilities | None = None,
         last_result: AnalyticsResult | None = None,
     ) -> DecisionPolicyResult:
+        if session.intent is ConversationIntent.KNOWLEDGE_POLICY_QUERY:
+            return self._fallback.decide(
+                session,
+                available_actions=available_actions,
+                capabilities=capabilities,
+                last_result=last_result,
+            )
         try:
             decision = self._model.choose_next_action(
                 session,
@@ -43,7 +50,7 @@ class ModelBackedDecisionPolicy(DecisionPolicyPort):
                 last_result=last_result,
             )
             return decision.decision
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - deterministic fallback handles provider-specific failures.
             logger.warning("decision_model_policy_fallback reason=%s", type(exc).__name__)
             return self._fallback.decide(
                 session,
@@ -74,6 +81,8 @@ class ShadowDecisionPolicy(DecisionPolicyPort):
             capabilities=capabilities,
             last_result=last_result,
         )
+        if session.intent is ConversationIntent.KNOWLEDGE_POLICY_QUERY:
+            return deterministic
         try:
             shadow = self._shadow_model.choose_next_action(
                 session,
@@ -89,7 +98,7 @@ class ShadowDecisionPolicy(DecisionPolicyPort):
                 deterministic.action is shadow.decision.action,
                 shadow.source.value,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - shadow failures must not affect the deterministic path.
             logger.info(
                 "decision_shadow_comparison session_hash=%s deterministic_action=%s shadow_action=unavailable agreement=false fallback_reason=%s",
                 _session_hash(session.session_id),

@@ -1,6 +1,7 @@
 """Pure aliases for domain entities; persistence remains infrastructure-owned."""
 
 from ..contracts.public import (
+    AdmissionCycle,
     AdmissionOffering,
     AdmissionProvenance,
     ExamRequirement,
@@ -11,6 +12,7 @@ from ..contracts.public import (
 )
 
 __all__ = [
+    "AdmissionCycle",
     "AdmissionOffering",
     "AdmissionProvenance",
     "ExamRequirement",

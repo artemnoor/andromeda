@@ -10,11 +10,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from dataclasses import dataclass
-from pathlib import Path
 import sys
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 from time import perf_counter
-from typing import Mapping, Sequence
 
 from sqlalchemy import text
 
@@ -142,6 +143,38 @@ def _cases() -> tuple[QueryCase, ...]:
             """,
             {"status": "completed", "limit": 100},
         ),
+        QueryCase(
+            "knowledge_pollable_sources",
+            """
+            WITH latest_registry_revision AS (
+                SELECT source_id, MAX(revision) AS revision
+                FROM knowledge_source_registry_revisions
+                GROUP BY source_id
+            )
+            SELECT r.source_id, r.revision
+            FROM knowledge_source_registry_revisions AS r
+            JOIN latest_registry_revision AS latest
+              ON latest.source_id = r.source_id
+             AND latest.revision = r.revision
+            WHERE r.enabled IS TRUE
+            ORDER BY r.source_id
+            LIMIT :limit
+            """,
+            {"limit": 501},
+        ),
+        QueryCase(
+            "policy_as_known_revision_scan",
+            """
+            SELECT rule_id, revision, content_hash, family_id, authority_level,
+                   scope_level, scope_id, lifecycle, valid_start, valid_end,
+                   effective_start, effective_end, recorded_at
+            FROM policy_rule_revisions
+            WHERE recorded_at <= :as_known_at
+            ORDER BY rule_id, revision
+            LIMIT :limit
+            """,
+            {"as_known_at": datetime(2030, 1, 1, tzinfo=UTC), "limit": 501},
+        ),
     )
 
 
@@ -158,7 +191,9 @@ def profile(database_url: str) -> dict[str, object]:
                     dict(case.parameters),
                 ).scalar_one()
                 started = perf_counter()
-                rows = connection.execute(text(case.statement), dict(case.parameters)).all()
+                rows = connection.execute(
+                    text(case.statement), dict(case.parameters)
+                ).all()
                 elapsed_ms = (perf_counter() - started) * 1000
                 results[case.name] = {
                     "plan": explain,
@@ -172,15 +207,23 @@ def profile(database_url: str) -> dict[str, object]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Profile fixed, bounded PostgreSQL read queries")
+    parser = argparse.ArgumentParser(
+        description="Profile fixed, bounded PostgreSQL read queries"
+    )
     parser.add_argument("--database-url", default=None)
-    parser.add_argument("--out", type=Path, default=None, help="Optional JSON artifact path")
+    parser.add_argument(
+        "--out", type=Path, default=None, help="Optional JSON artifact path"
+    )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    database_url = args.database_url or os.environ.get("ANDROMEDA_POSTGRES_TEST_URL") or os.environ.get("ANDROMEDA_DATABASE_URL")
+    database_url = (
+        args.database_url
+        or os.environ.get("ANDROMEDA_POSTGRES_TEST_URL")
+        or os.environ.get("ANDROMEDA_DATABASE_URL")
+    )
     if not database_url:
         raise SystemExit("set --database-url or ANDROMEDA_POSTGRES_TEST_URL")
     artifact = profile(database_url)

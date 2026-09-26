@@ -30,11 +30,22 @@ Represent verified facts/rules/impact/evidence/uncertainty in channel-neutral Re
 - Ошибки и логирование: no evidence means no verified answer; inaccessible evidence says unavailable; link validation and safe URI handling; response does not expose private reviewer metadata.
 - Будущие тесты: contract schema, serialization of old/new envelopes, status mapping table, evidence locator, generated OpenAPI drift.
 - Критерии приёмки: envelope can render trusted answer, proposal, future applicability, conflict and insufficient-data states with typed ResolutionTrace explanation, without channel-specific business logic; old Stage 2 fields retain meaning.
-- Будущая проверка: python backend/scripts/export_openapi.py; npm run generate-api and npm run check-api-drift in frontend-next.
+- Проверка: `uv run --locked pytest tests/modules/presentation/test_envelope.py tests/modules/presentation/test_knowledge_response.py tests/modules/conversation/test_policy_query.py tests/modules/conversation/test_policy_presentation.py tests/api/test_assistant_query.py -q`; export OpenAPI and run generated-client drift check plus `npx tsc --noEmit`.
 - Зависимости: Task 27 and product wording review.
 - Откат: additive fields optional; clients ignore unknown fields; disable new template mapping.
 - Риски: current generic data dictionary may encourage untyped payload; add named typed sections and version them.
 - Вне scope: LLM narrative content.
+
+### Результат выполнения Task 28
+
+- `ResponseEnvelope` расширен additive-полями `response_mode` и typed `knowledge`; прежние `response_type`, `template`, `data`, `evidence`, metadata и plan сохраняют форму и значение. Старые конструкторы получают deterministic mode и `knowledge = null`.
+- `KnowledgeResponseSection` разделяет пользовательский статус и actionability; содержит source assertions с отдельными policy-stage/review/trust display values, typed proposition display, временные отметки, source/evidence links, impact/missing-data/uncertainty placeholders, affected scope, exceptions и typed resolver explanation.
+- `ResolutionExplanation` сохраняет trace id/version, exact rule/revision/hash references, selected vs considered disposition, конфликтные пары, exception relation, blockers и evidence locator/snapshot provenance. Scope, stage, reliability и причины проецируются на ограниченные display enums; сырые review/source policy enums наружу не сериализуются.
+- `AssistantResult.policy_answer` остаётся доступен application code и тестам, но исключён из JSON/OpenAPI. HTTP выдаёт только safe projection в `response.knowledge`; проверено API regression-тестами.
+- Публичные evidence URLs валидируются как HTTPS без credentials/query/fragment; reviewer actor/profile metadata в projection отсутствуют.
+- Миграций и Jev/runtime изменений нет.
+- Проверки: assistant/presentation/API — `21 passed`; architecture — `7 passed`; focused mypy — чисто; Ruff изменённых Python-файлов — чисто; `npx tsc --noEmit` и `npm run check-api-drift` — успешно после OpenAPI/client regeneration.
+- Ограничение: impact delta и known-fact collections пока остаются пустыми, если соответствующие typed data не поступили от domain owner; projection не выводит их из текста. Provider-backed mode 2 и general fallback остаются задачами 29-30.
 
 <a id="task-29"></a>
 
@@ -54,6 +65,15 @@ Represent verified facts/rules/impact/evidence/uncertainty in channel-neutral Re
 - Риски: even reference selection can distort emphasis; bound ordering and preserve required status/evidence sections.
 - Вне scope: mandatory DeepSeek/runtime LLM or free-form trusted prose.
 
+### Результат выполнения Task 29
+
+- Добавлены typed `ResponseVerbalizerPort`, bounded request (`section_id` + `kind` only) и response plan, который может вернуть только перестановку разрешённых ссылок на секции. Planner не получает proposition values, source excerpts, profile/context, URLs или evidence payload и не может возвращать prose/facts/citations.
+- `KnowledgeResponseRenderer` детерминированно строит статус, source assertions, known facts, resolution, scope, exceptions, impact, uncertainty и evidence. Статус остаётся первым, evidence последним; отсутствующие, неизвестные и неприменимые сведения не превращаются в отрицательные факты. Text имеет предел 20k, а полные typed данные сохраняются в `ResponseEnvelope.knowledge`.
+- Любой сбой или invalid/unknown/duplicate/missing section ID использует deterministic fallback. Логи содержат только тип ошибки. OpenAPI сохраняет additive `response_mode`; typed factual payload не меняется от порядка секций.
+- Assistant принимает optional port, но production composition не подключает provider. Provider selection/data-policy approval, реальная provider telemetry и Mode 3 routing остаются последующими gates/tasks; Jev/runtime/calibration не менялись.
+- Проверки: focused presentation/conversation/architecture suite — `20 passed`; focused mypy — чисто; Ruff изменённых Python-файлов — чисто. Проверенная команда pytest: `uv run --locked pytest tests/modules/presentation/test_knowledge_response.py tests/modules/presentation/test_envelope.py tests/modules/conversation/test_policy_query.py tests/architecture/test_module_boundaries.py -q`.
+- Риск/ограничение: перестановка может влиять на акцент, поэтому contract закрепляет статус и evidence, разрешает только полный набор ссылок и оставляет text/meaning server-rendered.
+
 <a id="task-30"></a>
 
 ## Task 30: Добавить явно unverified fallback вне coverage
@@ -70,6 +90,14 @@ Represent verified facts/rules/impact/evidence/uncertainty in channel-neutral Re
 - Откат: disable fallback and return unsupported.
 - Риски: user may ignore uncertainty label; channel templates must display it prominently.
 - Вне scope: general LLM answering for policy-covered questions.
+
+### Результат выполнения Task 30
+
+- `/assistant/query` помечает `OUTSIDE_COVERAGE` ответ как `unverified_fallback`; текст явно указывает, что вопрос вне проверенного покрытия и общий ответ не предоставлен. В текущем deployment это fail-closed unsupported mode, без general LLM/provider.
+- Renderer запрещает назначить `unverified_fallback` verified policy response. Out-of-coverage envelope не получает source assertions/evidence, не записывается как claim/fact/rule, а последующий covered query в той же QuerySession возвращается в deterministic path.
+- Public OpenAPI shape уже содержал additive enum `unverified_fallback` из Task 28; новых API полей и генерации типов не потребовалось. Jev, calibration, persistence и policy refresh не менялись.
+- Проверки: presentation/conversation/API — `19 passed`; Ruff изменённых Python-файлов — чисто; focused mypy renderer/assistant/contracts — чисто. Попытка включить весь `test_assistant_query.py` в mypy остановилась на старом untyped `_FailingTransport` helper вне этого изменения; новые затронутые implementation/contracts и presentation tests проверены.
+- Gate: общий ответ от внешнего LLM не подключён. Для этого нужен отдельный явный product/provider/privacy decision; без него unsupported response остаётся единственным Mode 3 результатом.
 
 
 ## Риски фазы и меры снижения

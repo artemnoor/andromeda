@@ -10,6 +10,33 @@ Andromeda хранит три разных вида данных, которые
 
 Правило права поступающего вычисляется детерминированно. Jev/LLM может помочь найти canonical Olympiad в интерфейсе, но не решает, есть ли БВИ, 100 баллов, подтверждение или прибавка за ИД.
 
+## Generic policy integration
+
+The `policy` module can select an approved source-backed revision that points
+to an exact admission-benefit owner rule. It owns lifecycle, effective dates,
+scope, exceptions, supersession and the structured resolution trace. It does
+not duplicate this module's benefit semantics or eligibility calculation:
+`AdmissionBenefitEvaluator` and the individual-achievement evaluator remain
+the sole owners for BVI, 100 points, Olympiad confirmation/validity, special
+routes and achievement points. Policy approval selects the exact owner
+revision; the owner evaluator computes the domain outcome.
+
+An existing `RuleDataStatus.ACTIVE` means the admission-benefit source rule is
+usable by this owner module. It is not a generic policy approval event. Legacy
+benefit data continue to serve their existing APIs; a generic policy revision
+cannot resolve until its exact owner hash, evidence, cycle mapping and separate
+human approval are present. See the [Knowledge and Policy architecture](architecture/knowledge-policy.md).
+
+The assistant impact bridge accepts a short-lived `ApplicantAdmissionContext`
+with typed facts and explicit completeness declarations for EGE scores,
+internal exams, Olympiad results, individual achievements and applicant
+category. It evaluates only when the approved policy trace selects the exact
+hash of every active benefit rule for the requested program and the source
+coverage is complete. Missing completeness, a stale hash or an incomplete
+owner set produces unavailable/insufficient data. The bridge delegates to
+`AdmissionDecisionService`; it does not store applicant facts as canonical
+knowledge or infer that an omitted achievement is absent.
+
 ## Поток данных
 
 ```text

@@ -58,12 +58,12 @@ Depends on: none
 - Add new Jev definitions and calibration artifacts only as separately versioned, operation-scoped additions after independent evaluation. Do not modify existing lock artifacts or enable any Jev flag in this plan. A Jev choice can propose only an ID from a bounded persisted set and can never change canonical or resolver state.
 - `policy` remains a deterministic resolver/selector. It never calculates BVI, 100-point Olympiad benefits, confirmation, benefit validity, individual-achievement eligibility or points; those outcomes are delegated to the current domain owner/evaluator.
 - Artifact contract: carry only the plan bundle and the five exact files that make its linked research bundle valid; cherry-pick that artifact-only commit onto a branch whose parent is the verified Stage 2 SHA. Use explicit `@.ai-factory/plans/feature-andromeda-education-policy-knowledge/index.md`; do not depend on branch-name auto-discovery.
-- Baseline contract: no runtime task starts until canonical full local checks and required SHA-bound CI checks pass on the clean Stage 2-derived branch. Record results against the Stage 2 code SHA, not merely the new plan-only commit SHA.
+- Baseline contract: no runtime task starts until canonical full local checks and required SHA-bound CI checks pass on the clean Stage 2-derived branch, except the one explicitly user-accepted environment limitation recorded below for exact code SHA `1f5777c892c2daf2f6f11a405bc19268b7dc0c88`. Any later baseline must satisfy the canonical full gate or receive its own explicit user decision. Record results against the Stage 2 code SHA, not merely the new plan-only commit SHA.
 
 ### Error Handling and Logging
 
 - Plan-only commit includes an unexpected path, cherry-pick changes code, branch parent differs from Stage 2, or plan lookup fails → stop; do not merge the old branch or guess a replacement plan path.
-- Any red/missing baseline check stops all runtime work; retain command output/CI link and classify baseline versus environment failure before proceeding.
+- Any red/missing baseline check stops all runtime work, except the exact SHA-specific environment limitation accepted by the user and recorded below; retain command output/CI link and classify baseline versus environment failure before proceeding.
 - Any remote/deployed migration-head drift stops the dependent schema work and requires normal reconciliation; never rewrite published history.
 - Во время этой read-only сверки не печатать environment secrets, полный source body, cookies или токены.
 
@@ -76,15 +76,23 @@ Depends on: none
 
 - The plan is discoverable in the implementation worktree through the explicit `@` path; the plan-only cherry-pick contains only the allowlisted plan/research artifacts, and no old runtime code was merged.
 - The new worktree is clean, derived from Stage 2 SHA `1f5777c892c2daf2f6f11a405bc19268b7dc0c88`, with the plan-only commit as its only added commit before implementation.
-- All listed local gates and required CI checks are green before any runtime change; evidence records code SHA, plan commit SHA, migration head 0038, commands/results and CI run.
+- All listed local gates and required CI checks are green before any runtime change, or the user explicitly accepts the exact SHA-specific environment limitation recorded below; evidence records code SHA, plan commit SHA, migration head 0038, commands/results and CI run.
 - Existing planning-worktree edits remain untouched except for the explicitly allowlisted plan-only commit; all other pre-existing paths remain unstaged/uncommitted.
 
 ### Verification
 
 - Verify `git rev-parse HEAD^` in the implementation branch equals the selected Stage 2 SHA before implementation begins, and inspect the plan-only commit's full path list against the allowlist.
 - Verify explicit `$aif-implement @.../index.md` resolves one ultra marker and all phase files.
-- Confirm the required baseline commands and commit-bound CI run pass at the Stage 2 code SHA; if not, no implementation task is unblocked.
+- Confirm the required baseline commands and commit-bound CI run pass at the Stage 2 code SHA; if not, no implementation task is unblocked unless the user explicitly accepts the documented environment limitation for that exact SHA.
 - Verify the existing planning checkout and its pre-existing user paths were not changed beyond the exact plan/research paths included in the plan-only commit.
+
+### Task 1 completion evidence (2026-09-25)
+
+- Code baseline: `1f5777c892c2daf2f6f11a405bc19268b7dc0c88`; implementation branch `codex/andromeda-education-policy-knowledge` parent is this SHA. Plan-only artifact commit: `8fab087de2e438d8239d64b14290aab5fc345e45`; its changed paths are the approved plan/research allowlist only. Current HEAD is that artifact commit before implementation changes.
+- Hosted CI for the exact Stage 2 code SHA completed green: [workflow run 42](https://github.com/artemnoor/andromeda/actions/runs/35992252146), including backend, Jev offline, PostgreSQL integration, browser/frontend, packaging and fullstack jobs.
+- Local checks passed against the clean Stage 2-derived source tree: backend `python -m pytest -q` (926 passed, 9 skipped); architecture tests (35 passed); Alembic linear history/head (`0038_admission_offering_scope_and_exam_choices`); frontend unit (25 passed), lint, production build and generated OpenAPI drift. `git diff --check` passed. Frontend-generated `next-env.d.ts` was restored and the worktree was clean after baseline checks.
+- `python scripts/andromeda.py full` could not complete locally because the environment could not resolve Jev dependencies and PyPI DNS (`files.pythonhosted.org`) failed. Existing-environment mypy likewise lacked `jev_align`; no code failure was established. The user explicitly accepted the exact-SHA hosted CI plus these local checks and directed continuation. This exception applies only to this pinned baseline; re-run the gate for any later baseline SHA.
+- Local baseline run limitations are recorded rather than described as a successful full local run. No runtime, migration, API, Jev flag or calibration-lock changes were made in Task 1.
 
 <a id="task-2"></a>
 

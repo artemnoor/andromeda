@@ -36,6 +36,14 @@ Support scenario evaluation and temporal questions against immutable revisions w
 - Риски: user may interpret hypothetical as accepted; envelope must label it prominently and separate from effective answer.
 - Вне scope: write-capable simulation or automatic deployment.
 
+### Результат выполнения Task 31
+
+- Переиспользованы уже имеющиеся `PolicyHypotheticalSandbox`, exact pending revision/approval ledger ports, immutable approved snapshot, shared applicability/precedence kernel, semantic diff и domain-owner impact comparison. Sandbox не вызывает `EffectivePolicyResolver`, не пишет approval/canonical rows и не меняет applicant/DecisionContext.
+- Hypothetical candidate trace, approved current trace, snapshot hash, candidate revision hash, diff, impact, evidence и assumptions уже представлены обязательным typed `PolicyHypotheticalPreview`; review API preview защищён reviewer authorization. Существующее API test подтверждает отказ unauthenticated caller.
+- Добавлена temporal regression: revision, selector которой ограничен 2028, в preview для admission cycle 2027 остаётся `selector_not_matched` и не входит в effective rules. Существующие тесты покрывают preview repeatability, current-vs-candidate diff и отсутствие repository writes; pending-only approval gate остаётся неизменным.
+- Проверки: `uv run --locked pytest tests/unit/test_policy_what_if.py tests/api/test_knowledge_ops.py -q` — `6 passed`; Ruff — чисто; focused mypy на production what-if contract/service — чисто. Попытка типизировать весь legacy unit-test module выявила ранее существовавшие untyped test helpers/URL annotation; runtime tests и изменённая implementation типизированы.
+- Новых API, migrations, persistence или production runtime изменений не потребовалось; Task 17/18 review preview уже предоставлял нужный seam.
+
 <a id="task-32"></a>
 
 ## Task 32: Поддержать current/future/historical/as-known-at queries
@@ -53,6 +61,16 @@ Support scenario evaluation and temporal questions against immutable revisions w
 - Откат: historical endpoint can be disabled while current policy path continues.
 - Риски: early database history may be incomplete; expose coverage start and gaps.
 - Вне scope: fabricated backfill of past system knowledge.
+
+### Результат выполнения Task 32
+
+- Расширен существующий `PolicyQueryContext`: effective admission year(s), valid-time date, system knowledge-time cutoff и history focus остаются разными typed значениями в `QuerySession`. Parser поддерживает ISO-date valid-time, exact/as-yesterday knowledge-time, одиночный historical cycle и bounded chronological pair для сравнения двух кампаний.
+- Assistant продолжает работать через существующий `/assistant/query`. Для одного historical cycle policy resolver использует approved application-window start как valid-time, если вопрос не задаёт точную дату; сравнение разрешает оба цикла по их собственным approved start dates при одном `as_known_at`. В каждом trace/API projection есть valid-time и trace/evidence; response включает оба ResolutionExplanation и typed effective-policy semantic diff.
+- Исторический claim lookup использует bitemporal repository cut-off. Отсутствующее состояние на запрошенную дату выдаёт `historical_state_unavailable`, а не «правила не было». Proposal/source assertion остаётся раздельным с effective policy; effective resolution по-прежнему принимает только approved revisions.
+- Boundary принято детерминированно: date-only knowledge cutoff — конец указанного UTC дня (`23:59:59.999999Z`); «вчера» — предыдущий UTC день; date-only valid-time сохраняет существующее начало UTC-дня; cycle default — `00:00Z` начала официального application window. Actual selected instants присутствуют в response traces. Недоступное окно цикла оставляет resolution blocked.
+- Добавлены parser/session, query, empty-history, yesterday, two-cycle resolver/diff и projection/render regressions. Persistence использует уже существующие claim/policy revision history; schema/migrations не менялись.
+- Проверки: focused policy/conversation/presentation — `33 passed`; API/OpenAPI JSON Schema/architecture — `20 passed`; session/repository checks — `7 passed`; focused mypy — чисто; Ruff — чисто; OpenAPI regeneration, `npm run check-api-drift` и `npx tsc --noEmit` — успешно.
+- Ограничение: история до первого сохранённого immutable revision не восстанавливается и не backfill-ится. API сообщает недоступность исторического состояния.
 
 
 ## Риски фазы и меры снижения

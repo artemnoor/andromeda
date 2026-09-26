@@ -26,7 +26,7 @@ Close end-to-end behavior with golden scenarios, migration/repository/architectu
 
 - Файлы: fixtures and tests across backend/tests/unit, contracts, repositories, integration, API/e2e; use existing organization.
 - Mandatory scenarios: A rumor; B official proposal; C adopted future rule vs 2027; D applicable 2028 applicant; E university exception; F direction exception; G Olympiad BVI/100 points; H individual achievement change; I supersession; J authoritative conflict; K source disappears but snapshot remains; L duplicated news; M unknown exception returns insufficient data; N what-if does not mutate canonical state.
-- Add vertical chain: allowlisted official document → SourceSnapshot → parsed Claim → pending rule candidate plus exact-hash `PENDING_SUBMITTED` event → authorized human `APPROVED` event → approved-only resolver/ResolutionTrace → domain-owner evaluator → assistant question → deterministic ResponseEnvelope/provenance. Assert that the pending revision never enters the effective resolver.
+- Add vertical chain: allowlisted official document → SourceSnapshot → parsed Claim → pending rule candidate plus exact-hash `PENDING_SUBMITTED` event → authorized human `APPROVED` event → approved-only resolver/ResolutionTrace → existing domain-owner evaluator → assistant impact question → deterministic ResponseEnvelope/provenance. Assert that the pending revision never enters the effective resolver and that the personalized result comes from the existing owner evaluator; do not substitute generic policy calculations.
 - Layer tests: unit temporal/status/precedence/DSL; contract serialization; PostgreSQL uniqueness/FK/index/migration; architecture boundaries; ingestion-to-review integration; assistant/API/OpenAPI and channel-neutral E2E.
 - Failure coverage: proposal not effective; resolver rejects missing/stale/non-approve approval events; trace includes rejected candidate and reason; unresolved conflict does not emit eligibility; absent data never becomes false/zero; unknown scope; cycle missing; Jev fails closed.
 - Критерии приёмки: all A-N pass on supported PostgreSQL and API stack; Stage 2 migration/API/Jev-boundary/evaluation/admission/conversation regression suites plus catalog/curriculum/comparison/fit/benefit/proftest/recommendation/decision/assistant flows remain runnable.
@@ -35,6 +35,12 @@ Close end-to-end behavior with golden scenarios, migration/repository/architectu
 - Откат: preserve old regression suite as gate; do not weaken or suppress failures.
 - Риски: fixture truth can drift; every legal fixture carries source, capture, locator and review decision.
 - Вне scope: treating generated model output as golden truth.
+
+### Результат выполнения Task 33
+
+- Added and passed the source-backed BVI vertical regression in `tests/infrastructure/test_knowledge_candidate_repository.py`: captured official snapshot → typed Olympiad claim → exact policy revision and pending audit → human approval → approved-only resolver trace → actual `AdmissionBenefitsPolicyEvaluationService` → existing `AdmissionDecisionService` eligibility result → deterministic assistant `ResponseEnvelope` with source locator. The companion exam scenario proves the exact pending revision is absent from resolution before approval. Existing A–N focused regressions cover proposal/future applicability, exceptions, conflicts, absent data, supersession, duplicate observations and what-if isolation.
+- Final full backend command `uv run pytest -q --tb=short` → **1095 passed, 10 skipped, 164 warnings** in 944.52s after installing the locked dev/evaluation/Jev/browser extras. The 18 tests previously blocked by absent optional Jev dependencies passed on rerun. PostgreSQL integration scenarios were separately run on an isolated loopback-only PostgreSQL 17 cluster: **8 passed** across admission benefits, ingest repeatability/concurrency, API smoke and user-profile persistence; these exercise migration-to-head at `0054_claim_predicate_lookup_index`. The repeatability test now checks its own inserted-row delta and remains valid when a dedicated test database contains prior fixtures.
+- Full production-deployment load, representative PostgreSQL EXPLAIN at target volume, and p95 measurements remain deployment/pilot measurements; they are not inferred from the ephemeral regression database. All other security, architecture, OpenAPI, Jev-gate and migration regressions in the backend run passed.
 
 <a id="task-34"></a>
 
@@ -52,6 +58,11 @@ Close end-to-end behavior with golden scenarios, migration/repository/architectu
 - Откат: calibration lock disables operation without database rollback.
 - Риски: metric averages can hide a dangerous stratum; gate each safety metric/stratum.
 - Вне scope: automatic threshold relaxation.
+
+### Результат выполнения Task 34
+
+- Reused the Stage 2 Jev evaluation harness via `backend/evals/jev/manifests/knowledge-policy-gates.v1.json` and its test. It registers no production policy operation; Jev policy prediction/shadow/assisted flags remain off and no calibration lock was edited. Existing olympiad matching cases are not treated as policy ground truth. New Jev policy promotion remains gated on the independently authored 500-case corpora and safety metrics specified in Task 22.
+- The new policy gate test module passed in the final regression run; no Jev operation was promoted or enabled.
 
 <a id="task-35"></a>
 
@@ -72,6 +83,11 @@ Close end-to-end behavior with golden scenarios, migration/repository/architectu
 - Откат: reduce page/graph limits or disable ingestion/review endpoints; additive indexes can stay.
 - Риски: premature index proliferation and test-only SQLite gaps; Postgres integration tests are authoritative for DB behavior.
 - Вне scope: distributed cache, Kafka or optimization for billions of rows.
+
+### Результат выполнения Task 35
+
+- Added `scripts/profile_queries.py` cases for registry polling and approved-revision scans, batch-loaded approved revision approval/provenance associations (bounded 6 SELECTs for 3 revisions), and a regression test for query count. Added a read-only Stage 2 benefit provenance inventory command and an operations runbook with fetch/parser/traversal/poll bounds, auth/SSRF/audit and recovery rules. A disposable PostgreSQL 17 temp-table profile copied the live claim schema/indexes and ran the current bounded predicate/as-known lookup over 200,000 synthetic unreviewed claims (2,000 matching BVI claims): 271.492 ms on this workstation; the plan used the predicate index but the latest-revision aggregate performed a sequential scan and an external merge sort (16,864 kB disk). This is a useful pre-pilot signal, not a production p95/SLA: the fixture is synthetic and local, and no signed latency threshold exists. `docs/performance.md` keeps production-scale PostgreSQL load/p95 as deployment measurements; the integration suite separately verifies Alembic migration-to-head and PostgreSQL-backed existing product slices.
+- Targeted candidate/provenance repository tests passed; Ruff passes on the changed Jev adapter and regression tests. After the locked optional extras were installed, repository-wide `uv run mypy` passed with **678 source files checked**. The Stage 2 Jev-align imports remain deliberately treated as untyped optional SDK seams using narrow `import-untyped` ignores. PostgreSQL 17 integration and Alembic upgrade tests passed as recorded under Task 33; representative load/EXPLAIN/p95 remain a deployment measurement, not a SQLite claim.
 
 
 ## Риски фазы и меры снижения

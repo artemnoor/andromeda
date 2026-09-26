@@ -38,6 +38,16 @@ Implement deterministic Effective Rule Resolver: select only exact-revision expl
 - Риски: admission-cycle mapping can differ by source; require reviewed explicit mapping.
 - Вне scope: applying an unapproved proposal as canonical policy.
 
+### Выполнение Task 12
+
+- Added `PolicyResolutionRequest` and versioned, content-addressed `ResolutionTrace` contracts with ordered revision decisions, source evidence, cycle evidence, explicit `valid_as_of`, resolved `as_known_at`, and a fingerprint of typed context without embedding profile payloads.
+- Added approved-only repository scans at system time. A revision enters that scan only if its exact hash has an `APPROVED` event by `as_known_at`; pending/rejected/not-yet-known revisions are excluded. Scan is bounded at 500 revisions and deterministic by canonical rule ID/revision.
+- `EffectiveRuleCandidateResolver` requires a source-backed `AdmissionCycle` for the exact university/admission year, validates cycle state and bitemporal intervals, keeps policy valid time separate from source effective time, and reports not-yet-effective rules as `FUTURE`. It imports the admissions public cycle contract through a consumer-owned port; composition is deferred until a query/API phase.
+- Cycle-owned selector context values (university, admission year, academic year, cycle ID and available application/enrollment date bounds) are marked `SOURCE_BACKED_CYCLE`. User-provided context remains separately marked. Cycle fields cannot be supplied by the caller. New date-valued selector fields use canonical `YYYY-MM-DD` values.
+- Missing `valid_as_of`, cycle mapping/state, owner reference or time interval fails closed. An empty approved-rule scan is `INDETERMINATE`, never “no rule.” Each result contains a trace, including blocked/empty results. The trace produces temporal/selector candidates only; Tasks 13–14 must resolve scope/precedence/conflicts before an effective set exists.
+- Files: `modules/policy/contracts/resolution.py`, updated `contracts/applicability.py` / `rule_ast.py`, `services/applicability_resolver.py`, policy cycle/clock ports, approved revision repository as-known reads, `tests/unit/test_policy_applicability.py`, and repository approval-time assertions.
+- No migration was required for Task 12. At that point, 0044 was the Alembic head; Task 13 adds 0045 for the additive v2 authority/relation schema.
+
 <a id="task-13"></a>
 
 ## Task 13: Реализовать authority, specificity и явное разрешение overrides
@@ -58,6 +68,18 @@ Implement deterministic Effective Rule Resolver: select only exact-revision expl
 - Риски: jurisdiction ranks require approved configuration; social trust is not legal authority.
 - Вне scope: general legal expert system.
 
+### Выполнение Task 13
+
+- Added `policy-rule.v2` with reviewer-assigned `family_id`, legal `authority`, and typed `PolicyRuleRelation`. `policy-rule.v1` remains readable for existing approved rows, but a v1 row has no family/authority and therefore cannot be promoted to a final effective selection until it is explicitly revised and approved as v2.
+- Added migration `0045_policy_authority_relations`: nullable v2 metadata constrained by schema version, exact target `(rule_id, revision, content_hash)` FK, and relation provenance FKs to the source revision's exact claim/evidence ordinals. The repository accepts only exact targets already approved as known at source revision time, within the same family; authorized exceptions require resolved authority and strictly narrower registered scope. Override/amend/supersede edges require sufficient authority and equal or narrower scope.
+- Added typed scope assessment for every registered scope dimension. Federal scope is the broad default; every other dimension requires a present source/user context value. Unknown or unavailable scope is indeterminate, and a mismatch is filtered before selector candidate creation. Regulator identifiers use the canonical `issuer:` namespace.
+- Added a registered partial order: authority ranks only compare rules at the same scope; scope specificity only orders known hierarchy pairs (federal to local, university to local, faculty to department, direction to program, Olympiad to profile) at equal authority. Orthogonal scopes and authority/scope crossings remain conflicts. A lower-authority narrow rule may prevail over a broader rule only through an exact `AUTHORIZED_EXCEPTION_TO` relation; ordinary `EXCEPTION_TO` is not an activation edge. Exact override/supersession/amendment relations take precedence only when authority and scope constraints pass. Rule-family relation cycles fail closed.
+- Added `EffectivePolicyResolver` over the approved temporal candidate scan. It re-loads exact approved hashes at the trace system time, computes a deterministic maximal selection per reviewer-assigned family, and returns no effective set when a family conflicts or authority is unresolved. Independent families may coexist. The candidate-only `EffectiveRuleCandidateResolver` remains available as an intermediate service.
+- Upgraded `ResolutionTrace` to `policy-resolution-trace.v2`. It retains ordered candidate/filter and explicit scope results, then adds exact precedence pair decisions, relation kinds/evidence, effective exact domain-rule references, or exact conflict participants. The trace remains content-addressed; no source text, profile text, SQL ordering or LLM prose enters precedence.
+- Files: `modules/policy/contracts/{applicability,precedence,public,resolution,rule,rule_ast}.py`, `domain/{applicability,precedence}.py`, `services/{applicability_resolver,effective_rule_resolver,__init__}.py`, `infrastructure/database/models/{policy,__init__}.py`, `infrastructure/repositories/policy.py`, Alembic `0045_policy_authority_relations.py`, `tests/unit/test_policy_applicability.py`, `tests/infrastructure/test_knowledge_candidate_repository.py`, and migration tests.
+- Verified: combined policy selector/precedence, repository round-trip, migration and architecture-boundary suite: 47 passed in 36.21s; policy source Mypy (26 files) and Ruff passed. Re-run the combined suite after Tasks 14–15 change the trace contract.
+- The existing `admission_benefits` evaluator remains the only owner of BVI, 100-point, confirmation and achievement calculations; policy emits only exact approved `DomainRuleRef` selections for the owning evaluator.
+
 <a id="task-14"></a>
 
 ## Task 14: Смоделировать conflict groups и безопасный unresolved ответ
@@ -75,6 +97,16 @@ Implement deterministic Effective Rule Resolver: select only exact-revision expl
 - Откат: conflict cases can remain explicitly unresolved; never hide the conflict to recover old behavior.
 - Риски: over-grouping could suppress a valid answer; require same typed field plus overlapping scope/time.
 - Вне scope: automatic legal adjudication.
+
+### Выполнение Task 14
+
+- Добавлены typed conflict group revisions для exact claim/change-event/policy revision участников, с content-addressed identity, проверкой известного пересечения valid-time, источниковой evidence на каждом участнике и проверкой scope/namespace.
+- Добавлен append-only event ledger на каждую immutable group revision. Open/reopen/resolve/dismiss события валидируют последовательность, knowledge time, точный group hash и допустимый participant; supersession resolution требует exact approved policy revision и сохранённой typed precedence relation. Новая revision группы открывает отдельное состояние и сохраняет аудит старой.
+- Добавлены PostgreSQL модели и additive migration `0046_knowledge_conflict_groups` с typed participant FK slots, evidence locators, event uniqueness, bounded audit order, checks и индексами. Репозиторий fail-closed проверяет existence/hash/evidence, recorded time и пересечение valid intervals.
+- Resolver уже возвращает `CONFLICT` в `ResolutionTrace.v2` с точными competing selections и evidence, без effective rules; общая policy result contract подтверждает, что conflicted/indeterminate/blocking state не может нести effective rule set. Пользовательская сериализация остаётся Task 28.
+- Файлы: `modules/knowledge/contracts/conflicts.py`, public exports, `repository/ports.py`, `infrastructure/database/models/knowledge_conflicts.py`, repository implementation, Alembic `0046_knowledge_conflict_groups.py`, миграционные и repository regression tests.
+- Проверено: `pytest tests/infrastructure/test_knowledge_candidate_repository.py::test_conflict_group_round_trips_sources_and_preserves_resolution_audit_per_revision tests/infrastructure/test_alembic_migrations.py::test_empty_sqlite_database_reaches_head_and_preserves_constraints -q` — 2 passed.
+- Остаточный boundary: human event contract требует account actor, однако полный authorization capability и operator workflow остаются Task 18–20. До них repository не является публичным review API.
 
 
 ## Риски фазы и меры снижения

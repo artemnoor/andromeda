@@ -40,6 +40,34 @@ Use Jev only for bounded understanding/linking via the already-integrated Stage 
 - Риски: reusing an unrelated Stage 2 lock can falsely appear to calibrate a new operation; require operation/definition-specific lock identity and held-out evidence.
 - Вне scope: new provider stack or eligibility classifier.
 
+### Task 21 completion evidence (2026-09-26)
+
+- Stage 2 already provides the only currently justified matching operation:
+  `resolve_olympiad_profile` through `QuestionRegistry` → TypeSafe transport →
+  `JevDecisionModelAdapter` → `JevAdmissionCandidateSelector`. The selector is
+  called only for a deterministic candidate set of 2–8 persisted Olympiad
+  profile IDs, validates the returned ID against that set, and fails closed
+  to unresolved. No second resolver or Jev client was introduced.
+- The implemented policy source normalizer deterministically preserves exact
+  text offsets, snapshot evidence and a provisional claimed-stage hint; all
+  extracted assertions stay `NEEDS_REVIEW`. It does not decide legal status or
+  create relations/rules. A relation suggestion has no safe consumer yet:
+  `KnowledgeReviewTargetRef` and the immutable action contract have no exact
+  relation-revision target, so reviewers cannot approve/reject a relation
+  candidate through the current queue. No claim, relation, source-status or
+  rule-type Jev operation is registered until an owner review seam exists.
+- No Question Registry definition, TypeSafe behavior, Jev runtime/composition,
+  feature flag, calibration artifact or calibration lock was changed. In
+  the Stage 2 checkout no dedicated Olympiad-profile lock is present; runtime
+  requires its own lock path and is disabled by default. Decision/next-action
+  locks cannot calibrate profile selection.
+- Verification: `backend/tests/infrastructure/test_question_registry.py`,
+  `backend/tests/infrastructure/test_jev_adapter.py`, the Jev runtime tests and
+  `backend/tests/architecture/test_module_boundaries.py` passed (30 tests).
+  The only
+  Jev-enabled domain path remains optional; knowledge/policy canonicalization
+  and the approved-only resolver do not consume model predictions.
+
 <a id="task-22"></a>
 
 ## Task 22: Задать независимый Jev evaluation lifecycle
@@ -58,6 +86,31 @@ Use Jev only for bounded understanding/linking via the already-integrated Stage 
 - Риски: independent labels cost time; no production use before corpus and threshold sign-off.
 - Вне scope: model-generated labels as ground truth.
 
+### Task 22 completion evidence (2026-09-26)
+
+- Reused the existing Stage 2 evaluator and the separately stored,
+  versioned Olympiad/profile v2 cases and provider observations. Added
+  `backend/evals/jev/manifests/knowledge-policy-gates.v1.json`, which binds
+  the existing operation definition and golden corpus hashes, records its
+  120 cases and 58/62 train/heldout split, states the source-backed
+  deterministic label origin, and records the missing operation-specific
+  calibration lock as production-ineligible. Provider observations are not
+  copied into the expected labels.
+- No policy-specific operation is registered, so there is no policy model
+  prediction to evaluate and no dummy corpus was added. The manifest freezes
+  the lifecycle required before a future operation can be registered:
+  independent ground truth before inference, at least 500 synthetic golden
+  matching cases for production staging/canonical use, ambiguity/adversarial
+  strata, required false-positive/unresolved metrics, operation artifact
+  hashes and off/shadow-only failure behavior.
+- Added dependency-free manifest/corpus integrity tests; those and Question
+  Registry tests passed (12 tests). Optional `jevcal` calibration tests were
+  attempted but the global Python environment lacks `jevcal`; an offline
+  locked evaluation-extra run could not install it because the cached
+  `scipy==1.17.1` wheel is unavailable and network access is disabled. Those
+  calibration tests are not reported as passing. Jev remains uncalibrated and
+  production-disabled.
+
 <a id="task-23"></a>
 
 ## Task 23: Добавить shadow rollout и Jev audit
@@ -74,6 +127,25 @@ Use Jev only for bounded understanding/linking via the already-integrated Stage 
 - Откат: turn operation off; shadow artifacts remain audit-only.
 - Риски: confidence can be mistaken for truth; UI labels predictions and keeps human reviewer responsible.
 - Вне scope: enabling new production operations in this planning iteration.
+
+### Task 23 completion evidence (2026-09-26)
+
+- The gate manifest records knowledge/policy rollout as `off`; there is no
+  policy-specific operation or exact relation-review consumer to shadow. No
+  runtime setting, Jev flag, calibration lock or applicant path was added or
+  enabled. Existing Jev defaults and Stage 2 locks remain unchanged.
+- Added an explicit future audit-field contract: operation/definition
+  identity and version, candidate-set hash, prompt hash, provider/model,
+  operation-specific lock identity, latency, error/fallback, reviewer outcome
+  and timestamp. Raw source text and applicant profile data are forbidden in
+  this audit record.
+- Added a regression that the existing admissions selector is disabled under
+  default `Settings`, alongside the existing missing-lock fail-closed test.
+  Knowledge/policy stays deterministic and approved-only; no prediction is
+  surfaced or applied.
+- Combined Jev registry/adapter/runtime, policy evaluation gate and
+  architecture boundary verification: 34 tests passed. Focused Ruff passed;
+  `git diff --check` passed with only Git's existing CRLF conversion notices.
 
 
 ## Риски фазы и меры снижения

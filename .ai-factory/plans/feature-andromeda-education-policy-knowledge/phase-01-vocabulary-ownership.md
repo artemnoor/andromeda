@@ -50,7 +50,7 @@ Depends on: Phase 00 decisions
 ### Контракт выполнения
 
 - Файлы: docs/architecture/knowledge-policy.md, docs/architecture/integration-seams.md, docs/architecture/query-flow.md, docs/semantic-analytics.md.
-- Proposed modules: ровно два новых logical bounded contexts: modules/knowledge/{domain,contracts,services,repository} для source registry/observations, claims/evidence/change candidates and immutable approval audit; modules/policy/{domain,contracts,services,repository} для typed policy revisions, applicability, deterministic resolution/trace and dependency semantics.
+- Proposed modules: ровно два новых logical bounded contexts: modules/knowledge/{domain,contracts,services,repository} для source registry/observations, claims/evidence/change candidates and ReviewItem/workflow; modules/policy/{domain,contracts,services,repository} для typed policy revisions, append-only exact-hash approval audit, applicability, deterministic resolution/trace and dependency semantics.
 - Existing modules remain owners: admissions, admission_benefits, catalog/programs, conversation/presentation and ingestion retain their data and responsibilities.
 - Do not add: separate change_intelligence, review or knowledge_entity_resolution; general-purpose object registry.
 - Ports: knowledge source-observation/candidate/review-command ports; policy candidate-submission/approval-audit/approved-effective-rule/candidate-preview/dependency/trace ports. The Knowledge review workflow invokes policy approval through a typed port; it does not own or write policy approval rows. Subject modules do not import SQLAlchemy, FastAPI, Jev SDK or university parsers.

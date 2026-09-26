@@ -11,6 +11,9 @@ from typing import Any
 from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
+from andromeda.modules.admission_benefits.contracts.domain_revision import (
+    admission_benefit_revision_hash,
+)
 from andromeda.modules.admission_benefits.contracts.policy import (
     BenefitScope,
     BenefitScopeMode,
@@ -310,6 +313,59 @@ class SqlAlchemyAdmissionBenefitsRepository(AdmissionBenefitRepository):
             coverage=coverage,
             source_gaps=source_gaps,
         )
+
+    def get_rule_revision(
+        self, rule_id: str, revision_hash: str
+    ) -> AdmissionBenefitRule | None:
+        rows = tuple(
+            self._session.scalars(
+                select(AdmissionBenefitRuleModel)
+                .where(AdmissionBenefitRuleModel.id == rule_id)
+                .order_by(
+                    AdmissionBenefitRuleModel.admission_year.desc(),
+                    AdmissionBenefitRuleModel.source_snapshot_hash,
+                )
+                .limit(101)
+            ).all()
+        )
+        if len(rows) > 100:
+            return None
+        scopes = self._rule_scope_rows(rows)
+        subjects = self._rule_subject_rows(rows)
+        matches = tuple(
+            value
+            for row in rows
+            if admission_benefit_revision_hash(
+                value := self._to_rule(
+                    row,
+                    scopes=scopes.get(_rule_identity(row), ()),
+                    subjects=subjects.get(_rule_identity(row), ()),
+                )
+            )
+            == revision_hash
+        )
+        return matches[0] if len(matches) == 1 else None
+
+    def get_individual_achievement_policy_revision(
+        self, policy_id: str, revision_hash: str
+    ) -> IndividualAchievementPolicy | None:
+        rows = tuple(
+            self._session.scalars(
+                select(IndividualAchievementPolicyModel)
+                .where(IndividualAchievementPolicyModel.id == policy_id)
+                .order_by(IndividualAchievementPolicyModel.source_snapshot_hash)
+                .limit(101)
+            ).all()
+        )
+        if len(rows) > 100:
+            return None
+        matches: list[IndividualAchievementPolicy] = []
+        for row in rows:
+            rules = self._achievement_rule_models(row.id, row.source_snapshot_hash)
+            value = _to_policy(row, rules)
+            if admission_benefit_revision_hash(value) == revision_hash:
+                matches.append(value)
+        return matches[0] if len(matches) == 1 else None
 
     def get_rules_for_program(
         self,

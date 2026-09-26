@@ -38,6 +38,17 @@ Add typed relational edges and rebuildable diff/impact projections on PostgreSQL
 - Риски: generic edges hide bad semantics; enforce registry and endpoint combinations.
 - Вне scope: graph database or arbitrary path-query API.
 
+### Выполнение Task 15
+
+- Knowledge owns KnowledgeClaimRelationRevision: exact source/target claim revisions, stable endpoint identity, immutable content hash/revisions, optional half-open valid interval, review state and 1–64 source evidence locators. CONTRADICTS has canonical symmetric endpoint ordering; self links and duplicate evidence are rejected.
+- Added knowledge_claim_relations and knowledge_claim_relation_evidence plus additive migration 0047_typed_knowledge_relations. Composite claim-revision FKs, immutable revisions, uniqueness/check constraints, provenance FKs and endpoint/review/time indexes keep storage relational and auditable.
+- Added KnowledgeRelationRepository and SQLAlchemy adapter. It accepts only candidate/unresolved state until a reviewer event capability exists, validates endpoint existence/knowledge time, allowlisted captured evidence, valid-time intersection and bounded DERIVED_FROM cycle checks. Canonical reads explicitly require APPROVED, so proposed edges are not effective dependencies.
+- Policy reuses PolicyRuleRelation and policy_rule_relations; added only the REQUIRES edge kind, exact target approval checks and bounded directed cycle validation. Precedence ignores REQUIRES because a dependency does not decide rule precedence. APPLIES_TO is a typed edge derived from PolicyScope, and IMPLEMENTS from DomainRuleRef; neither duplicates canonical revision fields in another table. AFFECTS remains a derived impact output.
+- Added typed policy dependency nodes/edges and deterministic traversal output with edge IDs, cycles, stable ordering, explicit truncation and hard depth 8/node 1000/input-edge 10000 bounds.
+- Files: knowledge relation public contracts and port; infrastructure/database/models/knowledge_relations.py, relation repository and exports; policy dependency contracts/traversal; additive Alembic 0047_typed_knowledge_relations; repository/migration/unit tests.
+- Verified: policy dependency/typed relation/migration focus 4 passed; knowledge candidate repository, policy applicability/temporal, conversation policy and architecture boundaries 36 passed; Ruff and focused Mypy passed. Migration test upgrades an empty SQLite database to the new head.
+- Human approval transitions for edges remain intentionally deferred to Tasks 18–20; current persistence cannot mark a candidate edge approved without that capability.
+
 <a id="task-16"></a>
 
 ## Task 16: Формировать semantic diff до approval
@@ -55,6 +66,17 @@ Add typed relational edges and rebuildable diff/impact projections on PostgreSQL
 - Откат: old source/canonical versions remain readable; output is versioned.
 - Риски: normalization can hide distinctions; retain source claim and normalization explanation.
 - Вне scope: AI narrative as evidence.
+
+### Выполнение Task 16
+
+- Existing source-byte/observation diffs and exact claim-cluster diffs remain in Knowledge ownership. Added policy-diff.v1 contracts and deterministic builders for exact policy revisions and effective sets from two immutable ResolutionTrace.v2 values.
+- Revision projection compares selector schema/nodes, owner-rule references, scope, family/authority, lifecycle, bitemporal and source milestones, claim references, typed relations, approval state and normalizer version. Values are canonical typed JSON scalars/fields; each changed field carries its before/after evidence references.
+- Effective-set diff includes both trace IDs, context fingerprints, university/cohort/cycle and temporal axes, exact selected rule revisions/evidence, and resolved status. Conflicted traces produce AMBIGUOUS with their conflict snapshot; blocked/indeterminate traces produce INCOMPLETE. Cross-cohort comparison remains explicit because each side records its exact cohort/context.
+- A missing historical revision is UNKNOWN and emits INCOMPLETE; it is never represented as REMOVED. Only caller-confirmed absence can produce added/removed fields. Parser/normalizer version changes are explicit fields. No applicant context payload or generated prose is stored.
+- Domain owner semantic details enter only through owner-namespaced typed diff entries plus their exact evidence; the policy module does not interpret BVI, point totals, confirmation, or achievement semantics. This supports a 75→80 score or BVI→100-point explanation when emitted by the current domain owner.
+- Files: modules/policy/contracts/semantic_diff.py, services/semantic_diff.py, public/service exports, tests/unit/test_policy_diff.py.
+- Verified: unit diff/dependency suite plus knowledge repository, policy applicability/temporal, conversation policy and architecture boundaries: 43 passed; focused Ruff and Mypy passed.
+- No diff table/migration is required: output is reproducible from immutable source/canonical revisions and exact resolution traces; review DTO storage is deferred to Task 20.
 
 <a id="task-17"></a>
 
@@ -75,6 +97,15 @@ Add typed relational edges and rebuildable diff/impact projections on PostgreSQL
 - Откат: disable impact projection and return explicit unavailable; canonical rules remain.
 - Риски: stale projection and missing edge; gate rollout on completeness and full-rebuild reconciliation.
 - Вне scope: global recommendation reranking or notification fan-out.
+
+### Факт исполнения
+
+- Добавлены `PolicyImpactPreview` и `PolicyImpactAnalyzer`: сравнивают exact current/candidate `ResolutionTrace`, ограничивают обход зависимостей, перечисляют affected typed nodes/evidence и делегируют доменную разницу только owner adapter-у. Конфликт, несовпадающий контекст, отсутствующие dependency roots, cycle, truncation и неизвестный owner result дают partial/uncertain/blocked результат. Trace IDs типизированы; policy не пересчитывает admission benefits.
+- Добавлены `PolicyProjectionRefreshCommand/Record/Attempt`, порт и сервис `PolicyDependencyRefreshService`. Dirty markers строятся только из exact revisions, которые подтверждены `ApprovedPolicyRuleReader`; unapproved revisions не могут инициировать refresh. Затронутые root, owner domain rule и известные impact targets получают отдельные typed projection keys.
+- Добавлены SQLAlchemy adapter и additive migration `0048_policy_projection_refresh`: generation-guarded dirty/ready/failed state, idempotent повторная инвалидация, bounded batch, retry для failed, immutable attempt ledger и отклонение результата старого поколения. Изменение canonical данных и refresh остаются разными транзакционными шагами; refresh вызывается после commit и не требует полного catalog rebuild.
+- Composition exposes rule/refresh repositories и typed service factory; конкретный projection builder остаётся port-ом до появления владельцев конкретных derived projections.
+- Проверки: `pytest tests/unit/test_policy_impact.py tests/unit/test_policy_diff.py tests/unit/test_policy_dependencies.py tests/infrastructure/test_policy_dependency_refresh.py tests/infrastructure/test_alembic_migrations.py tests/architecture/test_module_boundaries.py -q` — 34 passed; focused Ruff — passed; focused Mypy с `--follow-imports=silent` — passed; `git diff --check` — exit 0. Полный Mypy отдельно зависит от внешних Jev packages, зафиксированных в Task 1 baseline.
+- Rollback: migration downgrade отказывает при наличии refresh history; projection consumers могут игнорировать очередь и считать результат unavailable, сохраняя canonical revisions.
 
 
 ## Риски фазы и меры снижения
