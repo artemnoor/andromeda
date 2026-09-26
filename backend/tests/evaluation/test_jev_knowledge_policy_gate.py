@@ -51,7 +51,7 @@ def test_knowledge_policy_has_no_unreviewed_jev_operation_registered() -> None:
 def test_reused_olympiad_corpus_is_source_labeled_and_separate_from_predictions() -> None:
     gate = json.loads(GATE_PATH.read_text(encoding="utf-8"))
     operation = gate["reused_existing_operations"][0]
-    corpus_bytes = GOLDEN_CASES_PATH.read_bytes()
+    corpus_bytes = GOLDEN_CASES_PATH.read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(corpus_bytes).hexdigest() == operation["golden_corpus_sha256"]
     registry_bytes = ADMISSION_REGISTRY_PATH.read_bytes()
     assert hashlib.sha256(registry_bytes).hexdigest() == operation[
