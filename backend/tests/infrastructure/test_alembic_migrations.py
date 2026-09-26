@@ -12,7 +12,7 @@ from alembic import command
 
 BACKEND_ROOT = Path(__file__).parents[2]
 STAGE2_HEAD = "0038_admission_offering_scope_and_exam_choices"
-CURRENT_HEAD = "0054_claim_predicate_lookup_index"
+CURRENT_HEAD = "0055_knowledge_schema_alignment"
 
 
 def _alembic_config(database_url: str) -> Config:
@@ -145,6 +145,28 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(
             "knowledge_conflict_evidence",
             "knowledge_conflict_events",
         }.issubset(set(inspector.get_table_names()))
+        participant_indexes = {
+            index["name"]: index
+            for index in inspector.get_indexes("knowledge_conflict_participants")
+        }
+        assert participant_indexes["uq_knowledge_conflict_participant_exact_ref"]["unique"]
+        for table_name in (
+            "knowledge_conflict_events",
+            "knowledge_review_actions",
+            "knowledge_manual_submissions",
+        ):
+            actor_column = next(
+                column
+                for column in inspector.get_columns(table_name)
+                if column["name"] == "actor_account_id"
+            )
+            assert actor_column["type"].length == 128
+        manual_university_column = next(
+            column
+            for column in inspector.get_columns("knowledge_manual_submissions")
+            if column["name"] == "university_id"
+        )
+        assert manual_university_column["type"].length == 64
         assert {
             "knowledge_claim_relations",
             "knowledge_claim_relation_evidence",
