@@ -9,6 +9,7 @@ from pydantic import Field
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.versions import RESPONSE_POLICY_VERSION
 
+from .knowledge_response import KnowledgeResponseSection, ResponseMode
 from .policy import ResponseFormat, ResponsePlan
 
 
@@ -36,6 +37,7 @@ class EvidenceSummary(ContractModel):
 
 class ResponseEnvelope(ContractModel):
     response_type: ResponseFormat
+    response_mode: ResponseMode = ResponseMode.DETERMINISTIC
     text: str = Field(default="", max_length=20_000)
     template: str = Field(min_length=1, max_length=128)
     data: dict[str, object] = Field(default_factory=dict, max_length=64)
@@ -45,6 +47,7 @@ class ResponseEnvelope(ContractModel):
     query_reference: str | None = Field(default=None, max_length=256)
     result_reference: str | None = Field(default=None, max_length=256)
     evidence: tuple[EvidenceSummary, ...] = Field(default=(), max_length=32)
+    knowledge: KnowledgeResponseSection | None = None
     policy_version: str = RESPONSE_POLICY_VERSION
     plan: ResponsePlan | None = None
 

@@ -41,6 +41,11 @@ def compile_session(session: QuerySession, *, candidate_program_ids: tuple[Progr
         return ConversationCompilation(next_action=session.next_action, missing_slots=session.missing_slots)
     if session.intent is ConversationIntent.ADMISSION_SEARCH:
         return _compile_admission(session, candidate_program_ids)
+    if session.intent is ConversationIntent.KNOWLEDGE_POLICY_QUERY:
+        return ConversationCompilation(
+            next_action=NextAction.EXECUTE_QUERY,
+            policy_query_context=session.policy_query_context,
+        )
     if session.intent in {ConversationIntent.ANALYTICS_QUERY, ConversationIntent.COMPARE_PROGRAMS}:
         return ConversationCompilation(next_action=NextAction.EXECUTE_QUERY, analytics_query=_compile_analytics(session))
     raise ContractError(ErrorCode.INVALID_QUERY, "Conversation intent cannot be compiled")

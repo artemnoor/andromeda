@@ -29,6 +29,31 @@ worktree; сама по себе она не повышает release status.
 
 ## Backend
 
+### Knowledge and policy
+
+The source-backed policy regression path is checked with deterministic unit,
+repository, ingestion, review/API, response-envelope, architecture and Jev-gate
+tests:
+
+```powershell
+cd backend
+python -m pytest -q tests/unit tests/modules/conversation/test_policy_query.py tests/modules/conversation/test_policy_presentation.py tests/modules/presentation/test_knowledge_response.py tests/infrastructure/test_knowledge_candidate_repository.py tests/infrastructure/test_knowledge_provenance_report.py tests/infrastructure/test_knowledge_review_repository.py tests/infrastructure/test_knowledge_review_auth.py tests/infrastructure/test_knowledge_source_repository.py tests/infrastructure/test_admission_policy_repository.py tests/infrastructure/test_admission_cycle_repository.py tests/infrastructure/test_policy_dependency_refresh.py tests/ingestion/test_knowledge_source_discovery.py tests/ingestion/test_fetch_security.py tests/api/test_knowledge_ops.py tests/api/test_assistant_query.py tests/evaluation/test_jev_knowledge_policy_gate.py tests/infrastructure/test_alembic_migrations.py tests/architecture/test_module_boundaries.py
+```
+
+This covers rumor/proposal vs effective state, 2027/2028 cycle applicability,
+scope/exception/conflict/supersession, last-good source snapshots, duplicate
+claims, what-if no-write behavior, exact-hash approval, `ResolutionTrace`, and
+bounded repository hydration. The vertical assistant test uses a typed domain
+owner read boundary; an applicant-specific benefit result remains delegated to
+the separate existing `admission_benefits` evaluator tests. PostgreSQL-specific
+constraints and query plans require the disposable PostgreSQL target below;
+SQLite tests do not stand in for those guarantees.
+
+The policy Jev gate is explicitly off and has no registered policy operation.
+Future matching operations require an independently labeled 500-case golden
+corpus and approved per-operation thresholds; no Stage 2 calibration lock is
+changed by this feature.
+
 Multi-university HSE gate:
 
 ```powershell
@@ -283,9 +308,12 @@ python scripts/andromeda.py production-smoke
 ```
 
 Для migration parity используйте `python scripts/andromeda.py migrations`:
-команда применяет текущий Alembic head (`0022_ingestion_concurrency`) к пустой
-SQLite-базе и запускает `alembic check`. PostgreSQL migration/rollback smoke
-остаётся отдельным disposable target и не использует рабочую базу.
+команда применяет текущий Alembic head (`0054_claim_predicate_lookup_index`)
+к пустой SQLite-базе и запускает `alembic check`. Текущий implementation
+сохраняет одну additive history от Stage 2 head `0038`; отдельный regression
+поднимает базу с `0038`, сохраняет Stage 2 source snapshot и доводит её до
+`0054`. PostgreSQL migration/rollback smoke остаётся отдельным disposable
+target и не использует рабочую базу.
 
 Analytics tests проверяют allowlist, bounded canonical IDs, отсутствие raw
 profile/score/cookie/source body, owner isolation, idempotency и то, что отказ

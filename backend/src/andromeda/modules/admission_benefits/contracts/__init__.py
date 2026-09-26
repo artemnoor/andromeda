@@ -15,6 +15,14 @@ from .policy import (
     BenefitTargetKind,
     ScopeApplicability,
 )
+from .policy_evaluation import (
+    AdmissionBenefitPolicyEvaluation,
+    AdmissionBenefitPolicyEvaluationRequest,
+    AdmissionBenefitPolicyEvaluationStatus,
+    AdmissionBenefitPolicyRuleRef,
+    ApplicantAdmissionContext,
+    ApplicantFactDimension,
+)
 from .provenance import BenefitProvenance
 from .public import (
     AchievementCombinationPolicy,
@@ -56,13 +64,19 @@ __all__ = [
     "AchievementCombinationPolicy",
     "AdmissionBenefitEvaluation",
     "AdmissionBenefitEvidence",
+    "AdmissionBenefitPolicyEvaluation",
+    "AdmissionBenefitPolicyEvaluationRequest",
+    "AdmissionBenefitPolicyEvaluationStatus",
+    "AdmissionBenefitPolicyRuleRef",
     "AdmissionBenefitRule",
     "AdmissionDecisionResult",
     "AdmissionEligibilityResult",
     "AdmissionRoute",
     "ApplicabilityStatus",
+    "ApplicantAdmissionContext",
     "ApplicantAdmissionFacts",
     "ApplicantExamScore",
+    "ApplicantFactDimension",
     "ApplicantIndividualAchievement",
     "ApplicantInternalExamScore",
     "ApplicantOlympiadAchievement",

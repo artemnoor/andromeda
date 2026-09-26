@@ -88,6 +88,14 @@ class AdmissionBenefitReader(Protocol):
         include_review: bool = False,
     ) -> IndividualAchievementPolicy | None: ...
 
+    def get_rule_revision(
+        self, rule_id: str, revision_hash: str
+    ) -> AdmissionBenefitRule | None: ...
+
+    def get_individual_achievement_policy_revision(
+        self, policy_id: str, revision_hash: str
+    ) -> IndividualAchievementPolicy | None: ...
+
 
 class AdmissionBenefitWriter(Protocol):
     def sync_snapshot(

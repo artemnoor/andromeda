@@ -1,9 +1,15 @@
 from .public import (
+    AdmissionCycle,
+    AdmissionCycleId,
+    AdmissionCycleResolution,
+    AdmissionCycleResolutionStatus,
+    AdmissionCycleState,
     AdmissionOffering,
     AdmissionProvenance,
     AdmissionScope,
     ExamRequirement,
     FundingType,
+    InclusiveDateWindow,
     PassingScore,
     PassingScoreType,
     ProgramAdmissions,
@@ -11,14 +17,29 @@ from .public import (
     QuotaType,
     StudyForm,
     TuitionCost,
+    admission_cycle_id,
+)
+from .offering_revisions import (
+    AdmissionOfferingDomainRuleId,
+    AdmissionOfferingRevision,
+    admission_offering_domain_rule_id,
+    admission_offering_revision_hash,
 )
 
 __all__ = [
+    "AdmissionCycle",
+    "AdmissionCycleId",
+    "AdmissionCycleResolution",
+    "AdmissionCycleResolutionStatus",
+    "AdmissionCycleState",
     "AdmissionOffering",
+    "AdmissionOfferingDomainRuleId",
+    "AdmissionOfferingRevision",
     "AdmissionProvenance",
     "AdmissionScope",
     "ExamRequirement",
     "FundingType",
+    "InclusiveDateWindow",
     "PassingScore",
     "PassingScoreType",
     "ProgramAdmissions",
@@ -26,4 +47,7 @@ __all__ = [
     "QuotaType",
     "StudyForm",
     "TuitionCost",
+    "admission_cycle_id",
+    "admission_offering_domain_rule_id",
+    "admission_offering_revision_hash",
 ]

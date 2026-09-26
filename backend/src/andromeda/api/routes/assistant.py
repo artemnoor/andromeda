@@ -25,6 +25,7 @@ def assistant_query(
         owner_scope=scope,
         session_id=request.session_id,
         expected_revision=request.expected_revision,
+        applicant_admission_context=request.applicant_admission_context,
     )
 
 

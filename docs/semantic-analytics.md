@@ -84,6 +84,20 @@ not execute SQL or write canonical data.
 future MAX adapters receive the same result/evidence contract; they do not
 recalculate metrics or make business decisions. See [the integration seams](architecture/integration-seams.md).
 
+## Separate source-backed policy ontology
+
+The curriculum `SemanticFeature` vocabulary and `SemanticReviewWorkflow` remain
+specific to curriculum meaning and classifier artifacts. The source-backed
+`knowledge`/`policy` modules have different objects and lifecycle: source
+claims, immutable rule revisions, exact-revision human approval, temporal
+applicability and a deterministic `ResolutionTrace`. They reuse the semantic
+workflow's review and provenance principles, but do not reuse curriculum
+taxonomy tables, classifiers or semantic publish as the policy approval gate.
+The runtime boundary and capabilities are described in the [Knowledge and
+Policy architecture](architecture/knowledge-policy.md). Missing applicant
+impact/domain calculations remain typed unavailable states; the policy module
+does not implement a second admission-benefit evaluator.
+
 ## Operator checks
 
 ```powershell

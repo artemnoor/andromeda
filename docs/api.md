@@ -39,6 +39,32 @@ policy defaults разделены в typed frame. Если данных нед�
 typed analytics/admission operation. Jev не обязателен: deterministic policy
 остаётся рабочим fallback.
 
+Registered source-backed policy questions also use `/assistant/query` and the
+same `QuerySession`. Their `ResponseEnvelope.knowledge` section carries source
+assertion status, reliability/lifecycle, effective-time and scope details,
+uncertainty, evidence locators, semantic diff/trace and actionability. The
+resolver reads only exact human-approved revisions. Missing source coverage,
+cycle, scope or unresolved conflict stays typed unavailable/unknown. For an
+applicant-specific admission-benefit impact check, the request may include
+`applicant_admission_context`: typed facts plus the dimensions the applicant
+confirmed complete. The owner-bound query session retains it only for its TTL.
+The assistant forwards only exact approved benefit references; the benefit
+owner verifies that the selected hashes cover the complete active rule set and
+source coverage before calling the existing `AdmissionDecisionService`.
+Missing/ambiguous program, incomplete owner coverage or unconfirmed applicant
+facts produce typed missing-data codes; they never imply ineligibility. Mixed
+domain owners and non-benefit owner calculations remain unavailable until their
+own evaluator bridges are wired. Policy Jev operations are not registered. The
+optional presentation port can reorder an allowlisted set of typed response
+sections; no freeform LLM provider is wired, and the default response is
+deterministic. Unsupported topics use an explicitly unverified
+`outside_coverage` mode and do not enter canonical data. See the
+[knowledge-policy runbook](operations/knowledge-policy-runbook.md).
+The policy assistant rollout is independently controlled by
+`ANDROMEDA_KNOWLEDGE_POLICY_ASSISTANT_ENABLED` and defaults to `false`; when
+disabled, `/assistant/query` returns typed `outside_coverage` without reading
+claims or resolving policies. This flag does not alter Jev settings.
+
 После изменения API контракт регенерируется единственным drift flow:
 
 ```powershell
@@ -78,6 +104,55 @@ Editorial events хранятся отдельно от source `/events`. Они
 в public feed; stale selected targets скрываются, если больше не активны.
 Все enum/datetime payloads проходят strict JSON boundary, а mutation требуют
 `expectedRevision`; недостаточная роль даёт 403, неизвестный scope — 404.
+
+### Manual knowledge submissions
+
+Knowledge ops writes проходятся только через авторизованные application
+commands. `POST /ops/knowledge/sources` доступен только явно настроенному
+source steward; новая registry revision всегда создаётся с `enabled=false`.
+`POST /ops/knowledge/sources/{source_id}/snapshots` принимает ограниченный PDF
+или UTF-8 text upload, сверяет URL с allowlist и записывает immutable snapshot;
+endpoint не скачивает переданный URL.
+
+`POST /university-admin/universities/{university_id}/knowledge/claims` создаёт
+source-backed claim в `needs_review`. `PUT
+/university-admin/universities/{university_id}/knowledge/claims/{claim_id}/metadata`
+добавляет metadata revision только для точного ожидаемого revision/hash и только
+для ещё не разрешённого manual candidate в этом university scope; assertion и
+evidence остаются неизменными. `POST
+/university-admin/universities/{university_id}/knowledge/policy-rules` принимает
+только policy revision с точным university scope и пишет начальное pending
+событие через owner `PolicyApprovalCommandService`. University editor не может
+одобрить или активировать эту revision. Все кандидаты остаются вне
+`Effective Rule Resolver` до отдельного approval exact revision.
+
+### Knowledge review queue
+
+`GET /ops/knowledge/review-queue?limit=50` показывает ограниченную очередь
+последних unresolved claim, change-event и policy revisions; `limit` ограничен
+`1..100`. `POST /ops/knowledge/review-actions` записывает действие по exact
+revision/hash с обязательной причиной и idempotency key. Для policy revision
+сначала вызовите `POST /ops/knowledge/review-preview` с точной целью и явным
+university/admission-year/valid-as-of контекстом. Endpoint возвращает approved
+current trace, pending-candidate hypothetical trace, effective-policy diff,
+domain-owner impact и evidence; состояние canonical policy не меняется.
+Reviewer account IDs
+задаются через `ANDROMEDA_KNOWLEDGE_REVIEWER_ACCOUNT_IDS`, policy-steward IDs —
+отдельно через `ANDROMEDA_POLICY_STEWARD_ACCOUNT_IDS`; обе настройки пусты по
+умолчанию. Actor берётся из текущей authenticated session, а не из request body.
+
+Очередь показывает snapshot/evidence locator, надёжность источника, lifecycle,
+scope, diff, conflict participants и неизменяемую историю. Эти оси не
+объединяются в один статус. Подтверждение claim фиксирует source assertion,
+но не активирует policy. Policy approve требует exact preview fingerprint,
+повторно вычисленный сервером, resolved candidate trace, полный domain-owner
+impact, evidence и отсутствие unresolved/truncated conflicts. Fingerprint
+сохраняется в существующем policy approval event; отсутствие/неполный preview
+блокирует approve и не трактуется как нулевое влияние. Claim edit создаёт новую
+pending revision; identity resolution принимает только существующий exact ID
+из поддержанного typed catalog и не может быть подменён общим edit. Внутренний
+SPA экран открывается query route `/?view=knowledge-review` и не добавлен в
+обычную навигацию.
 
 ## DecisionContext и shortlist
 

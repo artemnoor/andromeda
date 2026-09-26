@@ -59,10 +59,11 @@ class FetchConfig:
     retry_after_max_seconds: float = 10.0
     total_budget_seconds: float = 90.0
     max_redirects: int = 5
+    host_policy: SourceHostPolicy = BMSTU_SOURCE_HOST_POLICY
 
     def as_policy(self) -> FetchPolicy:
         return FetchPolicy(
-            host_policy=BMSTU_SOURCE_HOST_POLICY,
+            host_policy=self.host_policy,
             timeout_seconds=self.timeout_seconds,
             retries=self.retries,
             retry_delay_seconds=self.retry_delay_seconds,
@@ -136,18 +137,30 @@ class Fetcher:
             direct.error_code = "browser_unavailable"
         return direct
 
-    def fetch_http(self, url: str) -> FetchedResource:
+    def fetch_http(
+        self,
+        url: str,
+        *,
+        url_validator: Callable[[str], None] | None = None,
+    ) -> FetchedResource:
         """Fetch a resource without browser fallback.
 
         Machine-readable metadata and immutable PDF downloads must not start a
         browser session merely because a CDN response resembles a JS shell.
         """
-        return self._fetch_http(url)
+        return self._fetch_http(url, url_validator=url_validator)
 
-    def _fetch_http(self, url: str) -> FetchedResource:
+    def _fetch_http(
+        self,
+        url: str,
+        *,
+        url_validator: Callable[[str], None] | None = None,
+    ) -> FetchedResource:
         started = self._clock()
         try:
             validate_source_url(url, self.policy.host_policy, resolver=self._resolver)
+            if url_validator is not None:
+                url_validator(url)
         except SourcePolicyError as exc:
             return self._failure(url, url, None, exc.code, attempts=0)
 
@@ -226,6 +239,8 @@ class Fetcher:
                             self.policy.host_policy,
                             resolver=self._resolver,
                         )
+                        if url_validator is not None:
+                            url_validator(target)
                     except SourcePolicyError as exc:
                         logger.warning(
                             "source_redirect_rejected requested=%s current=%s target=%s status=%s code=%s",

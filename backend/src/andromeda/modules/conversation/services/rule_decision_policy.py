@@ -32,6 +32,7 @@ class RuleBasedDecisionPolicy:
             NextAction.ASK_FOR_UNIVERSITY_SCOPE,
             NextAction.ASK_FOR_FUNDING,
             NextAction.ASK_FOR_STUDY_FORM,
+            NextAction.ASK_FOR_ADMISSION_YEAR,
             NextAction.ASK_FOR_METRIC,
             NextAction.ASK_FOR_ENTITY,
             NextAction.CLARIFY,
@@ -78,6 +79,12 @@ def _clarification(session: QuerySession) -> DecisionPolicyResult:
             question="Уточните форму обучения: очная, заочная, вечерняя или онлайн?",
             options=("Очная", "Заочная", "Вечерняя", "Онлайн"),
             reason="The request mentions more than one study form",
+        )
+    if session.next_action is NextAction.ASK_FOR_ADMISSION_YEAR:
+        return DecisionPolicyResult(
+            action=DecisionAction.ASK_CLARIFICATION,
+            question="На какой год вы планируете поступать?",
+            reason="Policy applicability requires an explicit admission cycle",
         )
     if session.next_action is NextAction.ASK_FOR_METRIC:
         question = "Какой показатель сравнить: математику, программирование, AI или другой?"

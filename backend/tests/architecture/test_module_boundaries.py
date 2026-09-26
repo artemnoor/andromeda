@@ -23,6 +23,8 @@ CORE_SUBJECT_MODULES = (
     "auth",
     "university_admin",
     "admission_benefits",
+    "knowledge",
+    "policy",
 )
 OPTIONAL_ANALYTICS_MODULES = (
     "semantic",
@@ -72,6 +74,7 @@ ORCHESTRATOR_IMPORTS = {
         "andromeda.modules.admission_fit.services.admission_fit",
         "andromeda.modules.analytics.services.executor",
         "andromeda.modules.presentation.services.envelope_builder",
+        "andromeda.modules.presentation.services.knowledge_response",
     },
     # The metric resolver is a deliberately thin catalog adapter. Its
     # default registry is the analytics-owned allow-list, while all returned
@@ -88,7 +91,11 @@ def _module_name(path: Path) -> str:
 
 def _subject_module(path: Path) -> str | None:
     relative = path.relative_to(ANDROMEDA_ROOT).parts
-    if len(relative) >= 2 and relative[0] == "modules" and relative[1] in SUBJECT_MODULES:
+    if (
+        len(relative) >= 2
+        and relative[0] == "modules"
+        and relative[1] in SUBJECT_MODULES
+    ):
         return relative[1]
     return None
 
@@ -111,7 +118,9 @@ def _import_bindings(path: Path) -> tuple[tuple[str, tuple[str, ...]], ...]:
             bindings.append((node.module, tuple(alias.name for alias in node.names)))
         elif isinstance(node, ast.Import):
             for alias in node.names:
-                bindings.append((alias.name, (alias.asname or alias.name.split(".")[-1],)))
+                bindings.append(
+                    (alias.name, (alias.asname or alias.name.split(".")[-1],))
+                )
     return tuple(bindings)
 
 
@@ -160,9 +169,17 @@ def _cross_module_imports(path: Path) -> tuple[str, ...]:
 def _is_allowed_cross_module_import(path: Path, imported: str) -> bool:
     relative = path.relative_to(ANDROMEDA_ROOT).as_posix()
     parts = imported.split(".")
-    if len(parts) == 5 and tuple(parts[:2]) == ("andromeda", "modules") and parts[3] == "contracts":
+    if (
+        len(parts) == 5
+        and tuple(parts[:2]) == ("andromeda", "modules")
+        and parts[3] == "contracts"
+    ):
         return True
-    if len(parts) == 5 and tuple(parts[:2]) == ("andromeda", "modules") and tuple(parts[-2:]) == ("repository", "ports"):
+    if (
+        len(parts) == 5
+        and tuple(parts[:2]) == ("andromeda", "modules")
+        and tuple(parts[-2:]) == ("repository", "ports")
+    ):
         return True
     if imported in ORCHESTRATOR_IMPORTS.get(relative, set()):
         return True
@@ -177,7 +194,9 @@ def test_subject_module_registry_covers_all_current_modules_and_layers() -> None
         if path.is_dir() and not path.name.startswith("_")
     }
     expected_modules = set(CORE_SUBJECT_MODULES) | {
-        module for module in OPTIONAL_ANALYTICS_MODULES if (modules_root / module).is_dir()
+        module
+        for module in OPTIONAL_ANALYTICS_MODULES
+        if (modules_root / module).is_dir()
     }
     assert actual_modules == expected_modules
 
@@ -218,7 +237,9 @@ def test_subject_modules_use_only_public_cross_module_surfaces() -> None:
 
 
 def test_cross_module_policy_is_narrow_and_explicit() -> None:
-    comparison_file = ANDROMEDA_ROOT / "modules" / "comparison" / "services" / "aggregation.py"
+    comparison_file = (
+        ANDROMEDA_ROOT / "modules" / "comparison" / "services" / "aggregation.py"
+    )
     facade_file = ANDROMEDA_ROOT / "modules" / "proftest" / "services" / "ranking.py"
 
     assert _is_allowed_cross_module_import(
@@ -257,8 +278,12 @@ def test_cross_module_policy_is_narrow_and_explicit() -> None:
         comparison_file,
         "andromeda.modules.disciplines.domain.foo.contracts.public",
     )
-    relative_import = ast.parse("from ...recommendations.services import RecommendationService")
-    assert "andromeda.modules.recommendations.services" in _resolved_import_names(comparison_file, relative_import)
+    relative_import = ast.parse(
+        "from ...recommendations.services import RecommendationService"
+    )
+    assert "andromeda.modules.recommendations.services" in _resolved_import_names(
+        comparison_file, relative_import
+    )
 
 
 def test_compatibility_facades_have_exact_documented_imports() -> None:
@@ -272,16 +297,29 @@ def test_jev_and_max_imports_are_adapter_only() -> None:
     for path in ANDROMEDA_ROOT.rglob("*.py"):
         relative_parts = path.relative_to(ANDROMEDA_ROOT).parts
         allowed = "composition" in relative_parts or "adapters" in relative_parts
-        for imported in _resolved_import_names(path, ast.parse(path.read_text(encoding="utf-8"))):
+        for imported in _resolved_import_names(
+            path, ast.parse(path.read_text(encoding="utf-8"))
+        ):
             normalized = imported.lower()
-            if (normalized == "jev" or normalized.startswith("jev.") or normalized == "max" or normalized.startswith("max.")) and not allowed:
+            if (
+                normalized in {"jev", "max"} or normalized.startswith(("jev.", "max."))
+            ) and not allowed:
                 violations.append(f"{_module_name(path)} -> {imported}")
     assert violations == []
 
 
-def test_query_contracts_and_response_envelopes_do_not_contain_raw_sql_or_transport_types() -> None:
+def test_query_contracts_and_response_envelopes_do_not_contain_raw_sql_or_transport_types() -> (
+    None
+):
     violations: list[str] = []
-    transport_prefixes = ("fastapi", "sqlalchemy", "telegram", "andromeda_telegram", "max", "jev")
+    transport_prefixes = (
+        "fastapi",
+        "sqlalchemy",
+        "telegram",
+        "andromeda_telegram",
+        "max",
+        "jev",
+    )
     sql_tokens = ("select ", "insert ", "update ", "delete ", " from ")
     for module in SUBJECT_MODULES:
         module_root = ANDROMEDA_ROOT / "modules" / module
@@ -291,9 +329,16 @@ def test_query_contracts_and_response_envelopes_do_not_contain_raw_sql_or_transp
             relative = path.relative_to(module_root).as_posix().lower()
             tree = ast.parse(path.read_text(encoding="utf-8"))
             imports = _resolved_import_names(path, tree)
-            if "queryspec" in path.name.lower() or "response" in path.name.lower() or "policy" in relative:
+            if (
+                "queryspec" in path.name.lower()
+                or "response" in path.name.lower()
+                or "policy" in relative
+            ):
                 for imported in imports:
-                    if any(imported == prefix or imported.startswith(f"{prefix}.") for prefix in transport_prefixes):
+                    if any(
+                        imported == prefix or imported.startswith(f"{prefix}.")
+                        for prefix in transport_prefixes
+                    ):
                         violations.append(f"{_module_name(path)} -> {imported}")
                 source = path.read_text(encoding="utf-8").lower()
                 if any(token in source for token in sql_tokens):

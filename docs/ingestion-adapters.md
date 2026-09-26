@@ -1,6 +1,6 @@
 # Ingestion adapter contracts
 
-Status: current MVP implementation, 2026-09-19.
+Status: current MVP implementation, 2026-09-26.
 
 The ingestion boundary remains university-independent at the orchestration and
 canonical-contract layers, while source assumptions stay inside the adapter
@@ -21,6 +21,24 @@ The generic core does not import either parser. The adapter-specific fetch
 policies own official host allowlists; the shared fetch policy only validates
 HTTPS, public DNS targets, bounded redirects/retries/body size, and safe log
 metadata.
+
+Knowledge-source discovery uses a separate fixed adapter registry in
+`andromeda.ingestion.knowledge_source_adapters`; it does not add policy rules
+to the university `SourceAdapter` contract. Registered official-page adapters
+reuse the existing bounded HTTP fetcher with a static host allowlist plus the
+source revision's path allowlist on every redirect. The one-shot
+`scripts/discover_knowledge_sources.py` command persists raw captures through
+the existing ingestion repository and stages deterministic review-only claims.
+It accepts no arbitrary URL, performs no canonical projection, and never runs
+database migrations. Current deterministic extraction is bounded to HTML,
+plain text, and PDF with explicit page/document budgets.
+
+This is a bounded policy-source observation path, not a news aggregator or
+open web crawl. It polls only an enabled approved source-registry revision;
+captures and deterministic claims stay review-only. Poll scheduling belongs to
+the deployment operator and is not started implicitly by the API. Limits,
+approval steps, failure recovery and the read-only legacy provenance inventory
+are documented in the [knowledge-policy operations runbook](operations/knowledge-policy-runbook.md).
 
 ## Parser result semantics
 
@@ -65,3 +83,9 @@ metadata.
   admission records, and repeatable projection from fixtures.
 - HSE `source_manifest.json` hashes are checked against every fixture body at
   load time; BMSTU has the same invariant.
+- Policy-source polling, claim staging, last-good recovery and URL/DNS limits
+  are covered by `backend/tests/ingestion/test_knowledge_source_discovery.py`,
+  `backend/tests/ingestion/test_fetch_security.py` and their repository/API
+  suites. This does not establish broad regulatory-source coverage or a
+  production polling schedule; those are owned operationally. See the
+  [knowledge-policy runbook](operations/knowledge-policy-runbook.md).

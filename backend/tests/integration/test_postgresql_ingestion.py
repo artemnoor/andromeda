@@ -4,15 +4,20 @@ import os
 from pathlib import Path
 
 import pytest
-from alembic import command
 from alembic.config import Config
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from andromeda.infrastructure.database.models import CurriculumItemModel, IngestRunModel, ProgramModel
-from andromeda.infrastructure.repositories.ingestion import SqlAlchemyIngestionRepository
+from alembic import command
+from andromeda.infrastructure.database.models import (
+    CurriculumItemModel,
+    IngestRunModel,
+    ProgramModel,
+)
+from andromeda.infrastructure.repositories.ingestion import (
+    SqlAlchemyIngestionRepository,
+)
 from andromeda.ingestion.universities.bmstu import BmstuUniversityAdapter
-
 
 BACKEND_ROOT = Path(__file__).parents[2]
 
@@ -45,6 +50,10 @@ def test_postgresql_ingest_is_repeatable_and_updates_projection() -> None:
     try:
         _migrate(database_url)
         repository = SqlAlchemyIngestionRepository(engine)
+        with Session(engine) as session:
+            initial_ingest_run_count = session.scalar(
+                select(func.count()).select_from(IngestRunModel)
+            )
         repository.ingest(raw, canonical)
         repository.ingest(raw, canonical)
 
@@ -58,7 +67,9 @@ def test_postgresql_ingest_is_repeatable_and_updates_projection() -> None:
         repository.ingest(raw, updated)
 
         with Session(engine) as session:
-            assert session.scalar(select(func.count()).select_from(IngestRunModel)) == 3
+            assert session.scalar(
+                select(func.count()).select_from(IngestRunModel)
+            ) == initial_ingest_run_count + 3
             assert session.get(ProgramModel, canonical.programs[0].id).name == "PostgreSQL sync check"
             assert session.scalar(
                 select(func.count()).select_from(CurriculumItemModel).where(CurriculumItemModel.curriculum_id == canonical.curricula[0].id)

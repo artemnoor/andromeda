@@ -23,6 +23,7 @@ import { AdmissionPage } from "@/features/admission/admission-page";
 import { UniversityAdminPage } from "@/features/university-admin/university-admin-page";
 import { UniversityCatalogPage } from "@/features/university/university-catalog-page";
 import { AssistantPage } from "@/features/assistant/assistant-page";
+import { KnowledgeReviewPage } from "@/features/knowledge-review/knowledge-review-page";
 
 export default function Page() {
   const { route, navigate } = useRouter();
@@ -68,6 +69,7 @@ export default function Page() {
         {route.view === "account" && <AccountPage navigate={navigate} />}
         {route.view === "ops" && <OpsPage />}
         {route.view === "university-admin" && <UniversityAdminPage requestedUniversityId={route.id} navigate={navigate} />}
+        {route.view === "knowledge-review" && <KnowledgeReviewPage navigate={navigate} />}
         {route.view === "university-catalog" && <UniversityCatalogPage universityId={route.id} navigate={navigate} />}
       </AppShell>
     </DecisionContextProvider>

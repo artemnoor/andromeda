@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -19,11 +20,20 @@ from andromeda.infrastructure.jev_tree.transport import NodeJevTreeTransport
 from andromeda.infrastructure.jevql.adapter import JevQLAdapter
 from andromeda.infrastructure.jevql.config import JevQLConfig, JevQLMode
 from andromeda.infrastructure.repositories.admin_ops import SqlAlchemyIngestionRunReader
+from andromeda.infrastructure.repositories.admission_benefit_policy import (
+    AdmissionBenefitsPolicyRuleReader,
+)
 from andromeda.infrastructure.repositories.admission_benefits import (
     SqlAlchemyAdmissionBenefitsRepository,
 )
+from andromeda.infrastructure.repositories.admission_cycles import (
+    SqlAlchemyAdmissionCycleRepository,
+)
 from andromeda.infrastructure.repositories.admission_fit import (
     SqlAlchemyAdmissionFitReader,
+)
+from andromeda.infrastructure.repositories.admission_policy import (
+    AdmissionsPolicyRuleReader,
 )
 from andromeda.infrastructure.repositories.admissions import (
     SqlAlchemyAdmissionRepository,
@@ -63,6 +73,35 @@ from andromeda.infrastructure.repositories.ingestion_recovery import (
 )
 from andromeda.infrastructure.repositories.ingestion_retry import (
     SqlAlchemyIngestionRetryExecutor,
+)
+from andromeda.infrastructure.repositories.knowledge_candidates import (
+    SqlAlchemyKnowledgeCandidateRepository,
+)
+from andromeda.infrastructure.repositories.knowledge_conflicts import (
+    SqlAlchemyConflictGroupRepository,
+)
+from andromeda.infrastructure.repositories.knowledge_manual import (
+    SqlAlchemyKnowledgeManualSubmissionRepository,
+)
+from andromeda.infrastructure.repositories.knowledge_manual_auth import (
+    ConfiguredKnowledgeManualAuthorization,
+    UniversityPolicySubmissionOnlyAuthorizer,
+)
+from andromeda.infrastructure.repositories.knowledge_manual_capture import (
+    SqlAlchemyKnowledgeManualSnapshotCapture,
+)
+from andromeda.infrastructure.repositories.knowledge_review import (
+    SqlAlchemyKnowledgeReviewActionRepository,
+)
+from andromeda.infrastructure.repositories.knowledge_review_identity import (
+    SqlAlchemyKnowledgeReviewIdentityResolver,
+)
+from andromeda.infrastructure.repositories.knowledge_source_repository import (
+    SqlAlchemyKnowledgeSourceRepository,
+)
+from andromeda.infrastructure.repositories.policy import SqlAlchemyPolicyRuleRepository
+from andromeda.infrastructure.repositories.policy_refresh import (
+    SqlAlchemyPolicyProjectionRefreshRepository,
 )
 from andromeda.infrastructure.repositories.proftest import (
     SqlAlchemyProftestCatalogRepository,
@@ -106,8 +145,12 @@ from andromeda.modules.admission_benefits.services.facade import (
     AdmissionBenefitCatalogService,
     AdmissionEligibilityService,
 )
+from andromeda.modules.admission_benefits.services.policy_evaluation import (
+    AdmissionBenefitsPolicyEvaluationService,
+)
 from andromeda.modules.admission_fit.repository.ports import AdmissionFitDataReader
 from andromeda.modules.admission_fit.services.admission_fit import AdmissionFitService
+from andromeda.modules.admissions.repository.ports import AdmissionCycleRepository
 from andromeda.modules.admissions.services.admissions import AdmissionService
 from andromeda.modules.analytics.services.cache import AnalyticsResultCache
 from andromeda.modules.analytics.services.executor import AnalyticsExecutor
@@ -141,8 +184,50 @@ from andromeda.modules.entity_resolution.services.resolvers import (
     EntityResolverService,
 )
 from andromeda.modules.events.services.events import EventService
+from andromeda.modules.knowledge.repository.ports import (
+    ConflictGroupRepository,
+    KnowledgeCandidateRepository,
+    KnowledgeReviewActionRepository,
+    KnowledgeReviewAuthorizer,
+    KnowledgeSourceRepository,
+)
+from andromeda.modules.knowledge.services.manual_source_commands import (
+    ManualSourceCommands,
+)
+from andromeda.modules.knowledge.services.review_workflow import (
+    KnowledgeReviewIdentityResolver,
+    KnowledgeReviewPolicyApprovalPort,
+    KnowledgeReviewWorkflow,
+)
 from andromeda.modules.personal_route.services.personal_route import (
     PersonalRouteService,
+)
+from andromeda.modules.policy.repository.ports import (
+    PolicyCapabilityAuthorizer,
+    PolicyProjectionRefreshRepository,
+    PolicyRuleRepository,
+)
+from andromeda.modules.policy.services.approval import PolicyApprovalCommandService
+from andromeda.modules.policy.services.dependency_refresh import (
+    PolicyDependencyRefreshService,
+)
+from andromeda.modules.policy.services.effective_rule_resolver import (
+    EffectivePolicyResolver,
+)
+from andromeda.modules.policy.services.impact_analyzer import PolicyImpactAnalyzer
+from andromeda.modules.policy.services.knowledge_review_adapter import (
+    PolicyApprovalReviewAdapter,
+)
+from andromeda.modules.policy.services.manual_submission import (
+    ManualPolicyCandidateCommands,
+)
+from andromeda.modules.policy.services.ports import (
+    PolicyDomainImpactPort,
+    PolicyDomainRuleReader,
+    PolicyProjectionRefreshBuilder,
+)
+from andromeda.modules.policy.services.sandbox_evaluator import (
+    PolicyHypotheticalSandbox,
 )
 from andromeda.modules.presentation.services.rule_response_policy import (
     RuleBasedResponsePolicy,
@@ -151,6 +236,13 @@ from andromeda.modules.proftest.repository.ports import UserProfileRepository
 from andromeda.modules.proftest.services.catalog import ProftestCatalogService
 
 logger = logging.getLogger("andromeda.composition.container")
+
+
+class _SystemPolicyClock:
+    def now(self) -> datetime:
+        return datetime.now(UTC)
+
+
 from andromeda.modules.proftest.services.profile_persistence import (
     UserProfilePersistenceService,
 )
@@ -203,9 +295,15 @@ class AndromedaContainer:
     engine: Engine
     settings: Settings
     analytics_cache: AnalyticsResultCache = field(default_factory=AnalyticsResultCache)
-    _decision_policy_cache: DecisionPolicyPort | None = field(default=None, init=False, repr=False, compare=False)
-    _admission_candidate_selector_cache: BoundedCandidateSelector | None = field(default=None, init=False, repr=False, compare=False)
-    _admission_candidate_selector_built: bool = field(default=False, init=False, repr=False, compare=False)
+    _decision_policy_cache: DecisionPolicyPort | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
+    _admission_candidate_selector_cache: BoundedCandidateSelector | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
+    _admission_candidate_selector_built: bool = field(
+        default=False, init=False, repr=False, compare=False
+    )
 
     def program_reader(self, session: Session) -> ProgramReader:
         return SqlAlchemyProgramRepository(session)
@@ -218,16 +316,26 @@ class AndromedaContainer:
     ) -> SqlAlchemyUniversityAdminMembershipRepository:
         return SqlAlchemyUniversityAdminMembershipRepository(session)
 
-    def university_admin_access_reader(self, session: Session) -> UniversityAdminAccessReader:
+    def university_admin_access_reader(
+        self, session: Session
+    ) -> UniversityAdminAccessReader:
         return self.university_admin_membership_repository(session)
 
-    def university_admin_membership_writer(self, session: Session) -> UniversityMembershipWriter:
+    def university_admin_membership_writer(
+        self, session: Session
+    ) -> UniversityMembershipWriter:
         return self.university_admin_membership_repository(session)
 
-    def university_admin_access_service(self, session: Session) -> UniversityAdminAccessService:
-        return UniversityAdminAccessService(self.university_admin_access_reader(session))
+    def university_admin_access_service(
+        self, session: Session
+    ) -> UniversityAdminAccessService:
+        return UniversityAdminAccessService(
+            self.university_admin_access_reader(session)
+        )
 
-    def university_membership_service(self, session: Session) -> UniversityMembershipService:
+    def university_membership_service(
+        self, session: Session
+    ) -> UniversityMembershipService:
         repository = self.university_admin_membership_repository(session)
         return UniversityMembershipService(repository, repository)
 
@@ -237,20 +345,30 @@ class AndromedaContainer:
     def university_catalog_writer(self, session: Session) -> UniversityCatalogWriter:
         return SqlAlchemyUniversityCatalogRepository(session)
 
-    def university_catalog_canonical_reader(self, session: Session) -> UniversityCatalogCanonicalReader:
+    def university_catalog_canonical_reader(
+        self, session: Session
+    ) -> UniversityCatalogCanonicalReader:
         return SqlAlchemyUniversityCatalogCanonicalReader(session)
 
     def university_catalog_service(self, session: Session) -> UniversityCatalogService:
         repository = SqlAlchemyUniversityCatalogRepository(session)
-        return UniversityCatalogService(repository, repository, self.university_catalog_canonical_reader(session))
+        return UniversityCatalogService(
+            repository, repository, self.university_catalog_canonical_reader(session)
+        )
 
-    def university_editorial_event_reader(self, session: Session) -> UniversityEditorialEventReader:
+    def university_editorial_event_reader(
+        self, session: Session
+    ) -> UniversityEditorialEventReader:
         return SqlAlchemyUniversityEditorialEventRepository(session)
 
-    def university_editorial_event_writer(self, session: Session) -> UniversityEditorialEventWriter:
+    def university_editorial_event_writer(
+        self, session: Session
+    ) -> UniversityEditorialEventWriter:
         return SqlAlchemyUniversityEditorialEventRepository(session)
 
-    def university_editorial_event_service(self, session: Session) -> UniversityEditorialEventService:
+    def university_editorial_event_service(
+        self, session: Session
+    ) -> UniversityEditorialEventService:
         repository = SqlAlchemyUniversityEditorialEventRepository(session)
         return UniversityEditorialEventService(
             repository,
@@ -268,11 +386,18 @@ class AndromedaContainer:
     def admission_reader(self, session: Session) -> SqlAlchemyAdmissionRepository:
         return SqlAlchemyAdmissionRepository(session)
 
+    def admission_cycle_repository(self, session: Session) -> AdmissionCycleRepository:
+        return SqlAlchemyAdmissionCycleRepository(session)
+
     def admission_service(self, session: Session) -> AdmissionService:
-        return AdmissionService(self.program_reader(session), self.admission_reader(session))
+        return AdmissionService(
+            self.program_reader(session), self.admission_reader(session)
+        )
 
     def admission_fit_reader(self, session: Session) -> AdmissionFitDataReader:
-        return SqlAlchemyAdmissionFitReader(self.program_reader(session), self.admission_reader(session))
+        return SqlAlchemyAdmissionFitReader(
+            self.program_reader(session), self.admission_reader(session)
+        )
 
     def admission_fit_service(self, session: Session) -> AdmissionFitService:
         return AdmissionFitService(self.admission_fit_reader(session))
@@ -280,14 +405,29 @@ class AndromedaContainer:
     def admission_benefit_repository(self, session: Session) -> AdmissionBenefitReader:
         return SqlAlchemyAdmissionBenefitsRepository(session)
 
-    def admission_benefit_catalog_service(self, session: Session) -> AdmissionBenefitCatalogService:
-        return AdmissionBenefitCatalogService(self.admission_benefit_repository(session))
+    def admission_benefit_catalog_service(
+        self, session: Session
+    ) -> AdmissionBenefitCatalogService:
+        return AdmissionBenefitCatalogService(
+            self.admission_benefit_repository(session)
+        )
 
-    def admission_eligibility_service(self, session: Session) -> AdmissionEligibilityService:
+    def admission_eligibility_service(
+        self, session: Session
+    ) -> AdmissionEligibilityService:
         return AdmissionEligibilityService(
             self.admission_benefit_repository(session),
             AdmissionDecisionService(),
             self.admission_reader(session),
+        )
+
+    def admission_benefits_policy_evaluator(
+        self, session: Session
+    ) -> AdmissionBenefitsPolicyEvaluationService:
+        return AdmissionBenefitsPolicyEvaluationService(
+            self.admission_benefit_repository(session),
+            self.admission_reader(session),
+            AdmissionDecisionService(),
         )
 
     def comparison_service(self, session: Session) -> CompareProgramsService:
@@ -304,7 +444,9 @@ class AndromedaContainer:
             self.curriculum_reader(session),
         )
 
-    def proftest_catalog_reader(self, session: Session) -> SqlAlchemyProftestCatalogRepository:
+    def proftest_catalog_reader(
+        self, session: Session
+    ) -> SqlAlchemyProftestCatalogRepository:
         return SqlAlchemyProftestCatalogRepository(
             self.program_reader(session),
             self.curriculum_reader(session),
@@ -318,10 +460,14 @@ class AndromedaContainer:
             projection_reader=SqlAlchemyProgramProjectionRepository(self.engine),
         )
 
-    def user_profile_repository(self, session: Session) -> SqlAlchemyUserProfileRepository:
+    def user_profile_repository(
+        self, session: Session
+    ) -> SqlAlchemyUserProfileRepository:
         return SqlAlchemyUserProfileRepository(session)
 
-    def profile_persistence_service(self, session: Session) -> UserProfilePersistenceService:
+    def profile_persistence_service(
+        self, session: Session
+    ) -> UserProfilePersistenceService:
         return UserProfilePersistenceService(
             self.user_profile_repository(session),
             ttl_seconds=self.settings.profile_ttl_seconds,
@@ -330,25 +476,35 @@ class AndromedaContainer:
     def current_user_profile_reader(self, session: Session) -> UserProfileRepository:
         return self.user_profile_repository(session)
 
-    def recommendation_catalog_reader(self, session: Session) -> CatalogRecommendationRepository:
+    def recommendation_catalog_reader(
+        self, session: Session
+    ) -> CatalogRecommendationRepository:
         return CatalogRecommendationRepository(self.proftest_catalog_service(session))
 
     def recommendation_service(self, session: Session) -> RecommendationService:
         return RecommendationService(self.recommendation_catalog_reader(session))
 
-    def decision_context_repository(self, session: Session) -> SqlAlchemyDecisionContextRepository:
+    def decision_context_repository(
+        self, session: Session
+    ) -> SqlAlchemyDecisionContextRepository:
         return SqlAlchemyDecisionContextRepository(session)
 
-    def decision_analytics_writer(self, session: Session) -> SqlAlchemyDecisionAnalyticsRepository:
+    def decision_analytics_writer(
+        self, session: Session
+    ) -> SqlAlchemyDecisionAnalyticsRepository:
         return SqlAlchemyDecisionAnalyticsRepository(session)
 
-    def decision_analytics_reader(self, session: Session) -> SqlAlchemyDecisionAnalyticsRepository:
+    def decision_analytics_reader(
+        self, session: Session
+    ) -> SqlAlchemyDecisionAnalyticsRepository:
         return SqlAlchemyDecisionAnalyticsRepository(session)
 
     def decision_analytics_service(self, session: Session) -> DecisionAnalyticsService:
         return DecisionAnalyticsService(self.decision_analytics_writer(session))
 
-    def decision_candidate_source(self, session: Session) -> CatalogDecisionCandidateSource:
+    def decision_candidate_source(
+        self, session: Session
+    ) -> CatalogDecisionCandidateSource:
         return CatalogDecisionCandidateSource(
             self.program_reader(session),
             self.recommendation_catalog_reader(session),
@@ -356,7 +512,9 @@ class AndromedaContainer:
             self.university_reader(session),
         )
 
-    def decision_candidate_pipeline(self, session: Session) -> DecisionCandidatePipeline:
+    def decision_candidate_pipeline(
+        self, session: Session
+    ) -> DecisionCandidatePipeline:
         return DecisionCandidatePipeline(
             self.decision_candidate_source(session),
             self.recommendation_service(session),
@@ -381,7 +539,9 @@ class AndromedaContainer:
             profile_persistence=self.profile_persistence_service(session),
         )
 
-    def proftest_session_repository(self, session: Session) -> SqlAlchemyProftestSessionRepository:
+    def proftest_session_repository(
+        self, session: Session
+    ) -> SqlAlchemyProftestSessionRepository:
         return SqlAlchemyProftestSessionRepository(session)
 
     def proftest_session_service(self, session: Session) -> ProftestSessionService:
@@ -395,7 +555,9 @@ class AndromedaContainer:
             ttl_seconds=self.settings.profile_ttl_seconds,
         )
 
-    def current_recommendation_service(self, session: Session) -> CurrentRecommendationService:
+    def current_recommendation_service(
+        self, session: Session
+    ) -> CurrentRecommendationService:
         return CurrentRecommendationService(
             self.current_user_profile_reader(session),
             self.recommendation_service(session),
@@ -449,6 +611,160 @@ class AndromedaContainer:
             self.ingestion_retry_executor(),
             self.ingestion_run_recovery(),
             stale_timeout_seconds=self.settings.ingestion_run_timeout_seconds,
+        )
+
+    def knowledge_source_repository(
+        self, session: Session
+    ) -> KnowledgeSourceRepository:
+        return SqlAlchemyKnowledgeSourceRepository(session)
+
+    def knowledge_candidate_repository(
+        self, session: Session
+    ) -> KnowledgeCandidateRepository:
+        return SqlAlchemyKnowledgeCandidateRepository(session)
+
+    def knowledge_conflict_repository(
+        self, session: Session
+    ) -> ConflictGroupRepository:
+        return SqlAlchemyConflictGroupRepository(session)
+
+    def knowledge_manual_commands(self, session: Session) -> ManualSourceCommands:
+        return ManualSourceCommands(
+            sources=SqlAlchemyKnowledgeSourceRepository(session),
+            candidates=SqlAlchemyKnowledgeCandidateRepository(session),
+            submissions=SqlAlchemyKnowledgeManualSubmissionRepository(session),
+            authorizer=ConfiguredKnowledgeManualAuthorization(
+                university_access=self.university_admin_access_service(session),
+                source_steward_account_ids=self.settings.knowledge_source_steward_account_ids,
+            ),
+            capture=SqlAlchemyKnowledgeManualSnapshotCapture(self.engine, session),
+            unit_of_work=session,
+        )
+
+    def manual_policy_candidate_commands(
+        self, session: Session, *, actor_account_id: str, university_id: str
+    ) -> ManualPolicyCandidateCommands:
+        authorizer = UniversityPolicySubmissionOnlyAuthorizer(
+            university_access=self.university_admin_access_service(session),
+            actor_account_id=actor_account_id,
+            university_id=university_id,
+        )
+        return ManualPolicyCandidateCommands(
+            approval_commands=self.policy_approval_command_service(session, authorizer),
+            authorizer=authorizer,
+        )
+
+    def knowledge_review_action_repository(
+        self, session: Session
+    ) -> KnowledgeReviewActionRepository:
+        return SqlAlchemyKnowledgeReviewActionRepository(session)
+
+    def knowledge_review_workflow(
+        self,
+        session: Session,
+        authorizer: KnowledgeReviewAuthorizer,
+        identity_resolver: KnowledgeReviewIdentityResolver | None = None,
+        policy_authorizer: PolicyCapabilityAuthorizer | None = None,
+    ) -> KnowledgeReviewWorkflow:
+        policy_approval_port: KnowledgeReviewPolicyApprovalPort | None = None
+        if policy_authorizer is not None:
+            policy_approval_port = PolicyApprovalReviewAdapter(
+                self.policy_approval_command_service(session, policy_authorizer)
+            )
+        return KnowledgeReviewWorkflow(
+            candidates=SqlAlchemyKnowledgeCandidateRepository(session),
+            actions=self.knowledge_review_action_repository(session),
+            authorizer=authorizer,
+            unit_of_work=session,
+            identity_resolver=identity_resolver
+            or SqlAlchemyKnowledgeReviewIdentityResolver(session),
+            policy_approval_port=policy_approval_port,
+        )
+
+    def policy_rule_repository(self, session: Session) -> PolicyRuleRepository:
+        return SqlAlchemyPolicyRuleRepository(session)
+
+    def policy_domain_rule_readers(
+        self, session: Session
+    ) -> tuple[PolicyDomainRuleReader, ...]:
+        return (
+            *self.admission_benefit_policy_adapters(session),
+            AdmissionsPolicyRuleReader(
+                self.admission_reader(session),
+                SqlAlchemyKnowledgeSourceRepository(session),
+            ),
+        )
+
+    def policy_domain_impact_readers(
+        self, session: Session
+    ) -> tuple[PolicyDomainImpactPort, ...]:
+        return (
+            *self.admission_benefit_policy_adapters(session),
+            AdmissionsPolicyRuleReader(
+                self.admission_reader(session),
+                SqlAlchemyKnowledgeSourceRepository(session),
+            ),
+        )
+
+    def admission_benefit_policy_adapters(
+        self, session: Session
+    ) -> tuple[AdmissionBenefitsPolicyRuleReader, ...]:
+        return (
+            AdmissionBenefitsPolicyRuleReader(
+                SqlAlchemyAdmissionBenefitsRepository(session),
+                source_observations=SqlAlchemyKnowledgeSourceRepository(session),
+            ),
+        )
+
+    def policy_impact_analyzer(self, session: Session) -> PolicyImpactAnalyzer:
+        return PolicyImpactAnalyzer(
+            domain_owners=self.policy_domain_impact_readers(session)
+        )
+
+    def policy_hypothetical_sandbox(
+        self, session: Session
+    ) -> PolicyHypotheticalSandbox:
+        return PolicyHypotheticalSandbox(
+            revisions=self.policy_rule_repository(session),
+            admission_cycles=self.admission_cycle_repository(session),
+            domain_readers=self.policy_domain_rule_readers(session),
+            domain_impact_readers=self.policy_domain_impact_readers(session),
+            clock=_SystemPolicyClock(),
+        )
+
+    def effective_policy_resolver(self, session: Session) -> EffectivePolicyResolver:
+        return EffectivePolicyResolver(
+            policies=self.policy_rule_repository(session),
+            admission_cycles=self.admission_cycle_repository(session),
+            domain_readers=self.policy_domain_rule_readers(session),
+            clock=_SystemPolicyClock(),
+        )
+
+    def policy_approval_command_service(
+        self,
+        session: Session,
+        authorizer: PolicyCapabilityAuthorizer,
+    ) -> PolicyApprovalCommandService:
+        return PolicyApprovalCommandService(
+            repository=self.policy_rule_repository(session),
+            authorizer=authorizer,
+            unit_of_work=session,
+        )
+
+    def policy_projection_refresh_repository(
+        self, session: Session
+    ) -> PolicyProjectionRefreshRepository:
+        return SqlAlchemyPolicyProjectionRefreshRepository(session)
+
+    def policy_dependency_refresh_service(
+        self,
+        session: Session,
+        builder: PolicyProjectionRefreshBuilder,
+    ) -> PolicyDependencyRefreshService:
+        return PolicyDependencyRefreshService(
+            repository=self.policy_projection_refresh_repository(session),
+            approved_rules=self.policy_rule_repository(session),
+            builder=builder,
         )
 
     @property
@@ -517,7 +833,11 @@ class AndromedaContainer:
                 shared_allowed_hosts=(host,),
                 shared_bearer_token=self.settings.jevql_token,
             )
-        logger.info("jevql_composed mode=%s endpoint_configured=%s", config.mode.value, config.shared_endpoint is not None)
+        logger.info(
+            "jevql_composed mode=%s endpoint_configured=%s",
+            config.mode.value,
+            config.shared_endpoint is not None,
+        )
         return JevQLAdapter(config=config)
 
     def entity_resolver(self, session: Session | None = None) -> EntityResolverService:
@@ -544,7 +864,12 @@ class AndromedaContainer:
 
         if not self.settings.jev_tree_enabled:
             return None
-        bridge_path = Path(__file__).resolve().parents[3] / "jev-tree-bridge" / "src" / "index.mjs"
+        bridge_path = (
+            Path(__file__).resolve().parents[3]
+            / "jev-tree-bridge"
+            / "src"
+            / "index.mjs"
+        )
         config = JevTreeConfig(
             enabled=True,
             bridge_path=bridge_path,
@@ -567,6 +892,12 @@ class AndromedaContainer:
             self.admission_fit_service(session),
             self.program_reader(session),
             entity_resolver=self.entity_resolver(session),
+            policy_resolver=self.effective_policy_resolver(session),
+            claim_lookup=self.knowledge_candidate_repository(session),
+            admission_benefit_policy_evaluator=self.admission_benefits_policy_evaluator(
+                session
+            ),
+            knowledge_policy_enabled=self.settings.knowledge_policy_assistant_enabled,
             ttl_seconds=self.settings.profile_ttl_seconds,
         )
 
@@ -579,10 +910,14 @@ class AndromedaContainer:
         return cached_policy
 
 
-def build_container(engine: Engine, settings: Settings | None = None) -> AndromedaContainer:
+def build_container(
+    engine: Engine, settings: Settings | None = None
+) -> AndromedaContainer:
     """Build the only active service graph for an application process."""
 
-    return AndromedaContainer(engine=engine, settings=settings or Settings.from_environment())
+    return AndromedaContainer(
+        engine=engine, settings=settings or Settings.from_environment()
+    )
 
 
 __all__ = ["AndromedaContainer", "build_container"]
