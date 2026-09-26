@@ -53,7 +53,7 @@ def test_reused_olympiad_corpus_is_source_labeled_and_separate_from_predictions(
     operation = gate["reused_existing_operations"][0]
     corpus_bytes = GOLDEN_CASES_PATH.read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(corpus_bytes).hexdigest() == operation["golden_corpus_sha256"]
-    registry_bytes = ADMISSION_REGISTRY_PATH.read_bytes()
+    registry_bytes = ADMISSION_REGISTRY_PATH.read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(registry_bytes).hexdigest() == operation[
         "registry_artifact_sha256"
     ]

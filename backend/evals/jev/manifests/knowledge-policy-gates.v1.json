@@ -8,7 +8,7 @@
       "definition_id": "olympiad-profile-resolution.v1",
       "definition_version": "olympiad-profile-resolution-definition.v1",
       "registry_artifact": "config/jev/question-definitions.admission.v1.yaml",
-      "registry_artifact_sha256": "374edc8eb9fe050c7f1283534955b47a755825af9f2517438efc952012c384cf",
+      "registry_artifact_sha256": "4653b9904bb8b550a8686bca202ee70cbeecb4b50175d49d5a7524e8206c36c6",
       "golden_corpus": "evals/jev/corpus/operation-captures/olympiad-profile-resolution.v2.cases.jsonl",
       "golden_corpus_sha256": "5e9ce67abf6bd948195033ef486639a8d61f0dfac470edd51f2901dd4aa69ce4",
       "case_count": 120,
