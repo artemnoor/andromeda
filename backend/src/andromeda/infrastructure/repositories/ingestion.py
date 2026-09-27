@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from hashlib import sha256
 from time import perf_counter
 from typing import Any
 from uuid import uuid4
@@ -15,33 +16,64 @@ from sqlalchemy.orm import Session
 from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import RawSourceSnapshot, RawTracerBundle
 from andromeda.ingestion.contracts.source import CapturedSources
-from andromeda.ingestion.quality import PreviousProjection, QualityOutcome, is_critical_gap
-from andromeda.modules.disciplines.contracts.public import DisciplineAreaWeight, area_catalog
+from andromeda.ingestion.quality import (
+    PreviousProjection,
+    QualityOutcome,
+    is_critical_gap,
+)
+from andromeda.modules.analytics.services.projection_builder import (
+    ProgramProjectionService,
+)
+from andromeda.modules.disciplines.contracts.public import (
+    DisciplineAreaWeight,
+    area_catalog,
+)
+from andromeda.modules.program_analytics.contracts.public import (
+    DerivedRefreshOutcome,
+    DerivedRefreshPort,
+    DerivedRefreshRequest,
+    DerivedRefreshStatus,
+)
+from andromeda.modules.semantic.domain import DEFAULT_SEMANTIC_FEATURES
+from andromeda.modules.semantic.services.enrichment import SemanticEnrichmentService
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel
-from andromeda.shared.contracts.errors import AndromedaError, ConflictError, ContractError, ErrorCode, ErrorDetail
+from andromeda.shared.contracts.errors import (
+    AndromedaError,
+    ConflictError,
+    ContractError,
+    ErrorCode,
+    ErrorDetail,
+)
 from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
+from andromeda.shared.contracts.versions import (
+    ANALYTICS_PROJECTION_SCHEMA_VERSION,
+    SEMANTIC_CLASSIFIER_VERSION,
+    SEMANTIC_TAXONOMY_VERSION,
+)
 
 from ..database.models import (
     AssessmentTypeModel,
     CurriculumItemAssessmentModel,
     CurriculumItemModel,
+    CurriculumItemSourceLinkModel,
     CurriculumModel,
+    DirectionModel,
     DisciplineAreaModel,
     DisciplineAreaWeightModel,
-    DirectionModel,
     DisciplineModel,
     EducationLevelModel,
     IngestRunModel,
     ProgramModel,
     RawSourceRecordModel,
+    SemanticFeatureModel,
     SourceSnapshotModel,
     UniversityModel,
 )
 from ..database.session import session_factory
+from .admission_benefits import SqlAlchemyAdmissionBenefitsRepository
 from .admissions import SqlAlchemyAdmissionRepository
-from .events import SqlAlchemyEventRepository
 from .campus import SqlAlchemyCampusPointRepository
-
+from .events import SqlAlchemyEventRepository
 
 logger = logging.getLogger("andromeda.infrastructure.repositories.ingestion")
 _LEGACY_UNIVERSITY_ID = "university:legacy"
@@ -67,8 +99,18 @@ class _SyncStats:
 class SqlAlchemyIngestionRepository:
     """Atomic write adapter from canonical DTOs to infrastructure models."""
 
-    def __init__(self, engine: Any) -> None:
+    def __init__(
+        self,
+        engine: Any,
+        *,
+        derived_refresh: DerivedRefreshPort | None = None,
+        semantic_enrichment: SemanticEnrichmentService | None = None,
+        projection_service: ProgramProjectionService | None = None,
+    ) -> None:
         self._factory = session_factory(engine)
+        self._derived_refresh = derived_refresh
+        self._semantic_enrichment = semantic_enrichment
+        self._projection_service = projection_service
 
     def start_run(
         self,
@@ -168,7 +210,12 @@ class SqlAlchemyIngestionRepository:
             run_id,
             len(raw.snapshots),
             sum(len(snapshot.body) for snapshot in raw.snapshots),
-            len(raw.programs) + len(raw.curriculum_rows) + len(raw.admissions) + len(raw.events) + len(raw.campus_points),
+            len(raw.programs)
+            + len(raw.curriculum_rows)
+            + len(raw.admissions)
+            + len(raw.events)
+            + len(raw.campus_points)
+            + len(raw.admission_benefit_records),
         )
         self._update_run_metadata(
             run_id,
@@ -200,8 +247,43 @@ class SqlAlchemyIngestionRepository:
             source_kinds=tuple(snapshot.source_kind for snapshot in snapshots),
         )
 
+    def record_staged_source_snapshots(
+        self, run_id: str, snapshots: tuple[RawSourceSnapshot, ...]
+    ) -> None:
+        """Persist immutable captures without starting a canonical projection."""
+        logger.info("staged_source_snapshot_batch_start run_id=%s count=%d", run_id, len(snapshots))
+        with self._factory() as session, session.begin():
+            run = session.get(IngestRunModel, run_id)
+            if run is None or run.status != "running":
+                raise ContractError(ErrorCode.CONTRACT_ERROR, "Source discovery ingest run is not running")
+            for snapshot in snapshots:
+                self._insert_snapshot(session, run_id, snapshot)
+            run.source_count = len(snapshots)
+            run.source_hashes_json = json.dumps(
+                tuple(item.content_sha256 for item in snapshots), separators=(",", ":")
+            )
+            run.source_kinds_json = json.dumps(
+                tuple(item.source_kind for item in snapshots), separators=(",", ":")
+            )
+            run.heartbeat_at = datetime.now(timezone.utc)
+        logger.info("staged_source_snapshot_batch_complete run_id=%s count=%d", run_id, len(snapshots))
+
+    def finish_source_capture_run(self, run_id: str) -> None:
+        """Close a capture-only audit run without changing canonical projections."""
+        with self._factory() as session, session.begin():
+            run = session.get(IngestRunModel, run_id)
+            if run is None or run.status != "running":
+                raise ContractError(ErrorCode.CONTRACT_ERROR, "Source discovery ingest run is not running")
+            run.finished_at = datetime.now(timezone.utc)
+            run.duration_ms = _duration_ms(run.started_at, run.finished_at)
+            run.status = "completed"
+            run.heartbeat_at = run.finished_at
+        logger.info("source_capture_run_complete run_id=%s", run_id)
+
     def ingest(self, raw: RawTracerBundle, canonical: CanonicalSnapshot, *, run_id: str | None = None) -> str:
         resolved_run_id = run_id or self.start_run(university_id=str(canonical.university.id))
+        raw = _bind_admission_benefit_raw_run(raw, resolved_run_id)
+        canonical = _bind_admission_benefit_run(canonical, resolved_run_id)
         source_hashes = tuple(snapshot.content_sha256 for snapshot in raw.snapshots)
         source_kinds = tuple(snapshot.source_kind for snapshot in raw.snapshots)
         self._update_run_metadata(
@@ -235,6 +317,7 @@ class SqlAlchemyIngestionRepository:
                     stats = self._insert_domain(
                         session,
                         canonical,
+                        run_id=resolved_run_id,
                         event_source_present=any(snapshot.source_kind == "bmstu_events" for snapshot in raw.snapshots),
                         campus_source_present=any(snapshot.source_kind == "bmstu_campus_points" for snapshot in raw.snapshots),
                     )
@@ -263,6 +346,57 @@ class SqlAlchemyIngestionRepository:
         except Exception:
             logger.exception("ingest_audit_complete_failed run_id=%s", resolved_run_id)
             raise
+        if self._derived_refresh is not None:
+            try:
+                derived_request = DerivedRefreshRequest(
+                    ingest_run_id=resolved_run_id,
+                    university_id=canonical.university.id,
+                    affected_program_ids=tuple(program.id for program in canonical.programs),
+                    source_hashes=tuple(source.content_sha256 for source in canonical.sources if source.content_sha256),
+                    semantic_version=SEMANTIC_TAXONOMY_VERSION,
+                    classifier_version=SEMANTIC_CLASSIFIER_VERSION,
+                    projection_version=ANALYTICS_PROJECTION_SCHEMA_VERSION,
+                    programs=canonical.programs,
+                    disciplines=canonical.disciplines,
+                    curricula=canonical.curricula,
+                    admissions=canonical.admissions,
+                )
+                derived_outcome = self._derived_refresh.refresh(derived_request)
+                self._mark_derived_refresh(resolved_run_id, derived_outcome)
+                logger.info(
+                    "ingest_derived_refresh_observed ingest_run_id=%s status=%s refreshed_programs=%d",
+                    resolved_run_id,
+                    derived_outcome.status,
+                    derived_outcome.refreshed_program_count,
+                )
+            except Exception as exc:
+                self._mark_derived_refresh_failed(resolved_run_id, exc)
+                logger.exception("ingest_derived_refresh_failed ingest_run_id=%s", resolved_run_id)
+        elif self._semantic_enrichment is not None:
+            try:
+                derived_run = self._semantic_enrichment.enrich(
+                    university_id=canonical.university.id,
+                    ingest_run_id=resolved_run_id,
+                    curricula=canonical.curricula,
+                    disciplines=canonical.disciplines,
+                )
+                logger.info(
+                    "ingest_semantic_enrichment_observed ingest_run_id=%s semantic_run_id=%s status=%s",
+                    resolved_run_id,
+                    derived_run.id,
+                    derived_run.status,
+                )
+                if self._projection_service is not None:
+                    projections = self._projection_service.refresh(canonical, derived_run)
+                    logger.info(
+                        "ingest_program_projection_observed ingest_run_id=%s program_count=%d",
+                        resolved_run_id,
+                        len(projections),
+                    )
+                self._mark_derived_refresh_legacy(resolved_run_id)
+            except Exception:
+                self._mark_derived_refresh_failed(resolved_run_id, RuntimeError("legacy_derived_refresh_failed"))
+                logger.exception("ingest_derived_projection_failed ingest_run_id=%s", resolved_run_id)
         logger.info(
             "ingest_transaction_commit run_id=%s programs=%d curriculum_items=%d inserted=%d updated=%d unchanged=%d removed=%d",
             resolved_run_id,
@@ -453,6 +587,37 @@ class SqlAlchemyIngestionRepository:
                     previous_status,
                 )
 
+    def _mark_derived_refresh(self, run_id: str, outcome: DerivedRefreshOutcome) -> None:
+        with self._factory() as session, session.begin():
+            run = session.get(IngestRunModel, run_id)
+            if run is None:
+                raise ContractError(ErrorCode.CONTRACT_ERROR, "Ingest audit row disappeared after derived refresh")
+            if outcome.status is DerivedRefreshStatus.COMPLETED:
+                run.projection_status = "reconciled"
+                run.recovery_reason = None
+            else:
+                run.projection_status = "failed"
+                run.recovery_reason = outcome.recovery_reason or "derived_refresh_incomplete"
+
+    def _mark_derived_refresh_legacy(self, run_id: str) -> None:
+        with self._factory() as session, session.begin():
+            run = session.get(IngestRunModel, run_id)
+            if run is not None:
+                run.projection_status = "reconciled"
+                run.recovery_reason = None
+
+    def _mark_derived_refresh_failed(self, run_id: str, error: Exception) -> None:
+        with self._factory() as session, session.begin():
+            run = session.get(IngestRunModel, run_id)
+            if run is not None:
+                run.projection_status = "failed"
+                run.recovery_reason = "derived_refresh_failed"
+        logger.warning(
+            "ingest_derived_refresh_status_failed run_id=%s error_code=%s",
+            run_id,
+            type(error).__name__,
+        )
+
     def _mark_failed(self, run_id: str, error: Exception) -> None:
         error_code = _safe_error_code(error)
         error_message = _safe_error_message(error)
@@ -512,6 +677,21 @@ class SqlAlchemyIngestionRepository:
                 or existing.position != definition.position
             ):
                 raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for discipline area {definition.code.value}")
+        for feature in DEFAULT_SEMANTIC_FEATURES:
+            semantic_existing = session.get(SemanticFeatureModel, feature.id)
+            values = {
+                "id": feature.id,
+                "code": feature.code,
+                "name": feature.name,
+                "description": feature.description,
+                "feature_group": feature.feature_group.value,
+                "value_type": feature.value_type.value,
+                "semantic_version": feature.semantic_version,
+            }
+            if semantic_existing is None:
+                session.add(SemanticFeatureModel(**values))
+            elif any(getattr(semantic_existing, key) != value for key, value in values.items() if key != "id"):
+                raise ContractError(ErrorCode.SOURCE_CONTRACT_ERROR, f"Identity conflict for semantic feature {feature.code}")
 
     @staticmethod
     def _insert_snapshot(session: Session, run_id: str, snapshot: RawSourceSnapshot) -> None:
@@ -548,6 +728,14 @@ class SqlAlchemyIngestionRepository:
         records.extend(("Event", event.model_dump_json(), str(event.source_url)) for event in raw.events)
         records.extend(("CampusPoint", point.model_dump_json(), str(point.source_url)) for point in raw.campus_points)
         records.extend(
+            ("AdmissionBenefit", record.model_dump_json(), str(record.source_url))
+            for record in raw.admission_benefit_records
+        )
+        records.extend(
+            ("AdmissionBenefitDiagnostic", diagnostic.model_dump_json(), str(diagnostic.locator.source_url))
+            for diagnostic in raw.admission_benefit_diagnostics
+        )
+        records.extend(
             ("SourceGap", gap.model_dump_json(), str(gap.locator.source_url))
             for gap in raw.source_gaps
             if str(gap.locator.source_url) in hashes_by_url
@@ -569,6 +757,7 @@ class SqlAlchemyIngestionRepository:
         session: Session,
         canonical: CanonicalSnapshot,
         *,
+        run_id: str,
         event_source_present: bool = False,
         campus_source_present: bool = False,
     ) -> _SyncStats:
@@ -629,6 +818,29 @@ class SqlAlchemyIngestionRepository:
             )
         session.flush()
         SqlAlchemyAdmissionRepository(session).sync(canonical.admissions)
+        session.flush()
+        if canonical.admission_benefits is not None:
+            benefit_stats = SqlAlchemyAdmissionBenefitsRepository(session).sync_snapshot(
+                canonical.admission_benefits,
+                source_run_id=run_id,
+            )
+            stats.inserted += (
+                benefit_stats.olympiads_inserted
+                + benefit_stats.profiles_inserted
+                + benefit_stats.rules_inserted
+                + benefit_stats.achievement_rules_inserted
+            )
+            stats.unchanged += benefit_stats.unchanged_rows
+            stats.removed += benefit_stats.stale_rows
+            logger.info(
+                "ingest_admission_benefits_projected run_id=%s year=%d rules=%d achievement_rules=%d stale=%d conflicts=%d",
+                run_id,
+                canonical.admission_benefits.admission_year,
+                benefit_stats.rules_inserted,
+                benefit_stats.achievement_rules_inserted,
+                benefit_stats.stale_rows,
+                benefit_stats.conflict_rows,
+            )
         session.flush()
         event_stats = SqlAlchemyEventRepository(session).sync(
             canonical.events,
@@ -708,6 +920,13 @@ class SqlAlchemyIngestionRepository:
                             "hours": item.hours,
                             "credits": item.credits,
                             "source_position": item.source_position,
+                            "lecture_hours": item.lecture_hours,
+                            "practice_hours": item.practice_hours,
+                            "lab_hours": item.lab_hours,
+                            "self_study_hours": item.self_study_hours,
+                            "is_elective": item.is_elective,
+                            "course_block": item.course_block,
+                            "practice_type": item.practice_type,
                         },
                         immutable_fields=("curriculum_id", "discipline_id", "semester", "semester_identity"),
                     )
@@ -716,8 +935,42 @@ class SqlAlchemyIngestionRepository:
         session.flush()
         cls._remove_stale_items(session, expected_item_ids, stats)
         session.flush()
+        cls._sync_item_source_links(session, canonical, run_id)
+        session.flush()
         cls._sync_assessments(session, pending_assessments, stats)
         return stats
+
+    @staticmethod
+    def _sync_item_source_links(session: Session, canonical: CanonicalSnapshot, run_id: str) -> None:
+        inserted = 0
+        updated = 0
+        for curriculum in canonical.curricula:
+            for item in curriculum.items:
+                for attribution in item.provenance:
+                    link_id = _curriculum_item_source_link_id(item.id, attribution)
+                    existing = session.get(CurriculumItemSourceLinkModel, link_id)
+                    link_run_id = attribution.run_id or run_id
+                    if existing is None:
+                        session.add(
+                            CurriculumItemSourceLinkModel(
+                                link_id=link_id,
+                                curriculum_item_id=item.id,
+                                source_sha256=attribution.content_sha256,
+                                source_url=str(attribution.url),
+                                locator=attribution.locator,
+                                university_id=attribution.university_id,
+                                field=attribution.field,
+                                record_key=attribution.record_key,
+                                inferred=attribution.inferred,
+                                ingest_run_id=link_run_id,
+                                created_at=datetime.now(timezone.utc),
+                            )
+                        )
+                        inserted += 1
+                    elif existing.ingest_run_id != link_run_id:
+                        existing.ingest_run_id = link_run_id
+                        updated += 1
+        logger.info("ingest_curriculum_source_links_sync run_id=%s inserted=%d updated=%d", run_id, inserted, updated)
 
     @staticmethod
     def _upsert(
@@ -818,6 +1071,83 @@ class SqlAlchemyIngestionRepository:
 
 def _semester_identity(semester: int | None) -> str:
     return "unassigned" if semester is None else f"semester:{semester}"
+
+
+def _bind_admission_benefit_raw_run(raw: RawTracerBundle, run_id: str) -> RawTracerBundle:
+    if not raw.admission_benefit_records:
+        return raw
+    return raw.model_copy(
+        update={
+            "admission_benefit_records": tuple(
+                record.model_copy(update={"source_run_id": run_id})
+                for record in raw.admission_benefit_records
+            )
+        }
+    )
+
+
+def _bind_admission_benefit_run(canonical: CanonicalSnapshot, run_id: str) -> CanonicalSnapshot:
+    snapshot = canonical.admission_benefits
+    if snapshot is None:
+        return canonical
+
+    def bind_provenance(value: Any) -> Any:
+        return value.model_copy(
+            update={
+                "source_run_id": run_id,
+                "source": value.source.model_copy(update={"run_id": run_id}),
+            }
+        )
+
+    olympiads = tuple(
+        value.model_copy(update={"provenance": tuple(bind_provenance(item) for item in value.provenance)})
+        for value in snapshot.olympiads
+    )
+    profiles = tuple(
+        value.model_copy(update={"provenance": tuple(bind_provenance(item) for item in value.provenance)})
+        for value in snapshot.olympiad_profiles
+    )
+    rules = tuple(
+        value.model_copy(update={"provenance": bind_provenance(value.provenance)})
+        for value in snapshot.benefit_rules
+    )
+    policy = snapshot.individual_achievement_policy
+    if policy is not None:
+        policy = policy.model_copy(
+            update={
+                "provenance": bind_provenance(policy.provenance),
+                "rules": tuple(
+                    value.model_copy(update={"provenance": bind_provenance(value.provenance)})
+                    for value in policy.rules
+                ),
+            }
+        )
+    rebound = snapshot.model_copy(
+        update={
+            "sources": tuple(source.model_copy(update={"run_id": run_id}) for source in snapshot.sources),
+            "olympiads": olympiads,
+            "olympiad_profiles": profiles,
+            "benefit_rules": rules,
+            "individual_achievement_policy": policy,
+        }
+    )
+    return canonical.model_copy(update={"admission_benefits": rebound})
+
+
+def _curriculum_item_source_link_id(item_id: str, attribution: SourceAttribution) -> str:
+    identity = "|".join(
+        (
+            item_id,
+            attribution.content_sha256,
+            str(attribution.url),
+            attribution.locator or "",
+            attribution.university_id or "",
+            attribution.field or "",
+            attribution.record_key or "",
+            str(attribution.inferred),
+        )
+    )
+    return f"curriculum-item-source:{sha256(identity.encode('utf-8')).hexdigest()}"
 
 
 def _provenance_json(values: tuple[SourceAttribution, ...]) -> str:

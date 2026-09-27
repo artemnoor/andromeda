@@ -13,6 +13,7 @@ from ...modules.universities.contracts.public import Direction, University
 from ...shared.contracts.base import ContractModel
 from ...shared.contracts.provenance import SourceAttribution
 from .raw import RawSourceGap
+from .admission_benefits import AdmissionBenefitsSnapshot
 
 
 class CanonicalSnapshot(ContractModel):
@@ -30,3 +31,4 @@ class CanonicalSnapshot(ContractModel):
     directions: tuple[Direction, ...] = ()
     source_gaps: tuple[RawSourceGap, ...] = ()
     classification_outcomes: tuple[ClassificationOutcome, ...] = ()
+    admission_benefits: AdmissionBenefitsSnapshot | None = None

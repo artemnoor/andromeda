@@ -86,6 +86,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/universities/{university_id}/admission-benefits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get University Admission Benefits */
+        get: operations["get_university_admission_benefits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/programs/{program_id}/admission-benefits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Program Admission Benefits */
+        get: operations["get_program_admission_benefits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admission-benefits/olympiads/{olympiad_id}/programs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Olympiad Admission Benefit Programs */
+        get: operations["get_olympiad_admission_benefit_programs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/programs/{program_id}/admission-eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Evaluate Program Admission Eligibility */
+        post: operations["evaluate_program_admission_eligibility"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/discipline-areas": {
         parameters: {
             query?: never;
@@ -131,6 +199,40 @@ export interface paths {
         get: operations["compare_summary_compare_summary_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Execute Analytics Query */
+        post: operations["execute_analytics_query_analytics_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assistant/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assistant Query */
+        post: operations["assistant_query_assistant_query_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -543,6 +645,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ops/knowledge/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register Knowledge Source */
+        post: operations["register_knowledge_source"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/knowledge/sources/{source_id}/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attach Knowledge Source Snapshot */
+        post: operations["attach_knowledge_source_snapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/knowledge/claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Manual Knowledge Claim Candidate */
+        post: operations["submit_manual_knowledge_claim_candidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/knowledge/claims/{claim_id}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Correct Manual Knowledge Claim Metadata */
+        put: operations["correct_manual_knowledge_claim_metadata"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/knowledge/policy-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Manual Policy Rule Candidate */
+        post: operations["submit_manual_policy_rule_candidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/knowledge/review-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Knowledge Review Queue */
+        get: operations["list_knowledge_review_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/knowledge/review-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Knowledge Policy Review */
+        post: operations["preview_knowledge_policy_review"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/knowledge/review-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply Knowledge Review Action */
+        post: operations["apply_knowledge_review_action"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/register": {
         parameters: {
             query?: never;
@@ -852,6 +1090,356 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/university-admin/memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Current Memberships */
+        get: operations["list_current_university_memberships"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/university-admin/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Provision Membership */
+        post: operations["provision_university_admin_membership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ops/university-admin/members/{membership_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Provisioned Membership */
+        delete: operations["revoke_provisioned_university_admin_membership"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List University Members */
+        get: operations["list_university_admin_members"];
+        put?: never;
+        /** Add University Member */
+        post: operations["add_university_admin_member"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/members/{membership_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke University Member */
+        delete: operations["revoke_university_admin_member"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/universities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Universities */
+        get: operations["list_universities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/universities/{university_id}/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Catalog */
+        get: operations["get_university_public_catalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Units */
+        get: operations["list_university_units"];
+        put?: never;
+        /** Create Unit */
+        post: operations["create_university_unit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/units/{unit_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Archive Unit */
+        delete: operations["archive_university_unit"];
+        options?: never;
+        head?: never;
+        /** Update Unit */
+        patch: operations["update_university_unit"];
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Categories */
+        get: operations["list_university_categories"];
+        put?: never;
+        /** Create Category */
+        post: operations["create_university_category"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Archive Category */
+        delete: operations["archive_university_category"];
+        options?: never;
+        head?: never;
+        /** Update Category */
+        patch: operations["update_university_category"];
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/catalog-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace Catalog Links */
+        put: operations["replace_university_catalog_links"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/programs/{program_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Program Editorial */
+        get: operations["get_university_program_editorial"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Program Editorial */
+        patch: operations["update_university_program_editorial"];
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/disciplines/{discipline_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Discipline Editorial */
+        get: operations["get_university_discipline_editorial"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Discipline Editorial */
+        patch: operations["update_university_discipline_editorial"];
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Admin Events */
+        get: operations["list_university_editorial_events"];
+        put?: never;
+        /** Create Admin Event */
+        post: operations["create_university_editorial_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Admin Event */
+        get: operations["get_university_editorial_event"];
+        put?: never;
+        post?: never;
+        /** Archive Admin Event */
+        delete: operations["archive_university_editorial_event"];
+        options?: never;
+        head?: never;
+        /** Update Admin Event */
+        patch: operations["update_university_editorial_event"];
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/events/{event_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish Admin Event */
+        post: operations["publish_university_editorial_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/university-admin/universities/{university_id}/events/{event_id}/agenda": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace Admin Agenda */
+        put: operations["replace_university_editorial_event_agenda"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/universities/{university_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Public Events */
+        get: operations["list_university_public_editorial_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/universities/{university_id}/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Event */
+        get: operations["get_university_public_editorial_event"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/live": {
         parameters: {
             query?: never;
@@ -903,8 +1491,12 @@ export interface components {
             createdAt: string;
         };
         /**
+         * AchievementCombinationPolicy
+         * @enum {string}
+         */
+        AchievementCombinationPolicy: "additive" | "max_only" | "mutually_exclusive" | "not_combinable" | "unknown";
+        /**
          * ActivityCode
-         * @description Activity dimensions used by deterministic profile matching.
          * @enum {string}
          */
         ActivityCode: "analytical" | "software_creation" | "system_design" | "research" | "physical_engineering" | "communication" | "creative" | "business" | "data";
@@ -964,11 +1556,286 @@ export interface components {
          * @enum {string}
          */
         AdaptiveStatus: "ready" | "skipped";
+        /** AdmissionBenefitCoverageResponse */
+        AdmissionBenefitCoverageResponse: {
+            status: components["schemas"]["AdmissionBenefitCoverageStatus"];
+            /** Documentsdiscovered */
+            documentsDiscovered: number;
+            /** Documentsselected */
+            documentsSelected: number;
+            /** Documentscaptured */
+            documentsCaptured: number;
+            /** Documentsparsed */
+            documentsParsed: number;
+            /** Requireddocumentsexpected */
+            requiredDocumentsExpected: number;
+            /** Requireddocumentsdiscovered */
+            requiredDocumentsDiscovered: number;
+            /** Requireddocumentscaptured */
+            requiredDocumentsCaptured: number;
+            /** Recordsnormalized */
+            recordsNormalized: number;
+            /** Targetsresolved */
+            targetsResolved: number;
+            /** Unresolvedtargets */
+            unresolvedTargets: number;
+            /** Conflicts */
+            conflicts: number;
+            /** Reviewrequiredrows */
+            reviewRequiredRows: number;
+            /** Manifesthash */
+            manifestHash: string | null;
+            /** Sourcehashes */
+            sourceHashes: string[];
+        };
+        /**
+         * AdmissionBenefitCoverageStatus
+         * @enum {string}
+         */
+        AdmissionBenefitCoverageStatus: "complete" | "partial" | "review_required" | "unavailable";
+        /** AdmissionBenefitEvaluation */
+        AdmissionBenefitEvaluation: {
+            /** Rule Id */
+            rule_id: string;
+            benefit_type: components["schemas"]["BenefitType"];
+            route?: components["schemas"]["AdmissionRoute"] | null;
+            status: components["schemas"]["EligibilityStatus"];
+            result_type?: components["schemas"]["OlympiadResultType"] | null;
+            /** Matched Applicant Fact */
+            matched_applicant_fact?: string | null;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
+            /** Effective Score Change */
+            effective_score_change?: string | null;
+            /** Points Contribution */
+            points_contribution?: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["AdmissionBenefitEvidence"][];
+        };
+        /** AdmissionBenefitEvaluationResponse */
+        AdmissionBenefitEvaluationResponse: {
+            /** Ruleid */
+            ruleId: string;
+            benefitType: components["schemas"]["BenefitType"];
+            route?: components["schemas"]["AdmissionRoute"] | null;
+            status: components["schemas"]["EligibilityStatus"];
+            resultType?: components["schemas"]["OlympiadResultType"] | null;
+            /** Matchedapplicantfact */
+            matchedApplicantFact?: string | null;
+            /** Rejectionreason */
+            rejectionReason?: string | null;
+            /** Effectivescorechange */
+            effectiveScoreChange?: string | null;
+            /** Pointscontribution */
+            pointsContribution?: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["AdmissionBenefitEvidenceResponse"][];
+        };
+        /** AdmissionBenefitEvidence */
+        AdmissionBenefitEvidence: {
+            /** Rule Id */
+            rule_id: string;
+            provenance: components["schemas"]["BenefitProvenance"];
+            /** Excerpt */
+            excerpt?: string | null;
+        };
+        /** AdmissionBenefitEvidenceResponse */
+        AdmissionBenefitEvidenceResponse: {
+            /** Ruleid */
+            ruleId: string;
+            provenance: components["schemas"]["BenefitProvenanceResponse"];
+            /** Excerpt */
+            excerpt?: string | null;
+        };
+        /** AdmissionBenefitPolicyEvaluation */
+        AdmissionBenefitPolicyEvaluation: {
+            status: components["schemas"]["AdmissionBenefitPolicyEvaluationStatus"];
+            decision?: components["schemas"]["AdmissionDecisionResult"] | null;
+            /**
+             * Missing Input Codes
+             * @default []
+             */
+            missing_input_codes: string[];
+        };
+        /**
+         * AdmissionBenefitPolicyEvaluationStatus
+         * @enum {string}
+         */
+        AdmissionBenefitPolicyEvaluationStatus: "evaluated" | "insufficient_data" | "unavailable";
+        /** AdmissionBenefitRuleListResponse */
+        AdmissionBenefitRuleListResponse: {
+            /** Admissionyear */
+            admissionYear: number;
+            /** Rules */
+            rules: components["schemas"]["AdmissionBenefitRuleResponse"][];
+            /**
+             * Sourcegaps
+             * @default []
+             */
+            sourceGaps: string[];
+        };
+        /** AdmissionBenefitRuleResponse */
+        AdmissionBenefitRuleResponse: {
+            /** Id */
+            id: string;
+            /** Universityid */
+            universityId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            educationLevel?: components["schemas"]["EducationLevel"] | null;
+            route: components["schemas"]["AdmissionRoute"];
+            benefitType: components["schemas"]["BenefitType"];
+            /** Olympiadid */
+            olympiadId?: string | null;
+            /** Olympiadprofileid */
+            olympiadProfileId?: string | null;
+            resultType?: components["schemas"]["OlympiadResultType"] | null;
+            scope: components["schemas"]["BenefitScopeResponse"];
+            confirmationRequirement: components["schemas"]["ConfirmationRequirement"];
+            /** Confirmationsubjects */
+            confirmationSubjects: components["schemas"]["ConfirmationSubjectResponse"][];
+            validity: components["schemas"]["ValidityPolicyResponse"];
+            /** Targetsubject */
+            targetSubject?: string | null;
+            /** Points */
+            points?: string | null;
+            /** Conditions */
+            conditions: components["schemas"]["BenefitConditionResponse"][];
+            /** Sourcetext */
+            sourceText: string;
+            /** Status */
+            status: string;
+            /** Policyversion */
+            policyVersion: {
+                [key: string]: string;
+            };
+            provenance: components["schemas"]["BenefitProvenanceResponse"];
+        };
+        /** AdmissionBenefitsResponse */
+        AdmissionBenefitsResponse: {
+            /** Admissionyear */
+            admissionYear: number;
+            /** Sources */
+            sources: components["schemas"]["SourceAttributionResponse"][];
+            /** Olympiads */
+            olympiads: components["schemas"]["OlympiadResponse"][];
+            /** Olympiadprofiles */
+            olympiadProfiles: components["schemas"]["OlympiadProfileResponse"][];
+            /** Benefitrules */
+            benefitRules: components["schemas"]["AdmissionBenefitRuleResponse"][];
+            individualAchievementPolicy?: components["schemas"]["IndividualAchievementPolicyResponse"] | null;
+            coverage: components["schemas"]["AdmissionBenefitCoverageResponse"];
+            /** Sourcegaps */
+            sourceGaps: components["schemas"]["SourceGapReferenceResponse"][];
+        };
         /**
          * AdmissionCompetitionType
          * @enum {string}
          */
         AdmissionCompetitionType: "general" | "special_quota" | "separate_quota" | "targeted" | "bvi" | "other";
+        /**
+         * AdmissionDecisionResult
+         * @description Legal eligibility plus optional individual-achievement score composition.
+         */
+        AdmissionDecisionResult: {
+            /** Program Id */
+            program_id: string;
+            /** Admission Year */
+            admission_year: number;
+            status: components["schemas"]["EligibilityStatus"];
+            route?: components["schemas"]["AdmissionRoute"] | null;
+            eligibility?: components["schemas"]["AdmissionEligibilityResult"] | null;
+            individual_achievements?: components["schemas"]["IndividualAchievementBreakdown"] | null;
+            /** Base Competitive Score */
+            base_competitive_score?: string | null;
+            /** Individual Achievement Points */
+            individual_achievement_points?: string | null;
+            /** Effective Competitive Score */
+            effective_competitive_score?: string | null;
+            competitive_score?: components["schemas"]["EffectiveCompetitiveScore"] | null;
+            /**
+             * Source Gaps
+             * @default []
+             */
+            source_gaps: string[];
+        };
+        /** AdmissionEligibilityRequest */
+        AdmissionEligibilityRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Universityid */
+            universityId: string;
+            /** Directioncode */
+            directionCode: string;
+            /** Admissionyear */
+            admissionYear: number;
+            educationLevel?: components["schemas"]["EducationLevel"] | null;
+            /** Nps */
+            nps?: string | null;
+            /** Offeringid */
+            offeringId?: string | null;
+            studyForm?: components["schemas"]["StudyForm"] | null;
+            fundingType?: components["schemas"]["FundingType"] | null;
+            /** Campusid */
+            campusId?: string | null;
+            applicant: components["schemas"]["ApplicantAdmissionFactsRequest"];
+        };
+        /** AdmissionEligibilityResponse */
+        AdmissionEligibilityResponse: {
+            /** Programid */
+            programId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            status: components["schemas"]["EligibilityStatus"];
+            route?: components["schemas"]["AdmissionRoute"] | null;
+            /** Evaluations */
+            evaluations: components["schemas"]["AdmissionBenefitEvaluationResponse"][];
+            /** Basecompetitivescore */
+            baseCompetitiveScore?: string | null;
+            /** Individualachievementpoints */
+            individualAchievementPoints?: string | null;
+            /** Effectivecompetitivescore */
+            effectiveCompetitiveScore?: string | null;
+            individualAchievements?: components["schemas"]["IndividualAchievementBreakdownResponse"] | null;
+            competitiveScore?: components["schemas"]["EffectiveCompetitiveScoreResponse"] | null;
+            /** Sourcegaps */
+            sourceGaps: string[];
+        };
+        /** AdmissionEligibilityResult */
+        AdmissionEligibilityResult: {
+            /** Program Id */
+            program_id: string;
+            /** Admission Year */
+            admission_year: number;
+            status: components["schemas"]["EligibilityStatus"];
+            route?: components["schemas"]["AdmissionRoute"] | null;
+            /**
+             * Evaluations
+             * @default []
+             */
+            evaluations: components["schemas"]["AdmissionBenefitEvaluation"][];
+            /** Base Competitive Score */
+            base_competitive_score?: string | null;
+            /** Individual Achievement Points */
+            individual_achievement_points?: string | null;
+            /** Effective Competitive Score */
+            effective_competitive_score?: string | null;
+            /**
+             * Source Gaps
+             * @default []
+             */
+            source_gaps: string[];
+        };
+        /** AdmissionFitBreakdown */
+        AdmissionFitBreakdown: {
+            minimum_readiness: components["schemas"]["AdmissionFitMetric"];
+            passing_readiness: components["schemas"]["AdmissionFitMetric"];
+            data_completeness: components["schemas"]["AdmissionFitMetric"];
+        };
         /** AdmissionFitBreakdownResponse */
         AdmissionFitBreakdownResponse: {
             minimumReadiness: components["schemas"]["AdmissionFitMetricResponse"];
@@ -980,6 +1847,15 @@ export interface components {
          * @enum {string}
          */
         AdmissionFitDataQuality: "complete" | "partial" | "unavailable";
+        /**
+         * AdmissionFitMetric
+         * @description One explainable percentage component of the final score.
+         */
+        AdmissionFitMetric: {
+            /** Value */
+            value?: string | null;
+            status: components["schemas"]["AdmissionFitMetricStatus"];
+        };
         /** AdmissionFitMetricResponse */
         AdmissionFitMetricResponse: {
             /** Value */
@@ -991,6 +1867,30 @@ export interface components {
          * @enum {string}
          */
         AdmissionFitMetricStatus: "available" | "partial" | "not_available";
+        /**
+         * AdmissionFitReason
+         * @description A user-facing explanation backed by one or more admission facts.
+         */
+        AdmissionFitReason: {
+            kind: components["schemas"]["AdmissionFitReasonKind"];
+            /** Message */
+            message: string;
+            /** Subject */
+            subject?: string | null;
+            /** Applicant Score */
+            applicant_score?: string | null;
+            /** Applicant Total Score */
+            applicant_total_score?: string | null;
+            /** Reference Score */
+            reference_score?: string | null;
+            /** Source Name */
+            source_name?: string | null;
+            /**
+             * Provenance
+             * @default []
+             */
+            provenance: components["schemas"]["AdmissionProvenance"][];
+        };
         /**
          * AdmissionFitReasonKind
          * @enum {string}
@@ -1054,6 +1954,42 @@ export interface components {
             dataGaps: components["schemas"]["AdmissionFitReasonResponse"][];
         };
         /**
+         * AdmissionFitResult
+         * @description Admission Fit result; deliberately independent from Content Fit.
+         */
+        AdmissionFitResult: {
+            /** Program Id */
+            program_id: string;
+            /** Offering Id */
+            offering_id: string;
+            /** Admission Year */
+            admission_year: number;
+            study_form?: components["schemas"]["StudyForm"] | null;
+            funding_type?: components["schemas"]["FundingType"] | null;
+            status: components["schemas"]["AdmissionFitStatus"];
+            /** Score */
+            score: number;
+            /** Applicant Total Score */
+            applicant_total_score?: string | null;
+            data_quality: components["schemas"]["AdmissionFitDataQuality"];
+            breakdown: components["schemas"]["AdmissionFitBreakdown"];
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: components["schemas"]["AdmissionFitReason"][];
+            /**
+             * Anti Reasons
+             * @default []
+             */
+            anti_reasons: components["schemas"]["AdmissionFitReason"][];
+            /**
+             * Data Gaps
+             * @default []
+             */
+            data_gaps: components["schemas"]["AdmissionFitReason"][];
+        };
+        /**
          * AdmissionFitStatus
          * @enum {string}
          */
@@ -1079,6 +2015,40 @@ export interface components {
             tuition: components["schemas"]["TuitionCostResponse"][];
             /** Provenance */
             provenance: components["schemas"]["AdmissionProvenanceResponse"][];
+        };
+        /** AdmissionProvenance */
+        AdmissionProvenance: {
+            /** Source Kind */
+            source_kind: string;
+            /**
+             * Source Url
+             * Format: uri
+             */
+            source_url: string;
+            /**
+             * Captured At
+             * Format: date-time
+             */
+            captured_at: string;
+            /** Content Sha256 */
+            content_sha256: string;
+            /** Locator */
+            locator?: string | null;
+            /** Source Name */
+            source_name?: string | null;
+            /** University Id */
+            university_id?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            /** Field */
+            field?: string | null;
+            /** Record Key */
+            record_key?: string | null;
+            /**
+             * Inferred
+             * @default false
+             */
+            inferred: boolean;
         };
         /** AdmissionProvenanceResponse */
         AdmissionProvenanceResponse: {
@@ -1115,15 +2085,266 @@ export interface components {
             inferred: boolean;
         };
         /**
+         * AdmissionRoute
+         * @enum {string}
+         */
+        AdmissionRoute: "olympiad" | "vosh" | "international" | "special_right" | "preferential_right" | "special_quota" | "separate_quota" | "targeted" | "other";
+        /**
          * AdmissionScope
          * @enum {string}
          */
         AdmissionScope: "program" | "direction";
+        /** AgendaItemAdminResponse */
+        AgendaItemAdminResponse: {
+            /** Itemid */
+            itemId: string;
+            /** Position */
+            position: number;
+            /** Title */
+            title: string;
+            /** Description */
+            description?: string | null;
+            /** Startsat */
+            startsAt?: string | null;
+            /** Endsat */
+            endsAt?: string | null;
+            /** Locationlabel */
+            locationLabel?: string | null;
+            /** Speakerlabel */
+            speakerLabel?: string | null;
+            /** Revision */
+            revision: number;
+        };
+        /** AgendaItemPublicResponse */
+        AgendaItemPublicResponse: {
+            /** Itemid */
+            itemId: string;
+            /** Position */
+            position: number;
+            /** Title */
+            title: string;
+            /** Description */
+            description?: string | null;
+            /** Startsat */
+            startsAt?: string | null;
+            /** Endsat */
+            endsAt?: string | null;
+            /** Locationlabel */
+            locationLabel?: string | null;
+            /** Speakerlabel */
+            speakerLabel?: string | null;
+        };
+        /** AgendaItemRequest */
+        AgendaItemRequest: {
+            /** Itemid */
+            itemId: string;
+            /** Position */
+            position: number;
+            /** Title */
+            title: string;
+            /** Description */
+            description?: string | null;
+            /** Startsat */
+            startsAt?: string | null;
+            /** Endsat */
+            endsAt?: string | null;
+            /** Locationlabel */
+            locationLabel?: string | null;
+            /** Speakerlabel */
+            speakerLabel?: string | null;
+        };
+        /** AgendaReplaceRequest */
+        AgendaReplaceRequest: {
+            /** Expectedrevision */
+            expectedRevision: number;
+            /**
+             * Agenda
+             * @default []
+             */
+            agenda: components["schemas"]["AgendaItemRequest"][];
+        };
         /**
          * AnalyticsEventType
          * @enum {string}
          */
         AnalyticsEventType: "test_started" | "stage_viewed" | "question_viewed" | "answer_selected" | "answer_changed" | "question_skipped" | "adaptive_stopped" | "test_completed" | "result_program_opened" | "compare_started";
+        /** AnalyticsFilterRequest */
+        AnalyticsFilterRequest: {
+            kind: components["schemas"]["FilterKind"];
+            /** Ids */
+            ids?: string[];
+            educationLevel?: components["schemas"]["EducationLevel"] | null;
+            /** Admissionyear */
+            admissionYear?: number | null;
+            studyForm?: components["schemas"]["StudyForm"] | null;
+            fundingType?: components["schemas"]["FundingType"] | null;
+            /** Semester */
+            semester?: number | null;
+            /** Courseyear */
+            courseYear?: number | null;
+            /** Metriccode */
+            metricCode?: string | null;
+            /** Featurecode */
+            featureCode?: string | null;
+            /** @default eq */
+            operator: components["schemas"]["FilterOperator"];
+            /** Threshold */
+            threshold?: number | string | null;
+        };
+        /** AnalyticsQueryRequest */
+        AnalyticsQueryRequest: {
+            entity: components["schemas"]["MetricEntityType"];
+            /** Metrics */
+            metrics: string[];
+            /** @default all */
+            scope: components["schemas"]["QueryScope"];
+            /** Scopeids */
+            scopeIds?: string[];
+            /** Filters */
+            filters?: components["schemas"]["AnalyticsFilterRequest"][];
+            /** Groupby */
+            groupBy?: components["schemas"]["MetricEntityType"][];
+            /** @default value */
+            aggregation: components["schemas"]["MetricAggregation"];
+            sort?: components["schemas"]["AnalyticsSortRequest"] | null;
+            /**
+             * Limit
+             * @default 20
+             */
+            limit: number;
+        };
+        /** AnalyticsResult */
+        AnalyticsResult: {
+            query: components["schemas"]["QuerySpec"];
+            /**
+             * Rows
+             * @default []
+             */
+            rows: components["schemas"]["AnalyticsRow"][];
+            /**
+             * Metric Definitions
+             * @default []
+             */
+            metric_definitions: components["schemas"]["MetricDefinition"][];
+            status: components["schemas"]["AnalyticsResultStatus"];
+            /** Coverage */
+            coverage: string;
+            /** Confidence */
+            confidence: string;
+            /**
+             * Projection Schema Version
+             * @default analytics-projection.v1
+             */
+            projection_schema_version: string;
+            /**
+             * Semantic Versions
+             * @default []
+             */
+            semantic_versions: string[];
+            /**
+             * Classifier Versions
+             * @default []
+             */
+            classifier_versions: string[];
+            /**
+             * Provenance
+             * @default []
+             */
+            provenance: components["schemas"]["SourceAttribution"][];
+            /**
+             * Source Gaps
+             * @default []
+             */
+            source_gaps: components["schemas"]["SourceGapReference"][];
+            /**
+             * Population Size
+             * @default 0
+             */
+            population_size: number;
+            /**
+             * Included Count
+             * @default 0
+             */
+            included_count: number;
+            /**
+             * Missing Count
+             * @default 0
+             */
+            missing_count: number;
+            /** Calculation Metadata */
+            calculation_metadata?: {
+                [key: string]: string;
+            };
+            /**
+             * Explanations
+             * @default []
+             */
+            explanations: components["schemas"]["MetricExplanation"][];
+            /**
+             * Semantic Predicate Evidence
+             * @default []
+             */
+            semantic_predicate_evidence: components["schemas"]["SemanticPredicateEvidence"][];
+        };
+        /**
+         * AnalyticsResultStatus
+         * @enum {string}
+         */
+        AnalyticsResultStatus: "available" | "partial" | "insufficient_data" | "unavailable";
+        /** AnalyticsRow */
+        AnalyticsRow: {
+            /** Entity Id */
+            entity_id: string;
+            /** University Id */
+            university_id?: string | null;
+            /** Direction Id */
+            direction_id?: string | null;
+            /**
+             * Program Ids
+             * @default []
+             */
+            program_ids: string[];
+            /** Metrics */
+            metrics: {
+                [key: string]: components["schemas"]["ProjectionMetric"];
+            };
+            quality: components["schemas"]["ProjectionDataQuality"];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ProjectionMetricEvidence"][];
+            /**
+             * Population Size
+             * @default 0
+             */
+            population_size: number;
+            /**
+             * Included Count
+             * @default 0
+             */
+            included_count: number;
+            /**
+             * Missing Count
+             * @default 0
+             */
+            missing_count: number;
+            /**
+             * Evidence Status
+             * @default available
+             */
+            evidence_status: string;
+        };
+        /** AnalyticsSortRequest */
+        AnalyticsSortRequest: {
+            /** Metriccode */
+            metricCode: string;
+            /**
+             * Descending
+             * @default true
+             */
+            descending: boolean;
+        };
         /**
          * AnswerStatus
          * @enum {string}
@@ -1141,6 +2362,71 @@ export interface components {
             /** Intensity */
             intensity: string;
         };
+        /**
+         * ApplicantAdmissionContext
+         * @description Explicit, short-lived facts plus dimensions the applicant confirmed complete.
+         */
+        ApplicantAdmissionContext: {
+            facts?: components["schemas"]["ApplicantAdmissionFacts"];
+            /**
+             * Complete Dimensions
+             * @default []
+             */
+            complete_dimensions: components["schemas"]["ApplicantFactDimension"][];
+        };
+        /** ApplicantAdmissionFacts */
+        ApplicantAdmissionFacts: {
+            /**
+             * Ege Scores
+             * @default []
+             */
+            ege_scores: components["schemas"]["ApplicantExamScore"][];
+            /**
+             * Internal Exam Scores
+             * @default []
+             */
+            internal_exam_scores: components["schemas"]["ApplicantInternalExamScore"][];
+            /**
+             * Olympiad Achievements
+             * @default []
+             */
+            olympiad_achievements: components["schemas"]["ApplicantOlympiadAchievement"][];
+            /**
+             * Individual Achievements
+             * @default []
+             */
+            individual_achievements: components["schemas"]["ApplicantIndividualAchievement"][];
+            confirmation_category?: components["schemas"]["ConfirmationApplicantCategory"] | null;
+        };
+        /** ApplicantAdmissionFactsRequest */
+        ApplicantAdmissionFactsRequest: {
+            /** Egescores */
+            egeScores?: components["schemas"]["ApplicantExamScoreRequest"][];
+            /** Internalexamscores */
+            internalExamScores?: components["schemas"]["ApplicantInternalExamScoreRequest"][];
+            /** Olympiadachievements */
+            olympiadAchievements?: components["schemas"]["ApplicantOlympiadAchievementRequest"][];
+            /** Individualachievements */
+            individualAchievements?: components["schemas"]["ApplicantIndividualAchievementRequest"][];
+            confirmationCategory?: components["schemas"]["ConfirmationApplicantCategory"] | null;
+        };
+        /**
+         * ApplicantAdmissionProfile
+         * @description Subject scores used only by Admission Fit, not by Content Fit.
+         */
+        ApplicantAdmissionProfile: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /**
+             * Scores
+             * @default []
+             */
+            scores: components["schemas"]["ApplicantSubjectScore"][];
+        };
         /** ApplicantAdmissionProfileRequest */
         ApplicantAdmissionProfileRequest: {
             /**
@@ -1151,6 +2437,106 @@ export interface components {
             version: 1;
             /** Scores */
             scores?: components["schemas"]["ApplicantSubjectScoreRequest"][];
+        };
+        /** ApplicantExamScore */
+        ApplicantExamScore: {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: number | string;
+        };
+        /** ApplicantExamScoreRequest */
+        ApplicantExamScoreRequest: {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: number | string;
+        };
+        /**
+         * ApplicantFactDimension
+         * @enum {string}
+         */
+        ApplicantFactDimension: "ege_scores" | "internal_exam_scores" | "olympiad_achievements" | "individual_achievements" | "confirmation_category";
+        /** ApplicantIndividualAchievement */
+        ApplicantIndividualAchievement: {
+            /** Achievement Code */
+            achievement_code: string;
+            /** Year */
+            year?: number | null;
+            /** Details */
+            details?: string | null;
+            /** Evidence Reference */
+            evidence_reference?: string | null;
+        };
+        /** ApplicantIndividualAchievementRequest */
+        ApplicantIndividualAchievementRequest: {
+            /** Achievementcode */
+            achievementCode: string;
+            /** Year */
+            year?: number | null;
+            /** Details */
+            details?: string | null;
+            /** Evidencereference */
+            evidenceReference?: string | null;
+        };
+        /**
+         * ApplicantInternalExamScore
+         * @description Applicant result from a university internal entrance exam.
+         */
+        ApplicantInternalExamScore: {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: number | string;
+        };
+        /** ApplicantInternalExamScoreRequest */
+        ApplicantInternalExamScoreRequest: {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: number | string;
+        };
+        /** ApplicantOlympiadAchievement */
+        ApplicantOlympiadAchievement: {
+            /** Olympiad Id */
+            olympiad_id: string;
+            /** Olympiad Profile Id */
+            olympiad_profile_id?: string | null;
+            /** Result Year */
+            result_year: number;
+            result_type: components["schemas"]["OlympiadResultType"];
+            /** Confirmation Subject */
+            confirmation_subject?: string | null;
+            /** Grade Or Class */
+            grade_or_class?: string | null;
+            /** Evidence Reference */
+            evidence_reference?: string | null;
+        };
+        /** ApplicantOlympiadAchievementRequest */
+        ApplicantOlympiadAchievementRequest: {
+            /** Olympiadid */
+            olympiadId: string;
+            /** Olympiadprofileid */
+            olympiadProfileId?: string | null;
+            /** Resultyear */
+            resultYear: number;
+            resultType: components["schemas"]["OlympiadResultType"];
+            /** Confirmationsubject */
+            confirmationSubject?: string | null;
+            /** Gradeorclass */
+            gradeOrClass?: string | null;
+            /** Evidencereference */
+            evidenceReference?: string | null;
+        };
+        /**
+         * ApplicantSubjectScore
+         * @description One applicant score; the original subject spelling is intentionally kept.
+         */
+        ApplicantSubjectScore: {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score: string;
         };
         /** ApplicantSubjectScoreRequest */
         ApplicantSubjectScoreRequest: {
@@ -1164,6 +2550,75 @@ export interface components {
          * @enum {string}
          */
         AssessmentType: "exam" | "credit" | "graded_credit" | "coursework" | "course_project" | "state_exam";
+        /** AssistantPolicyAnswer */
+        AssistantPolicyAnswer: {
+            focus: components["schemas"]["PolicyQueryFocus"];
+            status: components["schemas"]["PolicyAnswerStatus"];
+            resolution_trace?: components["schemas"]["ResolutionTrace"] | null;
+            cycle_comparison?: components["schemas"]["PolicyCycleComparison"] | null;
+            domain_evaluation?: components["schemas"]["AdmissionBenefitPolicyEvaluation"] | null;
+            /**
+             * Source Claims
+             * @default []
+             */
+            source_claims: components["schemas"]["KnowledgeClaimLookup"][];
+            /** Reason Code */
+            reason_code: string;
+            /**
+             * Missing Input Codes
+             * @default []
+             */
+            missing_input_codes: string[];
+        };
+        /** AssistantQueryRequest */
+        AssistantQueryRequest: {
+            /** Text */
+            text: string;
+            /** Sessionid */
+            sessionId?: string | null;
+            /** Expectedrevision */
+            expectedRevision?: number | null;
+            /**
+             * Interactive
+             * @default false
+             */
+            interactive: boolean;
+            applicantAdmissionContext?: components["schemas"]["ApplicantAdmissionContext"] | null;
+        };
+        /** AssistantResult */
+        AssistantResult: {
+            state: components["schemas"]["AssistantState"];
+            /** Session Id */
+            session_id: string;
+            /** Revision */
+            revision: number;
+            /** Question */
+            question?: string | null;
+            /**
+             * Options
+             * @default []
+             */
+            options: string[];
+            /**
+             * Missing Slots
+             * @default []
+             */
+            missing_slots: components["schemas"]["ConversationSlot"][];
+            response?: components["schemas"]["ResponseEnvelope"] | null;
+            query?: components["schemas"]["QuerySpec"] | null;
+            admission_request?: components["schemas"]["BatchAdmissionFitRequest"] | null;
+            /**
+             * Admission Requests
+             * @default []
+             */
+            admission_requests: components["schemas"]["BatchAdmissionFitRequest"][];
+            admission_result?: components["schemas"]["BatchAdmissionFitResult"] | null;
+        };
+        /**
+         * AssistantState
+         * @enum {string}
+         */
+        AssistantState: "needs_clarification" | "complete" | "ambiguous";
         /** AuthSessionResponse */
         AuthSessionResponse: {
             /** Authenticated */
@@ -1177,6 +2632,175 @@ export interface components {
             /** Authenticated */
             authenticated: boolean;
             account?: components["schemas"]["AccountResponse"] | null;
+        };
+        /**
+         * BatchAdmissionFitOutcome
+         * @description One source-backed or explicitly unavailable batch result.
+         */
+        BatchAdmissionFitOutcome: {
+            /** Program Id */
+            program_id: string;
+            status: components["schemas"]["AdmissionFitStatus"];
+            result?: components["schemas"]["AdmissionFitResult"] | null;
+            /**
+             * Data Gaps
+             * @default []
+             */
+            data_gaps: components["schemas"]["AdmissionFitReason"][];
+        };
+        /**
+         * BatchAdmissionFitRequest
+         * @description Admission Fit facts for a bounded set of candidate programs.
+         */
+        BatchAdmissionFitRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /** Program Ids */
+            program_ids: string[];
+            applicant: components["schemas"]["ApplicantAdmissionProfile"];
+            /** Admission Year */
+            admission_year?: number | null;
+            study_form?: components["schemas"]["StudyForm"] | null;
+            funding_type?: components["schemas"]["FundingType"] | null;
+        };
+        /**
+         * BatchAdmissionFitResult
+         * @description Deterministic per-program Admission Fit outcomes, never a global score.
+         */
+        BatchAdmissionFitResult: {
+            /** By Program Id */
+            by_program_id?: {
+                [key: string]: components["schemas"]["BatchAdmissionFitOutcome"];
+            };
+        };
+        /**
+         * BenefitConditionKind
+         * @enum {string}
+         */
+        BenefitConditionKind: "confirmation_score" | "confirmation_category" | "validity" | "required_document" | "result_type" | "target_scope" | "other";
+        /** BenefitConditionResponse */
+        BenefitConditionResponse: {
+            kind: components["schemas"]["BenefitConditionKind"];
+            /** Sourcetext */
+            sourceText: string;
+            /** Normalizedvalue */
+            normalizedValue?: string | null;
+            provenance?: components["schemas"]["BenefitProvenanceResponse"] | null;
+        };
+        /**
+         * BenefitProvenance
+         * @description Document-level evidence for a canonical admission-benefit fact.
+         */
+        BenefitProvenance: {
+            source: components["schemas"]["SourceAttribution"];
+            /** Source Snapshot Hash */
+            source_snapshot_hash: string;
+            /** Source Run Id */
+            source_run_id: string;
+            /** Admission Year */
+            admission_year: number;
+            /** Document Title */
+            document_title: string;
+            /** Document Kind */
+            document_kind: string;
+            /** Appendix Number */
+            appendix_number?: string | null;
+            /** Page */
+            page?: number | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Parser Version */
+            parser_version: string;
+        };
+        /** BenefitProvenanceResponse */
+        BenefitProvenanceResponse: {
+            source: components["schemas"]["SourceAttributionResponse"];
+            /** Sourcesnapshothash */
+            sourceSnapshotHash: string;
+            /** Sourcerunid */
+            sourceRunId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            /** Documenttitle */
+            documentTitle: string;
+            /** Documentkind */
+            documentKind: string;
+            /** Appendixnumber */
+            appendixNumber?: string | null;
+            /** Page */
+            page?: number | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Parserversion */
+            parserVersion: string;
+        };
+        /** BenefitScopeResponse */
+        BenefitScopeResponse: {
+            /** Mode */
+            mode: string;
+            /** Targets */
+            targets: components["schemas"]["BenefitTargetResponse"][];
+            /** Excludedtargets */
+            excludedTargets: components["schemas"]["BenefitTargetResponse"][];
+            /** Originaltext */
+            originalText: string;
+        };
+        /**
+         * BenefitTargetKind
+         * @enum {string}
+         */
+        BenefitTargetKind: "direction" | "program" | "nps" | "education_level" | "campus";
+        /** BenefitTargetResponse */
+        BenefitTargetResponse: {
+            kind: components["schemas"]["BenefitTargetKind"];
+            /** Value */
+            value: string;
+            /** Originaltext */
+            originalText: string;
+            /** Resolution */
+            resolution: string;
+        };
+        /**
+         * BenefitType
+         * @enum {string}
+         */
+        BenefitType: "bvi" | "one_hundred_points" | "max_internal_exam_score" | "special_right" | "preferential_right" | "special_quota" | "separate_quota" | "targeted_route" | "other_review_required";
+        /**
+         * BitemporalRevision
+         * @description Immutable revision clock: valid time plus when this revision was recorded.
+         */
+        BitemporalRevision: {
+            /** Revision */
+            revision: number;
+            valid_time?: components["schemas"]["TemporalInterval"] | null;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+        };
+        /** Body_attach_knowledge_source_snapshot */
+        Body_attach_knowledge_source_snapshot: {
+            /** Requested Url */
+            requested_url: string;
+            /** Reason */
+            reason: string;
+            /** Document */
+            document: string;
+            /** Expires At */
+            expires_at?: string | null;
         };
         /** CampusDepartmentReferenceResponse */
         CampusDepartmentReferenceResponse: {
@@ -1385,6 +3009,238 @@ export interface components {
             officialSite: string;
         };
         /**
+         * CategoryKind
+         * @enum {string}
+         */
+        CategoryKind: "subject" | "program" | "event" | "general";
+        /** Claim */
+        Claim: {
+            /** Claim Id */
+            claim_id: string;
+            clock: components["schemas"]["BitemporalRevision"];
+            /** Source Observation Id */
+            source_observation_id: string;
+            /** Text Start Offset */
+            text_start_offset: number;
+            /** Text End Offset */
+            text_end_offset: number;
+            /** Assertion Text */
+            assertion_text: string;
+            /** Assertion Text Sha256 */
+            assertion_text_sha256: string;
+            proposition?: components["schemas"]["ClaimProposition"] | null;
+            claimed_stage: components["schemas"]["ClaimedPolicyStage"];
+            /** @default needs_review */
+            review_state: components["schemas"]["ClaimReviewState"];
+            source_milestones: components["schemas"]["SourceMilestones"];
+            extraction_method: components["schemas"]["ClaimExtractionMethod"];
+            /** Extractor Id */
+            extractor_id: string;
+            /** Extractor Version */
+            extractor_version: string;
+            /** Extraction Confidence */
+            extraction_confidence?: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["ClaimEvidenceLink"][];
+        };
+        /** ClaimBooleanValueRequest */
+        ClaimBooleanValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "boolean";
+            /** Value */
+            value: boolean;
+        };
+        /** ClaimDateTimeValueRequest */
+        ClaimDateTimeValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "datetime";
+            /**
+             * Value
+             * Format: date-time
+             */
+            value: string;
+        };
+        /** ClaimDateValueRequest */
+        ClaimDateValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "date";
+            /**
+             * Value
+             * Format: date
+             */
+            value: string;
+        };
+        /** ClaimDecimalValueRequest */
+        ClaimDecimalValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "decimal";
+            /** Value */
+            value: number | string;
+        };
+        /** ClaimEvidenceLink */
+        ClaimEvidenceLink: {
+            relationship: components["schemas"]["ClaimEvidenceRelationship"];
+            evidence: components["schemas"]["EvidenceRef"];
+        };
+        /**
+         * ClaimEvidenceRelationship
+         * @enum {string}
+         */
+        ClaimEvidenceRelationship: "originates_from" | "supports" | "contradicts" | "qualifies";
+        /**
+         * ClaimExtractionMethod
+         * @enum {string}
+         */
+        ClaimExtractionMethod: "structured_document" | "deterministic_parser" | "manual" | "jev_suggestion";
+        /** ClaimIdentifierValueRequest */
+        ClaimIdentifierValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "identifier";
+            /** Value */
+            value: string;
+        };
+        /**
+         * ClaimProposition
+         * @description A bounded typed proposition, not a rule or executable expression.
+         */
+        ClaimProposition: {
+            /** Predicate */
+            predicate: string;
+            subject_kind: components["schemas"]["ClaimSubjectKind"];
+            /** Subject Id */
+            subject_id?: string | null;
+            /** Value */
+            value: components["schemas"]["ClaimValueText"] | components["schemas"]["ClaimValueDecimal"] | components["schemas"]["ClaimValueBoolean"] | components["schemas"]["ClaimValueDate"] | components["schemas"]["ClaimValueDateTime"] | components["schemas"]["ClaimValueIdentifier"];
+            /** Unit */
+            unit?: string | null;
+        };
+        /** ClaimPropositionRequest */
+        ClaimPropositionRequest: {
+            /** Predicate */
+            predicate: string;
+            subjectKind: components["schemas"]["ClaimSubjectKind"];
+            /** Subjectid */
+            subjectId?: string | null;
+            /** Value */
+            value: components["schemas"]["ClaimTextValueRequest"] | components["schemas"]["ClaimDecimalValueRequest"] | components["schemas"]["ClaimBooleanValueRequest"] | components["schemas"]["ClaimDateValueRequest"] | components["schemas"]["ClaimDateTimeValueRequest"] | components["schemas"]["ClaimIdentifierValueRequest"];
+            /** Unit */
+            unit?: string | null;
+        };
+        /**
+         * ClaimReviewState
+         * @enum {string}
+         */
+        ClaimReviewState: "unreviewed" | "needs_review" | "accepted_as_source_assertion" | "rejected" | "unresolved" | "duplicate";
+        /** ClaimRevisionRef */
+        ClaimRevisionRef: {
+            /** Claim Id */
+            claim_id: string;
+            /** Revision */
+            revision: number;
+        };
+        /**
+         * ClaimSubjectKind
+         * @enum {string}
+         */
+        ClaimSubjectKind: "unknown" | "document" | "university" | "admission_cycle" | "education_level" | "direction" | "program" | "exam" | "olympiad" | "olympiad_profile" | "individual_achievement" | "applicant_category";
+        /** ClaimTextValueRequest */
+        ClaimTextValueRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "text";
+            /** Value */
+            value: string;
+        };
+        /** ClaimValueBoolean */
+        ClaimValueBoolean: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "boolean";
+            /** Value */
+            value: boolean;
+        };
+        /** ClaimValueDate */
+        ClaimValueDate: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "date";
+            /**
+             * Value
+             * Format: date
+             */
+            value: string;
+        };
+        /** ClaimValueDateTime */
+        ClaimValueDateTime: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "datetime";
+            /**
+             * Value
+             * Format: date-time
+             */
+            value: string;
+        };
+        /** ClaimValueDecimal */
+        ClaimValueDecimal: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "decimal";
+            /** Value */
+            value: string;
+        };
+        /** ClaimValueIdentifier */
+        ClaimValueIdentifier: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "identifier";
+            /** Value */
+            value: string;
+        };
+        /** ClaimValueText */
+        ClaimValueText: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "text";
+            /** Value */
+            value: string;
+        };
+        /**
+         * ClaimedPolicyStage
+         * @description What the source asserts about a proposal or norm, not resolver state.
+         * @enum {string}
+         */
+        ClaimedPolicyStage: "rumor" | "hypothesis" | "announced" | "proposal" | "draft" | "under_review" | "adopted" | "published" | "future_effective" | "effective" | "superseded" | "repealed" | "withdrawn" | "rejected" | "unknown";
+        /**
          * CompareStatus
          * @enum {string}
          */
@@ -1522,6 +3378,48 @@ export interface components {
             /** Credits */
             credits: string;
         };
+        /** CompetitiveExamScore */
+        CompetitiveExamScore: {
+            /** Subject */
+            subject: string;
+            /** Source Name */
+            source_name: string;
+            /** Raw Score */
+            raw_score?: string | null;
+            /** Effective Score */
+            effective_score?: string | null;
+            /** Minimum Score */
+            minimum_score?: string | null;
+            /**
+             * Applied Benefit Rule Ids
+             * @default []
+             */
+            applied_benefit_rule_ids: string[];
+            /** Provenance */
+            provenance: components["schemas"]["AdmissionProvenance"][];
+        };
+        /** CompetitiveExamScoreResponse */
+        CompetitiveExamScoreResponse: {
+            /** Subject */
+            subject: string;
+            /** Sourcename */
+            sourceName: string;
+            /** Rawscore */
+            rawScore?: string | null;
+            /** Effectivescore */
+            effectiveScore?: string | null;
+            /** Minimumscore */
+            minimumScore?: string | null;
+            /** Appliedbenefitruleids */
+            appliedBenefitRuleIds: string[];
+            /** Provenance */
+            provenance: components["schemas"]["AdmissionProvenanceResponse"][];
+        };
+        /**
+         * CompetitiveScoreStatus
+         * @enum {string}
+         */
+        CompetitiveScoreStatus: "available" | "partial" | "insufficient_data" | "not_applicable";
         /** ConfidenceResponse */
         "ConfidenceResponse-Input": {
             /** Value */
@@ -1540,6 +3438,77 @@ export interface components {
             /** Answeredadaptive */
             answeredAdaptive: number;
         };
+        /**
+         * ConfirmationApplicantCategory
+         * @enum {string}
+         */
+        ConfirmationApplicantCategory: "standard" | "territorial_exception" | "unknown";
+        /**
+         * ConfirmationExamKind
+         * @enum {string}
+         */
+        ConfirmationExamKind: "ege" | "internal_exam" | "other" | "unknown";
+        /**
+         * ConfirmationRequirement
+         * @enum {string}
+         */
+        ConfirmationRequirement: "required" | "not_required" | "unknown";
+        /** ConfirmationSubjectResponse */
+        ConfirmationSubjectResponse: {
+            /** Subject */
+            subject: string;
+            /** Minimumscore */
+            minimumScore?: string | null;
+            examKind: components["schemas"]["ConfirmationExamKind"];
+            applicantCategory?: components["schemas"]["ConfirmationApplicantCategory"] | null;
+            /** Sourcetext */
+            sourceText: string;
+        };
+        /** ConsideredPolicyRule */
+        ConsideredPolicyRule: {
+            /** Rule Id */
+            rule_id: string;
+            /** Revision */
+            revision: number;
+            /** Revision Hash */
+            revision_hash: string;
+            lifecycle: components["schemas"]["PolicyRevisionLifecycle"];
+            /** Valid Interval */
+            valid_interval: [
+                string | null,
+                string | null
+            ];
+            /** Effective Interval */
+            effective_interval?: [
+                string | null,
+                string | null
+            ] | null;
+            domain_rule: components["schemas"]["DomainRuleRef"];
+            /** Family Id */
+            family_id?: string | null;
+            authority?: components["schemas"]["PolicyAuthorityLevel"] | null;
+            scope: components["schemas"]["PolicyScope"];
+            scope_state: components["schemas"]["PolicyScopeMatchState"];
+            scope_reason: components["schemas"]["PolicyScopeMatchReason"];
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceRef"][];
+            approval_event?: components["schemas"]["PolicyApprovalEventReference"] | null;
+            filter_state: components["schemas"]["PolicyRuleFilterState"];
+            reason: components["schemas"]["PolicyRuleFilterReason"];
+            /** Selector Trace */
+            selector_trace: components["schemas"]["SelectorNodeTrace"][];
+            selection?: components["schemas"]["PolicySelection"] | null;
+        };
+        /** ConsideredRuleView */
+        ConsideredRuleView: {
+            rule: components["schemas"]["ResponseRuleReference"];
+            disposition: components["schemas"]["RuleDisposition"];
+        };
+        /**
+         * ConversationSlot
+         * @enum {string}
+         */
+        ConversationSlot: "metric" | "entity" | "exams" | "total_score" | "university_scope" | "funding" | "study_form" | "admission_year";
         /** CurriculumItemResponse */
         CurriculumItemResponse: {
             /** Id */
@@ -2070,6 +4039,11 @@ export interface components {
             /** Missingdata */
             missingData: string[];
         };
+        /**
+         * DiffObjectState
+         * @enum {string}
+         */
+        DiffObjectState: "present" | "absent_confirmed" | "unknown";
         /** DisciplineAreaCatalogResponse */
         DisciplineAreaCatalogResponse: {
             /** Items */
@@ -2121,10 +4095,197 @@ export interface components {
             primaryArea: components["schemas"]["DisciplineAreaCode"];
         };
         /**
+         * DomainImpactStatus
+         * @enum {string}
+         */
+        DomainImpactStatus: "evaluated" | "no_domain_change" | "insufficient_data" | "unavailable";
+        /** DomainRuleImpactObservation */
+        DomainRuleImpactObservation: {
+            owner_module: components["schemas"]["PolicyDomainOwner"];
+            before_rule?: components["schemas"]["DomainRuleRef"] | null;
+            after_rule?: components["schemas"]["DomainRuleRef"] | null;
+            status: components["schemas"]["DomainImpactStatus"];
+            actionability?: components["schemas"]["ImpactActionability"] | null;
+            /**
+             * Changes
+             * @default []
+             */
+            changes: components["schemas"]["PolicyDiffEntry"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["EvidenceRef"][];
+            /**
+             * Missing Input Codes
+             * @default []
+             */
+            missing_input_codes: string[];
+        };
+        /** DomainRuleRef */
+        DomainRuleRef: {
+            owner_module: components["schemas"]["PolicyDomainOwner"];
+            /** Canonical Rule Id */
+            canonical_rule_id: string;
+            /** Owner Revision */
+            owner_revision: number;
+            /** Owner Revision Hash */
+            owner_revision_hash?: string | null;
+        };
+        /**
+         * EditorialAudienceMode
+         * @enum {string}
+         */
+        EditorialAudienceMode: "all_university" | "selected_units" | "selected_programs" | "unaffiliated";
+        /**
+         * EditorialEventStatus
+         * @enum {string}
+         */
+        EditorialEventStatus: "draft" | "published" | "archived";
+        /** EditorialOverlayRequest */
+        EditorialOverlayRequest: {
+            /** Displayname */
+            displayName?: string | null;
+            /** Publicsummary */
+            publicSummary?: string | null;
+            /** @default visible */
+            visibility: components["schemas"]["EditorialVisibility"];
+            /** Expectedrevision */
+            expectedRevision?: number | null;
+        };
+        /**
+         * EditorialStatus
+         * @enum {string}
+         */
+        EditorialStatus: "draft" | "published" | "archived";
+        /**
+         * EditorialVisibility
+         * @enum {string}
+         */
+        EditorialVisibility: "visible" | "hidden";
+        /**
+         * EducationLevel
+         * @enum {string}
+         */
+        EducationLevel: "bachelor" | "specialist" | "master" | "postgraduate";
+        /**
+         * EffectiveCompetitiveScore
+         * @description Offering-specific and reproducible competitive-score calculation.
+         */
+        EffectiveCompetitiveScore: {
+            status: components["schemas"]["CompetitiveScoreStatus"];
+            /** Offering Id */
+            offering_id?: string | null;
+            /**
+             * Available Offering Ids
+             * @default []
+             */
+            available_offering_ids: string[];
+            /**
+             * Selected Exam Combination
+             * @default []
+             */
+            selected_exam_combination: string[];
+            /**
+             * Exam Scores Before
+             * @default []
+             */
+            exam_scores_before: components["schemas"]["CompetitiveExamScore"][];
+            /**
+             * Exam Scores After Benefits
+             * @default []
+             */
+            exam_scores_after_benefits: components["schemas"]["CompetitiveExamScore"][];
+            /**
+             * Candidate Exams Considered
+             * @default 0
+             */
+            candidate_exams_considered: number;
+            /** Base Exam Score */
+            base_exam_score?: string | null;
+            /** Post Benefit Exam Score */
+            post_benefit_exam_score?: string | null;
+            /** Individual Achievement Points */
+            individual_achievement_points?: string | null;
+            /** Effective Total */
+            effective_total?: string | null;
+            /**
+             * Source Gaps
+             * @default []
+             */
+            source_gaps: string[];
+        };
+        /** EffectiveCompetitiveScoreResponse */
+        EffectiveCompetitiveScoreResponse: {
+            status: components["schemas"]["CompetitiveScoreStatus"];
+            /** Offeringid */
+            offeringId?: string | null;
+            /** Availableofferingids */
+            availableOfferingIds: string[];
+            /** Selectedexamcombination */
+            selectedExamCombination: string[];
+            /** Examscoresbefore */
+            examScoresBefore: components["schemas"]["CompetitiveExamScoreResponse"][];
+            /** Examscoresafterbenefits */
+            examScoresAfterBenefits: components["schemas"]["CompetitiveExamScoreResponse"][];
+            /** Candidateexamsconsidered */
+            candidateExamsConsidered: number;
+            /** Baseexamscore */
+            baseExamScore?: string | null;
+            /** Postbenefitexamscore */
+            postBenefitExamScore?: string | null;
+            /** Individualachievementpoints */
+            individualAchievementPoints?: string | null;
+            /** Effectivetotal */
+            effectiveTotal?: string | null;
+            /** Sourcegaps */
+            sourceGaps: string[];
+        };
+        /** EffectivePolicyDiffSnapshot */
+        EffectivePolicyDiffSnapshot: {
+            /** Trace Id */
+            trace_id: string;
+            /** University Id */
+            university_id: string;
+            /** Admission Year */
+            admission_year: number;
+            /** Cycle Id */
+            cycle_id?: string | null;
+            /** Cycle Revision */
+            cycle_revision?: number | null;
+            /** Context Fingerprint */
+            context_fingerprint: string;
+            /** Valid As Of */
+            valid_as_of?: string | null;
+            /**
+             * As Known At
+             * Format: date-time
+             */
+            as_known_at: string;
+            status: components["schemas"]["PolicyResolutionStatus"];
+            /**
+             * Effective Rules
+             * @default []
+             */
+            effective_rules: components["schemas"]["PolicySelection"][];
+            /**
+             * Conflicting Rules
+             * @default []
+             */
+            conflicting_rules: components["schemas"]["PolicySelection"][];
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceRef"][];
+        };
+        /**
+         * EligibilityStatus
+         * @enum {string}
+         */
+        EligibilityStatus: "eligible" | "not_eligible" | "insufficient_data" | "review_required";
+        /**
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_ERROR" | "RATE_LIMITED" | "UNAUTHORIZED" | "NOT_FOUND" | "CONFLICT" | "SOURCE_CONTRACT_ERROR" | "CONTRACT_ERROR" | "INTERNAL_ERROR";
+        ErrorCode: "VALIDATION_ERROR" | "RATE_LIMITED" | "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "SOURCE_CONTRACT_ERROR" | "CONTRACT_ERROR" | "INTERNAL_ERROR" | "UNSUPPORTED_METRIC" | "UNSUPPORTED_AGGREGATION" | "INVALID_QUERY" | "AMBIGUOUS_ENTITY" | "INSUFFICIENT_DATA";
         /** ErrorDetail */
         ErrorDetail: {
             /** Path */
@@ -2235,11 +4396,68 @@ export interface components {
             /** Provenance */
             provenance: components["schemas"]["EventProvenanceResponse"][];
         };
+        /** EventTargetResponse */
+        EventTargetResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** EvidenceLocator */
+        EvidenceLocator: {
+            /** Page */
+            page?: number | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Field */
+            field?: string | null;
+            /** Record Key */
+            record_key?: string | null;
+        };
+        /** EvidenceLocatorRequest */
+        EvidenceLocatorRequest: {
+            /** Page */
+            page?: number | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Field */
+            field?: string | null;
+            /** Recordkey */
+            recordKey?: string | null;
+        };
         /** EvidenceMetricResponse */
         EvidenceMetricResponse: {
             /** Value */
             value?: string | null;
             status: components["schemas"]["EvidenceStatus"];
+        };
+        /** EvidenceRef */
+        EvidenceRef: {
+            /** Source Id */
+            source_id: string;
+            /** Source Observation Id */
+            source_observation_id: string;
+            /** Snapshot Sha256 */
+            snapshot_sha256: string;
+            /**
+             * Source Url
+             * Format: uri
+             */
+            source_url: string;
+            locator?: components["schemas"]["EvidenceLocator"];
+            /**
+             * Inferred
+             * @default false
+             */
+            inferred: boolean;
         };
         /**
          * EvidenceSignal
@@ -2251,6 +4469,15 @@ export interface components {
          * @enum {string}
          */
         EvidenceStatus: "available" | "partial" | "not_available";
+        /** EvidenceSummary */
+        EvidenceSummary: {
+            /** Metric Code */
+            metric_code: string;
+            /** Evidence Count */
+            evidence_count: number;
+            /** Coverage */
+            coverage: string;
+        };
         /** ExamRequirementResponse */
         ExamRequirementResponse: {
             /** Subject */
@@ -2266,6 +4493,16 @@ export interface components {
             provenance: components["schemas"]["AdmissionProvenanceResponse"];
         };
         /**
+         * FilterKind
+         * @enum {string}
+         */
+        FilterKind: "university" | "direction" | "program" | "education_level" | "admission_year" | "study_form" | "funding_type" | "semester" | "course_year" | "metric_threshold" | "semantic_threshold" | "admission_fit";
+        /**
+         * FilterOperator
+         * @enum {string}
+         */
+        FilterOperator: "eq" | "gt" | "gte" | "lt" | "lte";
+        /**
          * FundingType
          * @enum {string}
          */
@@ -2275,6 +4512,168 @@ export interface components {
          * @enum {string}
          */
         GapSeverity: "blocking" | "degradable" | "informational";
+        /**
+         * ImpactActionability
+         * @enum {string}
+         */
+        ImpactActionability: "not_applicable" | "future_only" | "informational" | "action_recommended" | "action_required" | "uncertain" | "blocked_by_missing_data";
+        /** ImpactAffectedObject */
+        ImpactAffectedObject: {
+            node: components["schemas"]["PolicyDependencyNode"];
+            /** Relation Path */
+            relation_path: string[];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["EvidenceRef"][];
+        };
+        /**
+         * ImpactReason
+         * @enum {string}
+         */
+        ImpactReason: "no_effective_policy_change" | "future_policy_only" | "policy_change_informational" | "domain_owner_recommends_action" | "domain_owner_requires_action" | "policy_conflict" | "context_mismatch" | "domain_owner_result_missing" | "resolution_blocked" | "dependency_cycle" | "dependency_truncated" | "unknown_applicability";
+        /** IndividualAchievementBreakdown */
+        IndividualAchievementBreakdown: {
+            status: components["schemas"]["EligibilityStatus"];
+            /** Total Points */
+            total_points: string;
+            /** Uncapped Points */
+            uncapped_points: string;
+            /** Global Cap */
+            global_cap?: string | null;
+            /**
+             * Evaluations
+             * @default []
+             */
+            evaluations: components["schemas"]["IndividualAchievementEvaluation"][];
+            /**
+             * Source Gaps
+             * @default []
+             */
+            source_gaps: string[];
+        };
+        /** IndividualAchievementBreakdownResponse */
+        IndividualAchievementBreakdownResponse: {
+            status: components["schemas"]["EligibilityStatus"];
+            /** Totalpoints */
+            totalPoints: string;
+            /** Uncappedpoints */
+            uncappedPoints: string;
+            /** Globalcap */
+            globalCap?: string | null;
+            /** Evaluations */
+            evaluations: components["schemas"]["IndividualAchievementEvaluationResponse"][];
+            /** Sourcegaps */
+            sourceGaps: string[];
+        };
+        /** IndividualAchievementEvaluation */
+        IndividualAchievementEvaluation: {
+            /** Rule Id */
+            rule_id?: string | null;
+            /** Achievement Code */
+            achievement_code: string;
+            status: components["schemas"]["IndividualAchievementStatus"];
+            /** Applicant Year */
+            applicant_year?: number | null;
+            /** Rule Points */
+            rule_points?: string | null;
+            /** Awarded Points */
+            awarded_points: string;
+            combination_policy?: components["schemas"]["AchievementCombinationPolicy"] | null;
+            /** Reason */
+            reason: string;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["AdmissionBenefitEvidence"][];
+        };
+        /** IndividualAchievementEvaluationResponse */
+        IndividualAchievementEvaluationResponse: {
+            /** Ruleid */
+            ruleId?: string | null;
+            /** Achievementcode */
+            achievementCode: string;
+            /** Status */
+            status: string;
+            /** Applicantyear */
+            applicantYear?: number | null;
+            /** Rulepoints */
+            rulePoints?: string | null;
+            /** Awardedpoints */
+            awardedPoints: string;
+            combinationPolicy?: components["schemas"]["AchievementCombinationPolicy"] | null;
+            /** Reason */
+            reason: string;
+            /** Evidence */
+            evidence: components["schemas"]["AdmissionBenefitEvidenceResponse"][];
+        };
+        /** IndividualAchievementPolicyResponse */
+        IndividualAchievementPolicyResponse: {
+            /** Universityid */
+            universityId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            educationLevel?: components["schemas"]["EducationLevel"] | null;
+            /** Globalmaxpoints */
+            globalMaxPoints?: string | null;
+            defaultCombinationPolicy: components["schemas"]["AchievementCombinationPolicy"];
+            /** Rules */
+            rules: components["schemas"]["IndividualAchievementRuleResponse"][];
+            /** Sourcetext */
+            sourceText: string;
+            /** Status */
+            status: string;
+            /** Policyversion */
+            policyVersion: {
+                [key: string]: string;
+            };
+            provenance: components["schemas"]["BenefitProvenanceResponse"];
+        };
+        /** IndividualAchievementRuleResponse */
+        IndividualAchievementRuleResponse: {
+            /** Id */
+            id: string;
+            /** Universityid */
+            universityId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            educationLevel?: components["schemas"]["EducationLevel"] | null;
+            /** Achievementcode */
+            achievementCode: string;
+            /** Category */
+            category: string;
+            /** Officialname */
+            officialName: string;
+            /** Description */
+            description?: string | null;
+            /** Points */
+            points: string;
+            /** Categorycap */
+            categoryCap?: string | null;
+            /** Combinationgroup */
+            combinationGroup?: string | null;
+            combinationPolicy: components["schemas"]["AchievementCombinationPolicy"];
+            /** Requireddocument */
+            requiredDocument?: string | null;
+            /** Conditions */
+            conditions: components["schemas"]["BenefitConditionResponse"][];
+            /** Sourcetext */
+            sourceText: string;
+            /** Status */
+            status: string;
+            /** Policyversion */
+            policyVersion: {
+                [key: string]: string;
+            };
+            provenance: components["schemas"]["BenefitProvenanceResponse"];
+        };
+        /**
+         * IndividualAchievementStatus
+         * @enum {string}
+         */
+        IndividualAchievementStatus: "accepted" | "rejected" | "review_required" | "deduplicated" | "capped" | "excluded";
         /** IngestionRetryRequestBody */
         IngestionRetryRequestBody: {
             /**
@@ -2511,6 +4910,179 @@ export interface components {
              */
             evidence: components["schemas"]["ComparisonEvidenceResponse"][];
         };
+        /**
+         * KnowledgeAnswerState
+         * @enum {string}
+         */
+        KnowledgeAnswerState: "source_assertion" | "policy_resolved" | "conflict" | "no_evidence" | "insufficient_data" | "outside_coverage" | "historical_state_unavailable" | "review_required" | "uncertain";
+        /**
+         * KnowledgeClaimLookup
+         * @description An exact claim revision with reliability metadata for its origin source.
+         */
+        KnowledgeClaimLookup: {
+            claim: components["schemas"]["Claim"];
+            /** Source Display Name */
+            source_display_name: string;
+            source_kind: components["schemas"]["KnowledgeSourceKind"];
+            source_reliability: components["schemas"]["SourceReliabilityTier"];
+        };
+        /** KnowledgeManualClaimResponse */
+        KnowledgeManualClaimResponse: {
+            /** Claimid */
+            claimId: string;
+            /** Revision */
+            revision: number;
+            /** Reviewstate */
+            reviewState: string;
+            /** Sourceobservationid */
+            sourceObservationId: string;
+            /**
+             * Recordedat
+             * Format: date-time
+             */
+            recordedAt: string;
+        };
+        /** KnowledgeResponseSection */
+        KnowledgeResponseSection: {
+            /**
+             * Schema Version
+             * @default knowledge-response.v1
+             * @constant
+             */
+            schema_version: "knowledge-response.v1";
+            status: components["schemas"]["KnowledgeAnswerState"];
+            /** @default uncertain */
+            actionability: components["schemas"]["ResponseActionability"];
+            /**
+             * Source Assertions
+             * @default []
+             */
+            source_assertions: components["schemas"]["SourceAssertionView"][];
+            /**
+             * Known Facts
+             * @default []
+             */
+            known_facts: components["schemas"]["ResponseFact"][];
+            /**
+             * Affected Scope
+             * @default []
+             */
+            affected_scope: components["schemas"]["ResponseRuleReference"][];
+            /**
+             * Exceptions
+             * @default []
+             */
+            exceptions: components["schemas"]["RuleExceptionView"][];
+            /**
+             * Impact Delta
+             * @default []
+             */
+            impact_delta: components["schemas"]["ResponseFact"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ResponseEvidenceReference"][];
+            resolution?: components["schemas"]["ResolutionExplanation"] | null;
+            cycle_comparison?: components["schemas"]["ResponseCycleComparison"] | null;
+            /**
+             * Uncertainties
+             * @default []
+             */
+            uncertainties: components["schemas"]["ResponseUncertainty"][];
+            /**
+             * Missing Data
+             * @default []
+             */
+            missing_data: string[];
+            /** As Known At */
+            as_known_at?: string | null;
+            /** Last Checked */
+            last_checked?: string | null;
+        };
+        /**
+         * KnowledgeReviewAction
+         * @enum {string}
+         */
+        KnowledgeReviewAction: "approve" | "reject" | "edit" | "merge" | "resolve_identity" | "mark_unresolved" | "mark_duplicate";
+        /**
+         * KnowledgeReviewTargetKind
+         * @enum {string}
+         */
+        KnowledgeReviewTargetKind: "claim" | "change_event" | "policy_rule";
+        /**
+         * KnowledgeSourceKind
+         * @enum {string}
+         */
+        KnowledgeSourceKind: "normative_document" | "ministry_publication" | "university_admission_rules" | "university_order" | "official_appendix" | "official_news" | "official_feed" | "official_api";
+        /** KnowledgeSourceObservationResponse */
+        KnowledgeSourceObservationResponse: {
+            /** Sourceobservationid */
+            sourceObservationId: string;
+            /** Sourceid */
+            sourceId: string;
+            /** Registryrevision */
+            registryRevision: number;
+            /** Snapshotsha256 */
+            snapshotSha256: string;
+            /**
+             * Capturedat
+             * Format: date-time
+             */
+            capturedAt: string;
+            /** Accessmode */
+            accessMode: string;
+            /** Contenttype */
+            contentType?: string | null;
+        };
+        /** KnowledgeSourceRegistrationRequest */
+        KnowledgeSourceRegistrationRequest: {
+            /** Sourceid */
+            sourceId: string;
+            /** Issuerid */
+            issuerId: string;
+            jurisdiction: components["schemas"]["SourceJurisdiction"];
+            /** Identitykey */
+            identityKey: string;
+            /** Displayname */
+            displayName: string;
+            sourceKind: components["schemas"]["KnowledgeSourceKind"];
+            reliabilityTier: components["schemas"]["SourceReliabilityTier"];
+            /** Adapterid */
+            adapterId: string;
+            /** Adapterversion */
+            adapterVersion: string;
+            /**
+             * Starturl
+             * Format: uri
+             */
+            startUrl: string;
+            /** Allowlist */
+            allowlist: components["schemas"]["SourceAllowedRouteRequest"][];
+            /** Pollintervalseconds */
+            pollIntervalSeconds: number;
+            /** Freshnessbudgetseconds */
+            freshnessBudgetSeconds: number;
+            /** Reason */
+            reason: string;
+        };
+        /** KnowledgeSourceRegistrationResponse */
+        KnowledgeSourceRegistrationResponse: {
+            /** Sourceid */
+            sourceId: string;
+            /** Revision */
+            revision: number;
+            reliabilityTier: components["schemas"]["SourceReliabilityTier"];
+            /** Enabled */
+            enabled: boolean;
+            /** Approvedbyaccountid */
+            approvedByAccountId: string;
+            /**
+             * Recordedat
+             * Format: date-time
+             */
+            recordedAt: string;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -2520,6 +5092,63 @@ export interface components {
              * Format: password
              */
             password: string;
+        };
+        /** ManualClaimMetadataCorrectionRequest */
+        ManualClaimMetadataCorrectionRequest: {
+            /** Expectedrevision */
+            expectedRevision: number;
+            /** Expectedrevisionhash */
+            expectedRevisionHash: string;
+            proposition?: components["schemas"]["ClaimPropositionRequest"] | null;
+            claimedStage: components["schemas"]["ClaimedPolicyStage"];
+            /** Reason */
+            reason: string;
+            /** Expiresat */
+            expiresAt?: string | null;
+        };
+        /** ManualClaimSubmissionRequest */
+        ManualClaimSubmissionRequest: {
+            /** Sourceobservationid */
+            sourceObservationId: string;
+            /** Sourcetext */
+            sourceText: string;
+            /** Assertiontext */
+            assertionText: string;
+            locator: components["schemas"]["EvidenceLocatorRequest"];
+            proposition?: components["schemas"]["ClaimPropositionRequest"] | null;
+            claimedStage: components["schemas"]["ClaimedPolicyStage"];
+            sourceMilestones: components["schemas"]["SourceMilestonesRequest"];
+            validTime?: components["schemas"]["TemporalIntervalRequest"] | null;
+            /** Reason */
+            reason: string;
+            /** Expiresat */
+            expiresAt?: string | null;
+        };
+        /** ManualPolicyRuleCandidateRequest */
+        ManualPolicyRuleCandidateRequest: {
+            revision: components["schemas"]["PolicyRuleRevision"];
+            /** Reason */
+            reason: string;
+        };
+        /** ManualPolicyRuleCandidateResponse */
+        ManualPolicyRuleCandidateResponse: {
+            /** Ruleid */
+            ruleId: string;
+            /** Revision */
+            revision: number;
+            /** Revisionhash */
+            revisionHash: string;
+            /** Approvaleventid */
+            approvalEventId: string;
+            /** Reviewstate */
+            reviewState: string;
+            /** Submittedbyaccountid */
+            submittedByAccountId: string;
+            /**
+             * Submittedat
+             * Format: date-time
+             */
+            submittedAt: string;
         };
         /** MatchScoreResponse */
         MatchScoreResponse: {
@@ -2531,6 +5160,135 @@ export interface components {
             contentFit: number;
             breakdown: components["schemas"]["ScoreBreakdownResponse"];
         };
+        /**
+         * MembershipStatus
+         * @enum {string}
+         */
+        MembershipStatus: "active" | "revoked";
+        /**
+         * MetricAggregation
+         * @enum {string}
+         */
+        MetricAggregation: "value" | "sum" | "mean" | "weighted_mean" | "min" | "max" | "median" | "count" | "distribution";
+        /**
+         * MetricBasis
+         * @enum {string}
+         */
+        MetricBasis: "hours" | "credits" | "course_count" | "normalized_workload";
+        /** MetricDefinition */
+        MetricDefinition: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Unit */
+            unit: string;
+            domain: components["schemas"]["MetricDomain"];
+            /** Supported Entity Types */
+            supported_entity_types: components["schemas"]["MetricEntityType"][];
+            /** Allowed Aggregations */
+            allowed_aggregations: components["schemas"]["MetricAggregation"][];
+            preferred_basis?: components["schemas"]["MetricBasis"] | null;
+            /**
+             * Fallback Basis
+             * @default []
+             */
+            fallback_basis: components["schemas"]["MetricBasis"][];
+            /**
+             * Semantic Version
+             * @default metric-registry.v1
+             */
+            semantic_version: string;
+            /** Source Feature Code */
+            source_feature_code?: string | null;
+            /** Predicate Definition Id */
+            predicate_definition_id?: string | null;
+            /**
+             * Minimum Coverage
+             * @default 0.8
+             */
+            minimum_coverage: string;
+            /**
+             * Include Missing In Aggregate
+             * @default false
+             */
+            include_missing_in_aggregate: boolean;
+        };
+        /**
+         * MetricDomain
+         * @enum {string}
+         */
+        MetricDomain: "semantic" | "workload" | "assessment" | "admissions" | "structure";
+        /**
+         * MetricEntityType
+         * @enum {string}
+         */
+        MetricEntityType: "university" | "direction" | "program" | "curriculum" | "discipline";
+        /** MetricExplanation */
+        MetricExplanation: {
+            /** Metric Code */
+            metric_code: string;
+            definition: components["schemas"]["MetricDefinition"];
+            /** Basis */
+            basis?: string | null;
+            /** Population Size */
+            population_size: number;
+            /** Included Count */
+            included_count: number;
+            /** Missing Count */
+            missing_count: number;
+            /** Evidence Count */
+            evidence_count: number;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
+        };
+        /** OlympiadProfileResponse */
+        OlympiadProfileResponse: {
+            /** Id */
+            id: string;
+            /** Olympiadid */
+            olympiadId: string;
+            /** Profilename */
+            profileName: string;
+            /** Correspondingsubjects */
+            correspondingSubjects: components["schemas"]["OlympiadProfileSubjectResponse"][];
+            /** Admissionyear */
+            admissionYear: number;
+            /** Provenance */
+            provenance: components["schemas"]["BenefitProvenanceResponse"][];
+        };
+        /** OlympiadProfileSubjectResponse */
+        OlympiadProfileSubjectResponse: {
+            /** Subject */
+            subject: string;
+            /** Sourcetext */
+            sourceText: string;
+        };
+        /** OlympiadResponse */
+        OlympiadResponse: {
+            /** Id */
+            id: string;
+            /** Officialname */
+            officialName: string;
+            /** Organizer */
+            organizer?: string | null;
+            /** Rsoshlevel */
+            rsoshLevel?: number | null;
+            /** Admissionyear */
+            admissionYear: number;
+            /** Provenance */
+            provenance: components["schemas"]["BenefitProvenanceResponse"][];
+        };
+        /**
+         * OlympiadResultType
+         * @enum {string}
+         */
+        OlympiadResultType: "winner" | "prize_winner" | "team_member";
         /** OptionalMetricResponse */
         OptionalMetricResponse: {
             /** Status */
@@ -2607,6 +5365,480 @@ export interface components {
             point?: components["schemas"]["CampusPointDetailResponse"] | null;
             /** Startsat */
             startsAt?: string | null;
+        };
+        /**
+         * PolicyAnswerStatus
+         * @enum {string}
+         */
+        PolicyAnswerStatus: "resolved" | "policy_resolved_domain_result_unavailable" | "source_assertions_found" | "review_required" | "conflict" | "no_match" | "blocked_by_missing_data" | "indeterminate" | "outside_coverage" | "historical_state_unavailable";
+        /** PolicyApplicabilityContext */
+        PolicyApplicabilityContext: {
+            /**
+             * Values
+             * @default []
+             */
+            values: components["schemas"]["PolicyContextValue"][];
+        };
+        /**
+         * PolicyApprovalEventReference
+         * @description Non-sensitive immutable pointer to one approval-ledger event.
+         */
+        PolicyApprovalEventReference: {
+            /** Event Id */
+            event_id: string;
+            /** Rule Id */
+            rule_id: string;
+            /** Revision */
+            revision: number;
+            /** Sequence */
+            sequence: number;
+            /** Revision Hash */
+            revision_hash: string;
+            /**
+             * Kind
+             * @default approved
+             * @constant
+             */
+            kind: "approved";
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+        };
+        /**
+         * PolicyApprovalState
+         * @enum {string}
+         */
+        PolicyApprovalState: "not_submitted" | "pending" | "approved" | "rejected" | "withdrawn" | "invalid";
+        /**
+         * PolicyAuthorityLevel
+         * @description Legal/normative force, kept separate from source reliability.
+         * @enum {string}
+         */
+        PolicyAuthorityLevel: "federal_normative" | "regulator_normative" | "university_normative" | "unresolved";
+        /**
+         * PolicyContextAvailability
+         * @enum {string}
+         */
+        PolicyContextAvailability: "present" | "unknown" | "unavailable";
+        /**
+         * PolicyContextField
+         * @enum {string}
+         */
+        PolicyContextField: "jurisdiction" | "regulator_id" | "university_id" | "campus_id" | "faculty_id" | "department_id" | "education_level" | "direction_id" | "program_id" | "admission_cycle_id" | "admission_year" | "academic_year" | "application_start_date" | "application_end_date" | "enrollment_start_date" | "enrollment_end_date" | "admission_route" | "competition_type" | "applicant_category" | "olympiad_id" | "olympiad_profile_id" | "subject_id";
+        /**
+         * PolicyContextOrigin
+         * @enum {string}
+         */
+        PolicyContextOrigin: "user_provided" | "source_backed_cycle" | "derived_from_explicit_input";
+        /** PolicyContextValue */
+        PolicyContextValue: {
+            field: components["schemas"]["PolicyContextField"];
+            availability: components["schemas"]["PolicyContextAvailability"];
+            /** @default user_provided */
+            origin: components["schemas"]["PolicyContextOrigin"];
+            /** Value */
+            value?: string | number | boolean | null;
+        };
+        /** PolicyCycleComparison */
+        PolicyCycleComparison: {
+            before_trace: components["schemas"]["ResolutionTrace"];
+            after_trace: components["schemas"]["ResolutionTrace"];
+            diff: components["schemas"]["PolicySemanticDiff"];
+        };
+        /** PolicyDependencyNode */
+        PolicyDependencyNode: {
+            kind: components["schemas"]["PolicyDependencyNodeKind"];
+            /** Object Id */
+            object_id: string;
+            /** Revision */
+            revision?: number | null;
+            /** Content Hash */
+            content_hash?: string | null;
+            /** Owner Module */
+            owner_module?: string | null;
+        };
+        /**
+         * PolicyDependencyNodeKind
+         * @enum {string}
+         */
+        PolicyDependencyNodeKind: "policy_rule" | "domain_rule" | "scope";
+        /**
+         * PolicyDiffChangeKind
+         * @enum {string}
+         */
+        PolicyDiffChangeKind: "added" | "removed" | "changed";
+        /** PolicyDiffEntry */
+        PolicyDiffEntry: {
+            /** Path */
+            path: string;
+            kind: components["schemas"]["PolicyDiffChangeKind"];
+            /** Before */
+            before?: string | null;
+            /** After */
+            after?: string | null;
+            /**
+             * Before Evidence
+             * @default []
+             */
+            before_evidence: components["schemas"]["EvidenceRef"][];
+            /**
+             * After Evidence
+             * @default []
+             */
+            after_evidence: components["schemas"]["EvidenceRef"][];
+            /** Reason Code */
+            reason_code: string;
+        };
+        /**
+         * PolicyDiffLayer
+         * @enum {string}
+         */
+        PolicyDiffLayer: "policy_revision" | "effective_policy";
+        /**
+         * PolicyDiffStatus
+         * @enum {string}
+         */
+        PolicyDiffStatus: "complete" | "incomplete" | "ambiguous";
+        /**
+         * PolicyDomainOwner
+         * @enum {string}
+         */
+        PolicyDomainOwner: "admission_benefits" | "admissions" | "admission_fit";
+        /** PolicyHypotheticalPreview */
+        PolicyHypotheticalPreview: {
+            /**
+             * Schema Version
+             * @default policy-hypothetical-preview.v1
+             * @constant
+             */
+            schema_version: "policy-hypothetical-preview.v1";
+            /**
+             * Hypothetical
+             * @default true
+             * @constant
+             */
+            hypothetical: true;
+            /**
+             * Approval State
+             * @default pending
+             * @constant
+             */
+            approval_state: "pending";
+            target: components["schemas"]["PolicyReviewPreviewTarget"];
+            /** Approved Snapshot Hash */
+            approved_snapshot_hash: string;
+            current_trace: components["schemas"]["ResolutionTrace"];
+            candidate_trace: components["schemas"]["ResolutionTrace"];
+            effective_diff: components["schemas"]["PolicySemanticDiff"];
+            impact: components["schemas"]["PolicyImpactPreview"];
+            /**
+             * Calculated At
+             * Format: date-time
+             */
+            calculated_at: string;
+            /** Preview Id */
+            preview_id: string;
+        };
+        /** PolicyImpactPreview */
+        PolicyImpactPreview: {
+            /**
+             * Schema Version
+             * @default policy-impact.v1
+             */
+            schema_version: string;
+            /** University Id */
+            university_id: string;
+            /** Admission Year */
+            admission_year: number;
+            /** Context Fingerprint */
+            context_fingerprint: string;
+            /** Current Trace Id */
+            current_trace_id: string;
+            /** Candidate Trace Id */
+            candidate_trace_id: string;
+            /** Policy Diff Id */
+            policy_diff_id: string;
+            status: components["schemas"]["PolicyImpactStatus"];
+            actionability: components["schemas"]["ImpactActionability"];
+            reason: components["schemas"]["ImpactReason"];
+            /**
+             * Affected Objects
+             * @default []
+             */
+            affected_objects: components["schemas"]["ImpactAffectedObject"][];
+            /**
+             * Domain Results
+             * @default []
+             */
+            domain_results: components["schemas"]["DomainRuleImpactObservation"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["EvidenceRef"][];
+            /**
+             * Missing Input Codes
+             * @default []
+             */
+            missing_input_codes: string[];
+            /**
+             * Dependency Cycles
+             * @default []
+             */
+            dependency_cycles: string[];
+            /**
+             * Dependency Truncated
+             * @default false
+             */
+            dependency_truncated: boolean;
+            /**
+             * Calculated At
+             * Format: date-time
+             */
+            calculated_at: string;
+            /** Impact Id */
+            impact_id: string;
+        };
+        /**
+         * PolicyImpactStatus
+         * @enum {string}
+         */
+        PolicyImpactStatus: "complete" | "partial" | "unavailable";
+        /** PolicyPrecedenceDecision */
+        PolicyPrecedenceDecision: {
+            left: components["schemas"]["PolicySelection"];
+            right: components["schemas"]["PolicySelection"];
+            outcome: components["schemas"]["PolicyPrecedenceOutcome"];
+            reason: components["schemas"]["PolicyPrecedenceReason"];
+            winner?: components["schemas"]["PolicySelection"] | null;
+            relation_kind?: components["schemas"]["PolicyRuleRelationKind"] | null;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["EvidenceRef"][];
+        };
+        /**
+         * PolicyPrecedenceOutcome
+         * @enum {string}
+         */
+        PolicyPrecedenceOutcome: "left_prevails" | "right_prevails" | "conflict" | "indeterminate";
+        /**
+         * PolicyPrecedenceReason
+         * @enum {string}
+         */
+        PolicyPrecedenceReason: "exact_relation" | "authorized_exception" | "authority" | "specificity" | "equal_precedence" | "incomparable_scope" | "crossing_authority_and_scope" | "unresolved_authority" | "ambiguous_relation_set" | "precedence_cycle";
+        /**
+         * PolicyQueryFocus
+         * @enum {string}
+         */
+        PolicyQueryFocus: "status" | "change" | "applicability" | "impact" | "history" | "what_if";
+        /**
+         * PolicyResolutionBlocker
+         * @enum {string}
+         */
+        PolicyResolutionBlocker: "valid_as_of_required" | "admission_cycle_unresolved" | "admission_cycle_identity_mismatch" | "admission_cycle_cancelled_or_unknown" | "precedence_decision_limit" | "approval_provenance_invalid";
+        /**
+         * PolicyResolutionMode
+         * @enum {string}
+         */
+        PolicyResolutionMode: "approved_effective" | "hypothetical";
+        /**
+         * PolicyResolutionStatus
+         * @enum {string}
+         */
+        PolicyResolutionStatus: "candidates_found" | "resolved" | "conflict" | "no_match" | "blocked_by_missing_data" | "indeterminate";
+        /** PolicyReviewPreviewTarget */
+        PolicyReviewPreviewTarget: {
+            /** Rule Id */
+            rule_id: string;
+            /** Revision */
+            revision: number;
+            /** Revision Hash */
+            revision_hash: string;
+        };
+        /** PolicyRevisionDiffSnapshot */
+        PolicyRevisionDiffSnapshot: {
+            selection: components["schemas"]["PolicySelection"];
+            approval_state: components["schemas"]["PolicyApprovalState"];
+            /** Normalizer Version */
+            normalizer_version: string;
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceRef"][];
+        };
+        /**
+         * PolicyRevisionLifecycle
+         * @enum {string}
+         */
+        PolicyRevisionLifecycle: "rumor" | "hypothesis" | "announced" | "proposal" | "draft" | "under_review" | "adopted" | "published" | "future_effective" | "effective" | "superseded" | "repealed" | "withdrawn" | "rejected" | "unknown";
+        /**
+         * PolicyRuleFilterReason
+         * @enum {string}
+         */
+        PolicyRuleFilterReason: "selector_matched" | "selector_not_matched" | "required_context_unknown" | "lifecycle_not_applicable" | "valid_time_missing" | "outside_valid_time" | "effective_time_missing" | "future_effective" | "effective_time_ended" | "owner_port_not_registered" | "owner_rule_not_found" | "owner_lookup_unavailable" | "admission_cycle_unresolved" | "admission_cycle_blocked" | "valid_as_of_missing" | "approval_state_unresolved" | "scope_not_matched" | "scope_context_unknown" | "legal_authority_unresolved";
+        /**
+         * PolicyRuleFilterState
+         * @enum {string}
+         */
+        PolicyRuleFilterState: "candidate" | "not_applicable" | "future" | "expired" | "indeterminate" | "unsupported" | "blocked";
+        /** PolicyRuleRelation */
+        PolicyRuleRelation: {
+            kind: components["schemas"]["PolicyRuleRelationKind"];
+            /** Target Rule Id */
+            target_rule_id: string;
+            /** Target Revision */
+            target_revision: number;
+            /** Target Hash */
+            target_hash: string;
+            source_claim: components["schemas"]["ClaimRevisionRef"];
+            evidence: components["schemas"]["EvidenceRef"];
+        };
+        /**
+         * PolicyRuleRelationKind
+         * @enum {string}
+         */
+        PolicyRuleRelationKind: "exception_to" | "authorized_exception_to" | "overrides" | "supersedes" | "amends" | "requires";
+        /** PolicyRuleRevision */
+        PolicyRuleRevision: {
+            /** Rule Id */
+            rule_id: string;
+            /** Revision */
+            revision: number;
+            /**
+             * Schema Version
+             * @default policy-rule.v2
+             * @enum {string}
+             */
+            schema_version: "policy-rule.v1" | "policy-rule.v2" | "policy-rule.v3";
+            /** Family Id */
+            family_id?: string | null;
+            authority?: components["schemas"]["PolicyAuthorityLevel"] | null;
+            selector: components["schemas"]["PolicySelectorAst"];
+            scope: components["schemas"]["PolicyScope"];
+            domain_rule: components["schemas"]["DomainRuleRef"];
+            lifecycle: components["schemas"]["PolicyRevisionLifecycle"];
+            temporal: components["schemas"]["PolicyTemporalRevision"];
+            /** Source Claims */
+            source_claims: components["schemas"]["ClaimRevisionRef"][];
+            /** Evidence */
+            evidence: components["schemas"]["EvidenceRef"][];
+            /**
+             * Relations
+             * @default []
+             */
+            relations: components["schemas"]["PolicyRuleRelation"][];
+            /** Content Hash */
+            content_hash: string;
+        };
+        /** PolicyScope */
+        PolicyScope: {
+            level: components["schemas"]["PolicyScopeLevel"];
+            /** Scope Id */
+            scope_id?: string | null;
+        };
+        /**
+         * PolicyScopeLevel
+         * @enum {string}
+         */
+        PolicyScopeLevel: "federal" | "ministry" | "university" | "campus" | "faculty" | "department" | "education_level" | "direction" | "program" | "admission_route" | "competition_type" | "applicant_category" | "olympiad" | "olympiad_profile" | "subject";
+        /**
+         * PolicyScopeMatchReason
+         * @enum {string}
+         */
+        PolicyScopeMatchReason: "federal_scope" | "context_matched" | "context_unknown" | "context_unavailable" | "context_mismatched";
+        /**
+         * PolicyScopeMatchState
+         * @enum {string}
+         */
+        PolicyScopeMatchState: "match" | "no_match" | "indeterminate";
+        /**
+         * PolicySelection
+         * @description An exact owner-managed rule reference; this contract contains no domain result.
+         */
+        PolicySelection: {
+            /** Rule Id */
+            rule_id: string;
+            /** Revision */
+            revision: number;
+            /** Revision Hash */
+            revision_hash: string;
+            domain_rule: components["schemas"]["DomainRuleRef"];
+        };
+        /** PolicySelectorAst */
+        PolicySelectorAst: {
+            /**
+             * Schema Version
+             * @default policy-selector.v1
+             * @constant
+             */
+            schema_version: "policy-selector.v1";
+            /** Nodes */
+            nodes: components["schemas"]["PolicySelectorNode"][];
+        };
+        /** PolicySelectorNode */
+        PolicySelectorNode: {
+            /** Node Id */
+            node_id: string;
+            /** Parent Id */
+            parent_id?: string | null;
+            kind: components["schemas"]["PolicySelectorNodeKind"];
+            field?: components["schemas"]["PolicyContextField"] | null;
+            /** Value */
+            value?: string | number | boolean | null;
+            /**
+             * Values
+             * @default []
+             */
+            values: (string | number | boolean)[];
+        };
+        /**
+         * PolicySelectorNodeKind
+         * @enum {string}
+         */
+        PolicySelectorNodeKind: "all" | "any" | "equals" | "in" | "exists";
+        /** PolicySemanticDiff */
+        PolicySemanticDiff: {
+            /**
+             * Schema Version
+             * @default policy-diff.v1
+             */
+            schema_version: string;
+            /** Diff Id */
+            diff_id: string;
+            layer: components["schemas"]["PolicyDiffLayer"];
+            status: components["schemas"]["PolicyDiffStatus"];
+            before_state: components["schemas"]["DiffObjectState"];
+            after_state: components["schemas"]["DiffObjectState"];
+            /** Before */
+            before?: components["schemas"]["PolicyRevisionDiffSnapshot"] | components["schemas"]["EffectivePolicyDiffSnapshot"] | null;
+            /** After */
+            after?: components["schemas"]["PolicyRevisionDiffSnapshot"] | components["schemas"]["EffectivePolicyDiffSnapshot"] | null;
+            /**
+             * Changes
+             * @default []
+             */
+            changes: components["schemas"]["PolicyDiffEntry"][];
+            /**
+             * Uncertainty Codes
+             * @default []
+             */
+            uncertainty_codes: string[];
+            /** Before Trace Id */
+            before_trace_id?: string | null;
+            /** After Trace Id */
+            after_trace_id?: string | null;
+            /** Source Diff Hash */
+            source_diff_hash?: string | null;
+        };
+        /**
+         * PolicyTemporalRevision
+         * @description Immutable policy revision with valid-time and system-time semantics.
+         */
+        PolicyTemporalRevision: {
+            clock: components["schemas"]["BitemporalRevision"];
+            source_milestones: components["schemas"]["SourceMilestones"];
         };
         /** PreliminaryProfileResponse */
         PreliminaryProfileResponse: {
@@ -2816,6 +6048,163 @@ export interface components {
              * @default []
              */
             sourceGaps: components["schemas"]["SourceGapReferenceResponse"][];
+        };
+        /** ProjectionDataQuality */
+        ProjectionDataQuality: {
+            status: components["schemas"]["ProjectionDataQualityStatus"];
+            /** Coverage */
+            coverage: string;
+            /** Confidence */
+            confidence: string;
+            /** Freshness At */
+            freshness_at?: string | null;
+            /** Semantic Version */
+            semantic_version?: string | null;
+            /** Classifier Version */
+            classifier_version?: string | null;
+        };
+        /**
+         * ProjectionDataQualityStatus
+         * @enum {string}
+         */
+        ProjectionDataQualityStatus: "available" | "partial" | "insufficient_data" | "unavailable";
+        /**
+         * ProjectionMetric
+         * @description One explainable metric observation; absent data remains absent.
+         */
+        ProjectionMetric: {
+            /** Code */
+            code: string;
+            /** Value */
+            value?: string | null;
+            /**
+             * Unit
+             * @default share
+             */
+            unit: string;
+            basis?: components["schemas"]["MetricBasis"] | null;
+            /**
+             * Coverage
+             * @default 0
+             */
+            coverage: string;
+            /**
+             * Confidence
+             * @default 0
+             */
+            confidence: string;
+            /** @default unavailable */
+            status: components["schemas"]["ProjectionDataQualityStatus"];
+            /**
+             * Provenance
+             * @default []
+             */
+            provenance: components["schemas"]["SourceAttribution"][];
+            /**
+             * Source Gaps
+             * @default []
+             */
+            source_gaps: components["schemas"]["SourceGapReference"][];
+        };
+        /** ProjectionMetricEvidence */
+        ProjectionMetricEvidence: {
+            /** Program Id */
+            program_id: string;
+            /** Metric Code */
+            metric_code: string;
+            /** Schema Version */
+            schema_version: string;
+            /** Curriculum Item Id */
+            curriculum_item_id: string;
+            /** Feature Id */
+            feature_id: string;
+            /** Contribution */
+            contribution?: string | null;
+            /** Source Hash */
+            source_hash?: string | null;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["SemanticClassificationEvidence"][];
+            /**
+             * Provenance
+             * @default []
+             */
+            provenance: components["schemas"]["SourceAttribution"][];
+        };
+        /** QueryFilter */
+        QueryFilter: {
+            kind: components["schemas"]["FilterKind"];
+            /**
+             * Ids
+             * @default []
+             */
+            ids: string[];
+            education_level?: components["schemas"]["EducationLevel"] | null;
+            /** Admission Year */
+            admission_year?: number | null;
+            study_form?: components["schemas"]["StudyForm"] | null;
+            funding_type?: components["schemas"]["FundingType"] | null;
+            /** Semester */
+            semester?: number | null;
+            /** Course Year */
+            course_year?: number | null;
+            /** Metric Code */
+            metric_code?: string | null;
+            /** Feature Code */
+            feature_code?: string | null;
+            /** @default eq */
+            operator: components["schemas"]["FilterOperator"];
+            /** Threshold */
+            threshold?: string | null;
+        };
+        /**
+         * QueryScope
+         * @enum {string}
+         */
+        QueryScope: "all" | "university" | "direction" | "program" | "education_level" | "admission_year" | "study_form" | "funding_type" | "semester" | "course_year";
+        /** QuerySort */
+        QuerySort: {
+            /** Metric Code */
+            metric_code?: string | null;
+            /**
+             * Descending
+             * @default true
+             */
+            descending: boolean;
+        };
+        /** QuerySpec */
+        QuerySpec: {
+            entity: components["schemas"]["MetricEntityType"];
+            /** Metrics */
+            metrics: string[];
+            /** @default all */
+            scope: components["schemas"]["QueryScope"];
+            /**
+             * Scope Ids
+             * @default []
+             */
+            scope_ids: string[];
+            /**
+             * Filters
+             * @default []
+             */
+            filters: components["schemas"]["QueryFilter"][];
+            /**
+             * Group By
+             * @default []
+             */
+            group_by: components["schemas"]["MetricEntityType"][];
+            /** @default value */
+            aggregation: components["schemas"]["MetricAggregation"];
+            sort?: components["schemas"]["QuerySort"] | null;
+            /**
+             * Limit
+             * @default 20
+             */
+            limit: number;
+            predicate?: components["schemas"]["SemanticPredicate"] | null;
         };
         /**
          * QuestionBlock
@@ -3029,6 +6418,656 @@ export interface components {
              */
             password: string;
         };
+        /** ResolutionExplanation */
+        ResolutionExplanation: {
+            /** Trace Reference */
+            trace_reference: string;
+            /** Trace Version */
+            trace_version: string;
+            state: components["schemas"]["ResponseResolutionState"];
+            /** Valid As Of */
+            valid_as_of?: string | null;
+            /**
+             * Selected Rules
+             * @default []
+             */
+            selected_rules: components["schemas"]["ResponseRuleReference"][];
+            /**
+             * Considered Rules
+             * @default []
+             */
+            considered_rules: components["schemas"]["ConsideredRuleView"][];
+            /**
+             * Conflicts
+             * @default []
+             */
+            conflicts: components["schemas"]["RuleConflictView"][];
+            /**
+             * Exceptions
+             * @default []
+             */
+            exceptions: components["schemas"]["RuleExceptionView"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ResponseEvidenceReference"][];
+            /**
+             * Blockers
+             * @default []
+             */
+            blockers: string[];
+        };
+        /** ResolutionTrace */
+        ResolutionTrace: {
+            /**
+             * Trace Version
+             * @default policy-resolution-trace.v3
+             * @constant
+             */
+            trace_version: "policy-resolution-trace.v3";
+            /** @default approved_effective */
+            mode: components["schemas"]["PolicyResolutionMode"];
+            /** University Id */
+            university_id: string;
+            /** Admission Year */
+            admission_year: number;
+            /** Cycle Id */
+            cycle_id?: string | null;
+            /** Cycle Revision */
+            cycle_revision?: number | null;
+            /**
+             * Cycle Evidence
+             * @default []
+             */
+            cycle_evidence: components["schemas"]["EvidenceRef"][];
+            /** Valid As Of */
+            valid_as_of?: string | null;
+            /**
+             * As Known At
+             * Format: date-time
+             */
+            as_known_at: string;
+            /** Context Fingerprint */
+            context_fingerprint: string;
+            status: components["schemas"]["PolicyResolutionStatus"];
+            /**
+             * Blockers
+             * @default []
+             */
+            blockers: components["schemas"]["PolicyResolutionBlocker"][];
+            /**
+             * Considered
+             * @default []
+             */
+            considered: components["schemas"]["ConsideredPolicyRule"][];
+            /**
+             * Candidates
+             * @default []
+             */
+            candidates: components["schemas"]["PolicySelection"][];
+            /**
+             * Effective Rules
+             * @default []
+             */
+            effective_rules: components["schemas"]["PolicySelection"][];
+            /**
+             * Conflicting Rules
+             * @default []
+             */
+            conflicting_rules: components["schemas"]["PolicySelection"][];
+            /**
+             * Precedence Decisions
+             * @default []
+             */
+            precedence_decisions: components["schemas"]["PolicyPrecedenceDecision"][];
+            /** Trace Id */
+            trace_id: string;
+        };
+        /**
+         * ResponseAction
+         * @enum {string}
+         */
+        ResponseAction: "show_details" | "compare" | "add_to_shortlist" | "change_scope" | "show_curriculum" | "download_report" | "open_mini_app";
+        /** ResponseActionItem */
+        ResponseActionItem: {
+            action: components["schemas"]["ResponseAction"];
+            /** Label */
+            label: string;
+            /** Payload */
+            payload?: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * ResponseActionability
+         * @enum {string}
+         */
+        ResponseActionability: "not_applicable" | "future_only" | "informational" | "action_recommended" | "action_required" | "uncertain" | "blocked_by_missing_data";
+        /**
+         * ResponseAssertionReviewState
+         * @enum {string}
+         */
+        ResponseAssertionReviewState: "reviewed_as_source_assertion" | "needs_review" | "unresolved";
+        /**
+         * ResponseClaimStage
+         * @enum {string}
+         */
+        ResponseClaimStage: "possible" | "announced" | "proposal" | "adopted" | "published" | "future_effective" | "effective" | "superseded" | "repealed" | "withdrawn" | "rejected" | "unknown";
+        /** ResponseCycleComparison */
+        ResponseCycleComparison: {
+            /** Before Admission Year */
+            before_admission_year: number;
+            /** After Admission Year */
+            after_admission_year: number;
+            before_resolution: components["schemas"]["ResolutionExplanation"];
+            after_resolution: components["schemas"]["ResolutionExplanation"];
+            /** Diff Reference */
+            diff_reference: string;
+            diff_status: components["schemas"]["ResponseDiffStatus"];
+            /**
+             * Changes
+             * @default []
+             */
+            changes: components["schemas"]["ResponsePolicyDiffEntry"][];
+        };
+        /**
+         * ResponseDiffChangeKind
+         * @enum {string}
+         */
+        ResponseDiffChangeKind: "added" | "removed" | "changed";
+        /**
+         * ResponseDiffStatus
+         * @enum {string}
+         */
+        ResponseDiffStatus: "complete" | "incomplete" | "ambiguous";
+        /** ResponseEnvelope */
+        ResponseEnvelope: {
+            response_type: components["schemas"]["ResponseFormat"];
+            /** @default deterministic */
+            response_mode: components["schemas"]["ResponseMode"];
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /** Template */
+            template: string;
+            /** Data */
+            data?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Actions
+             * @default []
+             */
+            actions: components["schemas"]["ResponseActionItem"][];
+            /** Deep Link */
+            deep_link?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Query Reference */
+            query_reference?: string | null;
+            /** Result Reference */
+            result_reference?: string | null;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["EvidenceSummary"][];
+            knowledge?: components["schemas"]["KnowledgeResponseSection"] | null;
+            /**
+             * Policy Version
+             * @default response-policy.v1
+             */
+            policy_version: string;
+            plan?: components["schemas"]["ResponsePlan"] | null;
+        };
+        /** ResponseEvidenceLocator */
+        ResponseEvidenceLocator: {
+            /** Page */
+            page?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Field */
+            field?: string | null;
+            /** Record Key */
+            record_key?: string | null;
+        };
+        /** ResponseEvidenceReference */
+        ResponseEvidenceReference: {
+            /** Source Reference */
+            source_reference: string;
+            /** Observation Reference */
+            observation_reference: string;
+            /** Snapshot Sha256 */
+            snapshot_sha256: string;
+            /**
+             * Url
+             * Format: uri
+             */
+            url: string;
+            locator?: components["schemas"]["ResponseEvidenceLocator"];
+            /** Source Name */
+            source_name?: string | null;
+            /** @default unknown */
+            source_category: components["schemas"]["ResponseSourceCategory"];
+            /** @default unknown */
+            reliability: components["schemas"]["ResponseSourceReliability"];
+            /** Published At */
+            published_at?: string | null;
+            /** Captured At */
+            captured_at?: string | null;
+        };
+        /** ResponseFact */
+        ResponseFact: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+            /** Unit */
+            unit?: string | null;
+            /** Subject Label */
+            subject_label?: string | null;
+        };
+        /**
+         * ResponseFormat
+         * @enum {string}
+         */
+        ResponseFormat: "text" | "image" | "image_collection" | "pdf" | "mini_app";
+        /**
+         * ResponseMode
+         * @enum {string}
+         */
+        ResponseMode: "deterministic" | "source_backed_verbalization" | "unverified_fallback";
+        /**
+         * ResponsePlan
+         * @description Prepared presentation input; it contains no query or aggregation logic.
+         */
+        ResponsePlan: {
+            response_format: components["schemas"]["ResponseFormat"];
+            /** Template */
+            template: string;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+            /** Data */
+            data?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Actions
+             * @default []
+             */
+            actions: string[];
+            /** Result Reference */
+            result_reference?: string | null;
+            /**
+             * Evidence Available
+             * @default false
+             */
+            evidence_available: boolean;
+            /**
+             * Has Source Gaps
+             * @default false
+             */
+            has_source_gaps: boolean;
+            /**
+             * Policy Version
+             * @default response-policy.v1
+             */
+            policy_version: string;
+        };
+        /** ResponsePolicyDiffEntry */
+        ResponsePolicyDiffEntry: {
+            /** Path */
+            path: string;
+            kind: components["schemas"]["ResponseDiffChangeKind"];
+            /** Before */
+            before?: string | null;
+            /** After */
+            after?: string | null;
+            /**
+             * Before Evidence
+             * @default []
+             */
+            before_evidence: components["schemas"]["ResponseEvidenceReference"][];
+            /**
+             * After Evidence
+             * @default []
+             */
+            after_evidence: components["schemas"]["ResponseEvidenceReference"][];
+            /** Reason Code */
+            reason_code: string;
+        };
+        /**
+         * ResponseResolutionState
+         * @enum {string}
+         */
+        ResponseResolutionState: "resolved" | "conflict" | "no_match" | "blocked" | "indeterminate" | "candidates";
+        /** ResponseRuleReference */
+        ResponseRuleReference: {
+            /** Rule Reference */
+            rule_reference: string;
+            /** Revision */
+            revision: number;
+            /** Revision Hash */
+            revision_hash: string;
+            scope_kind: components["schemas"]["ResponseScopeKind"];
+            /** Scope Reference */
+            scope_reference?: string | null;
+        };
+        /**
+         * ResponseScopeKind
+         * @enum {string}
+         */
+        ResponseScopeKind: "federal" | "university" | "direction" | "program" | "admission_route" | "other";
+        /**
+         * ResponseSourceCategory
+         * @enum {string}
+         */
+        ResponseSourceCategory: "official_document" | "regulator" | "university" | "secondary_media" | "community" | "user_supplied" | "unknown";
+        /**
+         * ResponseSourceReliability
+         * @enum {string}
+         */
+        ResponseSourceReliability: "primary_official" | "official" | "trusted_secondary" | "unverified_secondary" | "community" | "user_supplied" | "unknown";
+        /**
+         * ResponseUncertainty
+         * @enum {string}
+         */
+        ResponseUncertainty: "no_source_assertion_found" | "source_assertion_needs_review" | "source_assertions_disagree" | "effective_date_unknown" | "scope_unknown" | "domain_result_unavailable" | "policy_conflict_unresolved" | "outside_knowledge_coverage" | "evidence_unavailable" | "historical_state_unavailable";
+        /** ReviewActionHistoryResponse */
+        ReviewActionHistoryResponse: {
+            /** Action */
+            action: string;
+            /** Actoraccountid */
+            actorAccountId: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Recordedat
+             * Format: date-time
+             */
+            recordedAt: string;
+            /** Resultrevision */
+            resultRevision: number;
+            /** Resulthash */
+            resultHash: string;
+            /** Policypreviewfingerprint */
+            policyPreviewFingerprint?: string | null;
+        };
+        /** ReviewConflictParticipantResponse */
+        ReviewConflictParticipantResponse: {
+            /** Kind */
+            kind: string;
+            /** Objectid */
+            objectId: string;
+            /** Revision */
+            revision: number;
+            /** Contenthash */
+            contentHash?: string | null;
+            /** Role */
+            role: string;
+            /** Evidence */
+            evidence: components["schemas"]["ReviewEvidenceResponse"][];
+        };
+        /** ReviewConflictResponse */
+        ReviewConflictResponse: {
+            /** Conflictid */
+            conflictId: string;
+            /** Kind */
+            kind: string;
+            /** State */
+            state: string;
+            /** Scope */
+            scope?: string | null;
+            /** Participants */
+            participants: components["schemas"]["ReviewConflictParticipantResponse"][];
+        };
+        /** ReviewDecisionRequest */
+        ReviewDecisionRequest: {
+            target: components["schemas"]["ReviewTargetResponse"];
+            action: components["schemas"]["KnowledgeReviewAction"];
+            /** Reason */
+            reason: string;
+            /** Idempotencykey */
+            idempotencyKey: string;
+            /** Policypreviewfingerprint */
+            policyPreviewFingerprint?: string | null;
+            policyPreviewContext?: components["schemas"]["ReviewPolicyPreviewContext"] | null;
+            editedProposition?: components["schemas"]["ClaimPropositionRequest"] | null;
+            /** Canonicalsubjectid */
+            canonicalSubjectId?: string | null;
+            relatedTarget?: components["schemas"]["ReviewTargetResponse"] | null;
+        };
+        /** ReviewDecisionResponse */
+        ReviewDecisionResponse: {
+            /** Eventid */
+            eventId: string;
+            target: components["schemas"]["ReviewTargetResponse"];
+            action: components["schemas"]["KnowledgeReviewAction"];
+            /** Status */
+            status: string;
+            /** Actoraccountid */
+            actorAccountId: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Recordedat
+             * Format: date-time
+             */
+            recordedAt: string;
+            /** Resultrevision */
+            resultRevision: number;
+            /** Resulthash */
+            resultHash: string;
+            /** Policypreviewfingerprint */
+            policyPreviewFingerprint?: string | null;
+        };
+        /** ReviewDiffEntryResponse */
+        ReviewDiffEntryResponse: {
+            /** Path */
+            path: string;
+            /** Kind */
+            kind: string;
+            /** Before */
+            before?: string | null;
+            /** After */
+            after?: string | null;
+            /** Reasoncode */
+            reasonCode: string;
+        };
+        /** ReviewEvidenceResponse */
+        ReviewEvidenceResponse: {
+            /** Sourceid */
+            sourceId: string;
+            /** Sourceobservationid */
+            sourceObservationId: string;
+            /** Snapshotsha256 */
+            snapshotSha256: string;
+            /** Sourcename */
+            sourceName?: string | null;
+            /** Reliabilitytier */
+            reliabilityTier?: string | null;
+            /** Sourceurl */
+            sourceUrl: string;
+            /** Page */
+            page?: number | null;
+            /** Table */
+            table?: string | null;
+            /** Row */
+            row?: number | null;
+            /** Section */
+            section?: string | null;
+            /** Field */
+            field?: string | null;
+            /** Recordkey */
+            recordKey?: string | null;
+            /**
+             * Inferred
+             * @default false
+             */
+            inferred: boolean;
+        };
+        /** ReviewPolicyPreviewContext */
+        ReviewPolicyPreviewContext: {
+            /** Universityid */
+            universityId: string;
+            /** Admissionyear */
+            admissionYear: number;
+            applicability?: components["schemas"]["PolicyApplicabilityContext"];
+            /**
+             * Validasof
+             * Format: date-time
+             */
+            validAsOf: string;
+        };
+        /** ReviewPolicyPreviewRequest */
+        ReviewPolicyPreviewRequest: {
+            target: components["schemas"]["ReviewTargetResponse"];
+            context: components["schemas"]["ReviewPolicyPreviewContext"];
+        };
+        /** ReviewPolicyPreviewResponse */
+        ReviewPolicyPreviewResponse: {
+            preview: components["schemas"]["PolicyHypotheticalPreview"];
+        };
+        /** ReviewQueueItemResponse */
+        ReviewQueueItemResponse: {
+            target: components["schemas"]["ReviewTargetResponse"];
+            /** Reviewstate */
+            reviewState: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Title */
+            title: string;
+            /** Assertiontext */
+            assertionText?: string | null;
+            proposition?: components["schemas"]["ClaimProposition"] | null;
+            /** Extractionmethod */
+            extractionMethod?: string | null;
+            /** Extractor */
+            extractor?: string | null;
+            /** Confidence */
+            confidence?: string | null;
+            /** Claimedstage */
+            claimedStage?: string | null;
+            /** Changeeventkind */
+            changeEventKind?: string | null;
+            /**
+             * Linkedclaimids
+             * @default []
+             */
+            linkedClaimIds: string[];
+            /**
+             * Relatedassertions
+             * @default []
+             */
+            relatedAssertions: string[];
+            /** Policylifecycle */
+            policyLifecycle?: string | null;
+            /** Policyauthority */
+            policyAuthority?: string | null;
+            /** Policyscope */
+            policyScope?: string | null;
+            /** Domainruleid */
+            domainRuleId?: string | null;
+            /** Canonicalsummary */
+            canonicalSummary: string;
+            /** Effectivefrom */
+            effectiveFrom?: string | null;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ReviewEvidenceResponse"][];
+            /**
+             * Diff
+             * @default []
+             */
+            diff: components["schemas"]["ReviewDiffEntryResponse"][];
+            /**
+             * Impactstatus
+             * @default not_required
+             * @enum {string}
+             */
+            impactStatus: "not_required" | "unavailable";
+            /** Impactreason */
+            impactReason?: string | null;
+            /**
+             * Conflicts
+             * @default []
+             */
+            conflicts: components["schemas"]["ReviewConflictResponse"][];
+            /**
+             * Conflictstruncated
+             * @default false
+             */
+            conflictsTruncated: boolean;
+            /** Currenttraceid */
+            currentTraceId?: string | null;
+            /** Candidatetraceid */
+            candidateTraceId?: string | null;
+            /**
+             * Actionhistory
+             * @default []
+             */
+            actionHistory: components["schemas"]["ReviewActionHistoryResponse"][];
+        };
+        /** ReviewQueueResponse */
+        ReviewQueueResponse: {
+            /** Items */
+            items: components["schemas"]["ReviewQueueItemResponse"][];
+            /** Truncated */
+            truncated: boolean;
+        };
+        /** ReviewTargetResponse */
+        ReviewTargetResponse: {
+            kind: components["schemas"]["KnowledgeReviewTargetKind"];
+            /** Objectid */
+            objectId: string;
+            /** Revision */
+            revision: number;
+            /** Revisionhash */
+            revisionHash: string;
+        };
+        /** RuleConflictView */
+        RuleConflictView: {
+            /** Rules */
+            rules: components["schemas"]["ResponseRuleReference"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ResponseEvidenceReference"][];
+        };
+        /**
+         * RuleDisposition
+         * @enum {string}
+         */
+        RuleDisposition: "selected" | "considered" | "not_applicable" | "future" | "expired" | "incomplete_scope" | "incomplete_data" | "unavailable" | "conflict" | "unresolved";
+        /** RuleExceptionView */
+        RuleExceptionView: {
+            /** Rules */
+            rules: components["schemas"]["ResponseRuleReference"][];
+            selected_rule?: components["schemas"]["ResponseRuleReference"] | null;
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["ResponseEvidenceReference"][];
+        };
         /** ScoreBreakdownResponse */
         ScoreBreakdownResponse: {
             /** Subjectfit */
@@ -3042,6 +7081,80 @@ export interface components {
             /** Rawcontentfit */
             rawContentFit: string;
         };
+        /**
+         * SelectorNodeReason
+         * @enum {string}
+         */
+        SelectorNodeReason: "value_matched" | "value_did_not_match" | "value_present" | "field_unknown" | "field_unavailable" | "all_children_matched" | "any_child_matched" | "child_did_not_match" | "child_result_unknown";
+        /**
+         * SelectorNodeState
+         * @enum {string}
+         */
+        SelectorNodeState: "match" | "no_match" | "indeterminate";
+        /** SelectorNodeTrace */
+        SelectorNodeTrace: {
+            /** Node Id */
+            node_id: string;
+            state: components["schemas"]["SelectorNodeState"];
+            reason: components["schemas"]["SelectorNodeReason"];
+        };
+        /** SemanticClassificationEvidence */
+        SemanticClassificationEvidence: {
+            /** Feature Id */
+            feature_id: string;
+            /** Rule Id */
+            rule_id: string;
+            /** Matched Terms */
+            matched_terms: string[];
+            /** Rationale */
+            rationale: string;
+        };
+        /** SemanticPredicate */
+        SemanticPredicate: {
+            /** Definition Id */
+            definition_id: string;
+            /** Definition Version */
+            definition_version: string;
+            /** Question */
+            question: string;
+            /** Allowed Fields */
+            allowed_fields: string[];
+            /**
+             * Max Rows
+             * @default 100
+             */
+            max_rows: number;
+            /**
+             * Max Chars Per Row
+             * @default 2000
+             */
+            max_chars_per_row: number;
+        };
+        /** SemanticPredicateEvidence */
+        SemanticPredicateEvidence: {
+            /** Canonical Id */
+            canonical_id: string;
+            /** Definition Id */
+            definition_id: string;
+            /** Definition Version */
+            definition_version: string;
+            /** Result */
+            result?: boolean | null;
+            /** Confidence */
+            confidence?: string | null;
+            status: components["schemas"]["SemanticPredicateStatus"];
+            reason?: components["schemas"]["SemanticPredicateFailureReason"] | null;
+        };
+        /**
+         * SemanticPredicateFailureReason
+         * @enum {string}
+         */
+        SemanticPredicateFailureReason: "budget" | "auth" | "api" | "internal" | "transport" | "capability_unavailable" | "circuit_open";
+        /**
+         * SemanticPredicateStatus
+         * @enum {string}
+         */
+        SemanticPredicateStatus: "available" | "partial" | "insufficient_data" | "unavailable";
         /** SessionProgressResponse */
         SessionProgressResponse: {
             /** Stage */
@@ -3068,6 +7181,68 @@ export interface components {
          * @enum {string}
          */
         ShortlistRole: "primary" | "alternative";
+        /** SourceAllowedRouteRequest */
+        SourceAllowedRouteRequest: {
+            /** Host */
+            host: string;
+            /** Pathprefix */
+            pathPrefix: string;
+        };
+        /** SourceAssertionView */
+        SourceAssertionView: {
+            /** Assertion */
+            assertion: string;
+            stage: components["schemas"]["ResponseClaimStage"];
+            review_state: components["schemas"]["ResponseAssertionReviewState"];
+            /** Source Name */
+            source_name: string;
+            source_category: components["schemas"]["ResponseSourceCategory"];
+            reliability: components["schemas"]["ResponseSourceReliability"];
+            asserted_value?: components["schemas"]["ResponseFact"] | null;
+            /** Published At */
+            published_at?: string | null;
+            /** Announced At */
+            announced_at?: string | null;
+            /** Adopted At */
+            adopted_at?: string | null;
+            /** Effective From */
+            effective_from?: string | null;
+            /** Effective To */
+            effective_to?: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["ResponseEvidenceReference"][];
+        };
+        /** SourceAttribution */
+        SourceAttribution: {
+            kind: components["schemas"]["SourceKind"];
+            /**
+             * Url
+             * Format: uri
+             */
+            url: string;
+            /**
+             * Captured At
+             * Format: date-time
+             */
+            captured_at: string;
+            /** Content Sha256 */
+            content_sha256: string;
+            /** Locator */
+            locator?: string | null;
+            /** University Id */
+            university_id?: string | null;
+            /** Run Id */
+            run_id?: string | null;
+            /** Field */
+            field?: string | null;
+            /** Record Key */
+            record_key?: string | null;
+            /**
+             * Inferred
+             * @default false
+             */
+            inferred: boolean;
+        };
         /** SourceAttributionResponse */
         SourceAttributionResponse: {
             kind: components["schemas"]["SourceKind"];
@@ -3113,6 +7288,28 @@ export interface components {
             runIds: string[];
             /** Snapshotconsistent */
             snapshotConsistent?: boolean | null;
+        };
+        /**
+         * SourceGapReference
+         * @description Safe field-level gap exposed to application consumers.
+         */
+        SourceGapReference: {
+            /** Code */
+            code: string;
+            severity: components["schemas"]["GapSeverity"];
+            /** Message */
+            message: string;
+            /** Source Url */
+            source_url?: string | null;
+            /** Field */
+            field?: string | null;
+            /** Record Key */
+            record_key?: string | null;
+            /**
+             * Can Continue
+             * @default true
+             */
+            can_continue: boolean;
         };
         /** SourceGapReferenceResponse */
         SourceGapReferenceResponse: {
@@ -3167,15 +7364,67 @@ export interface components {
             items: components["schemas"]["SourceHealthItemResponse"][];
         };
         /**
+         * SourceJurisdiction
+         * @enum {string}
+         */
+        SourceJurisdiction: "federal" | "regional" | "university" | "international" | "unknown";
+        /**
          * SourceKind
          * @enum {string}
          */
-        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_curriculum_metadata" | "bmstu_admission_orders_index" | "bmstu_admission_orders_document" | "bmstu_events" | "bmstu_campus_points" | "hse_common" | "hse_program_catalog" | "hse_program_detail" | "hse_curriculum_index" | "hse_curriculum_document" | "hse_admission_rules" | "hse_admission_places" | "hse_tuition" | "hse_passing_scores" | "hse_enrollment_index" | "hse_enrollment_document";
+        SourceKind: "bmstu_common" | "bmstu_major_catalog" | "bmstu_major_detail" | "bmstu_curriculum_document" | "bmstu_curriculum_metadata" | "bmstu_admission_orders_index" | "bmstu_admission_orders_document" | "bmstu_admission_document_index" | "bmstu_admission_rules" | "bmstu_admission_benefits" | "bmstu_admission_individual_achievements" | "bmstu_events" | "bmstu_campus_points" | "hse_common" | "hse_program_catalog" | "hse_program_detail" | "hse_curriculum_index" | "hse_curriculum_document" | "hse_admission_rules" | "hse_admission_places" | "hse_tuition" | "hse_passing_scores" | "hse_enrollment_index" | "hse_enrollment_document";
+        /**
+         * SourceMilestones
+         * @description Source dates; unknown milestones remain absent instead of being inferred.
+         */
+        SourceMilestones: {
+            /** Published At */
+            published_at?: string | null;
+            /** Announced At */
+            announced_at?: string | null;
+            /** Adopted At */
+            adopted_at?: string | null;
+            effective_time?: components["schemas"]["TemporalInterval"] | null;
+            /** Captured At */
+            captured_at?: string | null;
+        };
+        /** SourceMilestonesRequest */
+        SourceMilestonesRequest: {
+            /** Publishedat */
+            publishedAt?: string | null;
+            /** Announcedat */
+            announcedAt?: string | null;
+            /** Adoptedat */
+            adoptedAt?: string | null;
+            effectiveTime?: components["schemas"]["TemporalIntervalRequest"] | null;
+        };
+        /**
+         * SourceReliabilityTier
+         * @enum {string}
+         */
+        SourceReliabilityTier: "primary_normative" | "official_issuer" | "official_university" | "trusted_secondary" | "unverified_secondary" | "community" | "user_supplied" | "unknown";
         /**
          * StudyForm
          * @enum {string}
          */
         StudyForm: "full_time" | "part_time" | "evening" | "online" | "unknown";
+        /**
+         * TemporalInterval
+         * @description A half-open valid-time interval [start, end), with optional open bounds.
+         */
+        TemporalInterval: {
+            /** Start */
+            start?: string | null;
+            /** End */
+            end?: string | null;
+        };
+        /** TemporalIntervalRequest */
+        TemporalIntervalRequest: {
+            /** Start */
+            start?: string | null;
+            /** End */
+            end?: string | null;
+        };
         /** TradeoffResponse */
         TradeoffResponse: {
             /** Programid */
@@ -3206,6 +7455,617 @@ export interface components {
             /** Isdiscounted */
             isDiscounted: boolean;
             provenance: components["schemas"]["AdmissionProvenanceResponse"];
+        };
+        /**
+         * UnitType
+         * @enum {string}
+         */
+        UnitType: "faculty" | "department";
+        /**
+         * UniversityAdminRole
+         * @enum {string}
+         */
+        UniversityAdminRole: "owner" | "editor" | "viewer";
+        /** UniversityCatalogDisciplineResponse */
+        UniversityCatalogDisciplineResponse: {
+            /** Disciplineid */
+            disciplineId: string;
+            /** Name */
+            name: string;
+            /** Displayname */
+            displayName?: string | null;
+            /** Publicsummary */
+            publicSummary?: string | null;
+            /**
+             * Categoryids
+             * @default []
+             */
+            categoryIds: string[];
+            /**
+             * Unitids
+             * @default []
+             */
+            unitIds: string[];
+        };
+        /** UniversityCatalogLinksRequest */
+        UniversityCatalogLinksRequest: {
+            /** Categoryprograms */
+            categoryPrograms: [
+                string,
+                string
+            ][];
+            /** Categorydisciplines */
+            categoryDisciplines: [
+                string,
+                string
+            ][];
+            /** Unitprograms */
+            unitPrograms: [
+                string,
+                string
+            ][];
+            /** Unitdisciplines */
+            unitDisciplines: [
+                string,
+                string
+            ][];
+        };
+        /** UniversityCatalogLinksResponse */
+        UniversityCatalogLinksResponse: {
+            /** Categoryprograms */
+            categoryPrograms: [
+                string,
+                string
+            ][];
+            /** Categorydisciplines */
+            categoryDisciplines: [
+                string,
+                string
+            ][];
+            /** Unitprograms */
+            unitPrograms: [
+                string,
+                string
+            ][];
+            /** Unitdisciplines */
+            unitDisciplines: [
+                string,
+                string
+            ][];
+        };
+        /** UniversityCatalogProgramResponse */
+        UniversityCatalogProgramResponse: {
+            /** Programid */
+            programId: string;
+            /** Name */
+            name: string;
+            /** Displayname */
+            displayName?: string | null;
+            /** Publicsummary */
+            publicSummary?: string | null;
+            /**
+             * Categoryids
+             * @default []
+             */
+            categoryIds: string[];
+            /**
+             * Unitids
+             * @default []
+             */
+            unitIds: string[];
+        };
+        /** UniversityCatalogResponse */
+        UniversityCatalogResponse: {
+            /** Universityid */
+            universityId: string;
+            /** Universityname */
+            universityName: string;
+            /** City */
+            city: string;
+            /**
+             * Officialsite
+             * Format: uri
+             */
+            officialSite: string;
+            /** Address */
+            address: string;
+            /** Sourcestate */
+            sourceState: string;
+            /**
+             * Units
+             * @default []
+             */
+            units: components["schemas"]["UniversityUnitResponse"][];
+            /**
+             * Categories
+             * @default []
+             */
+            categories: components["schemas"]["UniversityCategoryResponse"][];
+            /**
+             * Programs
+             * @default []
+             */
+            programs: components["schemas"]["UniversityCatalogProgramResponse"][];
+            /**
+             * Disciplines
+             * @default []
+             */
+            disciplines: components["schemas"]["UniversityCatalogDisciplineResponse"][];
+        };
+        /** UniversityCategoryListResponse */
+        UniversityCategoryListResponse: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["UniversityCategoryResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** UniversityCategoryRequest */
+        UniversityCategoryRequest: {
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            categoryKind: components["schemas"]["CategoryKind"];
+            /** @default draft */
+            status: components["schemas"]["EditorialStatus"];
+            /**
+             * Sortorder
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        /** UniversityCategoryResponse */
+        UniversityCategoryResponse: {
+            /** Categoryid */
+            categoryId: string;
+            /** Universityid */
+            universityId: string;
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            categoryKind: components["schemas"]["CategoryKind"];
+            status: components["schemas"]["EditorialStatus"];
+            /** Sortorder */
+            sortOrder: number;
+            /** Revision */
+            revision: number;
+        };
+        /** UniversityCategoryUpdateRequest */
+        UniversityCategoryUpdateRequest: {
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            categoryKind: components["schemas"]["CategoryKind"];
+            /** @default draft */
+            status: components["schemas"]["EditorialStatus"];
+            /**
+             * Sortorder
+             * @default 0
+             */
+            sortOrder: number;
+            /** Expectedrevision */
+            expectedRevision: number;
+        };
+        /** UniversityDisciplineEditorialResponse */
+        UniversityDisciplineEditorialResponse: {
+            /** Disciplineid */
+            disciplineId: string;
+            /** Displayname */
+            displayName?: string | null;
+            /** Publicsummary */
+            publicSummary?: string | null;
+            visibility: components["schemas"]["EditorialVisibility"];
+            /** Revision */
+            revision: number;
+        };
+        /** UniversityDiscoveryListResponse */
+        UniversityDiscoveryListResponse: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["UniversityDiscoveryResponse"][];
+        };
+        /** UniversityDiscoveryResponse */
+        UniversityDiscoveryResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** City */
+            city: string;
+        };
+        /** UniversityEditorialEventAdminDetailResponse */
+        UniversityEditorialEventAdminDetailResponse: {
+            event: components["schemas"]["UniversityEditorialEventAdminResponse"];
+        };
+        /** UniversityEditorialEventAdminListResponse */
+        UniversityEditorialEventAdminListResponse: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["UniversityEditorialEventAdminResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** UniversityEditorialEventAdminResponse */
+        UniversityEditorialEventAdminResponse: {
+            /** Eventid */
+            eventId: string;
+            /** Universityid */
+            universityId: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            kind: components["schemas"]["EventKind"];
+            format: components["schemas"]["EventFormat"];
+            /**
+             * Startsat
+             * Format: date-time
+             */
+            startsAt: string;
+            /** Endsat */
+            endsAt?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Registrationurl */
+            registrationUrl?: string | null;
+            /** Venueid */
+            venueId?: string | null;
+            /** Locationlabel */
+            locationLabel?: string | null;
+            /** Locationaddress */
+            locationAddress?: string | null;
+            /** Onlineurl */
+            onlineUrl?: string | null;
+            status: components["schemas"]["EditorialEventStatus"];
+            audienceMode: components["schemas"]["EditorialAudienceMode"];
+            /** Revision */
+            revision: number;
+            /**
+             * Origin
+             * @default university_editorial
+             * @constant
+             */
+            origin: "university_editorial";
+            /**
+             * Units
+             * @default []
+             */
+            units: components["schemas"]["EventTargetResponse"][];
+            /**
+             * Programs
+             * @default []
+             */
+            programs: components["schemas"]["EventTargetResponse"][];
+            /**
+             * Categories
+             * @default []
+             */
+            categories: components["schemas"]["EventTargetResponse"][];
+            /**
+             * Agenda
+             * @default []
+             */
+            agenda: components["schemas"]["AgendaItemAdminResponse"][];
+        };
+        /** UniversityEditorialEventPublicDetailResponse */
+        UniversityEditorialEventPublicDetailResponse: {
+            event: components["schemas"]["UniversityEditorialEventPublicResponse"];
+        };
+        /** UniversityEditorialEventPublicListResponse */
+        UniversityEditorialEventPublicListResponse: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["UniversityEditorialEventPublicResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** UniversityEditorialEventPublicResponse */
+        UniversityEditorialEventPublicResponse: {
+            /** Eventid */
+            eventId: string;
+            /** Universityid */
+            universityId: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            kind: components["schemas"]["EventKind"];
+            format: components["schemas"]["EventFormat"];
+            /**
+             * Startsat
+             * Format: date-time
+             */
+            startsAt: string;
+            /** Endsat */
+            endsAt?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Registrationurl */
+            registrationUrl?: string | null;
+            /** Venueid */
+            venueId?: string | null;
+            /** Locationlabel */
+            locationLabel?: string | null;
+            /** Locationaddress */
+            locationAddress?: string | null;
+            /** Onlineurl */
+            onlineUrl?: string | null;
+            audienceMode: components["schemas"]["EditorialAudienceMode"];
+            /**
+             * Origin
+             * @default university_editorial
+             * @constant
+             */
+            origin: "university_editorial";
+            /**
+             * Units
+             * @default []
+             */
+            units: components["schemas"]["EventTargetResponse"][];
+            /**
+             * Programs
+             * @default []
+             */
+            programs: components["schemas"]["EventTargetResponse"][];
+            /**
+             * Categories
+             * @default []
+             */
+            categories: components["schemas"]["EventTargetResponse"][];
+            /**
+             * Agenda
+             * @default []
+             */
+            agenda: components["schemas"]["AgendaItemPublicResponse"][];
+        };
+        /** UniversityEditorialEventRequest */
+        UniversityEditorialEventRequest: {
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            kind: components["schemas"]["EventKind"];
+            format: components["schemas"]["EventFormat"];
+            /**
+             * Startsat
+             * Format: date-time
+             */
+            startsAt: string;
+            /** Endsat */
+            endsAt?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Registrationurl */
+            registrationUrl?: string | null;
+            /** Venueid */
+            venueId?: string | null;
+            /** Locationlabel */
+            locationLabel?: string | null;
+            /** Locationaddress */
+            locationAddress?: string | null;
+            /** Onlineurl */
+            onlineUrl?: string | null;
+            audienceMode: components["schemas"]["EditorialAudienceMode"];
+            /**
+             * Unitids
+             * @default []
+             */
+            unitIds: string[];
+            /**
+             * Programids
+             * @default []
+             */
+            programIds: string[];
+            /**
+             * Categoryids
+             * @default []
+             */
+            categoryIds: string[];
+            /**
+             * Agenda
+             * @default []
+             */
+            agenda: components["schemas"]["AgendaItemRequest"][];
+        };
+        /** UniversityEditorialEventUpdateRequest */
+        UniversityEditorialEventUpdateRequest: {
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            kind: components["schemas"]["EventKind"];
+            format: components["schemas"]["EventFormat"];
+            /**
+             * Startsat
+             * Format: date-time
+             */
+            startsAt: string;
+            /** Endsat */
+            endsAt?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Registrationurl */
+            registrationUrl?: string | null;
+            /** Venueid */
+            venueId?: string | null;
+            /** Locationlabel */
+            locationLabel?: string | null;
+            /** Locationaddress */
+            locationAddress?: string | null;
+            /** Onlineurl */
+            onlineUrl?: string | null;
+            audienceMode: components["schemas"]["EditorialAudienceMode"];
+            /**
+             * Unitids
+             * @default []
+             */
+            unitIds: string[];
+            /**
+             * Programids
+             * @default []
+             */
+            programIds: string[];
+            /**
+             * Categoryids
+             * @default []
+             */
+            categoryIds: string[];
+            /**
+             * Agenda
+             * @default []
+             */
+            agenda: components["schemas"]["AgendaItemRequest"][];
+            /** Expectedrevision */
+            expectedRevision: number;
+        };
+        /** UniversityMembershipListResponse */
+        UniversityMembershipListResponse: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["UniversityMembershipResponse"][];
+        };
+        /** UniversityMembershipOwnerRequest */
+        UniversityMembershipOwnerRequest: {
+            /** Accountid */
+            accountId: string;
+            role: components["schemas"]["UniversityAdminRole"];
+        };
+        /** UniversityMembershipProvisionRequest */
+        UniversityMembershipProvisionRequest: {
+            /** Accountid */
+            accountId: string;
+            /** Universityid */
+            universityId: string;
+            role: components["schemas"]["UniversityAdminRole"];
+        };
+        /** UniversityMembershipResponse */
+        UniversityMembershipResponse: {
+            /** Membershipid */
+            membershipId: string;
+            /** Accountid */
+            accountId: string;
+            /** Universityid */
+            universityId: string;
+            /** Universityname */
+            universityName?: string | null;
+            role: components["schemas"]["UniversityAdminRole"];
+            status: components["schemas"]["MembershipStatus"];
+            /** Revision */
+            revision: number;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+            /** Revokedat */
+            revokedAt?: string | null;
+        };
+        /** UniversityProgramEditorialResponse */
+        UniversityProgramEditorialResponse: {
+            /** Programid */
+            programId: string;
+            /** Displayname */
+            displayName?: string | null;
+            /** Publicsummary */
+            publicSummary?: string | null;
+            visibility: components["schemas"]["EditorialVisibility"];
+            /** Revision */
+            revision: number;
+        };
+        /** UniversityUnitListResponse */
+        UniversityUnitListResponse: {
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["UniversityUnitResponse"][];
+            /** Total */
+            total: number;
+        };
+        /** UniversityUnitRequest */
+        UniversityUnitRequest: {
+            unitType: components["schemas"]["UnitType"];
+            /** Parentunitid */
+            parentUnitId?: string | null;
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** @default draft */
+            status: components["schemas"]["EditorialStatus"];
+            /**
+             * Sortorder
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        /** UniversityUnitResponse */
+        UniversityUnitResponse: {
+            /** Unitid */
+            unitId: string;
+            /** Universityid */
+            universityId: string;
+            unitType: components["schemas"]["UnitType"];
+            /** Parentunitid */
+            parentUnitId?: string | null;
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            status: components["schemas"]["EditorialStatus"];
+            /** Sortorder */
+            sortOrder: number;
+            /** Revision */
+            revision: number;
+        };
+        /** UniversityUnitUpdateRequest */
+        UniversityUnitUpdateRequest: {
+            unitType: components["schemas"]["UnitType"];
+            /** Parentunitid */
+            parentUnitId?: string | null;
+            /** Slug */
+            slug: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** @default draft */
+            status: components["schemas"]["EditorialStatus"];
+            /**
+             * Sortorder
+             * @default 0
+             */
+            sortOrder: number;
+            /** Expectedrevision */
+            expectedRevision: number;
         };
         /** UserProfileCreateRequest */
         UserProfileCreateRequest: {
@@ -3326,6 +8186,17 @@ export interface components {
             /** Expectedrevision */
             expectedRevision: number;
         };
+        /** ValidityPolicyResponse */
+        ValidityPolicyResponse: {
+            /** Validfromresultyear */
+            validFromResultYear?: number | null;
+            /** Validuntilresultyear */
+            validUntilResultYear?: number | null;
+            /** Maxageyears */
+            maxAgeYears?: number | null;
+            /** Sourcetext */
+            sourceText: string;
+        };
         /** VenueResponse */
         VenueResponse: {
             /** Id */
@@ -3390,6 +8261,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3473,6 +8353,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -3549,6 +8438,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -3618,6 +8516,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3705,6 +8612,370 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_university_admission_benefits: {
+        parameters: {
+            query: {
+                year: number;
+                education_level?: components["schemas"]["EducationLevel"] | null;
+            };
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdmissionBenefitsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_program_admission_benefits: {
+        parameters: {
+            query: {
+                year: number;
+                includeReview?: boolean;
+            };
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdmissionBenefitRuleListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_olympiad_admission_benefit_programs: {
+        parameters: {
+            query: {
+                university_id: string;
+                year: number;
+                benefitType?: string | null;
+                includeReview?: boolean;
+            };
+            header?: never;
+            path: {
+                olympiad_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdmissionBenefitRuleListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    evaluate_program_admission_eligibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdmissionEligibilityRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdmissionEligibilityResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -3772,6 +9043,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3857,6 +9137,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -3935,6 +9224,189 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    execute_analytics_query_analytics_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalyticsQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    assistant_query_assistant_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -4002,6 +9474,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4087,6 +9568,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -4158,6 +9648,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4239,6 +9738,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -4306,6 +9814,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4391,6 +9908,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -4469,6 +9995,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -4536,6 +10071,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4621,6 +10165,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -4688,6 +10241,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4773,6 +10335,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -4844,6 +10415,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4929,6 +10509,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -4998,6 +10587,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5089,6 +10687,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -5158,6 +10765,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5245,6 +10861,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -5321,6 +10946,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -5390,6 +11024,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5478,6 +11121,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -5547,6 +11199,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5634,6 +11295,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -5706,6 +11376,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5791,6 +11470,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -5867,6 +11555,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -5936,6 +11633,724 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    register_knowledge_source: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeSourceRegistrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeSourceRegistrationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    attach_knowledge_source_snapshot: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_attach_knowledge_source_snapshot"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeSourceObservationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_manual_knowledge_claim_candidate: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualClaimSubmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeManualClaimResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    correct_manual_knowledge_claim_metadata: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                university_id: string;
+                claim_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualClaimMetadataCorrectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeManualClaimResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_manual_policy_rule_candidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualPolicyRuleCandidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManualPolicyRuleCandidateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_knowledge_review_queue: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewQueueResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    preview_knowledge_policy_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewPolicyPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPolicyPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    apply_knowledge_review_action: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewDecisionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6021,6 +12436,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -6092,6 +12516,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6173,6 +12606,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -6247,6 +12689,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -6314,6 +12765,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6399,6 +12859,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -6473,6 +12942,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -6540,6 +13018,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6625,6 +13112,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -6696,6 +13192,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6781,6 +13286,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -6852,6 +13366,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6939,6 +13462,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -7012,6 +13544,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7097,6 +13638,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -7168,6 +13718,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7255,6 +13814,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -7328,6 +13896,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7415,6 +13992,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -7488,6 +14074,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7575,6 +14170,2643 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_current_university_memberships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityMembershipListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    provision_university_admin_membership: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Andromeda-Ops-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UniversityMembershipProvisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityMembershipResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revoke_provisioned_university_admin_membership: {
+        parameters: {
+            query: {
+                expectedRevision: number;
+            };
+            header?: {
+                "X-Andromeda-Ops-Key"?: string | null;
+            };
+            path: {
+                membership_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityMembershipResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_university_admin_members: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityMembershipListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    add_university_admin_member: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UniversityMembershipOwnerRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityMembershipResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    revoke_university_admin_member: {
+        parameters: {
+            query: {
+                expectedRevision: number;
+            };
+            header?: never;
+            path: {
+                university_id: string;
+                membership_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityMembershipResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_universities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityDiscoveryListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_university_public_catalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityCatalogResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_university_units: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityUnitListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_university_unit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UniversityUnitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityUnitResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archive_university_unit: {
+        parameters: {
+            query: {
+                expectedRevision: number;
+            };
+            header?: never;
+            path: {
+                university_id: string;
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityUnitResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_university_unit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UniversityUnitUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityUnitResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_university_categories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityCategoryListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_university_category: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UniversityCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityCategoryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archive_university_category: {
+        parameters: {
+            query: {
+                expectedRevision: number;
+            };
+            header?: never;
+            path: {
+                university_id: string;
+                category_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityCategoryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_university_category: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+                category_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UniversityCategoryUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityCategoryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replace_university_catalog_links: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UniversityCatalogLinksRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityCatalogLinksResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_university_program_editorial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityProgramEditorialResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_university_program_editorial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditorialOverlayRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityProgramEditorialResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_university_discipline_editorial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+                discipline_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityDisciplineEditorialResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_university_discipline_editorial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+                discipline_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditorialOverlayRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityDisciplineEditorialResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_university_editorial_events: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["EditorialEventStatus"] | null;
+            };
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityEditorialEventAdminListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_university_editorial_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UniversityEditorialEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityEditorialEventAdminDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_university_editorial_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityEditorialEventAdminDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archive_university_editorial_event: {
+        parameters: {
+            query: {
+                expectedRevision: number;
+            };
+            header?: never;
+            path: {
+                university_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityEditorialEventAdminDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_university_editorial_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UniversityEditorialEventUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityEditorialEventAdminDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publish_university_editorial_event: {
+        parameters: {
+            query: {
+                expectedRevision: number;
+            };
+            header?: never;
+            path: {
+                university_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityEditorialEventAdminDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    replace_university_editorial_event_agenda: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgendaReplaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityEditorialEventAdminDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_university_public_editorial_events: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["EventKind"] | null;
+                format?: components["schemas"]["EventFormat"] | null;
+            };
+            header?: never;
+            path: {
+                university_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityEditorialEventPublicListResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_university_public_editorial_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                university_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UniversityEditorialEventPublicDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -7651,6 +16883,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not Found */
             404: {
                 headers: {
@@ -7718,6 +16959,15 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

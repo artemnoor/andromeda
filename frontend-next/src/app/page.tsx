@@ -20,6 +20,10 @@ import { DecisionContextProvider } from "@/features/decision/decision-context";
 import { DecisionPage } from "@/features/decision/decision-page";
 import { HomePage } from "@/features/home/home-page";
 import { AdmissionPage } from "@/features/admission/admission-page";
+import { UniversityAdminPage } from "@/features/university-admin/university-admin-page";
+import { UniversityCatalogPage } from "@/features/university/university-catalog-page";
+import { AssistantPage } from "@/features/assistant/assistant-page";
+import { KnowledgeReviewPage } from "@/features/knowledge-review/knowledge-review-page";
 
 export default function Page() {
   const { route, navigate } = useRouter();
@@ -44,6 +48,7 @@ export default function Page() {
     <DecisionContextProvider>
       <AppShell route={route} navigate={navigate}>
         {route.view === "home" && <HomePage navigate={navigate} />}
+        {route.view === "assistant" && <AssistantPage navigate={navigate} />}
         {route.view === "decision" && <DecisionPage navigate={navigate} />}
         {route.view === "catalog" && (
           <CatalogPage programs={programs} loading={programsLoading} error={programsError} onRetry={loadPrograms} navigate={navigate} />
@@ -57,12 +62,15 @@ export default function Page() {
         {route.view === "proftest" && <ProftestPage navigate={navigate} />}
         {route.view === "admission" && <AdmissionPage navigate={navigate} />}
         {route.view === "recommendations" && <RecommendationsPage navigate={navigate} />}
-        {route.view === "events" && <EventsPage navigate={navigate} />}
-        {route.view === "event" && <EventPage id={route.id ?? ""} navigate={navigate} />}
+        {route.view === "events" && <EventsPage initialUniversityId={route.id} navigate={navigate} />}
+        {route.view === "event" && <EventPage id={route.id ?? ""} origin={route.origin} universityId={route.universityId} navigate={navigate} />}
         {route.view === "personal-route" && <PersonalRoutePage navigate={navigate} />}
         {route.view === "flow" && <UnifiedFlowPage navigate={navigate} />}
         {route.view === "account" && <AccountPage navigate={navigate} />}
         {route.view === "ops" && <OpsPage />}
+        {route.view === "university-admin" && <UniversityAdminPage requestedUniversityId={route.id} navigate={navigate} />}
+        {route.view === "knowledge-review" && <KnowledgeReviewPage navigate={navigate} />}
+        {route.view === "university-catalog" && <UniversityCatalogPage universityId={route.id} navigate={navigate} />}
       </AppShell>
     </DecisionContextProvider>
   );

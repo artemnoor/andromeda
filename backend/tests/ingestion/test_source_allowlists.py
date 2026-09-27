@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from andromeda.ingestion.fetch_policy import SourcePolicyError, resolve_redirect, validate_source_url
+from andromeda.ingestion.fetch_policy import (
+    SourcePolicyError,
+    resolve_redirect,
+    validate_source_url,
+)
 from andromeda.ingestion.universities.bmstu.fetch import BMSTU_SOURCE_HOST_POLICY
 from andromeda.ingestion.universities.hse.fetch import HSE_SOURCE_HOST_POLICY
 from andromeda.ingestion.universities.hse.html import official_hse_url
@@ -13,6 +17,7 @@ def test_bmstu_allows_explicit_public_document_hosts_only() -> None:
     validate_source_url("https://api.www.bmstu.ru/majors/", BMSTU_SOURCE_HOST_POLICY, resolver=resolver)
     validate_source_url("https://mirror.bmstu.ru/sveden/common", BMSTU_SOURCE_HOST_POLICY, resolver=resolver)
     validate_source_url("https://api.mirror.bmstu.ru/majors/", BMSTU_SOURCE_HOST_POLICY, resolver=resolver)
+    validate_source_url("https://olymp.bmstu.ru/ru/engeneering-olymp", BMSTU_SOURCE_HOST_POLICY, resolver=resolver)
     validate_source_url("https://storage.yandex.net/plan.pdf", BMSTU_SOURCE_HOST_POLICY, resolver=resolver)
     with pytest.raises(SourcePolicyError, match="not in the adapter allowlist"):
         validate_source_url("https://example.com/plan.pdf", BMSTU_SOURCE_HOST_POLICY, resolver=resolver)

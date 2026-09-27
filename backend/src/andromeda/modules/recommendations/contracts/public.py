@@ -12,13 +12,13 @@ from andromeda.modules.proftest.contracts.public import (
     Confidence,
     MatchReason,
     MatchScore,
-    ProgramFingerprint,
     Recommendation,
     RecommendationEvidence,
     ReasonKind,
     ScoreBreakdown,
     UserProfile,
 )
+from andromeda.modules.program_analytics.contracts.public import ProgramFingerprint
 
 from ..domain.entities import RankedFingerprint
 from .requests import CandidateRankingRequest, RecommendationRequest

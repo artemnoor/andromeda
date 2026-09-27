@@ -29,6 +29,31 @@ worktree; сама по себе она не повышает release status.
 
 ## Backend
 
+### Knowledge and policy
+
+The source-backed policy regression path is checked with deterministic unit,
+repository, ingestion, review/API, response-envelope, architecture and Jev-gate
+tests:
+
+```powershell
+cd backend
+python -m pytest -q tests/unit tests/modules/conversation/test_policy_query.py tests/modules/conversation/test_policy_presentation.py tests/modules/presentation/test_knowledge_response.py tests/infrastructure/test_knowledge_candidate_repository.py tests/infrastructure/test_knowledge_provenance_report.py tests/infrastructure/test_knowledge_review_repository.py tests/infrastructure/test_knowledge_review_auth.py tests/infrastructure/test_knowledge_source_repository.py tests/infrastructure/test_admission_policy_repository.py tests/infrastructure/test_admission_cycle_repository.py tests/infrastructure/test_policy_dependency_refresh.py tests/ingestion/test_knowledge_source_discovery.py tests/ingestion/test_fetch_security.py tests/api/test_knowledge_ops.py tests/api/test_assistant_query.py tests/evaluation/test_jev_knowledge_policy_gate.py tests/infrastructure/test_alembic_migrations.py tests/architecture/test_module_boundaries.py
+```
+
+This covers rumor/proposal vs effective state, 2027/2028 cycle applicability,
+scope/exception/conflict/supersession, last-good source snapshots, duplicate
+claims, what-if no-write behavior, exact-hash approval, `ResolutionTrace`, and
+bounded repository hydration. The vertical assistant test uses a typed domain
+owner read boundary; an applicant-specific benefit result remains delegated to
+the separate existing `admission_benefits` evaluator tests. PostgreSQL-specific
+constraints and query plans require the disposable PostgreSQL target below;
+SQLite tests do not stand in for those guarantees.
+
+The policy Jev gate is explicitly off and has no registered policy operation.
+Future matching operations require an independently labeled 500-case golden
+corpus and approved per-operation thresholds; no Stage 2 calibration lock is
+changed by this feature.
+
 Multi-university HSE gate:
 
 ```powershell
@@ -116,6 +141,31 @@ python -m mypy
 ```
 
 Проверки покрывают lifecycle `running → completed|failed`, сохранение failed audit после rollback, deterministic list/detail, bounded fixture retry, running conflict, staging-only live boundary, malformed audit data, explicit key guard, отсутствие raw source fields и OpenAPI operation IDs. Admin/Ops endpoint выключен без `ANDROMEDA_OPS_API_KEY`; ключ не попадает в логи или ответы. Browser check открывает только `/#ops`, проверяет safe detail, unavailable conflict notice, confirmation перед retry и wrong-key error state.
+
+University admin/catalog/events slice проверяется так:
+
+```powershell
+cd backend
+python -m pytest -q tests/modules/university_admin tests/api/test_university_admin_access.py tests/api/test_university_catalog_api.py tests/api/test_university_events_api.py tests/infrastructure/test_university_admin_repository.py tests/infrastructure/test_university_catalog_repository.py tests/infrastructure/test_university_catalog_query_count.py tests/infrastructure/test_university_events_repository.py tests/infrastructure/test_university_events_query_count.py tests/integration/test_university_event_projection.py tests/architecture/test_module_boundaries.py tests/infrastructure/test_alembic_migrations.py
+python -m mypy src/andromeda
+python scripts/export_openapi.py --out ../frontend-next/openapi.json
+cd ../frontend-next
+$env:OPENAPI_FILE = "openapi.json"
+npm run generate-api
+npm run check-api-drift
+npx tsc --noEmit
+npm run lint
+npm run test:unit
+npm run build
+```
+
+Focused checks cover ops-only first-owner provisioning, owner/editor/viewer
+role matrix, cross-university denial, 401/403/404 semantics, draft/public/
+archived event lifecycle, explicit audience modes, agenda, source/editorial
+ID separation and bounded public reads. Public browser surfaces use the
+existing anonymous demo flow: `/?view=university-catalog`, `/?view=events`
+with a university selector and `/?view=university-admin` for an authenticated
+membership. The browser never stores an ops key, password or auth token.
 
 Personal Route проверяется отдельными contract/API и vertical tests как
 совместимый optional support layer:
@@ -258,9 +308,12 @@ python scripts/andromeda.py production-smoke
 ```
 
 Для migration parity используйте `python scripts/andromeda.py migrations`:
-команда применяет текущий Alembic head (`0022_ingestion_concurrency`) к пустой
-SQLite-базе и запускает `alembic check`. PostgreSQL migration/rollback smoke
-остаётся отдельным disposable target и не использует рабочую базу.
+команда применяет текущий Alembic head (`0054_claim_predicate_lookup_index`)
+к пустой SQLite-базе и запускает `alembic check`. Текущий implementation
+сохраняет одну additive history от Stage 2 head `0038`; отдельный regression
+поднимает базу с `0038`, сохраняет Stage 2 source snapshot и доводит её до
+`0054`. PostgreSQL migration/rollback smoke остаётся отдельным disposable
+target и не использует рабочую базу.
 
 Analytics tests проверяют allowlist, bounded canonical IDs, отсутствие raw
 profile/score/cookie/source body, owner isolation, idempotency и то, что отказ
@@ -270,8 +323,42 @@ safe view/interaction payload; authoritative shortlist size before/after
 
 Для локального PostgreSQL запуска используйте [руководство PostgreSQL](postgresql.md). Без test DSN PostgreSQL-only tests явно помечаются skipped; CI обязан передавать `ANDROMEDA_POSTGRES_TEST_URL`.
 
+### Universal analytics acceptance corpus
+
+The source-backed analytics slice has deterministic fixtures for metric
+resolution and comparison, grouped mean by university, bounded ranking and
+filtering, evidence/basis/coverage explanations, admission clarification with
+no redundant questions, Jev unavailable/timeout/malformed-output fallback,
+and ResponsePlan transport conformance for Web, Telegram and future MAX.
+
+```powershell
+python backend/scripts/evaluate_decision_model.py
+python -m pytest -q tests/evaluation tests/modules/conversation tests/modules/presentation tests/infrastructure/test_jev_adapter.py
+python -m pytest -q tests/integration/test_analytics_engine.py tests/api/test_analytics_api.py tests/api/test_assistant_query.py
+```
+
+The evaluation report contains aggregate accuracy and fallback counts; it does
+not store raw user text. Jev shadow decisions are advisory until an empirical
+promotion gate exists.
+
 ## See Also
 
 - [API](api.md) — контракты, которые проверяются drift gate.
 - [Быстрый старт](getting-started.md) — локальный fixture demo.
 - [PostgreSQL](postgresql.md) — storage integration commands.
+## Jev ecosystem offline gate
+
+The upstream integration gate is offline by default and does not require
+provider secrets. From `backend/` run:
+
+```text
+uv lock --check
+uv run --locked --extra evaluation --extra jev --extra jevql --extra dev python -m pytest -q tests/evaluation tests/infrastructure/jevql tests/modules/entity_resolution tests/composition/test_jevql_wiring.py
+npm ci --ignore-scripts                 # from backend/jev-tree-bridge
+uv run --locked --extra evaluation --extra dev python scripts/evaluate_jev_ecosystem.py --output .tmp/jev-report.json --check
+```
+
+The offline report never invokes provider paths and marks them `not_run_offline`;
+that is not a credential or service-health check and is not a production
+calibration claim. The official TypeSafe client and System One benchmark are
+opt-in; raw provider prompts, responses, cookies and keys are never committed.

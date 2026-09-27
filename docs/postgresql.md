@@ -54,6 +54,21 @@ python backend/scripts/run_andromeda_ingestion.py --university all --mode live -
 
 Повторный ingest того же source snapshot идемпотентен. Новые данные добавляются, изменяемые поля canonical projection обновляются, устаревшие позиции затронутого curriculum удаляются атомарно, raw history сохраняется. Identity conflict или source contract error откатывает всю транзакцию.
 
+В текущем Stage 2-based implementation миграции идут одной additive chain:
+`0038_admission_offering_scope_and_exam_choices` →
+`0054_claim_predicate_lookup_index` (current code head, 2026-09-26). Перед
+каждым rollout проверьте реальный database head через `python -m alembic
+current` и кодовую историю через `python -m alembic heads` / `history`; не
+предполагайте, что production DB уже на code head. Новые таблицы знания,
+approval ledger и projections используют существующие `source_snapshots` и
+`ingest_runs`; миграции не заменяют их отдельным store.
+
+У generic policy нет автоматического backfill approval из legacy benefit
+`ACTIVE` строк. Перед adoption существующей базы используйте
+`python backend/scripts/report_knowledge_provenance.py`: команда только читает
+источники и показывает восстанавливаемые ссылки/пробелы, но не меняет историю.
+См. [knowledge-policy operations runbook](operations/knowledge-policy-runbook.md).
+
 После `0010_admission_passing_route` старые passing-score rows backfill-ятся как `competition_type=general`, `status=numeric`; BVI хранится с `score=NULL`. Повторный live sync не меняет `AdmissionOffering.id`, не создаёт duplicate route/status children и атомарно удаляет устаревшие children только после полной валидной projection.
 
 ## Troubleshooting

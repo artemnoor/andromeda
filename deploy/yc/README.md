@@ -20,6 +20,11 @@ environment inputs. It has no public port and uses long polling.
 The backend trusted browser origin defaults to `https://${ANDROMEDA_DOMAIN}`;
 set `ANDROMEDA_FRONTEND_ORIGIN` explicitly when a reverse proxy exposes a
 non-default origin or port (for example, a local TLS smoke).
+Jev next-action control is optional and remains off unless `JEV_ENABLED=true`
+and its production calibration gate/key are configured; see
+[`docs/deployment.md`](../../docs/deployment.md#optional-jev-next-action-runtime).
+The image carries the pinned SDK, question registry and matching calibration
+lock. Keep the provider key only in `/opt/andromeda/.env` or the secret manager.
 The frontend is built with `NEXT_PUBLIC_API_BASE_URL=/api`, so the public site
 does not expose an internal VM address or need CORS for normal same-origin use.
 Server-side OG routes use the explicit runtime variable

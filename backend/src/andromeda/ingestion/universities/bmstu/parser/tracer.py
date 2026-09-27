@@ -2,37 +2,40 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Mapping
 from html import unescape
 from pathlib import Path
-from collections.abc import Mapping
 from typing import cast
 
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
-from .curriculum import _study_plan_records
 from andromeda.ingestion.contracts.constraints import http_url
+from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
 from andromeda.ingestion.contracts.raw import (
     JsonObject,
     RawCurriculumRow,
     RawDirectionRecord,
-    RawProgramRecord,
     RawParserDiagnostic,
-    RawSourceSnapshot,
+    RawProgramRecord,
     RawSourceGap,
+    RawSourceSnapshot,
     RawTracerBundle,
     RawUniversityRecord,
     SourceLocator,
 )
-from ..source_models import FetchedResource, SourceDefinition
+from andromeda.shared.contracts.errors import (
+    ContractError,
+    ErrorCode,
+    details_from_validation,
+)
+
+from ..capture import BmstuSource, CapturedSources, _detail_data, _json_object
 from ..html import parse_page
-from andromeda.ingestion.contracts.normalized import CanonicalSnapshot
-from andromeda.shared.contracts.errors import ContractError, ErrorCode, ErrorDetail, details_from_validation
-from ..capture import CapturedSources, BmstuSource, _detail_data, _json_object
-
-
-from ..normalizers.canonical import normalize_bundle
 from ..identity import canonicalize_program_records, direction_codes
+from ..normalizers.canonical import normalize_bundle
+from ..source_models import FetchedResource, SourceDefinition
+from .curriculum import _study_plan_records
 
 logger = logging.getLogger("andromeda.ingestion.bmstu.parser")
 
@@ -287,6 +290,13 @@ def _parse_curriculum(snapshot: RawSourceSnapshot, program_code: str, source_pro
                 source_url=typed.requested_url,
                 locator=SourceLocator(source_url=typed.requested_url, row=_object_int(record.get("row_no"))),
                 source_program_code=source_program_code,
+                lecture_hours=_object_int(record.get("lecture_hours")),
+                practice_hours=_object_int(record.get("practice_hours")),
+                lab_hours=_object_int(record.get("lab_hours")),
+                self_study_hours=_object_int(record.get("self_study_hours")),
+                is_elective=_object_bool(record.get("is_elective")),
+                course_block=_object_text(record.get("course_block")),
+                practice_type=_object_text(record.get("practice_type")),
             )
         )
     if not result:
@@ -432,6 +442,10 @@ def _object_text(value: object) -> str | None:
 
 def _object_int(value: object) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _object_bool(value: object) -> bool | None:
+    return value if isinstance(value, bool) else None
 
 
 

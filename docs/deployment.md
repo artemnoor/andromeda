@@ -24,6 +24,41 @@ environment file or secret manager):
 the deployment secret manager. Never copy real values into `.env` committed to
 the repository.
 
+## Optional Jev next-action runtime
+
+The backend image includes the pinned TypeSafe SDK, the registered question
+definitions and the production calibration lock used by the next-action
+decision. The runtime is disabled by default; with no explicit opt-in, the
+deterministic policy remains active. Jev may select only a registered,
+calibrated next action. Analytics, admission eligibility and factual results
+remain deterministic and source-backed.
+
+To let Jev control eligible next-action decisions in staging, set these values
+in the external deployment environment file/secret manager (do not commit the
+API key):
+
+```dotenv
+JEV_ENABLED=true
+JEV_SHADOW_ENABLED=false
+JEV_CALIBRATION_ENABLED=true
+JEV_CALIBRATION_MODE=production
+JEV_CALIBRATION_LOCK_PATH=/app/config/jev/locks/next-action.typesafe-jev.v2.lock.json
+JEV_CALIBRATION_MAX_AGE_SECONDS=7776000
+JEV_RUNTIME_PROVIDER=typesafe
+JEV_ENDPOINT=https://polza.ai/api
+JEV_MODEL=typesafe/jev
+TYPESAFE_API_KEY=<secret>
+```
+
+`JEV_API_KEY` is also accepted as a compatibility key name, but configure only
+one key. The default calibration artifact age limit is 90 days; refresh and
+review the lock before it expires. Rebuild the backend image when the approved
+registry or calibration artifact changes. If configuration, artifact
+validation, provider health or calibrated confidence fails, runtime startup
+or an individual decision falls back safely to the deterministic policy.
+Review the capability report after restart; a configured flag alone does not
+prove that Jev became active.
+
 The `deploy/yc/compose.yaml` stack runs PostgreSQL, the backend, the Next
 frontend and Caddy. Caddy obtains and renews the certificate automatically
 once DNS points the domain to the host and ports 80/443 are reachable.

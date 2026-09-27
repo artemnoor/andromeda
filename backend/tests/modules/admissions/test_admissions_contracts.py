@@ -20,7 +20,6 @@ from andromeda.modules.admissions.contracts.public import (
     StudyForm,
 )
 
-
 HASH = "a" * 64
 
 
@@ -81,6 +80,67 @@ def test_contract_rejects_extra_fields_and_negative_values() -> None:
             places=-1,
             provenance=(source,),
             unexpected=True,
+        )
+
+
+def test_offering_preserves_source_defined_campus_and_exam_choice_group() -> None:
+    group_id = "exam-choice:ege-third"
+    exams = (
+        ExamRequirement(
+            subject="Физика",
+            source_name="Физика",
+            is_choice=True,
+            choice_group_id=group_id,
+            choice_group_min=1,
+            choice_group_max=1,
+            provenance=provenance(),
+        ),
+        ExamRequirement(
+            subject="Информатика",
+            source_name="Информатика",
+            is_choice=True,
+            choice_group_id=group_id,
+            choice_group_min=1,
+            choice_group_max=1,
+            provenance=provenance(),
+        ),
+    )
+    offering = AdmissionOffering(
+        id="admission-offering:program:09.03.01-02:2026:full_time:budget:direction:campus:bmstu-kaluga",
+        program_id="program:09.03.01-02",
+        admission_year=2026,
+        campus_id="campus:bmstu-kaluga",
+        scope=AdmissionScope.DIRECTION,
+        exams=exams,
+        provenance=(provenance(),),
+    )
+
+    assert offering.campus_id == "campus:bmstu-kaluga"
+    assert {exam.choice_group_id for exam in offering.exams} == {group_id}
+    assert {exam.choice_group_max for exam in offering.exams} == {1}
+
+
+def test_offering_rejects_conflicting_exam_choice_group_cardinality() -> None:
+    first = ExamRequirement(
+        subject="Физика",
+        source_name="Физика",
+        is_choice=True,
+        choice_group_id="exam-choice:ege-third",
+        choice_group_min=1,
+        choice_group_max=1,
+        provenance=provenance(),
+    )
+    second = first.model_copy(
+        update={"subject": "Информатика", "source_name": "Информатика", "choice_group_max": 2}
+    )
+    with pytest.raises(ValidationError, match="inconsistent cardinality"):
+        AdmissionOffering(
+            id="admission-offering:program:09.03.01-02:2026:full_time:budget:direction",
+            program_id="program:09.03.01-02",
+            admission_year=2026,
+            scope=AdmissionScope.DIRECTION,
+            exams=(first, second),
+            provenance=(provenance(),),
         )
 
 

@@ -41,6 +41,8 @@ def create_router(flow: BotFlow) -> Router:
         value = (message.text or "").strip()
         if value.casefold().startswith(("сравни ", "сопоставь ")):
             await flow.compare(message, value)
+        elif value:
+            await flow.assistant(message)
 
     @router.callback_query()
     async def callback(query: CallbackQuery) -> None:

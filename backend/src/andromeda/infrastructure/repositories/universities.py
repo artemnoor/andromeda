@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from andromeda.modules.universities.contracts.public import Direction, University
@@ -19,6 +20,15 @@ class SqlAlchemyUniversityRepository(UniversityReader, UniversityWriter):
             return None
         return University.model_validate(
             {"id": model.id, "name": model.name, "city": model.city, "official_site": model.official_site, "address": model.address}
+        )
+
+    def list(self) -> tuple[University, ...]:
+        models = self._session.scalars(select(UniversityModel).order_by(UniversityModel.name, UniversityModel.id)).all()
+        return tuple(
+            University.model_validate(
+                {"id": model.id, "name": model.name, "city": model.city, "official_site": model.official_site, "address": model.address}
+            )
+            for model in models
         )
 
     def get_direction(self, direction_id: DirectionId) -> Direction | None:

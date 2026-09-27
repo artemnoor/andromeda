@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from andromeda.ingestion.contracts.raw import RawSourceSnapshot
 from andromeda.ingestion.pdf_policy import PdfResourceError
 
-from ..pdf import extract_pdf_text
 from ..identity import direction_codes
+from ..pdf import extract_pdf_text
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,10 +18,26 @@ class CurriculumObservation:
     hours: int
     credits: str | None
     source_position: int
+    direction_code_candidates: tuple[str, ...] = ()
+    lecture_hours: int | None = None
+    practice_hours: int | None = None
+    lab_hours: int | None = None
+    self_study_hours: int | None = None
+    is_elective: bool | None = None
+    course_block: str | None = None
+    practice_type: str | None = None
 
 
 _ROW_START = re.compile(r"^\s*(\d{1,3})\s+(.*)$")
-_TYPE = re.compile(r"\s([ОВФO])(?:\s|$)")
+# HSE publishes both Russian and English work plans.  Russian plans use
+# О/В/Ф, while current English plans use C (compulsory), E (elective), and
+# F/O for the corresponding source-defined course types.  Do not broaden this
+# to arbitrary one-letter tokens: PDF text also contains isolated letters in
+# headers and footnotes.
+# Keep the allow-list explicit so a random one-letter token in a course name
+# cannot turn into a curriculum row.
+_SUBJECT_TYPES = frozenset("ОВФOCEF")
+_TYPE = re.compile(r"\s([ОВФOCEF])(?:\s|$)")
 _NUMBER = re.compile(r"(?<![\w])\d+(?:[.,]\d+)?(?![\w])")
 
 
@@ -29,9 +45,10 @@ def parse_work_plan(snapshot: RawSourceSnapshot) -> tuple[CurriculumObservation,
     text = extract_pdf_text(snapshot.body)
     if not text:
         return ()
-    direction = _first_direction(text)
+    direction_candidates = _direction_candidates(text)
+    direction = direction_candidates[0] if direction_candidates else None
     program_name = _program_name(text, direction)
-    structured = _parse_structured_table(snapshot.body, direction, program_name)
+    structured = _parse_structured_table(snapshot.body, direction, program_name, direction_candidates)
     if structured:
         return structured
     blocks = _row_blocks(text)
@@ -58,14 +75,21 @@ def parse_work_plan(snapshot: RawSourceSnapshot) -> tuple[CurriculumObservation,
                 hours=hours,
                 credits=credits,
                 source_position=block_number,
+                direction_code_candidates=direction_candidates,
             )
         )
     return tuple(observations)
 
 
-def _parse_structured_table(body: bytes, direction: str | None, program_name: str | None) -> tuple[CurriculumObservation, ...]:
+def _parse_structured_table(
+    body: bytes,
+    direction: str | None,
+    program_name: str | None,
+    direction_candidates: tuple[str, ...] = (),
+) -> tuple[CurriculumObservation, ...]:
     try:
         import io
+
         import pdfplumber
 
         observations: list[CurriculumObservation] = []
@@ -80,7 +104,7 @@ def _parse_structured_table(body: bytes, direction: str | None, program_name: st
                         if kind_index is None:
                             continue
                         kind = " ".join(str(row[kind_index] or "").split())
-                        if kind not in {"О", "В", "Ф", "O"}:
+                        if kind not in _SUBJECT_TYPES:
                             continue
                         name = " ".join(str(cell or "").strip() for cell in row[1:kind_index] if str(cell or "").strip())
                         credits_value, hours_value = _structured_workload(row, kind_index)
@@ -89,7 +113,7 @@ def _parse_structured_table(body: bytes, direction: str | None, program_name: st
                         credits = str(credits_value)
                         hours = int(hours_value)
                         position += 1
-                        observations.append(CurriculumObservation(direction, program_name, name, hours, credits, position))
+                        observations.append(CurriculumObservation(direction, program_name, name, hours, credits, position, direction_candidates))
         return tuple(observations)
     except PdfResourceError:
         raise
@@ -115,7 +139,7 @@ def _structured_workload(row: list[str | None], kind_index: int) -> tuple[str | 
             continue
         raw = match.group(1).replace(",", ".")
         try:
-            numeric = float(raw)
+            float(raw)
         except ValueError:
             continue
         values.append((index, raw, "," in match.group(1) or "." in match.group(1)))
@@ -128,13 +152,23 @@ def _structured_workload(row: list[str | None], kind_index: int) -> tuple[str | 
     hours_item = next((item for item in next_values if not item[2]), None)
     if hours_item is None:
         return credit[1], None
-    return credit[1], int(float(hours_item[1]))
+    hours = int(float(hours_item[1]))
+    # Some HSE PDFs leak an approval/year value into the extracted table.
+    # It is not a valid per-course workload and RawCurriculumRow intentionally
+    # bounds hours at 2000. Treat it as an incomplete row instead of allowing
+    # one malformed cell to abort the whole university ingestion.
+    if not 0 <= hours <= 2_000:
+        return credit[1], None
+    return credit[1], hours
 
 
 def _row_blocks(text: str) -> tuple[tuple[int, str], ...]:
     blocks: list[tuple[int, list[str]]] = []
     current: tuple[int, list[str]] | None = None
-    synthetic_number = 10_000
+    # Some official HSE PDFs omit the block number in the extracted text.
+    # Use a normal bounded row sequence for those blocks; the value is only a
+    # provenance locator and must stay within RawCurriculumRow's contract.
+    synthetic_number = 1
     for raw_line in text.splitlines():
         line = " ".join(raw_line.split())
         match = _ROW_START.match(line)
@@ -164,7 +198,8 @@ def _workload(numbers: list[str]) -> tuple[str | None, int | None]:
     if decimal_index is not None:
         credits = numbers[decimal_index].replace(",", ".")
         hours_value = next((value for value in numbers[decimal_index + 1 :] if "." not in value and "," not in value), None)
-        return credits, _as_int(hours_value)
+        hours = _as_int(hours_value)
+        return credits, hours if hours is not None and 0 <= hours <= 2_000 else None
     candidates: list[int] = []
     for value in numbers:
         parsed = _as_int(value)
@@ -189,8 +224,12 @@ def _as_int(value: str | None) -> int | None:
 
 
 def _first_direction(text: str) -> str | None:
-    values = direction_codes(text)
+    values = _direction_candidates(text)
     return values[0] if values else None
+
+
+def _direction_candidates(text: str) -> tuple[str, ...]:
+    return direction_codes(text)
 
 
 def _program_name(text: str, direction: str | None) -> str | None:

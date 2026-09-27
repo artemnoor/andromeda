@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import Protocol
 
 from andromeda.modules.proftest.contracts.public import ProfileScope
-from andromeda.modules.proftest.contracts.public import ProgramFingerprint
+from andromeda.modules.program_analytics.contracts.public import ProgramFingerprint
 from andromeda.modules.admissions.contracts.public import ProgramAdmissions
 from andromeda.modules.universities.contracts.public import University
 from andromeda.modules.programs.contracts.public import Program

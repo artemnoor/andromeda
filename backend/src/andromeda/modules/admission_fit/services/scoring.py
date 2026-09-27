@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from decimal import Decimal
-import logging
 
 from andromeda.modules.admissions.contracts.public import (
-    AdmissionOffering,
     AdmissionCompetitionType,
-    AdmissionProvenance,
+    AdmissionOffering,
     ExamRequirement,
     FundingType,
     PassingScore,
     PassingScoreStatus,
     PassingScoreType,
+)
+from andromeda.modules.admissions.contracts.subject_identity import (
+    SubjectResolutionStatus,
+    resolve_subject,
 )
 from andromeda.shared.contracts.ids import ProgramId
 
@@ -40,8 +43,6 @@ from ..domain.policy import (
     percentage,
     rounded_score,
 )
-from ..domain.subject_identity import SubjectResolutionStatus, resolve_subject
-
 
 logger = logging.getLogger("andromeda.admission_fit.scoring")
 ZERO = Decimal("0")

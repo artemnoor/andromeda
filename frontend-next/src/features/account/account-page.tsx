@@ -5,23 +5,25 @@ import { UserRound, LogOut, Sparkles, Mail } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Loading, ProfileRequired, Stat, SectionTitle, Tag } from "@/components/shared";
-import { getAuthSession, getCurrentProfile, logoutAccount } from "@/lib/api";
+import { getAuthSession, getCurrentProfile, getUniversityMemberships, logoutAccount } from "@/lib/api";
 import { formatPercent, formatDate } from "@/lib/format";
-import type { AuthSession, UserProfileSnapshot } from "@/lib/types";
+import type { AuthSession, UniversityMembership, UserProfileSnapshot } from "@/lib/types";
 import type { Route as RouteType } from "@/lib/router";
 import { DecisionPage } from "@/features/decision/decision-page";
 
 export function AccountPage({ navigate }: { navigate: (route: RouteType) => void }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<UserProfileSnapshot | null>(null);
+  const [memberships, setMemberships] = useState<UniversityMembership[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
     setLoading(true);
-    Promise.all([getAuthSession(), getCurrentProfile().catch(() => null)])
-      .then(([s, p]) => {
+    Promise.all([getAuthSession(), getCurrentProfile().catch(() => null), getUniversityMemberships().catch(() => [])])
+      .then(([s, p, m]) => {
         setSession(s);
         setProfile(p);
+        setMemberships(m);
       })
       .finally(() => setLoading(false));
   };
@@ -83,6 +85,15 @@ export function AccountPage({ navigate }: { navigate: (route: RouteType) => void
           </div>
         </CardContent>
       </Card>
+
+      {memberships.length > 0 && (
+        <Card className="mb-6 border-primary/20 bg-primary/5">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="font-serif text-lg font-semibold">Кабинет вуза</p><p className="text-sm text-muted-foreground">У вас есть доступ к управлению каталогом и афишей {memberships.length > 1 ? `${memberships.length} вузов` : "вуза"}.</p></div>
+            <Button onClick={() => navigate({ view: "university-admin", id: memberships.length === 1 ? memberships[0].universityId : undefined })}>Открыть админку</Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

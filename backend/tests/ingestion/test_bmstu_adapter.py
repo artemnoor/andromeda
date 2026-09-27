@@ -19,6 +19,8 @@ def test_bmstu_fixture_is_emitted_as_raw_and_canonical_contracts() -> None:
 
     assert isinstance(raw, RawTracerBundle)
     assert isinstance(canonical, CanonicalSnapshot)
+    assert raw.admission_benefit_records == ()
+    assert canonical.admission_benefits is None
     assert {program.education_year for program in raw.programs} == {2026}
     assert {program.code for program in canonical.programs} == {"09.03.01-02", "09.03.01-12"}
     assert all(item.source_name for curriculum in canonical.curricula for item in curriculum.items)

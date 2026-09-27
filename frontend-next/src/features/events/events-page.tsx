@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, MapPin, Video, MonitorPlay, ArrowRight, Sparkles } from "lucide-react";
+import { CalendarDays, MapPin, Video, MonitorPlay, ArrowRight, Sparkles, Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { PageHeader, Loading, ErrorState, EmptyState, Tag } from "@/components/shared";
-import { getEvents } from "@/lib/api";
+import { getEvents, getUniversities, getUniversityEvents } from "@/lib/api";
 import { eventKindLabel, eventFormatLabel } from "@/lib/labels";
 import { formatDateTime, relativeTime } from "@/lib/format";
-import type { EventItem, EventListResponse } from "@/lib/types";
+import type { EventItem, EventListResponse, UniversityDiscovery, UniversityEvent } from "@/lib/types";
 import type { Route } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { ProgramShortlistActions } from "@/features/decision/program-shortlist-actions";
@@ -25,29 +25,46 @@ const FORMAT_ICON: Record<string, React.ComponentType<{ className?: string }>> =
   hybrid: MonitorPlay,
 };
 
-export function EventsPage({ navigate }: { navigate: (route: Route) => void }) {
+export function EventsPage({ navigate, initialUniversityId }: { navigate: (route: Route) => void; initialUniversityId?: string }) {
   const [data, setData] = useState<EventListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [kind, setKind] = useState("all");
   const [format, setFormat] = useState("all");
   const [recommended, setRecommended] = useState(false);
+  const [universities, setUniversities] = useState<UniversityDiscovery[]>([]);
+  const [universityId, setUniversityId] = useState(initialUniversityId ?? "");
+  const [editorialEvents, setEditorialEvents] = useState<UniversityEvent[]>([]);
+  const [editorialError, setEditorialError] = useState(false);
+
+  useEffect(() => { getUniversities().then(setUniversities).catch(() => setUniversities([])); }, []);
 
   const load = () => {
     setLoading(true);
     setError(null);
-    getEvents({
+    setEditorialError(false);
+    const sourceRequest = getEvents({
       kind: kind === "all" ? undefined : kind,
       format: format === "all" ? undefined : format,
       recommended: recommended || undefined,
+      universityId: universityId || undefined,
       limit: 50,
-    })
-      .then(setData)
-      .catch(() => setError("Не удалось загрузить события."))
-      .finally(() => setLoading(false));
+    });
+    const editorialRequest = universityId ? getUniversityEvents(universityId, { kind: kind === "all" ? undefined : kind, format: format === "all" ? undefined : format }) : Promise.resolve({ items: [], total: 0 });
+    Promise.allSettled([sourceRequest, editorialRequest]).then(([sourceResult, editorialResult]) => {
+      if (sourceResult.status === "fulfilled") setData(sourceResult.value);
+      else setError("Не удалось загрузить источниковые события.");
+      if (editorialResult.status === "fulfilled") setEditorialEvents(editorialResult.value.items);
+      else setEditorialError(true);
+    }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [kind, format, recommended]);
+  useEffect(() => { load(); }, [kind, format, recommended, universityId]);
+
+  const feed = [
+    ...(data?.items ?? []).map((event) => ({ origin: "source" as const, startsAt: event.startsAt, stableId: event.id, event })),
+    ...editorialEvents.map((event) => ({ origin: "university" as const, startsAt: event.startsAt, stableId: event.eventId, event })),
+  ].sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt) || left.stableId.localeCompare(right.stableId));
 
   return (
     <div>
@@ -75,6 +92,13 @@ export function EventsPage({ navigate }: { navigate: (route: Route) => void }) {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex min-w-0 items-center gap-2 md:ml-auto">
+            <Building2 className="h-4 w-4 shrink-0 text-primary" />
+            <select value={universityId} onChange={(event) => setUniversityId(event.target.value)} className="h-9 min-w-0 rounded-md border border-input bg-transparent px-3 text-sm" aria-label="Афиша конкретного вуза">
+              <option value="">Все университеты</option>
+              {universities.map((university) => <option key={university.id} value={university.id}>{university.name}</option>)}
+            </select>
+          </div>
           <div className="flex items-center gap-2 md:ml-auto">
             <Switch id="rec" checked={recommended} onCheckedChange={setRecommended} />
             <Label htmlFor="rec" className="flex items-center gap-1 text-sm">
@@ -85,20 +109,27 @@ export function EventsPage({ navigate }: { navigate: (route: Route) => void }) {
       </Card>
 
       {loading && <Loading label="Загружаем события…" />}
-      {error && <ErrorState message={error} onRetry={load} />}
-      {data && !loading && !error && (
-        data.items.length === 0 ? (
+      {error && editorialEvents.length === 0 && <ErrorState message={error} onRetry={load} />}
+      {error && editorialEvents.length > 0 && <p className="mb-4 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-800">Источниковые события временно недоступны. Показываем опубликованную афишу вуза.</p>}
+      {editorialError && <p className="mb-4 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-sm text-amber-800">Редакционная афиша вуза временно недоступна. Источниковые события остаются доступны.</p>}
+      {!loading && !error && data && (
+        feed.length === 0 ? (
           <EmptyState title="События не найдены" message="Измените фильтры или сбросьте ограничение по рекомендациям." />
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {data.items.map((ev) => (
-              <EventCard key={ev.id} event={ev} navigate={navigate} />
-            ))}
+            {feed.map((item) => item.origin === "source"
+              ? <EventCard key={`source:${item.stableId}`} event={item.event} navigate={navigate} />
+              : <UniversityEventCard key={`university:${item.stableId}`} event={item.event} universityId={universityId} navigate={navigate} />)}
           </div>
         )
       )}
+      {!loading && error && editorialEvents.length > 0 && <div className="grid gap-4 md:grid-cols-2">{editorialEvents.map((event) => <UniversityEventCard key={`university:${event.eventId}`} event={event} universityId={universityId} navigate={navigate} />)}</div>}
     </div>
   );
+}
+
+function UniversityEventCard({ event, universityId, navigate }: { event: UniversityEvent; universityId: string; navigate: (route: Route) => void }) {
+  return <Card className="group flex flex-col border-primary/20 transition hover:-translate-y-0.5 hover:shadow-md"><CardContent className="flex flex-1 flex-col gap-3 p-5"><div className="flex items-center justify-between gap-2"><div className="flex flex-wrap gap-1.5"><Tag tone="primary">От вуза</Tag><Tag tone="muted">{event.kind === "open_day" ? "День открытых дверей" : event.kind}</Tag></div><span className="text-xs text-muted-foreground">{relativeTime(event.startsAt)}</span></div><button onClick={() => navigate({ view: "event", id: event.eventId, origin: "university", universityId })} className="text-left"><h3 className="font-serif text-lg font-semibold leading-snug text-foreground group-hover:text-primary">{event.title}</h3></button>{event.description && <p className="line-clamp-2 text-sm text-muted-foreground">{event.description}</p>}<p className="text-xs text-muted-foreground">{event.audienceMode === "all_university" ? "Для всего вуза" : event.audienceMode === "unaffiliated" ? "Без привязки" : "Для выбранных направлений"} · {event.agenda.length} пунктов плана</p><div className="mt-auto flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-sm"><span className="text-muted-foreground">{formatDateTime(event.startsAt)}</span><Button size="sm" variant="ghost" className="gap-1 text-primary group-hover:bg-primary group-hover:text-primary-foreground" onClick={() => navigate({ view: "event", id: event.eventId, origin: "university", universityId })}>Подробнее <ArrowRight className="h-4 w-4" /></Button></div></CardContent></Card>;
 }
 
 export function EventCard({ event, navigate }: { event: EventItem; navigate: (route: Route) => void }) {
@@ -108,6 +139,7 @@ export function EventCard({ event, navigate }: { event: EventItem; navigate: (ro
       <CardContent className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-wrap gap-1.5">
+            <Tag tone="muted">Источник</Tag>
             <Tag tone="primary">{eventKindLabel(event.kind)}</Tag>
             <Tag tone="muted"><FormatIcon className="mr-1 inline h-3 w-3" />{eventFormatLabel(event.format)}</Tag>
           </div>

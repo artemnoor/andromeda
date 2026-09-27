@@ -16,7 +16,8 @@ from andromeda.modules.admission_fit.contracts.public import (
     BatchAdmissionFitOutcome,
     BatchAdmissionFitRequest,
 )
-from andromeda.modules.proftest.contracts.public import MatchScore, ProgramFingerprint, RecommendationEvidence, UserProfile
+from andromeda.modules.proftest.contracts.public import MatchScore, RecommendationEvidence, UserProfile
+from andromeda.modules.program_analytics.contracts.public import ProgramFingerprint
 from andromeda.modules.recommendations.contracts.public import (
     CandidateRankingRequest,
     RecommendationServicePort,

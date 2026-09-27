@@ -2,12 +2,20 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import Literal, Self, TypeAlias
 
 from pydantic import Field, HttpUrl, model_validator
 
+from ...modules.admission_benefits.contracts.coverage import AdmissionBenefitCoverage
 from ...shared.contracts.base import ContractModel
-from ...shared.contracts.ids import UniversityId
+from ...shared.contracts.ids import (
+    AdmissionCampusId,
+    AdmissionExamChoiceGroupId,
+    IngestRunId,
+    SourceHash,
+    UniversityId,
+)
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
@@ -33,6 +41,103 @@ class SourceLocator(ContractModel):
     page: int | None = Field(default=None, strict=True, ge=1)
     row: int | None = Field(default=None, strict=True, ge=1)
     field: str | None = Field(default=None, min_length=1, max_length=128)
+
+
+class RawAdmissionBenefitRecordKind(StrEnum):
+    OLYMPIAD = "olympiad"
+    OLYMPIAD_PROFILE = "olympiad_profile"
+    BENEFIT_RULE = "benefit_rule"
+    INDIVIDUAL_ACHIEVEMENT = "individual_achievement"
+    ACHIEVEMENT_POLICY = "achievement_policy"
+    SOURCE_GAP = "source_gap"
+
+
+class RawConfirmationThresholdCategory(StrEnum):
+    """Source-defined scope for an Olympiad confirmation threshold."""
+
+    GENERAL = "general"
+    TERRITORIAL_EXCEPTION = "territorial_exception"
+    UNKNOWN = "unknown"
+
+
+class RawAdmissionConfirmationThreshold(ContractModel):
+    minimum_score: Decimal = Field(strict=True, ge=0, le=100, max_digits=5, decimal_places=2)
+    applicant_category: RawConfirmationThresholdCategory
+    exam_kinds: tuple[Literal["ege", "internal_exam", "unknown"], ...] = Field(min_length=1)
+    source_text: str = Field(min_length=1, max_length=2_000)
+    locator: SourceLocator
+
+
+class RawAdmissionBenefitCell(ContractModel):
+    header: str = Field(min_length=1, max_length=512)
+    value: str = Field(min_length=1, max_length=10_000)
+
+
+class RawAdmissionBenefitCandidate(ContractModel):
+    field: str = Field(min_length=1, max_length=128)
+    value: str = Field(min_length=1, max_length=2_000)
+    confidence: Decimal | None = Field(default=None, strict=True, ge=Decimal("0"), le=Decimal("1"), max_digits=3, decimal_places=2)
+
+
+class AdmissionBenefitParserDiagnostic(ContractModel):
+    code: str = Field(min_length=1, max_length=128)
+    stage: str = Field(min_length=1, max_length=64)
+    message: str = Field(min_length=1, max_length=512)
+    severity: Literal["info", "warning", "ambiguous", "error"] = "warning"
+    locator: SourceLocator
+    candidates: tuple[str, ...] = ()
+
+
+class RawAdmissionBenefitDocument(ContractModel):
+    document_kind: str = Field(min_length=1, max_length=128)
+    document_title: str = Field(min_length=1, max_length=512)
+    admission_year: int = Field(strict=True, ge=2000, le=2100)
+    source_url: HttpUrl
+    source_snapshot_hash: SourceHash
+    source_run_id: IngestRunId
+    captured_at: datetime
+    locator: SourceLocator
+    parser_version: str = Field(min_length=1, max_length=128)
+    raw_page_text: str | None = Field(default=None, max_length=100_000)
+
+
+class RawIndividualAchievementDocumentNote(ContractModel):
+    """Verbatim document-level footnote with its own source locator."""
+
+    marker: str = Field(min_length=1, max_length=32)
+    source_text: str = Field(min_length=1, max_length=2_000)
+    locator: SourceLocator
+
+
+class RawAdmissionBenefitRecord(ContractModel):
+    record_id: str = Field(min_length=1, max_length=384)
+    record_kind: RawAdmissionBenefitRecordKind
+    document_kind: str = Field(min_length=1, max_length=128)
+    document_title: str = Field(min_length=1, max_length=512)
+    admission_year: int = Field(strict=True, ge=2000, le=2100)
+    source_url: HttpUrl
+    source_snapshot_hash: SourceHash
+    source_run_id: IngestRunId
+    captured_at: datetime
+    locator: SourceLocator
+    raw_text: str = Field(min_length=1, max_length=100_000)
+    cells: tuple[RawAdmissionBenefitCell, ...] = ()
+    normalized_candidates: tuple[RawAdmissionBenefitCandidate, ...] = ()
+    diagnostics: tuple[AdmissionBenefitParserDiagnostic, ...] = ()
+    parser_version: str = Field(min_length=1, max_length=128)
+
+
+class RawIndividualAchievementRecord(RawAdmissionBenefitRecord):
+    record_kind: Literal[RawAdmissionBenefitRecordKind.INDIVIDUAL_ACHIEVEMENT] = RawAdmissionBenefitRecordKind.INDIVIDUAL_ACHIEVEMENT
+    achievement_code_candidate: str | None = Field(default=None, min_length=1, max_length=256)
+    official_name_candidate: str | None = Field(default=None, min_length=1, max_length=512)
+    variant_label: str | None = Field(default=None, min_length=1, max_length=256)
+    source_pages: tuple[int, ...] = ()
+    document_notes: tuple[RawIndividualAchievementDocumentNote, ...] = ()
+    points_text: str | None = Field(default=None, min_length=1, max_length=512)
+    cap_text: str | None = Field(default=None, min_length=1, max_length=512)
+    combination_text: str | None = Field(default=None, min_length=1, max_length=2_000)
+    required_document_text: str | None = Field(default=None, min_length=1, max_length=2_000)
 
 
 class RawUniversityRecord(ContractModel):
@@ -96,6 +201,13 @@ class RawCurriculumRow(ContractModel):
     source_url: HttpUrl
     locator: SourceLocator
     source_program_code: str | None = Field(default=None, min_length=1, max_length=256)
+    lecture_hours: int | None = Field(default=None, strict=True, ge=0, le=2_000)
+    practice_hours: int | None = Field(default=None, strict=True, ge=0, le=2_000)
+    lab_hours: int | None = Field(default=None, strict=True, ge=0, le=2_000)
+    self_study_hours: int | None = Field(default=None, strict=True, ge=0, le=2_000)
+    is_elective: bool | None = None
+    course_block: str | None = Field(default=None, min_length=1, max_length=128)
+    practice_type: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class RawAdmissionExamRequirement(ContractModel):
@@ -104,6 +216,25 @@ class RawAdmissionExamRequirement(ContractModel):
     minimum_score: Decimal | None = Field(default=None, strict=True, ge=0, le=100, max_digits=5, decimal_places=2)
     is_choice: bool = False
     is_required: bool = True
+    choice_group_id: AdmissionExamChoiceGroupId | None = None
+    choice_group_min: int | None = Field(default=None, strict=True, ge=1, le=20)
+    choice_group_max: int | None = Field(default=None, strict=True, ge=1, le=20)
+
+    @model_validator(mode="after")
+    def validate_choice_metadata(self) -> RawAdmissionExamRequirement:
+        if self.choice_group_id is None and (
+            self.choice_group_min is not None or self.choice_group_max is not None
+        ):
+            raise ValueError("exam choice cardinality requires a choice group")
+        if (
+            self.choice_group_min is not None
+            and self.choice_group_max is not None
+            and self.choice_group_min > self.choice_group_max
+        ):
+            raise ValueError("exam choice group minimum cannot exceed its maximum")
+        if self.choice_group_id is not None and not self.is_choice:
+            raise ValueError("exam choice group members must be marked as choices")
+        return self
 
 
 class RawAdmissionQuota(ContractModel):
@@ -153,6 +284,7 @@ class RawAdmissionRecord(ContractModel):
     study_form: str | None = Field(default=None, min_length=1, max_length=64)
     funding_type: str | None = Field(default=None, min_length=1, max_length=64)
     scope: str = Field(default="program", min_length=1, max_length=32)
+    campus_id: AdmissionCampusId | None = None
     places: int | None = Field(default=None, strict=True, ge=0, le=100_000)
     exams: tuple[RawAdmissionExamRequirement, ...] = ()
     quotas: tuple[RawAdmissionQuota, ...] = ()
@@ -223,3 +355,6 @@ class RawTracerBundle(ContractModel):
     admissions: tuple[RawAdmissionRecord, ...] = ()
     events: tuple[RawEventRecord, ...] = ()
     campus_points: tuple[RawCampusPointRecord, ...] = ()
+    admission_benefit_records: tuple[RawAdmissionBenefitRecord, ...] = ()
+    admission_benefit_diagnostics: tuple[AdmissionBenefitParserDiagnostic, ...] = ()
+    admission_benefit_coverage: AdmissionBenefitCoverage | None = None

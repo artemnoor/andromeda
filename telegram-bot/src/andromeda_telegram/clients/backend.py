@@ -3,16 +3,26 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from typing import Any, Generic, TypeVar
 
 import httpx
 from pydantic import BaseModel
 
 from .errors import BackendError, BackendTransportError
-from .models import AnalyticsAccepted, ComparisonSummary, DecisionContext, DecisionSuggestions, MutationResponse, Program, ProgramList, ProgramResponse, RefinementResponse
-
+from .models import (
+    AnalyticsAccepted,
+    AssistantResponse,
+    ComparisonSummary,
+    DecisionContext,
+    DecisionSuggestions,
+    MutationResponse,
+    Program,
+    ProgramList,
+    ProgramResponse,
+    RefinementResponse,
+)
 
 logger = logging.getLogger("andromeda_telegram.backend")
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -44,6 +54,21 @@ class BackendHttpClient:
 
     async def list_programs(self, *, session_cookie: str | None = None) -> BackendResult[ProgramList]:
         return await self._request("GET", "/programs", ProgramList, session_cookie=session_cookie)
+
+    async def assistant_query(
+        self,
+        text: str,
+        *,
+        session_id: str | None = None,
+        expected_revision: int | None = None,
+        session_cookie: str | None = None,
+    ) -> BackendResult[AssistantResponse]:
+        payload: dict[str, Any] = {"text": text}
+        if session_id is not None:
+            payload["session_id"] = session_id
+        if expected_revision is not None:
+            payload["expected_revision"] = expected_revision
+        return await self._request("POST", "/assistant/query", AssistantResponse, json=payload, session_cookie=session_cookie)
 
     async def get_program(self, program_id: str, *, session_cookie: str | None = None) -> BackendResult[Program]:
         result = await self._request("GET", f"/programs/{_path_part(program_id)}", ProgramResponse, session_cookie=session_cookie)

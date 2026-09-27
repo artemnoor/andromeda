@@ -12,6 +12,7 @@ from andromeda.ingestion.universities.hse.adapter import HseUniversityAdapter
 from andromeda.ingestion.universities.hse.identity import canonicalize_program_records
 from andromeda.ingestion.universities.hse.parser.admissions import parse_enrollment_document
 from andromeda.ingestion.universities.hse.parser.catalog import discover_program_links, parse_program_detail
+from andromeda.ingestion.universities.hse.parser.curriculum import parse_work_plan
 from andromeda.modules.disciplines.services.classifier import RuleBasedDisciplineClassifier
 
 
@@ -93,6 +94,40 @@ def test_hse_adapter_emits_canonical_snapshot_from_discovered_sources() -> None:
     assert raw.source_gaps[0].reason == "source_unavailable"
     assert raw.diagnostics[0].code == "source_unavailable"
     assert sum((weight.weight for weight in canonical.disciplines[0].area_weights), start=0) == 1
+
+
+def test_hse_work_plan_parser_accepts_official_english_course_types() -> None:
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_text((40, 60), "Field of study 01.03.02 Applied Mathematics\nEducational Programme Data Science\n1 Algebra C 3,00 114 36\n2 Statistics E 4,00 152 48")
+    snapshot = _snapshot(
+        "hse_curriculum_document",
+        "https://www.hse.ru/dbs/education/sp_EngUnitedWorkPlan_test.pdf",
+        document.tobytes(),
+    )
+
+    observations = parse_work_plan(snapshot)
+
+    assert [(item.discipline, item.credits, item.hours) for item in observations] == [
+        ("Algebra", "3.00", 114),
+        ("Statistics", "4.00", 152),
+    ]
+    assert observations[0].direction_code_candidates == ("01.03.02",)
+
+
+def test_hse_work_plan_keeps_all_direction_codes_from_official_header() -> None:
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_text((40, 60), "Field of study 38.03.01 Economics, 38.03.02 Management\nEducational Programme International Business\n1 Finance C 3,00 114 36")
+    snapshot = _snapshot(
+        "hse_curriculum_document",
+        "https://www.hse.ru/dbs/education/sp_EngUnitedWorkPlan_multi.pdf",
+        document.tobytes(),
+    )
+
+    observations = parse_work_plan(snapshot)
+
+    assert observations[0].direction_code_candidates == ("38.03.01", "38.03.02")
 
 
 def test_hse_adapter_uses_curriculum_index_owner_for_shared_direction_codes() -> None:

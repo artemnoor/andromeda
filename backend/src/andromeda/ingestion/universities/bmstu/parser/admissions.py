@@ -12,7 +12,6 @@ import re
 from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
-from typing import Any
 
 from bs4 import BeautifulSoup
 
@@ -26,7 +25,6 @@ from ....contracts.raw import (
     SourceLocator,
 )
 from ..normalizers.codes import normalize_code
-
 
 logger = logging.getLogger("andromeda.ingestion.bmstu.parser.admissions")
 
@@ -47,6 +45,7 @@ def parse_detail_admissions(snapshot: RawSourceSnapshot, program_codes: Sequence
         raise ValueError(f"BMSTU detail admission payload misses selected programs: {missing}")
 
     year = _current_year(data, snapshot)
+    campus_id = _campus_id(data)
     points = _exam_requirements(data)
     prices = _tuition(data)
     form = next((item.study_form for item in prices if item.study_form), None)
@@ -69,6 +68,7 @@ def parse_detail_admissions(snapshot: RawSourceSnapshot, program_codes: Sequence
                     year=year,
                     study_form=form,
                     funding_type=funding,
+                    campus_id=campus_id,
                     places=places.get(funding) if funding is not None else None,
                     exams=points,
                     quotas=quotas if funding in ("budget", None) else (),
@@ -93,6 +93,7 @@ def parse_detail_admissions(snapshot: RawSourceSnapshot, program_codes: Sequence
                         year=int(raw_year),
                         study_form=None,
                         funding_type=score_type if score_type in {"budget", "paid"} else None,
+                        campus_id=campus_id,
                         passing_scores=(RawAdmissionPassingScore(score_type=score_type, score=score),),
                         field=f"detail.additional.oldPoints.{raw_year}.{score_type}",
                     )
@@ -121,6 +122,7 @@ def _record(
     year: int,
     study_form: str | None = None,
     funding_type: str | None = None,
+    campus_id: str | None = None,
     places: int | None = None,
     exams: tuple[RawAdmissionExamRequirement, ...] = (),
     quotas: tuple[RawAdmissionQuota, ...] = (),
@@ -137,6 +139,7 @@ def _record(
         study_form=study_form,
         funding_type=funding_type,
         scope="direction",
+        campus_id=campus_id,
         places=places,
         exams=exams,
         quotas=quotas,
@@ -156,15 +159,40 @@ def _exam_requirements(data: Mapping[str, object]) -> tuple[RawAdmissionExamRequ
         score = _number(item.get("point"))
         if not title or score is None:
             continue
+        is_choice = item.get("isChoice") is True
+        raw_required = item.get("isRequired")
+        is_required = raw_required if isinstance(raw_required, bool) else not is_choice
+        choice_group_id = _choice_group_id(item.get("choiceGroupId"))
         result.append(
             RawAdmissionExamRequirement(
                 subject=title,
                 source_name=title,
                 minimum_score=score,
-                is_choice=bool(item.get("isChoice")),
+                is_choice=is_choice,
+                is_required=is_required,
+                choice_group_id=choice_group_id,
+                choice_group_min=_integer(item.get("choiceGroupMin")) if choice_group_id else None,
+                choice_group_max=_integer(item.get("choiceGroupMax")) if choice_group_id else None,
             )
         )
     return tuple(result)
+
+
+def _choice_group_id(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip()
+    return candidate if re.fullmatch(r"exam-choice:[a-z0-9][a-z0-9-]{0,62}", candidate) else None
+
+
+def _campus_id(data: Mapping[str, object]) -> str | None:
+    # The upstream detail payload currently has no documented campus identity.
+    # Preserve only an explicit canonical ID if an official payload adds one.
+    value = data.get("campusId")
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip()
+    return candidate if re.fullmatch(r"campus:[a-z0-9][a-z0-9-]{0,62}", candidate) else None
 
 
 def _places(data: Mapping[str, object]) -> dict[str, int]:

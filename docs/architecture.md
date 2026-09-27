@@ -2,7 +2,7 @@
 
 # Архитектура
 
-Проект остаётся modular monolith: один backend, одна инфраструктура и явные границы предметных модулей. Микросервисы, Kafka, CQRS и отдельный deployment-модуль в текущий scope не входят.
+Проект остаётся modular monolith: один backend, одна инфраструктура и явные границы предметных модулей. Микросервисы, Kafka, CQRS и отдельный deployment-модуль в текущий scope не входят. Source-backed knowledge/policy vertical реализован как ограниченный внутренний workflow; доступ к источникам, human approval и продуктовый rollout остаются закрыты до назначения операторов и пополнения проверенного корпуса. Фактическая модель описана в [Knowledge and Policy architecture](architecture/knowledge-policy.md).
 
 ## Canonical runtime surfaces
 
@@ -42,9 +42,10 @@ official university source
 
 ## Decision-centered application layer
 
-`decision` — единственный новый bounded orchestration-модуль вокруг
-пользовательского выбора. Он не дублирует scoring, admissions или comparison и
-не импортирует ORM, FastAPI, ingestion или private service implementations.
+`decision` — единственный реализованный bounded orchestration-модуль вокруг
+пользовательского выбора в текущем runtime. Он не дублирует scoring, admissions
+или comparison и не импортирует ORM, FastAPI, ingestion или private service
+implementations.
 Вместо этого он читает typed public contracts существующих модулей и сохраняет
 owner-bound `DecisionContext`:
 
@@ -151,11 +152,128 @@ ingestion lifecycle
 
 Run создаётся до capture и атомарной projection transaction, а failure обновляет только безопасный audit status и generic error message после rollback. `admin_ops` не читает raw snapshot bodies или `RawSourceRecord.payload_json`, не знает ORM/parser и получает retry через typed executor port. Infrastructure связывает этот port с существующим BMSTU adapter/repository; retry ограничен фиксированными профилями и не принимает URL/команды. `#ops` UI не является обычной навигацией и не реализует correction, CMS, Auth/RBAC, карту или пользовательское scoring.
 
+University-owned content использует отдельный `university_admin` bounded module,
+а не `admin_ops`. Он владеет membership `owner/editor/viewer`, редакционными
+подразделениями и категориями, overlay для канонических программ/предметов и
+событиями вуза. Канонические source projections не изменяются:
+
+```text
+account session + university membership
+  → university_admin access policy
+  → units/categories/catalog overlays + editorial events
+  → PostgreSQL tables 0023–0025
+  → protected /university-admin/* commands
+  → public /universities/{university_id}/catalog and /events
+```
+
+Событие вуза имеет lifecycle `draft → published → archived`, optimistic
+`revision`, agenda и явный audience mode: `all_university`, selected units,
+selected programs или `unaffiliated`. Public readers видят только published
+записи, а revoked membership и недостаточная роль проверяются backend.
+`FORBIDDEN` отображается как 403; неизвестный scope не перечисляет чужие
+membership и возвращается как безопасный 404.
+
 ## Границы
+
+## Universal analytics boundary
+
+Универсальные содержательные вопросы проходят через отдельные bounded
+contexts, не принадлежащие Telegram или конкретной модели:
+
+```text
+ingestion → canonical storage → semantic → projections
+          → analytics (QuerySpec) → conversation/policies
+          → ResponseEnvelope → Telegram / Web / MAX
+```
+
+`semantic`, `analytics`, `entity_resolution`, `conversation` и `presentation`
+публикуют typed contracts и Protocol-порты. `ProgramFingerprint` сохранён как
+совместимый импорт, но общая аналитическая projection теперь строится и
+читается из materialized `program_projections`/`program_metrics`. Подробные
+правила и версии находятся в [universal analytics](architecture/universal-analytics.md),
+[semantic taxonomy](architecture/semantic-taxonomy.md),
+[metric registry](architecture/metric-registry.md) и
+[integration seams](architecture/integration-seams.md) и
+[Jev ecosystem](architecture/jev-ecosystem.md) и
+[Jev rollout/security gate](architecture/jev-rollout.md).
+
+`POST /analytics/query` является прямым typed входом без NLP. `POST
+/assistant/query` добавляет owner-bound `QuerySession`, deterministic parser,
+`DecisionPolicyPort`, существующий Admission Fit и `ResponsePolicyPort`.
+Отсутствие данных остаётся quality status, а evidence связывает metric с
+curriculum item и source snapshot.
+
+### Stage 2 Jev boundary and dependency direction
+
+Stage 2 extends the existing analytics graph without introducing a second
+backend:
+
+    clean Stage 1 baseline
+      → canonical storage
+      → semantic enrichment
+      → ProgramProjection / ProgramMetric
+      → MetricRegistry / QuerySpec
+      → deterministic AnalyticsExecutor
+      → QueryFrame / QuerySession
+      → DecisionModelPort
+           ↘ deterministic default
+           ↘ optional TypeSafe production adapter
+           ↘ shadow evaluation
+      → AnalyticsResult / ResponsePlan / ResponseEnvelope
+      → Web / OG / Telegram / future MAX
+
+The normal factual path is deterministic and source-backed. A Jev adapter may
+answer only bounded control questions such as intent, metric, next action,
+presentation or a reviewed semantic candidate. It never calculates catalog
+facts, emits SQL, writes canonical data or becomes the owner of user choices.
+
+The following ownership rules are mandatory:
+
+- DecisionContext remains explicit shortlist/decision state.
+- QuerySession remains conversation memory with explicit/inferred/model origin.
+- decision_analytics remains action telemetry and is not reused for catalog
+  metrics.
+- Question Registry owns shared instructions, criteria, definition version and
+  input/output schema; jevcal, jev-align, jevQL and jev-tree keep their own
+  technical configurations.
+- common analytics reads materialized metrics first; jevQL is only an
+  embedded-first optional semantic predicate for registered non-materialized
+  questions.
+- entity resolution uses exact/alias/context narrowing first; jev-tree is
+  eligible only for a genuinely large unresolved candidate set, never for
+ordinary comparisons of twenty programs.
+
+### Source-backed knowledge and policy boundary
+
+The runtime implements logical `knowledge` and `policy` modules inside the
+same backend and PostgreSQL deployment. Together they provide versioned
+source registry and observations, immutable snapshots through the existing
+ingestion seam, source-backed claim/change candidates, exact revision approval
+ledger, review queue/actions/preview, semantic diff, impact projection,
+approved-only deterministic resolution with `ResolutionTrace`, and typed
+assistant policy queries. Source acquisition remains an allowlisted one-shot
+poller; it is not an open web crawler. These capabilities do not imply broad
+source coverage or a populated production review rota. See the [Knowledge and
+Policy architecture](architecture/knowledge-policy.md) and its [operations
+runbook](operations/knowledge-policy-runbook.md).
+
+Existing `ingestion` owns raw capture/snapshots, and subject modules retain
+their canonical facts and calculations. In particular, `admission_benefits`
+remains the only BVI, 100-point, confirmation, validity, and
+individual-achievement evaluator. `policy` selects an approved exact domain
+revision and explains the deterministic resolution; it does not calculate
+benefit eligibility. Jev suggestion operations for knowledge/policy remain
+unregistered and disabled. Source discovery cannot change canonical policy.
+
+No module under modules/domain, modules/contracts or modules/services imports a
+Jev SDK or an isolated runtime client. Infrastructure adapters depend inward on
+typed ports, and AndromedaContainer is the only composition authority.
 
 ```text
 backend/src/andromeda/
 ├── modules/{universities,programs,curricula,disciplines,comparison}/
+├── modules/{semantic,analytics,entity_resolution,conversation,presentation}/
+├── modules/{knowledge,policy}/
 ├── modules/decision/{domain,contracts,services,repository}/
 ├── modules/proftest/{domain,contracts,services,repository}/
 ├── modules/recommendations/{domain,contracts,services,repository}/
@@ -165,6 +283,7 @@ backend/src/andromeda/
 ├── modules/campus/{domain,contracts,services,repository}/
 ├── modules/personal_route/{domain,contracts,services,repository}/
 ├── modules/admin_ops/{domain,contracts,services,repository}/
+├── modules/university_admin/{domain,contracts,services,repository}/
 ├── ingestion/universities/bmstu/
 ├── infrastructure/{database,repositories,config,logging}/
 ├── api/{routes,schemas,dependencies}/
@@ -281,6 +400,8 @@ account owner — canonical account ID. Partial unique index не допуска
 
 ## See Also
 
+- [Knowledge and Policy architecture](architecture/knowledge-policy.md) — source discovery, immutable review and approved-only deterministic policy boundary.
+- [Knowledge and policy operations](operations/knowledge-policy-runbook.md) — source polling, review, security and recovery limits.
 - [API](api.md) — HTTP-контракты для frontend.
 - [Конфигурация](configuration.md) — database и logging settings.
 - [PostgreSQL](postgresql.md) — запуск storage targets и migrations.

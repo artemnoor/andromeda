@@ -4,22 +4,35 @@ from __future__ import annotations
 
 import logging
 
+from andromeda.modules.analytics.repository.ports import ProgramProjectionReader
 from andromeda.shared.contracts.errors import ContractError, ErrorCode
 
 from ..contracts.public import ProgramFingerprint
-from ..repository.ports import BulkProftestCatalogReader, ProftestCatalogReader, ProftestCatalogSnapshot
+from ..domain.fingerprint_compat import fingerprint_from_projection
+from ..repository.ports import BulkProftestCatalogReader, ProftestCatalogReader
 from .fingerprint import FingerprintBuilder
-
 
 logger = logging.getLogger("andromeda.proftest.catalog")
 
 
 class ProftestCatalogService:
-    def __init__(self, reader: ProftestCatalogReader, builder: FingerprintBuilder | None = None) -> None:
+    def __init__(
+        self,
+        reader: ProftestCatalogReader,
+        builder: FingerprintBuilder | None = None,
+        projection_reader: ProgramProjectionReader | None = None,
+    ) -> None:
         self._reader = reader
         self._builder = builder or FingerprintBuilder()
+        self._projection_reader = projection_reader
 
     def list_fingerprints(self) -> tuple[ProgramFingerprint, ...]:
+        if self._projection_reader is not None:
+            projections = self._projection_reader.list()
+            if projections:
+                logger.info("catalog_projection_loaded fingerprint_count=%d source=program_analytics", len(projections))
+                return tuple(fingerprint_from_projection(projection) for projection in projections)
+            logger.info("program_projection_fallback reason=no_active_projection")
         if isinstance(self._reader, BulkProftestCatalogReader):
             try:
                 snapshots = self._reader.list_catalog_snapshots()

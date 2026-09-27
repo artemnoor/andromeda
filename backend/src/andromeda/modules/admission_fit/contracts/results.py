@@ -7,13 +7,16 @@ from enum import StrEnum
 
 from pydantic import Field, model_validator
 
-from andromeda.modules.admissions.contracts.public import AdmissionProvenance, FundingType, StudyForm
+from andromeda.modules.admissions.contracts.public import (
+    AdmissionProvenance,
+    FundingType,
+    StudyForm,
+)
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.ids import EducationYear, NonEmptyText, ProgramId
 
-
-ZERO = Decimal("0")
-ONE_HUNDRED = Decimal("100")
+ZERO = Decimal(0)
+ONE_HUNDRED = Decimal(100)
 
 
 class AdmissionFitStatus(StrEnum):
@@ -61,8 +64,8 @@ class AdmissionFitReason(ContractModel):
     message: NonEmptyText
     subject: NonEmptyText | None = None
     applicant_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=ONE_HUNDRED, max_digits=5, decimal_places=2)
-    applicant_total_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal("400"), max_digits=6, decimal_places=2)
-    reference_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal("400"), max_digits=6, decimal_places=2)
+    applicant_total_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal(400), max_digits=6, decimal_places=2)
+    reference_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal(400), max_digits=6, decimal_places=2)
     source_name: NonEmptyText | None = None
     provenance: tuple[AdmissionProvenance, ...] = ()
 
@@ -77,7 +80,7 @@ class AdmissionFitResult(ContractModel):
     funding_type: FundingType | None = None
     status: AdmissionFitStatus
     score: int = Field(strict=True, ge=0, le=100)
-    applicant_total_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal("400"), max_digits=6, decimal_places=2)
+    applicant_total_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal(400), max_digits=6, decimal_places=2)
     data_quality: AdmissionFitDataQuality
     breakdown: AdmissionFitBreakdown
     reasons: tuple[AdmissionFitReason, ...] = ()
@@ -94,7 +97,7 @@ class BatchAdmissionFitOutcome(ContractModel):
     data_gaps: tuple[AdmissionFitReason, ...] = Field(default=(), max_length=16)
 
     @model_validator(mode="after")
-    def validate_result_identity(self) -> "BatchAdmissionFitOutcome":
+    def validate_result_identity(self) -> BatchAdmissionFitOutcome:
         if self.result is not None:
             if self.result.program_id != self.program_id or self.result.status is not self.status:
                 raise ValueError("batch outcome result must match program and status")
@@ -106,10 +109,10 @@ class BatchAdmissionFitOutcome(ContractModel):
 class BatchAdmissionFitResult(ContractModel):
     """Deterministic per-program Admission Fit outcomes, never a global score."""
 
-    by_program_id: dict[ProgramId, BatchAdmissionFitOutcome] = Field(default_factory=dict, max_length=50)
+    by_program_id: dict[ProgramId, BatchAdmissionFitOutcome] = Field(default_factory=dict, max_length=5000)
 
     @model_validator(mode="after")
-    def validate_index(self) -> "BatchAdmissionFitResult":
+    def validate_index(self) -> BatchAdmissionFitResult:
         for program_id, outcome in self.by_program_id.items():
             if program_id != outcome.program_id:
                 raise ValueError("batch result index must match outcome program id")
@@ -117,8 +120,6 @@ class BatchAdmissionFitResult(ContractModel):
 
 
 __all__ = [
-    "BatchAdmissionFitOutcome",
-    "BatchAdmissionFitResult",
     "AdmissionFitBreakdown",
     "AdmissionFitDataQuality",
     "AdmissionFitMetric",
@@ -127,4 +128,6 @@ __all__ = [
     "AdmissionFitReasonKind",
     "AdmissionFitResult",
     "AdmissionFitStatus",
+    "BatchAdmissionFitOutcome",
+    "BatchAdmissionFitResult",
 ]

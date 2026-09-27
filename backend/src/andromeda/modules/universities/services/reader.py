@@ -14,6 +14,9 @@ class UniversityReaderService:
     def get(self, university_id: UniversityId) -> University | None:
         return self._repository.get(university_id)
 
+    def list(self) -> tuple[University, ...]:
+        return self._repository.list()
+
     def get_direction(self, direction_id: DirectionId) -> Direction | None:
         return self._repository.get_direction(direction_id)
 

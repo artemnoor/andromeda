@@ -10,10 +10,27 @@ from typing import Self
 from pydantic import Field, HttpUrl, model_validator
 
 from andromeda.shared.contracts.base import ContractModel
-from andromeda.shared.contracts.ids import EducationYear, NonEmptyText, ProgramId, ShortText, SourceHash
+from andromeda.shared.contracts.ids import (
+    AdmissionCampusId,
+    AdmissionExamChoiceGroupId,
+    EducationYear,
+    NonEmptyText,
+    ProgramId,
+    ShortText,
+    SourceHash,
+)
 
+from .admission_cycles import (
+    AdmissionCycle,
+    AdmissionCycleId,
+    AdmissionCycleResolution,
+    AdmissionCycleResolutionStatus,
+    AdmissionCycleState,
+    InclusiveDateWindow,
+    admission_cycle_id,
+)
 
-ZERO = Decimal("0")
+ZERO = Decimal(0)
 
 
 class StudyForm(StrEnum):
@@ -81,10 +98,29 @@ class AdmissionProvenance(ContractModel):
 class ExamRequirement(ContractModel):
     subject: NonEmptyText
     source_name: NonEmptyText
-    minimum_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal("100"), max_digits=5, decimal_places=2)
+    minimum_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal(100), max_digits=5, decimal_places=2)
     is_choice: bool = False
     is_required: bool = True
+    choice_group_id: AdmissionExamChoiceGroupId | None = None
+    choice_group_min: int | None = Field(default=None, strict=True, ge=1, le=20)
+    choice_group_max: int | None = Field(default=None, strict=True, ge=1, le=20)
     provenance: AdmissionProvenance
+
+    @model_validator(mode="after")
+    def validate_choice_metadata(self) -> ExamRequirement:
+        if self.choice_group_id is None and (
+            self.choice_group_min is not None or self.choice_group_max is not None
+        ):
+            raise ValueError("exam choice cardinality requires a choice group")
+        if (
+            self.choice_group_min is not None
+            and self.choice_group_max is not None
+            and self.choice_group_min > self.choice_group_max
+        ):
+            raise ValueError("exam choice group minimum cannot exceed its maximum")
+        if self.choice_group_id is not None and not self.is_choice:
+            raise ValueError("exam choice group members must be marked as choices")
+        return self
 
 
 class Quota(ContractModel):
@@ -98,7 +134,7 @@ class PassingScore(ContractModel):
     score_type: PassingScoreType
     competition_type: AdmissionCompetitionType = AdmissionCompetitionType.GENERAL
     status: PassingScoreStatus = PassingScoreStatus.NUMERIC
-    score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal("400"), max_digits=6, decimal_places=2)
+    score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal(400), max_digits=6, decimal_places=2)
     provenance: AdmissionProvenance
 
     @model_validator(mode="after")
@@ -134,6 +170,7 @@ class AdmissionOffering(ContractModel):
     admission_year: EducationYear
     study_form: StudyForm | None = None
     funding_type: FundingType | None = None
+    campus_id: AdmissionCampusId | None = None
     scope: AdmissionScope
     places: int | None = Field(default=None, strict=True, ge=0, le=100_000)
     exams: tuple[ExamRequirement, ...] = ()
@@ -150,6 +187,19 @@ class AdmissionOffering(ContractModel):
             raise ValueError("budget offering cannot contain tuition costs")
         if self.funding_type is FundingType.PAID and self.places is not None and self.places < 0:
             raise ValueError("paid offering places cannot be negative")
+        choice_groups: dict[str, list[ExamRequirement]] = {}
+        for exam in self.exams:
+            if exam.choice_group_id is not None:
+                choice_groups.setdefault(exam.choice_group_id, []).append(exam)
+        for group_id, members in choice_groups.items():
+            cardinalities = {
+                (member.choice_group_min, member.choice_group_max) for member in members
+            }
+            if len(cardinalities) != 1:
+                raise ValueError(f"choice group {group_id} has inconsistent cardinality")
+            minimum, maximum = next(iter(cardinalities))
+            if minimum is not None and maximum is not None and maximum > len(members):
+                raise ValueError(f"choice group {group_id} exceeds its member count")
         return self
 
 
@@ -170,18 +220,27 @@ class ProgramAdmissions(ContractModel):
 
 
 __all__ = [
-    "AdmissionOffering",
+    "AdmissionCampusId",
     "AdmissionCompetitionType",
+    "AdmissionCycle",
+    "AdmissionCycleId",
+    "AdmissionCycleResolution",
+    "AdmissionCycleResolutionStatus",
+    "AdmissionCycleState",
+    "AdmissionExamChoiceGroupId",
+    "AdmissionOffering",
     "AdmissionProvenance",
     "AdmissionScope",
     "ExamRequirement",
     "FundingType",
+    "InclusiveDateWindow",
     "PassingScore",
     "PassingScoreStatus",
+    "PassingScoreType",
     "ProgramAdmissions",
     "Quota",
-    "PassingScoreType",
     "QuotaType",
     "StudyForm",
     "TuitionCost",
+    "admission_cycle_id",
 ]

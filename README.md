@@ -44,6 +44,21 @@ python scripts/andromeda.py full              # локальные провер�
 - Изолированные модули universities, programs, curricula, disciplines, decision, comparison, proftest, recommendations, admissions и admission_fit.
 - SQLAlchemy/Alembic с FK, unique/check constraints и Decimal без float-конверсии.
 - FastAPI/OpenAPI и сгенерированные TypeScript-типы.
+- Универсальный аналитический слой: versioned semantic features, materialized
+  `ProgramProjection`, allow-listed `MetricRegistry`, typed `/analytics/query`
+  и channel-neutral `/assistant/query` без зависимости от Jev/MAX/Telegram.
+- Bounded source-backed knowledge/policy workflow: allowlisted one-shot source
+  discovery, claim/change staging, exact-hash human approval, deterministic
+  temporal/scope resolver with `ResolutionTrace`, review/impact preview and
+  policy questions through the existing assistant (read path disabled by
+  default behind `ANDROMEDA_KNOWLEDGE_POLICY_ASSISTANT_ENABLED`). Source coverage
+  and reviewer staffing are explicit operations prerequisites; the generic
+  policy layer does not replace admission-benefit calculations.
+- Jev integration seam: shared Question Registry, official TypeSafe SDK adapter,
+  deterministic fallback, shadow-only policy, calibration-lock gate and
+  isolated jevQL/jev-tree optional runtimes. Все flags выключены по умолчанию;
+  Jev не вычисляет факты и не генерирует SQL.
+- University-owned admin: scoped owner/editor/viewer memberships, управление факультетами/кафедрами и категориями, public catalog overlays и отдельная афиша вузов с draft/publish/archive, audience targeting и agenda. В UI доступны «Вузы», публичный каталог/афиша и защищённая админка из личного кабинета.
 - Persistent shortlist с ролями «основная/альтернатива», явными add/remove/restore и optimistic revision; raw A/B comparison и summary-first сравнение 2–3 программ.
 - Профиль содержания: короткое ядро из пяти вопросов, preliminary topic chips, bounded adaptive refinement и реальные программы с объяснениями по учебному плану. Career Fit и персональный Workload Readiness не являются MVP capability; вместо них показываются source-backed Content Fit и workload evidence в сравнении.
 - Persistence профиля: completed `UserProfile` хранится по anonymous HttpOnly session cookie и восстанавливается после перезагрузки UI.
@@ -91,6 +106,12 @@ GET /compare?programIds=<program-id-a>,<program-id-b>&scope=semester&semester=1
 |---|---|
 | [Быстрый старт](docs/getting-started.md) | Установка и первый запуск |
 | [Архитектура](docs/architecture.md) | Модули и поток данных |
+| [Universal analytics](docs/architecture/universal-analytics.md) | Semantic layer, projections, QuerySpec и integration seams |
+| [Jev rollout](docs/architecture/jev-rollout.md) | Безопасные flags, production gates, shadow/fallback и rollback |
+| [Semantic and catalog analytics](docs/semantic-analytics.md) | Версии семантики, metric registry, evidence, rebuild/rollback и Jev fallback |
+| [Query flow](docs/architecture/query-flow.md) | Conversation state, analytics и admission compilation |
+| [Knowledge and Policy](docs/architecture/knowledge-policy.md) | Source claims, approval, temporal resolution и impact |
+| [Knowledge operations](docs/operations/knowledge-policy-runbook.md) | Polling, review, security, recovery и budgets |
 | [API](docs/api.md) | OpenAPI endpoints и контракты |
 | [Admissions](docs/admissions.md) | Данные поступления и source gaps |
 | [Admission Fit](docs/admission-fit.md) | Отдельная оценка реалистичности поступления |

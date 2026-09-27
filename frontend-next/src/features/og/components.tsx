@@ -59,3 +59,14 @@ export function SmallList({ items, palette, empty = "нет данных" }: { i
   const values = Array.isArray(items) ? items.map((item) => text(item)).slice(0, 8) : [];
   return <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>{values.length ? values.map((item) => <div key={item} style={{ display: "flex", fontSize: 19, color: palette.foreground }}>• {item}</div>) : <div style={{ display: "flex", fontSize: 19, color: palette.muted }}>{empty}</div>}</div>;
 }
+
+export function AnalyticsMetricTable({ result, metric, palette }: { result: { rows?: unknown[] }; metric: string; palette: OgPalette }) {
+  const rows = Array.isArray(result.rows) ? result.rows.slice(0, 3) as Record<string, unknown>[] : [];
+  return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{rows.map((row) => {
+    const values = row.metrics && typeof row.metrics === "object" ? row.metrics as Record<string, unknown> : {};
+    const value = values[metric] && typeof values[metric] === "object" ? values[metric] as Record<string, unknown> : {};
+    const raw = value.value;
+    const display = raw === null || raw === undefined ? "нет данных" : value.unit === "share" ? `${Math.round(Number(raw) * 100)}%` : String(raw);
+    return <div key={String(row.entity_id)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 22, borderRadius: 16, border: `1px solid ${palette.border}`, background: palette.card }}><div style={{ display: "flex", flexDirection: "column", gap: 6 }}><div style={{ display: "flex", fontSize: 20, fontWeight: 700 }}>{String(row.entity_id)}</div><div style={{ display: "flex", color: palette.muted, fontSize: 16 }}>basis: {String(value.basis ?? "unknown")} · coverage: {String(value.coverage ?? "unknown")}</div></div><div style={{ display: "flex", color: palette.primary, fontSize: 34, fontWeight: 700 }}>{display}</div></div>;
+  })}</div>;
+}
