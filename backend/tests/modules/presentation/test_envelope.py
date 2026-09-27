@@ -17,7 +17,9 @@ from andromeda.modules.presentation.adapters.html_pdf import HtmlPdfReportRender
 from andromeda.modules.presentation.contracts.envelope import (
     ResponseAction,
     ResponseActionItem,
+    ResponseEnvelope,
 )
+from andromeda.modules.presentation.contracts.knowledge_response import ResponseMode
 from andromeda.modules.presentation.contracts.policy import (
     ResponseFormat,
     ResponsePolicyResult,
@@ -30,9 +32,9 @@ from andromeda.modules.presentation.services.envelope_builder import (
 
 def _result() -> AnalyticsResult:
     query = QuerySpec(entity=MetricEntityType.PROGRAM, metrics=("math_share",))
-    quality = ProjectionDataQuality(status=ProjectionDataQualityStatus.INSUFFICIENT_DATA, coverage=Decimal("0"), confidence=Decimal("0"))
+    quality = ProjectionDataQuality(status=ProjectionDataQualityStatus.INSUFFICIENT_DATA, coverage=Decimal(0), confidence=Decimal(0))
     row = AnalyticsRow(entity_id="program:bmstu:09.03.01-02", metrics={}, quality=quality)
-    return AnalyticsResult(query=query, rows=(row,), status=AnalyticsResultStatus.PARTIAL, coverage=Decimal("0"), confidence=Decimal("0"))
+    return AnalyticsResult(query=query, rows=(row,), status=AnalyticsResultStatus.PARTIAL, coverage=Decimal(0), confidence=Decimal(0))
 
 
 def test_envelope_is_channel_neutral_and_actions_are_allow_listed() -> None:
@@ -49,6 +51,20 @@ def test_envelope_is_channel_neutral_and_actions_are_allow_listed() -> None:
     assert envelope.data["rows"]
     assert envelope.metadata["resolution_evidence"] == {"program:0": "strategy=deterministic"}
     assert "sql" not in envelope.model_dump_json().lower()
+
+
+def test_legacy_envelope_defaults_to_deterministic_without_knowledge_section() -> None:
+    envelope = ResponseEnvelope(
+        response_type=ResponseFormat.TEXT,
+        template="legacy-template",
+    )
+
+    assert envelope.response_mode is ResponseMode.DETERMINISTIC
+    assert envelope.knowledge is None
+    payload = envelope.model_dump(mode="json")
+    assert payload["response_type"] == "text"
+    assert payload["template"] == "legacy-template"
+    assert payload["knowledge"] is None
 
 
 def test_html_report_renderer_consumes_result_snapshot_without_requery() -> None:

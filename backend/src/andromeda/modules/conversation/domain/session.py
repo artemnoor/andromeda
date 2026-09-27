@@ -9,6 +9,7 @@ from typing import cast
 from ...admissions.contracts.public import FundingType
 from ...entity_resolution.contracts.public import ResolutionEntityType
 from ..contracts.public import (
+    CONVERSATION_PARSER_VERSION,
     AdmissionUniversityScope,
     ConversationIntent,
     ConversationSlot,
@@ -16,6 +17,8 @@ from ..contracts.public import (
     FactOrigin,
     NextAction,
     ParsedQuery,
+    PolicyQueryContext,
+    PolicyQueryFocus,
     QueryFact,
     QueryFrame,
     QuerySession,
@@ -27,7 +30,7 @@ def merge_parsed_query(
     parsed: ParsedQuery,
     *,
     updated_at: datetime,
-    parser_version: str = "conversation-parser.v3",
+    parser_version: str = CONVERSATION_PARSER_VERSION,
 ) -> QuerySession:
     if updated_at.tzinfo is None:
         raise ValueError("updated_at must be timezone-aware")
@@ -102,7 +105,17 @@ def merge_parsed_query(
             confirmed=False,
         )
     metrics = tuple(dict.fromkeys((*session.metrics, *parsed.metric_codes)))
-    intent = parsed.intent if parsed.intent is not ConversationIntent.UNKNOWN else session.intent
+    policy_follow_up = _is_policy_follow_up(session, parsed)
+    policy_query_context = _merge_policy_context(
+        session.policy_query_context,
+        parsed.policy_query_context,
+        keep_existing=policy_follow_up,
+        referential_follow_up=_is_referential_policy_follow_up(parsed.unresolved_text),
+    )
+    if parsed.policy_query_context is not None or policy_follow_up:
+        intent = ConversationIntent.KNOWLEDGE_POLICY_QUERY
+    else:
+        intent = parsed.intent if parsed.intent is not ConversationIntent.UNKNOWN else session.intent
     scope = parsed.scope or session.scope
     aggregation = parsed.aggregation or session.aggregation
     stored_total_score = cast(Decimal | None, known_slots.get("total_score"))
@@ -115,6 +128,8 @@ def merge_parsed_query(
         entities,
         admission_university_scope,
         known_slots,
+        confirmed_parameters,
+        policy_query_context,
     )
     candidate = session.model_copy(
         update={
@@ -141,6 +156,7 @@ def merge_parsed_query(
             "known_slots": known_slots,
             "confirmed_parameters": confirmed_parameters,
             "inferred_parameters": inferred_parameters,
+            "policy_query_context": policy_query_context,
             "missing_slots": missing_slots,
             "next_action": next_action,
             "last_action": next_action,
@@ -166,7 +182,25 @@ def _derive_slots(
     entities: dict[ResolutionEntityType, tuple[str, ...]],
     admission_university_scope: AdmissionUniversityScope | None,
     known_slots: dict[str, object],
+    confirmed_parameters: dict[str, QueryFact],
+    policy_query_context: PolicyQueryContext | None,
 ) -> tuple[tuple[ConversationSlot, ...], NextAction]:
+    if intent is ConversationIntent.KNOWLEDGE_POLICY_QUERY:
+        if policy_query_context is None:
+            return (ConversationSlot.ENTITY,), NextAction.CLARIFY
+        if policy_query_context.focus in {
+            PolicyQueryFocus.APPLICABILITY,
+            PolicyQueryFocus.IMPACT,
+        }:
+            year_fact = confirmed_parameters.get("admission_year")
+            if (
+                year_fact is None
+                or year_fact.origin is not FactOrigin.EXPLICIT_USER
+                or not year_fact.confirmed
+                or not isinstance(year_fact.value, int)
+            ):
+                return (ConversationSlot.ADMISSION_YEAR,), NextAction.ASK_FOR_ADMISSION_YEAR
+        return (), NextAction.EXECUTE_QUERY
     if intent is ConversationIntent.ADMISSION_SEARCH:
         if total_score is None and not exam_scores:
             return (ConversationSlot.TOTAL_SCORE, ConversationSlot.EXAMS), NextAction.ASK_FOR_EXAMS
@@ -187,6 +221,63 @@ def _derive_slots(
     if not entities.get(ResolutionEntityType.PROGRAM) and not entities.get(ResolutionEntityType.UNIVERSITY) and not entities.get(ResolutionEntityType.DIRECTION):
         return (ConversationSlot.ENTITY,), NextAction.ASK_FOR_ENTITY
     return (), NextAction.EXECUTE_QUERY
+
+
+def _is_policy_follow_up(session: QuerySession, parsed: ParsedQuery) -> bool:
+    if session.policy_query_context is None or parsed.policy_query_context is not None:
+        return False
+    if parsed.intent is ConversationIntent.UNKNOWN:
+        return True
+    if parsed.intent is not ConversationIntent.ADMISSION_SEARCH:
+        return False
+    if parsed.total_score is not None or parsed.exam_scores or parsed.metric_codes:
+        return False
+    if any(marker in parsed.unresolved_text.casefold() for marker in ("куда", "прохожу", "сравни")):
+        return False
+    return any(
+        value is not None
+        for value in (
+            parsed.admission_year,
+            parsed.funding_type,
+            parsed.study_form,
+            parsed.admission_university_scope,
+        )
+    ) or bool(parsed.university_queries or parsed.direction_queries or parsed.program_queries)
+
+
+def _is_referential_policy_follow_up(text: str) -> bool:
+    normalized = text.casefold()
+    return any(marker in normalized for marker in ("это", "этот", "эта", "этого", "меня", "мне"))
+
+
+def _merge_policy_context(
+    current: PolicyQueryContext | None,
+    parsed: PolicyQueryContext | None,
+    *,
+    keep_existing: bool,
+    referential_follow_up: bool,
+) -> PolicyQueryContext | None:
+    if parsed is None:
+        return current if keep_existing else None
+    if current is None or not referential_follow_up:
+        return parsed
+    updates = {
+        field: getattr(parsed, field) or getattr(current, field)
+        for field in (
+            "mentioned_effective_year",
+            "claim_predicate",
+            "valid_as_of",
+            "as_known_at",
+            "source_id",
+            "change_event_id",
+            "policy_rule_id",
+            "admission_cycle_id",
+            "resolution_trace_id",
+            "impact_preview_id",
+            "what_if_rule_id",
+        )
+    }
+    return current.model_copy(update={"focus": parsed.focus, **updates})
 
 
 __all__ = ["merge_parsed_query"]

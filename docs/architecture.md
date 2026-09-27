@@ -2,7 +2,7 @@
 
 # Архитектура
 
-Проект остаётся modular monolith: один backend, одна инфраструктура и явные границы предметных модулей. Микросервисы, Kafka, CQRS и отдельный deployment-модуль в текущий scope не входят.
+Проект остаётся modular monolith: один backend, одна инфраструктура и явные границы предметных модулей. Микросервисы, Kafka, CQRS и отдельный deployment-модуль в текущий scope не входят. Source-backed knowledge/policy vertical реализован как ограниченный внутренний workflow; доступ к источникам, human approval и продуктовый rollout остаются закрыты до назначения операторов и пополнения проверенного корпуса. Фактическая модель описана в [Knowledge and Policy architecture](architecture/knowledge-policy.md).
 
 ## Canonical runtime surfaces
 
@@ -42,9 +42,10 @@ official university source
 
 ## Decision-centered application layer
 
-`decision` — единственный новый bounded orchestration-модуль вокруг
-пользовательского выбора. Он не дублирует scoring, admissions или comparison и
-не импортирует ORM, FastAPI, ingestion или private service implementations.
+`decision` — единственный реализованный bounded orchestration-модуль вокруг
+пользовательского выбора в текущем runtime. Он не дублирует scoring, admissions
+или comparison и не импортирует ORM, FastAPI, ingestion или private service
+implementations.
 Вместо этого он читает typed public contracts существующих модулей и сохраняет
 owner-bound `DecisionContext`:
 
@@ -240,7 +241,29 @@ The following ownership rules are mandatory:
   questions.
 - entity resolution uses exact/alias/context narrowing first; jev-tree is
   eligible only for a genuinely large unresolved candidate set, never for
-  ordinary comparisons of twenty programs.
+ordinary comparisons of twenty programs.
+
+### Source-backed knowledge and policy boundary
+
+The runtime implements logical `knowledge` and `policy` modules inside the
+same backend and PostgreSQL deployment. Together they provide versioned
+source registry and observations, immutable snapshots through the existing
+ingestion seam, source-backed claim/change candidates, exact revision approval
+ledger, review queue/actions/preview, semantic diff, impact projection,
+approved-only deterministic resolution with `ResolutionTrace`, and typed
+assistant policy queries. Source acquisition remains an allowlisted one-shot
+poller; it is not an open web crawler. These capabilities do not imply broad
+source coverage or a populated production review rota. See the [Knowledge and
+Policy architecture](architecture/knowledge-policy.md) and its [operations
+runbook](operations/knowledge-policy-runbook.md).
+
+Existing `ingestion` owns raw capture/snapshots, and subject modules retain
+their canonical facts and calculations. In particular, `admission_benefits`
+remains the only BVI, 100-point, confirmation, validity, and
+individual-achievement evaluator. `policy` selects an approved exact domain
+revision and explains the deterministic resolution; it does not calculate
+benefit eligibility. Jev suggestion operations for knowledge/policy remain
+unregistered and disabled. Source discovery cannot change canonical policy.
 
 No module under modules/domain, modules/contracts or modules/services imports a
 Jev SDK or an isolated runtime client. Infrastructure adapters depend inward on
@@ -250,6 +273,7 @@ typed ports, and AndromedaContainer is the only composition authority.
 backend/src/andromeda/
 ├── modules/{universities,programs,curricula,disciplines,comparison}/
 ├── modules/{semantic,analytics,entity_resolution,conversation,presentation}/
+├── modules/{knowledge,policy}/
 ├── modules/decision/{domain,contracts,services,repository}/
 ├── modules/proftest/{domain,contracts,services,repository}/
 ├── modules/recommendations/{domain,contracts,services,repository}/
@@ -376,6 +400,8 @@ account owner — canonical account ID. Partial unique index не допуска
 
 ## See Also
 
+- [Knowledge and Policy architecture](architecture/knowledge-policy.md) — source discovery, immutable review and approved-only deterministic policy boundary.
+- [Knowledge and policy operations](operations/knowledge-policy-runbook.md) — source polling, review, security and recovery limits.
 - [API](api.md) — HTTP-контракты для frontend.
 - [Конфигурация](configuration.md) — database и logging settings.
 - [PostgreSQL](postgresql.md) — запуск storage targets и migrations.

@@ -62,6 +62,22 @@ JSON)` plans. The repository prefilters active projections and metric
 thresholds in SQL and batch-hydrates metric/evidence rows. Analytics tests
 guard against full-catalog Python rebuilds and N+1 evidence reads.
 
+The fixed profile also includes the bounded policy revision scan and current
+approved knowledge-source registry scan. The policy repository reads approval
+events, source claims, evidence, relations and observations in bounded batches;
+`backend/tests/infrastructure/test_knowledge_candidate_repository.py` guards
+that three approved revisions are hydrated in a fixed six `SELECT`s instead of
+one query per revision. A 500-revision batch is chunked at 400 composite keys
+per query to remain below conservative SQLite bind-parameter limits. This is a
+query-count guarantee, not a latency guarantee.
+
+Knowledge capture and graph limits are recorded in the
+[knowledge-policy operations runbook](operations/knowledge-policy-runbook.md).
+No GIN/range index, materialized graph, or cache is enabled. Use a sanitized,
+representative PostgreSQL database and save the profile artifact before adding
+indexes or changing caps. PostgreSQL `EXPLAIN` is the DB-plan authority; SQLite
+tests establish portable behavior and bounded query count only.
+
 No universal latency SLA is claimed before a representative PostgreSQL
 artifact exists. The benchmark artifact is versioned by metric registry and
 projection schema; a regression is a release signal, not a reason to increase

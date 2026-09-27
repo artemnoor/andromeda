@@ -1,6 +1,11 @@
 """Conversation contracts and persistence ports."""
 
-from .assistant import AssistantResult, AssistantState
+from .assistant import (
+    AssistantPolicyAnswer,
+    AssistantResult,
+    AssistantState,
+    PolicyAnswerStatus,
+)
 from .decision_definitions import (
     DecisionDefinition,
     DecisionDefinitionKind,
@@ -10,22 +15,32 @@ from .decision_definitions import (
     DecisionTimeoutClass,
     QuestionRegistryPort,
 )
-from .ports import QuerySessionRepository
+from .ports import (
+    KnowledgeClaimLookupReader,
+    PolicyQueryResolver,
+    QuerySessionRepository,
+)
 from .public import (
+    CONVERSATION_PARSER_VERSION,
     AdmissionUniversityScope,
     ConversationCompilation,
     ConversationIntent,
     ConversationSlot,
     ExamScore,
     NextAction,
+    PolicyQueryContext,
+    PolicyQueryFocus,
+    PolicyQueryYear,
     ParsedQuery,
     QuerySession,
 )
 
 __all__ = [
+    "CONVERSATION_PARSER_VERSION",
     "AdmissionUniversityScope",
     "AssistantResult",
     "AssistantState",
+    "AssistantPolicyAnswer",
     "ConversationCompilation",
     "ConversationIntent",
     "ConversationSlot",
@@ -39,7 +54,13 @@ __all__ = [
     "EvaluationCaseResult",
     "EvaluationReport",
     "ExamScore",
+    "KnowledgeClaimLookupReader",
     "NextAction",
+    "PolicyAnswerStatus",
+    "PolicyQueryResolver",
+    "PolicyQueryContext",
+    "PolicyQueryFocus",
+    "PolicyQueryYear",
     "ParsedQuery",
     "QuerySession",
     "QuerySessionRepository",

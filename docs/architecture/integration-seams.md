@@ -2,10 +2,13 @@
 
 ## Stage 2 execution baseline
 
-Stage 2 remediation runs from the clean baseline commit 105dacb on
-feature/jev-ecosystem-stage-2. The earlier feature/university-admin-control
-worktree was dirty during research and is preserved as a separate audit source;
-it is not a runtime or implementation baseline.
+Stage 2 execution baseline for the source-backed policy plan is
+`1f5777c892c2daf2f6f11a405bc19268b7dc0c88` on
+`feature/jev-ecosystem-stage-2`. It contains the implemented Jev runtime and
+current integration seams described below. Recheck the branch's current remote
+head before later work. The earlier `feature/university-admin-control`
+worktree was dirty during research and is not a runtime or implementation
+baseline.
 
 ## Jev
 
@@ -71,6 +74,41 @@ DecisionContext stores explicit user choices for shortlist/decision flows.
 QuerySession stores conversation state, including explicit, inferred and
 model-candidate origins. decision_analytics is operational/user-action
 telemetry and is not catalog analytics or a source of domain truth.
+
+## Knowledge and policy seams
+
+The runtime contains logical `knowledge` and `policy` modules within the
+modular monolith. `knowledge` owns versioned allowlisted registry revisions,
+source observations, claims/change candidates, evidence links and review
+actions. Raw immutable snapshots remain owned by the Stage 2 ingestion
+repository. `policy` owns typed selector/rule revisions, the exact-hash
+append-only approval ledger, effective resolution, typed dependencies,
+`ResolutionTrace`, and rebuildable impact/diff projections. The detailed
+contracts and persisted ownership are in the [Knowledge and Policy
+architecture](knowledge-policy.md).
+
+The resolver reads only exact revisions with an explicit human approval event.
+The first pending event is written atomically with a candidate revision; a
+later UI action is not required to enforce the gate. Source discovery,
+deterministic extraction, candidate normalization, review preview and what-if
+remain non-canonical. The source poller is a one-shot command over approved
+sources, not an automatically scheduled open crawl.
+
+Existing subject modules retain calculations. `policy` may select an exact
+`DomainRuleRef` and explain scope/precedence; it does not calculate BVI,
+100-point rights, confirmation, validity or individual-achievement points.
+Those results stay with the existing `admission_benefits` evaluator.
+
+The conversation and presentation modules route supported policy questions
+through the existing `/assistant/query` and `ResponseEnvelope`. Current impact
+requests return a typed domain-result-unavailable state when no owner
+calculation bridge is wired. The optional verbalizer receives only safe typed
+section references and the default path is deterministic.
+
+Knowledge/policy Jev operations are not registered. Existing Stage 2 Jev ports
+remain reusable if a future, separately evaluated bounded operation is
+approved. Current calibration locks and feature flags are unchanged; no Jev
+policy callsite is implied here.
 
 ## MAX
 

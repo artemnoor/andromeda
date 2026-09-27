@@ -47,6 +47,13 @@ python scripts/andromeda.py full              # локальные провер�
 - Универсальный аналитический слой: versioned semantic features, materialized
   `ProgramProjection`, allow-listed `MetricRegistry`, typed `/analytics/query`
   и channel-neutral `/assistant/query` без зависимости от Jev/MAX/Telegram.
+- Bounded source-backed knowledge/policy workflow: allowlisted one-shot source
+  discovery, claim/change staging, exact-hash human approval, deterministic
+  temporal/scope resolver with `ResolutionTrace`, review/impact preview and
+  policy questions through the existing assistant (read path disabled by
+  default behind `ANDROMEDA_KNOWLEDGE_POLICY_ASSISTANT_ENABLED`). Source coverage
+  and reviewer staffing are explicit operations prerequisites; the generic
+  policy layer does not replace admission-benefit calculations.
 - Jev integration seam: shared Question Registry, official TypeSafe SDK adapter,
   deterministic fallback, shadow-only policy, calibration-lock gate and
   isolated jevQL/jev-tree optional runtimes. Все flags выключены по умолчанию;
@@ -103,6 +110,8 @@ GET /compare?programIds=<program-id-a>,<program-id-b>&scope=semester&semester=1
 | [Jev rollout](docs/architecture/jev-rollout.md) | Безопасные flags, production gates, shadow/fallback и rollback |
 | [Semantic and catalog analytics](docs/semantic-analytics.md) | Версии семантики, metric registry, evidence, rebuild/rollback и Jev fallback |
 | [Query flow](docs/architecture/query-flow.md) | Conversation state, analytics и admission compilation |
+| [Knowledge and Policy](docs/architecture/knowledge-policy.md) | Source claims, approval, temporal resolution и impact |
+| [Knowledge operations](docs/operations/knowledge-policy-runbook.md) | Polling, review, security, recovery и budgets |
 | [API](docs/api.md) | OpenAPI endpoints и контракты |
 | [Admissions](docs/admissions.md) | Данные поступления и source gaps |
 | [Admission Fit](docs/admission-fit.md) | Отдельная оценка реалистичности поступления |

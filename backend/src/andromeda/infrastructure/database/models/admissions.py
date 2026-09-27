@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Any, cast
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -16,6 +18,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..base import Base
@@ -78,6 +81,43 @@ class AdmissionOfferingModel(Base):
         CheckConstraint("length(source_kind) > 0", name="ck_admission_offering_source_kind"),
         CheckConstraint("length(source_url) > 0", name="ck_admission_offering_source_url"),
         CheckConstraint("length(content_sha256) = 64", name="ck_admission_offering_sha256"),
+    )
+
+
+class AdmissionOfferingRevisionModel(Base):
+    __tablename__ = "admission_offering_revisions"
+
+    domain_rule_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    offering_id: Mapped[str] = mapped_column(String(320), nullable=False)
+    program_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    admission_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    payload_json: Mapped[dict[str, object]] = mapped_column(
+        JSON().with_variant(cast(Any, JSONB)(), "postgresql"), nullable=False
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_admission_offering_revisions_program_year",
+            "program_id",
+            "admission_year",
+            "recorded_at",
+        ),
+        CheckConstraint("revision >= 1", name="ck_admission_offering_revision_positive"),
+        CheckConstraint(
+            "admission_year >= 2000 AND admission_year <= 2100",
+            name="ck_admission_offering_revision_year",
+        ),
+        CheckConstraint(
+            "length(domain_rule_id) = 83",
+            name="ck_admission_offering_revision_domain_id",
+        ),
+        CheckConstraint(
+            "length(content_hash) = 64",
+            name="ck_admission_offering_revision_sha256",
+        ),
     )
 
 

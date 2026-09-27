@@ -247,6 +247,39 @@ class SqlAlchemyIngestionRepository:
             source_kinds=tuple(snapshot.source_kind for snapshot in snapshots),
         )
 
+    def record_staged_source_snapshots(
+        self, run_id: str, snapshots: tuple[RawSourceSnapshot, ...]
+    ) -> None:
+        """Persist immutable captures without starting a canonical projection."""
+        logger.info("staged_source_snapshot_batch_start run_id=%s count=%d", run_id, len(snapshots))
+        with self._factory() as session, session.begin():
+            run = session.get(IngestRunModel, run_id)
+            if run is None or run.status != "running":
+                raise ContractError(ErrorCode.CONTRACT_ERROR, "Source discovery ingest run is not running")
+            for snapshot in snapshots:
+                self._insert_snapshot(session, run_id, snapshot)
+            run.source_count = len(snapshots)
+            run.source_hashes_json = json.dumps(
+                tuple(item.content_sha256 for item in snapshots), separators=(",", ":")
+            )
+            run.source_kinds_json = json.dumps(
+                tuple(item.source_kind for item in snapshots), separators=(",", ":")
+            )
+            run.heartbeat_at = datetime.now(timezone.utc)
+        logger.info("staged_source_snapshot_batch_complete run_id=%s count=%d", run_id, len(snapshots))
+
+    def finish_source_capture_run(self, run_id: str) -> None:
+        """Close a capture-only audit run without changing canonical projections."""
+        with self._factory() as session, session.begin():
+            run = session.get(IngestRunModel, run_id)
+            if run is None or run.status != "running":
+                raise ContractError(ErrorCode.CONTRACT_ERROR, "Source discovery ingest run is not running")
+            run.finished_at = datetime.now(timezone.utc)
+            run.duration_ms = _duration_ms(run.started_at, run.finished_at)
+            run.status = "completed"
+            run.heartbeat_at = run.finished_at
+        logger.info("source_capture_run_complete run_id=%s", run_id)
+
     def ingest(self, raw: RawTracerBundle, canonical: CanonicalSnapshot, *, run_id: str | None = None) -> str:
         resolved_run_id = run_id or self.start_run(university_id=str(canonical.university.id))
         raw = _bind_admission_benefit_raw_run(raw, resolved_run_id)

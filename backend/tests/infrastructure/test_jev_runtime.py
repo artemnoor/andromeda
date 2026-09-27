@@ -11,6 +11,14 @@ def test_runtime_registries_resolve_from_backend_config_directory() -> None:
     assert _admission_registry_path().is_file()
 
 
+def test_admission_selector_is_off_by_default() -> None:
+    selector, report = build_admission_candidate_selector(Settings())
+
+    assert selector is None
+    assert report.enabled is False
+    assert report.reason == "admission_resolution_disabled_by_config"
+
+
 def test_admission_selector_fails_closed_without_dedicated_production_lock() -> None:
     selector, report = build_admission_candidate_selector(
         Settings(jev_admission_resolution_enabled=True)

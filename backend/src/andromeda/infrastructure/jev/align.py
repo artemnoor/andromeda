@@ -8,9 +8,9 @@ publication remains an explicit Andromeda review transition.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -61,7 +61,7 @@ class JevAlignSession:
         *,
         config: JevAlignConfig,
         backend: Any,
-    ) -> "JevAlignSession":
+    ) -> JevAlignSession:
         if not stories:
             raise ValueError("jev-align requires at least one source-backed story")
         if not config.feature_criteria:
@@ -139,7 +139,7 @@ class JevAlignSession:
         return cls(session)
 
     @classmethod
-    def open(cls, run_directory: Path, *, backend: Any) -> "JevAlignSession":
+    def open(cls, run_directory: Path, *, backend: Any) -> JevAlignSession:
         """Resume an existing upstream run for label/optimize/decision commands."""
 
         from jev_align.models import RunState, Story

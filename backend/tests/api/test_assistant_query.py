@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,10 +19,20 @@ from run_andromeda_bmstu import run_ingest  # noqa: I001
 FIXTURE_DIR = Path(__file__).parents[1] / "fixtures" / "tracer" / "raw"
 
 
-def _client(tmp_path: Path) -> TestClient:
+def _client(tmp_path: Path, *, policy_enabled: bool = False) -> TestClient:
     database_url = f"sqlite:///{(tmp_path / 'assistant-api.db').as_posix()}"
-    run_ingest(mode="fixture", fixture_dir=FIXTURE_DIR, database_url=database_url, program_codes=())
-    return TestClient(create_app(database_url))
+    run_ingest(
+        mode="fixture",
+        fixture_dir=FIXTURE_DIR,
+        database_url=database_url,
+        program_codes=(),
+    )
+    with patch.dict(
+        os.environ,
+        {"ANDROMEDA_KNOWLEDGE_POLICY_ASSISTANT_ENABLED": str(policy_enabled).lower()},
+    ):
+        app = create_app(database_url)
+    return TestClient(app)
 
 
 def test_assistant_admission_flow_keeps_typed_session_state(tmp_path: Path) -> None:
@@ -85,7 +97,9 @@ def test_assistant_admission_flow_keeps_typed_session_state(tmp_path: Path) -> N
         ]
 
 
-def test_assistant_uses_explicit_admission_filters_without_reasking(tmp_path: Path) -> None:
+def test_assistant_uses_explicit_admission_filters_without_reasking(
+    tmp_path: Path,
+) -> None:
     with _client(tmp_path) as client:
         result = client.post(
             "/assistant/query",
@@ -108,11 +122,15 @@ def test_assistant_uses_explicit_admission_filters_without_reasking(tmp_path: Pa
         assert payload["response"]["metadata"]["assumptions"] == []
 
 
-def test_assistant_accepts_any_university_scope_and_checks_full_fixture_catalog(tmp_path: Path) -> None:
+def test_assistant_accepts_any_university_scope_and_checks_full_fixture_catalog(
+    tmp_path: Path,
+) -> None:
     with _client(tmp_path) as client:
         first = client.post(
             "/assistant/query",
-            json={"text": "Куда я прохожу с 270: русский 90, математика 90, информатика 90"},
+            json={
+                "text": "Куда я прохожу с 270: русский 90, математика 90, информатика 90"
+            },
         )
         assert first.status_code == 200, first.text
         first_payload = first.json()
@@ -156,7 +174,9 @@ def test_assistant_accepts_any_university_scope_and_checks_full_fixture_catalog(
         assert set(payload["admission_result"]["by_program_id"]) == set(submitted_ids)
 
 
-def test_assistant_analytics_flow_returns_channel_neutral_envelope(tmp_path: Path) -> None:
+def test_assistant_analytics_flow_returns_channel_neutral_envelope(
+    tmp_path: Path,
+) -> None:
     with _client(tmp_path) as client:
         response = client.post(
             "/assistant/query",
@@ -170,6 +190,85 @@ def test_assistant_analytics_flow_returns_channel_neutral_envelope(tmp_path: Pat
         assert payload["query"]["scope"] == "program"
         assert payload["response"]["response_type"] == "image"
         assert payload["response"]["template"] == "metric-comparison"
+
+
+def test_assistant_policy_rumor_without_a_source_claim_stays_unknown(
+    tmp_path: Path,
+) -> None:
+    with _client(tmp_path, policy_enabled=True) as client:
+        response = client.post(
+            "/assistant/query",
+            json={"text": "Правда ли, что с 2028 года введут четвертый ЕГЭ?"},
+        )
+
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload["state"] == "complete"
+        assert "policy_answer" not in payload
+        assert payload["response"]["response_mode"] == "deterministic"
+        assert payload["response"]["knowledge"]["status"] == "no_evidence"
+        assert payload["response"]["knowledge"]["source_assertions"] == []
+        assert "не доказывает" in payload["response"]["text"].casefold()
+
+
+def test_outside_coverage_uses_unverified_mode_without_persisting_answer(
+    tmp_path: Path,
+) -> None:
+    with _client(tmp_path, policy_enabled=True) as client:
+        outside = client.post(
+            "/assistant/query",
+            json={"text": "Что сейчас обсуждают по новому закону о поступлении?"},
+        )
+        assert outside.status_code == 200, outside.text
+        outside_payload = outside.json()
+        outside_response = outside_payload["response"]
+        assert outside_response["response_mode"] == "unverified_fallback"
+        assert outside_response["knowledge"]["status"] == "outside_coverage"
+        assert outside_response["knowledge"]["source_assertions"] == []
+        assert outside_response["knowledge"]["evidence"] == []
+        assert "общий ответ не предоставлен" in outside_response["text"].casefold()
+
+        verified_path = client.post(
+            "/assistant/query",
+            json={
+                "text": "Правда ли, что с 2028 года введут четвертый ЕГЭ?",
+                "sessionId": outside_payload["session_id"],
+                "expectedRevision": outside_payload["revision"],
+            },
+        )
+        assert verified_path.status_code == 200, verified_path.text
+        verified_response = verified_path.json()["response"]
+        assert verified_response["response_mode"] == "deterministic"
+        assert verified_response["knowledge"]["status"] == "no_evidence"
+
+
+def test_assistant_policy_applicability_clarifies_then_returns_resolver_trace(
+    tmp_path: Path,
+) -> None:
+    with _client(tmp_path, policy_enabled=True) as client:
+        first = client.post(
+            "/assistant/query",
+            json={"text": "Четвертый ЕГЭ меня касается для university:bmstu?"},
+        )
+        assert first.status_code == 200, first.text
+        first_payload = first.json()
+        assert first_payload["state"] == "needs_clarification"
+        assert first_payload["missing_slots"] == ["admission_year"]
+
+        second = client.post(
+            "/assistant/query",
+            json={
+                "text": "Поступаю в 2027 году",
+                "sessionId": first_payload["session_id"],
+                "expectedRevision": first_payload["revision"],
+            },
+        )
+        assert second.status_code == 200, second.text
+        payload = second.json()
+        assert payload["state"] == "complete"
+        assert "policy_answer" not in payload
+        assert payload["response"]["knowledge"]["status"] == "no_evidence"
+        assert "не доказывает" in payload["response"]["text"].casefold()
 
 
 def test_shadow_provider_timeout_does_not_turn_assistant_request_into_500(

@@ -159,6 +159,18 @@ type ApiUniversityDisciplineEditorial = paths["/university-admin/universities/{u
 type ApiUniversityAdminEvents = paths["/university-admin/universities/{university_id}/events"]["get"]["responses"][200]["content"]["application/json"];
 type ApiUniversityAdminEvent = paths["/university-admin/universities/{university_id}/events/{event_id}"]["get"]["responses"][200]["content"]["application/json"];
 type ApiUniversityPublicEvents = paths["/universities/{university_id}/events"]["get"]["responses"][200]["content"]["application/json"];
+type ApiKnowledgeReviewQueue = paths["/ops/knowledge/review-queue"]["get"]["responses"][200]["content"]["application/json"];
+type ApiKnowledgeReviewDecisionRequest = NonNullable<paths["/ops/knowledge/review-actions"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiKnowledgeReviewDecision = paths["/ops/knowledge/review-actions"]["post"]["responses"][200]["content"]["application/json"];
+type ApiKnowledgeReviewPreviewRequest = NonNullable<paths["/ops/knowledge/review-preview"]["post"]["requestBody"]>["content"]["application/json"];
+type ApiKnowledgeReviewPreview = paths["/ops/knowledge/review-preview"]["post"]["responses"][200]["content"]["application/json"];
+
+export type KnowledgeReviewQueue = ApiKnowledgeReviewQueue;
+export type KnowledgeReviewTarget = components["schemas"]["ReviewTargetResponse"];
+export type KnowledgeReviewAction = components["schemas"]["KnowledgeReviewAction"];
+export type KnowledgeReviewPreviewContext = components["schemas"]["ReviewPolicyPreviewContext"];
+export type KnowledgeReviewPolicyPreview = ApiKnowledgeReviewPreview["preview"];
+export type KnowledgeReviewClaimPropositionRequest = components["schemas"]["ClaimPropositionRequest"];
 type ApiUniversityPublicEvent = paths["/universities/{university_id}/events/{event_id}"]["get"]["responses"][200]["content"]["application/json"];
 type ApiProvisionMembership = NonNullable<paths["/ops/university-admin/members"]["post"]["requestBody"]>["content"]["application/json"];
 type ApiOwnerMembershipRequest = NonNullable<paths["/university-admin/universities/{university_id}/members"]["post"]["requestBody"]>["content"]["application/json"];
@@ -1159,6 +1171,28 @@ export function getPersonalRoute(limit = 10): Promise<PersonalRouteResponse> {
 
 export function getAuthSession(): Promise<AuthSession> {
   return requestJson<ApiSession>("/auth/session").then(mapSession);
+}
+
+export function getKnowledgeReviewQueue(limit = 50): Promise<KnowledgeReviewQueue> {
+  return requestJson<ApiKnowledgeReviewQueue>(`/ops/knowledge/review-queue?limit=${encodeURIComponent(String(limit))}`);
+}
+
+export function applyKnowledgeReviewAction(
+  request: ApiKnowledgeReviewDecisionRequest,
+): Promise<ApiKnowledgeReviewDecision> {
+  return requestJson<ApiKnowledgeReviewDecision>("/ops/knowledge/review-actions", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+export function previewKnowledgeReviewPolicy(
+  request: ApiKnowledgeReviewPreviewRequest,
+): Promise<ApiKnowledgeReviewPreview> {
+  return requestJson<ApiKnowledgeReviewPreview>("/ops/knowledge/review-preview", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 }
 
 export type RegisterRequest = ApiRegisterRequest;

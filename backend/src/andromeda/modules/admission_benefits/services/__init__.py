@@ -1,19 +1,22 @@
 """Admission-benefit application services."""
+
 from .admission_decision import AdmissionDecisionService
 from .applicability import evaluate_scope
 from .confirmation import ConfirmationEvaluation, evaluate_confirmation
 from .evaluator import AdmissionBenefitEvaluationInput, AdmissionBenefitEvaluator
 from .facade import AdmissionBenefitCatalogService, AdmissionEligibilityService
 from .individual_achievements import IndividualAchievementCalculator
+from .policy_evaluation import AdmissionBenefitsPolicyEvaluationService
 from .validity import ValidityEvaluation, evaluate_validity
 
 __all__ = [
-    "ConfirmationEvaluation",
+    "AdmissionBenefitCatalogService",
     "AdmissionBenefitEvaluationInput",
     "AdmissionBenefitEvaluator",
+    "AdmissionBenefitsPolicyEvaluationService",
     "AdmissionDecisionService",
-    "AdmissionBenefitCatalogService",
     "AdmissionEligibilityService",
+    "ConfirmationEvaluation",
     "IndividualAchievementCalculator",
     "ValidityEvaluation",
     "evaluate_confirmation",

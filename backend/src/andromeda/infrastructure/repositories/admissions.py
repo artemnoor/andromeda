@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable, Iterable
+from datetime import UTC, datetime
 from enum import StrEnum
 from hashlib import sha256
 from typing import Any, TypeVar, cast
@@ -9,6 +11,11 @@ from typing import Any, TypeVar, cast
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from andromeda.modules.admissions.contracts.offering_revisions import (
+    AdmissionOfferingRevision,
+    admission_offering_domain_rule_id,
+    admission_offering_revision_hash,
+)
 from andromeda.modules.admissions.contracts.public import (
     AdmissionCompetitionType,
     AdmissionOffering,
@@ -25,12 +32,16 @@ from andromeda.modules.admissions.contracts.public import (
     StudyForm,
     TuitionCost,
 )
-from andromeda.modules.admissions.repository.ports import AdmissionRepository
+from andromeda.modules.admissions.repository.ports import (
+    AdmissionOfferingRevisionReader,
+    AdmissionRepository,
+)
 from andromeda.shared.contracts.ids import ProgramId, canonical_program_id
 
 from ..database.models import (
     AdmissionExamRequirementModel,
     AdmissionOfferingModel,
+    AdmissionOfferingRevisionModel,
     AdmissionPassingScoreModel,
     AdmissionQuotaModel,
     AdmissionTuitionModel,
@@ -40,7 +51,7 @@ logger = logging.getLogger("andromeda.infrastructure.repositories.admissions")
 _Enum = TypeVar("_Enum", bound=StrEnum)
 
 
-class SqlAlchemyAdmissionRepository(AdmissionRepository):
+class SqlAlchemyAdmissionRepository(AdmissionRepository, AdmissionOfferingRevisionReader):
     """Infrastructure adapter for the public admissions repository port."""
 
     def __init__(self, session: Session) -> None:
@@ -150,7 +161,80 @@ class SqlAlchemyAdmissionRepository(AdmissionRepository):
         self._session.flush()
         for offering in envelope.offerings:
             self._sync_children(offering)
+            self._append_offering_revision(offering)
         logger.info("admissions_sync_complete program_id=%s offerings=%d stale=%d", envelope.program_id, len(expected_ids), len(stale_ids))
+
+    def get_offering_revision(
+        self,
+        domain_rule_id: str,
+        revision: int,
+        content_hash: str,
+    ) -> AdmissionOfferingRevision | None:
+        row = self._session.get(
+            AdmissionOfferingRevisionModel, (domain_rule_id, revision)
+        )
+        if row is None or row.content_hash != content_hash:
+            return None
+        payload = row.payload_json
+        try:
+            result = AdmissionOfferingRevision(
+                domain_rule_id=row.domain_rule_id,
+                offering_id=row.offering_id,
+                revision=row.revision,
+                content_hash=row.content_hash,
+                recorded_at=_aware_utc(row.recorded_at),
+                offering=AdmissionOffering.model_validate_json(
+                    json.dumps(payload), strict=False
+                ),
+            )
+        except (TypeError, ValueError):
+            logger.exception(
+                "admission_offering_revision_invalid domain_rule_id=%s revision=%d",
+                domain_rule_id,
+                revision,
+            )
+            return None
+        return result
+
+    def _append_offering_revision(self, offering: AdmissionOffering) -> None:
+        domain_rule_id = admission_offering_domain_rule_id(offering.id)
+        latest = self._session.scalar(
+            select(AdmissionOfferingRevisionModel)
+            .where(AdmissionOfferingRevisionModel.domain_rule_id == domain_rule_id)
+            .order_by(AdmissionOfferingRevisionModel.revision.desc())
+            .limit(1)
+            .with_for_update()
+        )
+        content_hash = admission_offering_revision_hash(offering)
+        if latest is not None and latest.content_hash == content_hash:
+            return
+        revision_number = latest.revision + 1 if latest is not None else 1
+        revision = AdmissionOfferingRevision(
+            domain_rule_id=domain_rule_id,
+            offering_id=offering.id,
+            revision=revision_number,
+            content_hash=content_hash,
+            recorded_at=datetime.now(UTC),
+            offering=offering,
+        )
+        self._session.add(
+            AdmissionOfferingRevisionModel(
+                domain_rule_id=revision.domain_rule_id,
+                revision=revision.revision,
+                offering_id=revision.offering_id,
+                program_id=offering.program_id,
+                admission_year=offering.admission_year,
+                content_hash=revision.content_hash,
+                recorded_at=revision.recorded_at,
+                payload_json=offering.model_dump(mode="json"),
+            )
+        )
+        logger.info(
+            "admission_offering_revision_appended domain_rule_id=%s revision=%d content_hash_prefix=%s",
+            revision.domain_rule_id,
+            revision.revision,
+            revision.content_hash[:12],
+        )
 
     def _upsert_offering(self, offering: AdmissionOffering) -> None:
         existing = self._session.get(AdmissionOfferingModel, offering.id)
@@ -296,6 +380,14 @@ class SqlAlchemyAdmissionRepository(AdmissionRepository):
 
 def _enum_value(value: object | None, fallback: str) -> str:
     return str(value.value) if value is not None and hasattr(value, "value") else fallback
+
+
+def _aware_utc(value: datetime) -> datetime:
+    # SQLite drops timezone metadata for DateTime(timezone=True); persisted values
+    # are written in UTC, so restore that explicit contract at the read boundary.
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def _optional_enum(enum: type[_Enum], value: str) -> _Enum | None:

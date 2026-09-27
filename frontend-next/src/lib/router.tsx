@@ -19,6 +19,7 @@ export type View =
   | "account"
   | "ops"
   | "university-admin"
+  | "knowledge-review"
   | "university-catalog";
 
 export type Route = {

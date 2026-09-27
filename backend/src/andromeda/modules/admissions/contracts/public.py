@@ -20,7 +20,17 @@ from andromeda.shared.contracts.ids import (
     SourceHash,
 )
 
-ZERO = Decimal("0")
+from .admission_cycles import (
+    AdmissionCycle,
+    AdmissionCycleId,
+    AdmissionCycleResolution,
+    AdmissionCycleResolutionStatus,
+    AdmissionCycleState,
+    InclusiveDateWindow,
+    admission_cycle_id,
+)
+
+ZERO = Decimal(0)
 
 
 class StudyForm(StrEnum):
@@ -88,7 +98,7 @@ class AdmissionProvenance(ContractModel):
 class ExamRequirement(ContractModel):
     subject: NonEmptyText
     source_name: NonEmptyText
-    minimum_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal("100"), max_digits=5, decimal_places=2)
+    minimum_score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal(100), max_digits=5, decimal_places=2)
     is_choice: bool = False
     is_required: bool = True
     choice_group_id: AdmissionExamChoiceGroupId | None = None
@@ -124,7 +134,7 @@ class PassingScore(ContractModel):
     score_type: PassingScoreType
     competition_type: AdmissionCompetitionType = AdmissionCompetitionType.GENERAL
     status: PassingScoreStatus = PassingScoreStatus.NUMERIC
-    score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal("400"), max_digits=6, decimal_places=2)
+    score: Decimal | None = Field(default=None, strict=True, ge=ZERO, le=Decimal(400), max_digits=6, decimal_places=2)
     provenance: AdmissionProvenance
 
     @model_validator(mode="after")
@@ -212,12 +222,18 @@ class ProgramAdmissions(ContractModel):
 __all__ = [
     "AdmissionCampusId",
     "AdmissionCompetitionType",
+    "AdmissionCycle",
+    "AdmissionCycleId",
+    "AdmissionCycleResolution",
+    "AdmissionCycleResolutionStatus",
+    "AdmissionCycleState",
     "AdmissionExamChoiceGroupId",
     "AdmissionOffering",
     "AdmissionProvenance",
     "AdmissionScope",
     "ExamRequirement",
     "FundingType",
+    "InclusiveDateWindow",
     "PassingScore",
     "PassingScoreStatus",
     "PassingScoreType",
@@ -226,4 +242,5 @@ __all__ = [
     "QuotaType",
     "StudyForm",
     "TuitionCost",
+    "admission_cycle_id",
 ]

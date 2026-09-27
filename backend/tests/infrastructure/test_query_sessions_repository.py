@@ -7,13 +7,16 @@ import pytest
 from sqlalchemy.orm import Session
 
 from andromeda.infrastructure.database import Base, create_engine_for_url
+from andromeda.infrastructure.database.models import QuerySessionModel
 from andromeda.infrastructure.repositories.query_sessions import (
     SqlAlchemyQuerySessionRepository,
 )
 from andromeda.modules.admissions.contracts.public import FundingType
 from andromeda.modules.conversation.contracts.public import (
-    ConversationSlot,
     NextAction,
+    PolicyQueryContext,
+    PolicyQueryFocus,
+    PolicyQueryYear,
     QuerySession,
 )
 from andromeda.modules.conversation.services.engine import ConversationEngine
@@ -129,5 +132,38 @@ def test_admission_funding_fact_survives_query_session_json_round_trip(tmp_path:
             )
             assert changed.next_action is NextAction.EXECUTE_QUERY
             assert changed.confirmed_parameters["funding_type"].value is FundingType.PAID
+    finally:
+        engine.dispose()
+
+
+def test_policy_query_context_survives_query_session_json_round_trip(tmp_path: Path) -> None:
+    engine = create_engine_for_url(f"sqlite:///{(tmp_path / 'query-sessions-policy.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    scope = ProfileScope(session_key_hash="d" * 64)
+    context = PolicyQueryContext(
+        focus=PolicyQueryFocus.APPLICABILITY,
+        mentioned_effective_year=PolicyQueryYear(year=2028),
+        as_known_at=NOW,
+    )
+    try:
+        with Session(engine) as database_session:
+            repository = SqlAlchemyQuerySessionRepository(database_session)
+            query_session = _session(scope).model_copy(update={"policy_query_context": context})
+            repository.save(query_session)
+
+            restored = repository.get(query_session.session_id, owner_scope=scope)
+            assert restored is not None
+            assert restored.policy_query_context == context
+
+            model = database_session.get(QuerySessionModel, query_session.session_id)
+            assert model is not None
+            legacy_state = dict(model.state_json)
+            legacy_state.pop("policy_query_context")
+            model.state_json = legacy_state
+            database_session.commit()
+
+            restored_legacy = repository.get(query_session.session_id, owner_scope=scope)
+            assert restored_legacy is not None
+            assert restored_legacy.policy_query_context is None
     finally:
         engine.dispose()
