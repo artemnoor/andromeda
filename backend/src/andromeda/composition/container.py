@@ -9,6 +9,9 @@ from urllib.parse import urlparse
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
+from andromeda.infrastructure.adapters.policy_approval_conflicts import (
+    SqlAlchemyPolicyApprovalConflictReader,
+)
 from andromeda.infrastructure.config.settings import Settings
 from andromeda.infrastructure.jev.runtime import (
     build_admission_candidate_selector,
@@ -749,6 +752,18 @@ class AndromedaContainer:
             repository=self.policy_rule_repository(session),
             authorizer=authorizer,
             unit_of_work=session,
+            approval_conflicts=SqlAlchemyPolicyApprovalConflictReader(
+                SqlAlchemyConflictGroupRepository(session)
+            ),
+        )
+
+    def policy_approval_review_adapter(
+        self,
+        session: Session,
+        authorizer: PolicyCapabilityAuthorizer,
+    ) -> PolicyApprovalReviewAdapter:
+        return PolicyApprovalReviewAdapter(
+            self.policy_approval_command_service(session, authorizer)
         )
 
     def policy_projection_refresh_repository(

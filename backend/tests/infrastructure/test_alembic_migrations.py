@@ -12,7 +12,7 @@ from alembic import command
 
 BACKEND_ROOT = Path(__file__).parents[2]
 STAGE2_HEAD = "0038_admission_offering_scope_and_exam_choices"
-CURRENT_HEAD = "0055_knowledge_schema_alignment"
+CURRENT_HEAD = "0056_exact_conflict_participant_uniqueness"
 
 
 def _alembic_config(database_url: str) -> Config:
@@ -149,7 +149,15 @@ def test_empty_sqlite_database_reaches_head_and_preserves_constraints(
             index["name"]: index
             for index in inspector.get_indexes("knowledge_conflict_participants")
         }
-        assert participant_indexes["uq_knowledge_conflict_participant_exact_ref"]["unique"]
+        assert {
+            name
+            for name, index in participant_indexes.items()
+            if index["unique"]
+        } >= {
+            "uq_knowledge_conflict_participant_claim_ref",
+            "uq_knowledge_conflict_participant_change_event_ref",
+            "uq_knowledge_conflict_participant_policy_ref",
+        }
         for table_name in (
             "knowledge_conflict_events",
             "knowledge_review_actions",

@@ -23,6 +23,11 @@ from andromeda.modules.policy.contracts.applicability import (
     PolicySelection,
     SelectorNodeTrace,
 )
+from andromeda.modules.policy.contracts.approval import (
+    ApprovedPolicyRevision,
+    PolicyApprovalEventReference,
+    policy_approval_event_reference,
+)
 from andromeda.modules.policy.contracts.resolution import (
     ConsideredPolicyRule,
     PolicyResolutionBlocker,
@@ -79,8 +84,14 @@ class EffectiveRuleCandidateResolver:
         as_known_at = as_known_at.astimezone(UTC)
         approved_revisions = tuple(
             sorted(
-                self._policies.list_approved_revisions(as_known_at=as_known_at),
-                key=lambda item: (item.rule_id, item.revision, item.content_hash),
+                self._policies.list_approved_revision_records(
+                    as_known_at=as_known_at
+                ),
+                key=lambda item: (
+                    item.revision.rule_id,
+                    item.revision.revision,
+                    item.revision.content_hash,
+                ),
             )
         )
         return self.resolve_approved_snapshot(
@@ -93,23 +104,29 @@ class EffectiveRuleCandidateResolver:
         self,
         request: PolicyResolutionRequest,
         *,
-        approved_revisions: tuple[PolicyRuleRevision, ...],
+        approved_revisions: tuple[ApprovedPolicyRevision, ...],
         as_known_at: datetime,
     ) -> ResolutionTrace:
         """Evaluate one exact snapshot already filtered by the approved read port."""
 
         if as_known_at.tzinfo is None or as_known_at.utcoffset() is None:
             raise ValueError("approved snapshot time must be timezone-aware")
-        revisions = tuple(
+        snapshot = tuple(
             sorted(
                 approved_revisions,
-                key=lambda item: (item.rule_id, item.revision, item.content_hash),
+                key=lambda item: (
+                    item.revision.rule_id,
+                    item.revision.revision,
+                    item.revision.content_hash,
+                ),
             )
         )
+        revisions = tuple(item.revision for item in snapshot)
         self._validate_unique_revision_identities(revisions)
         return self._resolve_snapshot(
             request,
             revisions=revisions,
+            approval_references=_approval_references(snapshot),
             as_known_at=as_known_at.astimezone(UTC),
         )
 
@@ -117,7 +134,7 @@ class EffectiveRuleCandidateResolver:
         self,
         request: PolicyResolutionRequest,
         *,
-        approved_revisions: tuple[PolicyRuleRevision, ...],
+        approved_revisions: tuple[ApprovedPolicyRevision, ...],
         candidate_revision: PolicyRuleRevision,
         as_known_at: datetime,
     ) -> ResolutionTrace:
@@ -134,22 +151,24 @@ class EffectiveRuleCandidateResolver:
             candidate_revision.rule_id,
             candidate_revision.revision,
         )
+        revisions = tuple(item.revision for item in approved_revisions)
         if any(
             (item.rule_id, item.revision) == candidate_identity
-            for item in approved_revisions
+            for item in revisions
         ):
             raise ValueError(
                 "hypothetical candidate cannot replace an approved revision identity"
             )
         revisions = tuple(
             sorted(
-                (*approved_revisions, candidate_revision),
+                (*revisions, candidate_revision),
                 key=lambda item: (item.rule_id, item.revision, item.content_hash),
             )
         )
         return self._resolve_snapshot(
             request,
             revisions=revisions,
+            approval_references=_approval_references(approved_revisions),
             as_known_at=normalized_time,
             hypothetical_revision=candidate_revision,
         )
@@ -159,6 +178,9 @@ class EffectiveRuleCandidateResolver:
         request: PolicyResolutionRequest,
         *,
         revisions: tuple[PolicyRuleRevision, ...],
+        approval_references: dict[
+            tuple[str, int, str], PolicyApprovalEventReference
+        ],
         as_known_at: datetime,
         hypothetical_revision: PolicyRuleRevision | None = None,
     ) -> ResolutionTrace:
@@ -181,6 +203,9 @@ class EffectiveRuleCandidateResolver:
                 request=request,
                 as_known_at=as_known_at,
                 blockers=blockers,
+                approval_event=approval_references.get(
+                    (revision.rule_id, revision.revision, revision.content_hash)
+                ),
             )
             for revision in revisions
         )
@@ -223,6 +248,7 @@ class EffectiveRuleCandidateResolver:
         request: PolicyResolutionRequest,
         as_known_at: datetime,
         blockers: tuple[PolicyResolutionBlocker, ...],
+        approval_event: PolicyApprovalEventReference | None,
     ) -> ConsideredPolicyRule:
         valid_interval = revision.temporal.clock.valid_time
         effective_interval = revision.temporal.source_milestones.effective_time
@@ -235,14 +261,16 @@ class EffectiveRuleCandidateResolver:
                 else (
                     PolicyRuleFilterReason.ADMISSION_CYCLE_UNRESOLVED
                     if PolicyResolutionBlocker.ADMISSION_CYCLE_UNRESOLVED in blockers
-                    else PolicyRuleFilterReason.ADMISSION_CYCLE_BLOCKED
+                else PolicyRuleFilterReason.ADMISSION_CYCLE_BLOCKED
                 ),
+                approval_event=approval_event,
             )
         if request.valid_as_of is None:
             return _considered(
                 revision,
                 PolicyRuleFilterState.BLOCKED,
                 PolicyRuleFilterReason.VALID_AS_OF_MISSING,
+                approval_event=approval_event,
             )
         if revision.lifecycle not in {
             PolicyRevisionLifecycle.EFFECTIVE,
@@ -252,24 +280,28 @@ class EffectiveRuleCandidateResolver:
                 revision,
                 PolicyRuleFilterState.NOT_APPLICABLE,
                 PolicyRuleFilterReason.LIFECYCLE_NOT_APPLICABLE,
+                approval_event=approval_event,
             )
         if valid_interval is None:
             return _considered(
                 revision,
                 PolicyRuleFilterState.INDETERMINATE,
                 PolicyRuleFilterReason.VALID_TIME_MISSING,
+                approval_event=approval_event,
             )
         if not valid_interval.contains(request.valid_as_of):
             return _considered(
                 revision,
                 PolicyRuleFilterState.NOT_APPLICABLE,
                 PolicyRuleFilterReason.OUTSIDE_VALID_TIME,
+                approval_event=approval_event,
             )
         if effective_interval is None:
             return _considered(
                 revision,
                 PolicyRuleFilterState.INDETERMINATE,
                 PolicyRuleFilterReason.EFFECTIVE_TIME_MISSING,
+                approval_event=approval_event,
             )
         if (
             effective_interval.start is not None
@@ -279,6 +311,7 @@ class EffectiveRuleCandidateResolver:
                 revision,
                 PolicyRuleFilterState.FUTURE,
                 PolicyRuleFilterReason.FUTURE_EFFECTIVE,
+                approval_event=approval_event,
             )
         if (
             effective_interval.end is not None
@@ -288,6 +321,7 @@ class EffectiveRuleCandidateResolver:
                 revision,
                 PolicyRuleFilterState.EXPIRED,
                 PolicyRuleFilterReason.EFFECTIVE_TIME_ENDED,
+                approval_event=approval_event,
             )
 
         scope_assessment = assess_policy_scope(revision.scope, context)
@@ -298,6 +332,7 @@ class EffectiveRuleCandidateResolver:
                 PolicyRuleFilterReason.SCOPE_NOT_MATCHED,
                 context=context,
                 scope_assessment=scope_assessment,
+                approval_event=approval_event,
             )
         if scope_assessment.state is PolicyScopeMatchState.INDETERMINATE:
             return _considered(
@@ -306,6 +341,7 @@ class EffectiveRuleCandidateResolver:
                 PolicyRuleFilterReason.SCOPE_CONTEXT_UNKNOWN,
                 context=context,
                 scope_assessment=scope_assessment,
+                approval_event=approval_event,
             )
 
         # The caller supplies either a snapshot from the approved-only read port
@@ -323,6 +359,7 @@ class EffectiveRuleCandidateResolver:
                 scope_assessment=scope_assessment,
                 selector_trace=assessment.node_trace,
                 selection=assessment.selection,
+                approval_event=approval_event,
             )
         if assessment.status is PolicyApplicabilityStatus.SELECTOR_NOT_MATCHED:
             return _considered(
@@ -332,6 +369,7 @@ class EffectiveRuleCandidateResolver:
                 context=context,
                 scope_assessment=scope_assessment,
                 selector_trace=assessment.node_trace,
+                approval_event=approval_event,
             )
         if assessment.reason is PolicyApplicabilityReason.OWNER_RULE_NOT_FOUND:
             reason = PolicyRuleFilterReason.OWNER_RULE_NOT_FOUND
@@ -355,6 +393,7 @@ class EffectiveRuleCandidateResolver:
             context=context,
             scope_assessment=scope_assessment,
             selector_trace=assessment.node_trace,
+            approval_event=approval_event,
         )
 
     @staticmethod
@@ -499,6 +538,7 @@ def _considered(
     scope_assessment: PolicyScopeAssessment | None = None,
     selector_trace: tuple[SelectorNodeTrace, ...] = (),
     selection: PolicySelection | None = None,
+    approval_event: PolicyApprovalEventReference | None = None,
 ) -> ConsideredPolicyRule:
     if scope_assessment is None:
         scope_assessment = assess_policy_scope(
@@ -523,11 +563,22 @@ def _considered(
         scope_state=scope_assessment.state,
         scope_reason=scope_assessment.reason,
         evidence=revision.evidence,
+        approval_event=approval_event,
         filter_state=filter_state,
         reason=reason,
         selector_trace=selector_trace,
         selection=selection,
     )
+
+
+def _approval_references(
+    records: tuple[ApprovedPolicyRevision, ...],
+) -> dict[tuple[str, int, str], PolicyApprovalEventReference]:
+    return {
+        (record.revision.rule_id, record.revision.revision, record.revision.content_hash):
+        policy_approval_event_reference(record.approval_event)
+        for record in records
+    }
 
 
 def _context_fingerprint(context: PolicyApplicabilityContext) -> str:

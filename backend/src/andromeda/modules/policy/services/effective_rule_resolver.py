@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, time
 
+from pydantic import ValidationError
+
 from andromeda.modules.admissions.contracts.admission_cycles import (
     AdmissionCycleResolutionStatus,
 )
 from andromeda.modules.knowledge.contracts.public import ClaimRevisionRef
+from andromeda.modules.policy.contracts.approval import ApprovedPolicyRevision
 from andromeda.modules.policy.contracts.public import PolicyCycleComparison
 from andromeda.modules.policy.contracts.resolution import (
+    PolicyResolutionBlocker,
     PolicyResolutionRequest,
     PolicyResolutionStatus,
     ResolutionTrace,
@@ -56,15 +60,15 @@ class EffectivePolicyResolver:
         )
 
     def resolve(self, request: PolicyResolutionRequest) -> ResolutionTrace:
-        candidate_trace = self._candidate_resolver.resolve(request)
-        if (
-            candidate_trace.status is not PolicyResolutionStatus.CANDIDATES_FOUND
-            or not candidate_trace.candidates
-        ):
-            return candidate_trace
-
-        approved = self._policies.list_approved_revisions(
-            as_known_at=candidate_trace.as_known_at
+        as_known_at = request.as_known_at or self._clock.now()
+        if as_known_at.tzinfo is None or as_known_at.utcoffset() is None:
+            raise ValueError("policy clock must return an aware datetime")
+        as_known_at = as_known_at.astimezone(UTC)
+        approved = self._approved_snapshot(as_known_at)
+        if approved is None:
+            return self._invalid_approval_trace(request, as_known_at)
+        candidate_trace = self._candidate_resolver.resolve_approved_snapshot(
+            request, approved_revisions=approved, as_known_at=as_known_at
         )
         return self._resolve_precedence(candidate_trace, approved)
 
@@ -76,14 +80,16 @@ class EffectivePolicyResolver:
         """Resolve only approved rules linked to the exact source claim revisions."""
 
         as_known_at = request.as_known_at or self._clock.now()
-        approved = self._policies.list_approved_revisions(as_known_at=as_known_at)
+        approved = self._approved_snapshot(as_known_at)
+        if approved is None:
+            return self._invalid_approval_trace(request, as_known_at)
         requested_claims = {(item.claim_id, item.revision) for item in claim_refs}
         linked = tuple(
-            revision
-            for revision in approved
+            record
+            for record in approved
             if any(
                 (reference.claim_id, reference.revision) in requested_claims
-                for reference in revision.source_claims
+                for reference in record.revision.source_claims
             )
         )
         candidate_trace = self._candidate_resolver.resolve_approved_snapshot(
@@ -171,7 +177,7 @@ class EffectivePolicyResolver:
     def _resolve_precedence(
         self,
         candidate_trace: ResolutionTrace,
-        approved: tuple[PolicyRuleRevision, ...],
+        approved: tuple[ApprovedPolicyRevision, ...],
     ) -> ResolutionTrace:
         if (
             candidate_trace.status is not PolicyResolutionStatus.CANDIDATES_FOUND
@@ -179,7 +185,8 @@ class EffectivePolicyResolver:
         ):
             return candidate_trace
         by_exact_identity = {
-            (item.rule_id, item.revision, item.content_hash): item for item in approved
+            (item.revision.rule_id, item.revision.revision, item.revision.content_hash): item.revision
+            for item in approved
         }
         candidates: list[PolicyRuleRevision] = []
         for selection in candidate_trace.candidates:
@@ -192,6 +199,37 @@ class EffectivePolicyResolver:
 
         result = resolve_policy_precedence(tuple(candidates))
         return apply_precedence_result(candidate_trace, result)
+
+    def _approved_snapshot(
+        self, as_known_at: datetime
+    ) -> tuple[ApprovedPolicyRevision, ...] | None:
+        records = self._policies.list_approved_revision_records(
+            as_known_at=as_known_at
+        )
+        try:
+            return tuple(
+                ApprovedPolicyRevision.model_validate(
+                    item.model_dump(mode="python")
+                )
+                for item in records
+            )
+        except (AttributeError, TypeError, ValidationError):
+            return None
+
+    def _invalid_approval_trace(
+        self,
+        request: PolicyResolutionRequest,
+        as_known_at: datetime,
+    ) -> ResolutionTrace:
+        trace = self._candidate_resolver.resolve_approved_snapshot(
+            request,
+            approved_revisions=(),
+            as_known_at=as_known_at,
+        )
+        return mark_resolution_indeterminate(
+            trace,
+            blocker=PolicyResolutionBlocker.APPROVAL_PROVENANCE_INVALID,
+        )
 
 
 __all__ = ["EffectivePolicyResolver"]

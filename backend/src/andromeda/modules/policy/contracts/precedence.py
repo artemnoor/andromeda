@@ -66,6 +66,7 @@ class PolicyPrecedenceResult(ContractModel):
     conflicting_rules: tuple[PolicySelection, ...] = Field(default=(), max_length=500)
     decisions: tuple[PolicyPrecedenceDecision, ...] = Field(default=(), max_length=5000)
     status: Literal["resolved", "conflict", "indeterminate"]
+    truncated: bool = False
 
     @model_validator(mode="after")
     def selected_and_conflicting_are_disjoint(self) -> PolicyPrecedenceResult:
@@ -81,6 +82,8 @@ class PolicyPrecedenceResult(ContractModel):
             raise ValueError("conflict status requires exact conflicting rules")
         if self.status == "indeterminate" and self.effective_rules:
             raise ValueError("indeterminate precedence cannot expose effective rules")
+        if self.truncated and self.status != "indeterminate":
+            raise ValueError("truncated precedence must fail closed as indeterminate")
         return self
 
 

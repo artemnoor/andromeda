@@ -6,7 +6,7 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, StringConstraints, field_validator, model_validator
 
@@ -125,6 +125,62 @@ class PolicyApprovalEvent(ContractModel):
         return self
 
 
+class PolicyApprovalEventReference(ContractModel):
+    """Non-sensitive immutable pointer to one approval-ledger event."""
+
+    event_id: PolicyApprovalEventId
+    rule_id: PolicyRuleId
+    revision: int = Field(strict=True, ge=1, le=2_147_483_647)
+    sequence: int = Field(strict=True, ge=1, le=2_147_483_647)
+    revision_hash: SourceHash
+    kind: Literal[PolicyApprovalEventKind.APPROVED] = PolicyApprovalEventKind.APPROVED
+    recorded_at: datetime
+
+    @field_validator("recorded_at")
+    @classmethod
+    def reference_time_is_aware(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("policy approval reference timestamp must be timezone-aware")
+        return value.astimezone(UTC)
+
+
+class ApprovedPolicyRevision(ContractModel):
+    """Exact immutable rule revision paired with the event that approved it."""
+
+    revision: PolicyRuleRevision
+    approval_event: PolicyApprovalEvent
+
+    @model_validator(mode="after")
+    def approval_matches_exact_revision(self) -> ApprovedPolicyRevision:
+        event = self.approval_event
+        revision = self.revision
+        if (
+            event.kind is not PolicyApprovalEventKind.APPROVED
+            or event.rule_id != revision.rule_id
+            or event.revision != revision.revision
+            or event.revision_hash != revision.content_hash
+            or event.recorded_at < revision.temporal.clock.recorded_at
+        ):
+            raise ValueError("approval event does not approve this exact policy revision")
+        return self
+
+
+def policy_approval_event_reference(
+    event: PolicyApprovalEvent,
+) -> PolicyApprovalEventReference:
+    if event.kind is not PolicyApprovalEventKind.APPROVED:
+        raise ValueError("only an approval event can be referenced by effective resolution")
+    return PolicyApprovalEventReference(
+        event_id=event.event_id,
+        rule_id=event.rule_id,
+        revision=event.revision,
+        sequence=event.sequence,
+        revision_hash=event.revision_hash,
+        kind=PolicyApprovalEventKind.APPROVED,
+        recorded_at=event.recorded_at,
+    )
+
+
 def policy_approval_event_id(
     rule_id: PolicyRuleId,
     revision: int,
@@ -152,12 +208,15 @@ def policy_approval_event_id(
 
 
 __all__ = [
+    "ApprovedPolicyRevision",
     "PolicyApprovalCapability",
     "PolicyApprovalCommand",
     "PolicyApprovalEvent",
     "PolicyApprovalEventId",
     "PolicyApprovalEventKind",
+    "PolicyApprovalEventReference",
     "PolicyApprovalState",
     "PolicyRuleSubmission",
     "policy_approval_event_id",
+    "policy_approval_event_reference",
 ]

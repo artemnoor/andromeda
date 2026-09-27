@@ -34,6 +34,7 @@ _AUTHORITY_RANK: dict[PolicyAuthorityLevel, int] = {
     PolicyAuthorityLevel.REGULATOR_NORMATIVE: 2,
     PolicyAuthorityLevel.UNIVERSITY_NORMATIVE: 1,
 }
+_MAX_PRECEDENCE_DECISIONS = 5000
 
 _NARROWER_SCOPE_LEVELS: dict[PolicyScopeLevel, frozenset[PolicyScopeLevel]] = {
     PolicyScopeLevel.FEDERAL: frozenset(
@@ -99,6 +100,12 @@ def resolve_policy_precedence(
         family_indeterminate = False
         for index, left in enumerate(family):
             for right in family[index + 1 :]:
+                if len(decisions) >= _MAX_PRECEDENCE_DECISIONS:
+                    return PolicyPrecedenceResult(
+                        status="indeterminate",
+                        decisions=tuple(decisions),
+                        truncated=True,
+                    )
                 decision = _compare(left, right)
                 decisions.append(decision)
                 if decision.outcome is PolicyPrecedenceOutcome.LEFT_PREVAILS:
@@ -120,6 +127,12 @@ def resolve_policy_precedence(
                         and item.reason is PolicyPrecedenceReason.PRECEDENCE_CYCLE
                         for item in decisions
                     ):
+                        if len(decisions) >= _MAX_PRECEDENCE_DECISIONS:
+                            return PolicyPrecedenceResult(
+                                status="indeterminate",
+                                decisions=tuple(decisions),
+                                truncated=True,
+                            )
                         decisions.append(
                             PolicyPrecedenceDecision(
                                 left=selections_by_key[_revision_key(left)],
@@ -144,6 +157,12 @@ def resolve_policy_precedence(
                 family_conflict = True
                 conflicts.extend(family)
                 left, right = family[:2]
+                if len(decisions) >= _MAX_PRECEDENCE_DECISIONS:
+                    return PolicyPrecedenceResult(
+                        status="indeterminate",
+                        decisions=tuple(decisions),
+                        truncated=True,
+                    )
                 decisions.append(
                     PolicyPrecedenceDecision(
                         left=selections_by_key[_revision_key(left)],

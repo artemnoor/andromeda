@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import cast
@@ -99,6 +99,10 @@ from andromeda.modules.knowledge.repository.ports import SourceObservationReposi
 from andromeda.modules.policy.contracts.applicability import (
     PolicyDomainLookupStatus,
 )
+from andromeda.modules.policy.contracts.approval import (
+    ApprovedPolicyRevision,
+    PolicyApprovalEventKind,
+)
 from andromeda.modules.policy.contracts.impact import (
     DomainImpactStatus,
     ImpactActionability,
@@ -123,6 +127,7 @@ from andromeda.modules.policy.contracts.rule_ast import (
     PolicySelectorNodeKind,
 )
 from andromeda.modules.policy.contracts.temporal import PolicyTemporalRevision
+from andromeda.modules.policy.domain.approval import create_approval_event
 from andromeda.modules.policy.repository.ports import ApprovedPolicyRuleReader
 from andromeda.modules.policy.services.effective_rule_resolver import (
     EffectivePolicyResolver,
@@ -578,6 +583,31 @@ def test_approved_policy_trace_delegates_exact_rules_to_existing_benefit_evaluat
 
             def list_approved_revisions(self, *, as_known_at) -> tuple[PolicyRuleRevision, ...]:
                 return tuple(policy_revisions)
+
+            def list_approved_revision_records(
+                self, *, as_known_at
+            ) -> tuple[ApprovedPolicyRevision, ...]:
+                records = []
+                for revision in policy_revisions:
+                    approved_event = create_approval_event(
+                        rule_id=revision.rule_id,
+                        revision=revision.revision,
+                        revision_hash=revision.content_hash,
+                        sequence=2,
+                        kind=PolicyApprovalEventKind.APPROVED,
+                        actor_account_id="account:" + "e" * 32,
+                        reason="Exact policy revision reviewed.",
+                        recorded_at=revision.temporal.clock.recorded_at
+                        + timedelta(seconds=1),
+                        preview_fingerprint="d" * 64,
+                    )
+                    records.append(
+                        ApprovedPolicyRevision(
+                            revision=revision,
+                            approval_event=approved_event,
+                        )
+                    )
+                return tuple(records)
 
         class CycleReader:
             def resolve_for_admission(

@@ -3,14 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import cast
-
-from sqlalchemy.orm import Session
 
 from andromeda.infrastructure.repositories.admission_policy import (
     AdmissionsPolicyRuleReader,
 )
-from andromeda.infrastructure.repositories.policy import SqlAlchemyPolicyRuleRepository
 from andromeda.modules.admissions.contracts.offering_revisions import (
     AdmissionOfferingRevision,
     admission_offering_domain_rule_id,
@@ -34,7 +30,7 @@ from andromeda.modules.policy.contracts.applicability import (
     PolicyContextAvailability,
     PolicyContextValue,
 )
-from andromeda.modules.policy.contracts.approval import PolicyRuleSubmission
+from andromeda.modules.policy.contracts.approval import PolicyApprovalCapability
 from andromeda.modules.policy.contracts.impact import (
     DomainImpactStatus,
     ImpactActionability,
@@ -42,6 +38,7 @@ from andromeda.modules.policy.contracts.impact import (
 )
 from andromeda.modules.policy.contracts.rule import DomainRuleRef, PolicyDomainOwner
 from andromeda.modules.policy.contracts.rule_ast import PolicyContextField
+from andromeda.modules.policy.services.approval import PolicyApprovalCommandService
 from andromeda.shared.contracts.errors import ValidationError
 
 NOW = datetime(2027, 12, 15, tzinfo=UTC)
@@ -201,17 +198,31 @@ def test_admissions_policy_reader_fails_closed_for_wrong_year_or_uncaptured_sour
     assert wrong_hash.status.value == "not_found"
 
 
-def test_admissions_policy_submission_requires_an_exact_v3_owner_reference() -> None:
-    # Isolate the persistence guard before its first session access.
+def test_admissions_policy_submission_service_requires_an_exact_v3_owner_reference() -> None:
     revision = SimpleNamespace(
         schema_version="policy-rule.v2",
         domain_rule=SimpleNamespace(owner_module=PolicyDomainOwner.ADMISSIONS),
     )
-    submission = cast(PolicyRuleSubmission, SimpleNamespace(revision=revision))
-    repository = SqlAlchemyPolicyRuleRepository(cast(Session, None))
+    submission = SimpleNamespace(
+        revision=revision,
+        submitted_by_account_id="account:" + "d" * 32,
+    )
+
+    class AllowAuthorizer:
+        def require_capability(
+            self, actor_account_id: str, capability: PolicyApprovalCapability
+        ) -> None:
+            assert actor_account_id == submission.submitted_by_account_id
+            assert capability is PolicyApprovalCapability.SUBMIT_REVISION
+
+    service = PolicyApprovalCommandService(
+        repository=object(),  # type: ignore[arg-type]
+        authorizer=AllowAuthorizer(),  # type: ignore[arg-type]
+        unit_of_work=object(),  # type: ignore[arg-type]
+    )
 
     try:
-        repository.submit_revision(submission)
+        service.submit(submission)  # type: ignore[arg-type]
     except ValidationError as error:
         assert "policy-rule.v3" in str(error)
     else:

@@ -30,6 +30,7 @@ from andromeda.modules.knowledge.contracts.public import (
     TemporalInterval,
 )
 from andromeda.modules.policy.contracts.approval import (
+    ApprovedPolicyRevision,
     PolicyApprovalCapability,
     PolicyApprovalEvent,
     PolicyApprovalEventKind,
@@ -59,11 +60,6 @@ from andromeda.modules.policy.domain.approval import (
     derive_approval_state,
     validate_approval_append,
 )
-from andromeda.modules.policy.domain.field_registry import validate_selector_ast
-from andromeda.modules.policy.domain.precedence import (
-    ScopeSpecificity,
-    scope_specificity,
-)
 from andromeda.modules.policy.repository.ports import PolicyRuleRepository
 from andromeda.shared.contracts.errors import (
     ConflictError,
@@ -83,19 +79,6 @@ class SqlAlchemyPolicyRuleRepository(PolicyRuleRepository):
 
     def submit_revision(self, submission: PolicyRuleSubmission) -> PolicyApprovalEvent:
         revision = submission.revision
-        if revision.schema_version not in {"policy-rule.v2", "policy-rule.v3"}:
-            raise ValidationError(
-                "new policy submissions must use policy-rule.v2 or policy-rule.v3"
-            )
-        if (
-            revision.domain_rule.owner_module
-            in {PolicyDomainOwner.ADMISSION_BENEFITS, PolicyDomainOwner.ADMISSIONS}
-            and revision.schema_version != "policy-rule.v3"
-        ):
-            raise ValidationError(
-                "admissions domain policy references require exact policy-rule.v3 owner hashes"
-            )
-        validate_selector_ast(revision.selector)
         existing = self.get_revision(revision.rule_id, revision.revision)
         if existing is not None:
             if existing != revision:
@@ -123,7 +106,6 @@ class SqlAlchemyPolicyRuleRepository(PolicyRuleRepository):
         if submission.submitted_at < revision.temporal.clock.recorded_at:
             raise ValidationError("pending event cannot predate its policy revision")
         self._validate_rule_sources(revision)
-        self._validate_rule_relations(revision)
 
         self._session.add(self._revision_model(revision))
         self._session.flush()
@@ -238,9 +220,9 @@ class SqlAlchemyPolicyRuleRepository(PolicyRuleRepository):
             return None
         return persisted
 
-    def list_approved_revisions(
+    def list_approved_revision_records(
         self, *, as_known_at: datetime
-    ) -> tuple[PolicyRuleRevision, ...]:
+    ) -> tuple[ApprovedPolicyRevision, ...]:
         normalized_as_known_at = _utc(as_known_at)
         rows = self._session.scalars(
             select(PolicyRuleRevisionModel)
@@ -290,6 +272,7 @@ class SqlAlchemyPolicyRuleRepository(PolicyRuleRepository):
                 )
 
         approved_rows: list[PolicyRuleRevisionModel] = []
+        approved_events: list[PolicyApprovalEvent] = []
         for approved_revision_row in rows:
             approval_history = tuple(
                 histories.get(
@@ -305,7 +288,24 @@ class SqlAlchemyPolicyRuleRepository(PolicyRuleRepository):
             )
             if state.value == "approved":
                 approved_rows.append(approved_revision_row)
-        return self._to_revisions(tuple(approved_rows))
+                approved_events.append(approval_history[-1])
+        revisions = self._to_revisions(tuple(approved_rows))
+        return tuple(
+            ApprovedPolicyRevision(revision=revision, approval_event=approval_event)
+            for revision, approval_event in zip(revisions, approved_events, strict=True)
+        )
+
+    def list_approved_revisions(
+        self, *, as_known_at: datetime
+    ) -> tuple[PolicyRuleRevision, ...]:
+        """Compatibility projection for callers that do not need event provenance."""
+
+        return tuple(
+            record.revision
+            for record in self.list_approved_revision_records(
+                as_known_at=as_known_at
+            )
+        )
 
     def list_approval_events(
         self,
@@ -330,122 +330,6 @@ class SqlAlchemyPolicyRuleRepository(PolicyRuleRepository):
                 "Policy approval history exceeds its bounded 16-event limit"
             )
         return tuple(self._to_approval_event(row) for row in rows)
-
-    def _validate_rule_relations(self, revision: PolicyRuleRevision) -> None:
-        for relation in revision.relations:
-            target = self._session.get(
-                PolicyRuleRevisionModel,
-                (relation.target_rule_id, relation.target_revision),
-            )
-            if target is None:
-                raise NotFoundError(
-                    "Policy relation references an unknown target revision"
-                )
-            if target.content_hash != relation.target_hash:
-                raise ConflictError(
-                    "Policy relation target hash does not match its exact revision"
-                )
-            approved_target = self.get_approved_revision(
-                relation.target_rule_id,
-                relation.target_revision,
-                as_known_at=revision.temporal.clock.recorded_at,
-            )
-            if approved_target is None:
-                raise ValidationError(
-                    "Policy relation target must already be approved at revision time"
-                )
-            if (
-                relation.kind is not PolicyRuleRelationKind.REQUIRES
-                and approved_target.family_id != revision.family_id
-            ):
-                raise ValidationError(
-                    "Policy precedence relations must stay within one rule family"
-                )
-            if relation.kind is PolicyRuleRelationKind.REQUIRES:
-                self._validate_requires_acyclic(
-                    source=(revision.rule_id, revision.revision),
-                    target=(approved_target.rule_id, approved_target.revision),
-                )
-                continue
-            if approved_target.authority is None or revision.authority is None:
-                raise ValidationError(
-                    "Policy relations require classified legal authority"
-                )
-            specificity = scope_specificity(revision.scope, approved_target.scope)
-            if relation.kind is PolicyRuleRelationKind.AUTHORIZED_EXCEPTION_TO:
-                if (
-                    revision.authority is PolicyAuthorityLevel.UNRESOLVED
-                    or approved_target.authority is PolicyAuthorityLevel.UNRESOLVED
-                    or specificity is not ScopeSpecificity.LEFT_NARROWER
-                ):
-                    raise ValidationError(
-                        "Authorized policy exceptions require resolved authority and a strictly narrower scope"
-                    )
-            elif relation.kind in {
-                PolicyRuleRelationKind.OVERRIDES,
-                PolicyRuleRelationKind.SUPERSEDES,
-                PolicyRuleRelationKind.AMENDS,
-            }:
-                authority_rank = {
-                    PolicyAuthorityLevel.FEDERAL_NORMATIVE: 3,
-                    PolicyAuthorityLevel.REGULATOR_NORMATIVE: 2,
-                    PolicyAuthorityLevel.UNIVERSITY_NORMATIVE: 1,
-                }
-                if (
-                    revision.authority is PolicyAuthorityLevel.UNRESOLVED
-                    or approved_target.authority is PolicyAuthorityLevel.UNRESOLVED
-                    or authority_rank[revision.authority]
-                    < authority_rank[approved_target.authority]
-                    or specificity
-                    not in {ScopeSpecificity.EQUAL, ScopeSpecificity.LEFT_NARROWER}
-                ):
-                    raise ValidationError(
-                        "Policy overrides require sufficient authority and an equal or narrower scope"
-                    )
-
-    def _validate_requires_acyclic(
-        self,
-        *,
-        source: tuple[str, int],
-        target: tuple[str, int],
-    ) -> None:
-        rows = self._session.scalars(
-            select(PolicyRuleRelationModel)
-            .where(
-                PolicyRuleRelationModel.relation_kind
-                == PolicyRuleRelationKind.REQUIRES.value
-            )
-            .order_by(
-                PolicyRuleRelationModel.rule_id, PolicyRuleRelationModel.rule_revision
-            )
-            .limit(10001)
-        ).all()
-        if len(rows) > 10000:
-            raise ValidationError(
-                "Policy requirement cycle check exceeds the 10000-edge limit"
-            )
-        adjacency: dict[tuple[str, int], set[tuple[str, int]]] = {}
-        for row in rows:
-            adjacency.setdefault((row.rule_id, row.rule_revision), set()).add(
-                (row.target_rule_id, row.target_revision)
-            )
-        adjacency.setdefault(source, set()).add(target)
-        pending = [target]
-        visited: set[tuple[str, int]] = set()
-        while pending:
-            current = pending.pop()
-            if current == source:
-                raise ValidationError(
-                    "Policy REQUIRES relation would create a dependency cycle"
-                )
-            if current in visited:
-                continue
-            visited.add(current)
-            if len(visited) > 1000:
-                raise ValidationError(
-                    "Policy requirement cycle check exceeds the 1000-node limit"
-                )
-            pending.extend(sorted(adjacency.get(current, ()), reverse=True))
 
     def append_approval_event(self, event: PolicyApprovalEvent) -> PolicyApprovalEvent:
         existing = self._session.get(PolicyApprovalEventModel, event.event_id)

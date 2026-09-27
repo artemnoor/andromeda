@@ -13,6 +13,7 @@ from andromeda.modules.policy.contracts.approval import (
     PolicyApprovalCommand,
     PolicyApprovalEventKind,
 )
+from andromeda.modules.policy.contracts.what_if import PolicyHypotheticalPreview
 from andromeda.modules.policy.services.approval import PolicyApprovalCommandService
 from andromeda.shared.contracts.errors import ValidationError
 
@@ -23,7 +24,12 @@ class PolicyApprovalReviewAdapter:
     def __init__(self, approval_commands: PolicyApprovalCommandService) -> None:
         self._approval_commands = approval_commands
 
-    def decide(self, command: KnowledgeReviewCommand) -> KnowledgeReviewPolicyDecision:
+    def decide(
+        self,
+        command: KnowledgeReviewCommand,
+        *,
+        review_preview: PolicyHypotheticalPreview | None = None,
+    ) -> KnowledgeReviewPolicyDecision:
         if command.target.kind is not KnowledgeReviewTargetKind.POLICY_RULE:
             raise ValidationError("policy approval adapter requires a policy-rule review target")
         kind = {
@@ -32,8 +38,7 @@ class PolicyApprovalReviewAdapter:
         }.get(command.action)
         if kind is None:
             raise ValidationError("policy approval supports only approve/reject review actions")
-        event = self._approval_commands.decide(
-            PolicyApprovalCommand(
+        policy_command = PolicyApprovalCommand(
                 rule_id=command.target.object_id,
                 revision=command.target.revision,
                 revision_hash=command.target.revision_hash,
@@ -43,7 +48,17 @@ class PolicyApprovalReviewAdapter:
                 recorded_at=command.recorded_at,
                 preview_fingerprint=command.policy_preview_fingerprint,
             )
-        )
+        if kind is PolicyApprovalEventKind.APPROVED:
+            if review_preview is None:
+                raise ValidationError(
+                    "Policy approval must pass through the reviewed preview gate"
+                )
+            event = self._approval_commands.decide(
+                policy_command,
+                review_preview=review_preview,
+            )
+        else:
+            event = self._approval_commands.decide(policy_command)
         return KnowledgeReviewPolicyDecision(
             target=command.target,
             action=command.action,

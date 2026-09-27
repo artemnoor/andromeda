@@ -5,7 +5,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol
 
+from andromeda.shared.contracts.ids import SourceHash
+
 from ..contracts.approval import (
+    ApprovedPolicyRevision,
     PolicyApprovalCapability,
     PolicyApprovalEvent,
     PolicyRuleSubmission,
@@ -21,6 +24,10 @@ from ..contracts.rule import PolicyRuleId, PolicyRuleRevision
 
 class PolicyApprovedSnapshotReader(Protocol):
     """Read a time-bounded set whose every revision is explicitly approved."""
+
+    def list_approved_revision_records(
+        self, *, as_known_at: datetime
+    ) -> tuple[ApprovedPolicyRevision, ...]: ...
 
     def list_approved_revisions(
         self, *, as_known_at: datetime
@@ -83,6 +90,17 @@ class PolicyRuleRepository(
     def append_approval_event(
         self, event: PolicyApprovalEvent
     ) -> PolicyApprovalEvent: ...
+
+
+class PolicyApprovalConflictReader(Protocol):
+    """Bounded cross-module read that fails closed when conflicts are unresolved."""
+
+    def has_open_conflicts(
+        self,
+        rule_id: PolicyRuleId,
+        revision: int,
+        revision_hash: SourceHash,
+    ) -> bool: ...
 
 
 class PolicyCapabilityAuthorizer(Protocol):

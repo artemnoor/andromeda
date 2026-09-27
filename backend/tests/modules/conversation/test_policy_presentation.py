@@ -17,6 +17,11 @@ from andromeda.modules.conversation.services.policy_presentation import (
     project_policy_answer,
 )
 from andromeda.modules.knowledge.contracts.public import EvidenceLocator, EvidenceRef
+from andromeda.modules.policy.contracts.approval import (
+    PolicyApprovalEventKind,
+    PolicyApprovalEventReference,
+    policy_approval_event_id,
+)
 from andromeda.modules.policy.contracts.public import (
     ConsideredPolicyRule,
     DomainRuleRef,
@@ -55,6 +60,27 @@ from andromeda.modules.presentation.services.knowledge_response import (
 
 NOW = datetime(2028, 1, 15, tzinfo=UTC)
 RULE_HASH = "c" * 64
+
+
+def _approval_reference(
+    rule_id: str, revision: int, revision_hash: str
+) -> PolicyApprovalEventReference:
+    fingerprint = "a" * 64
+    return PolicyApprovalEventReference(
+        event_id=policy_approval_event_id(
+            rule_id,
+            revision,
+            2,
+            PolicyApprovalEventKind.APPROVED,
+            revision_hash,
+            preview_fingerprint=fingerprint,
+        ),
+        rule_id=rule_id,
+        revision=revision,
+        sequence=2,
+        revision_hash=revision_hash,
+        recorded_at=NOW,
+    )
 
 
 def _resolved_trace(admission_year: int = 2028) -> ResolutionTrace:
@@ -113,6 +139,9 @@ def _resolved_trace(admission_year: int = 2028) -> ResolutionTrace:
             scope_state=PolicyScopeMatchState.MATCH,
             scope_reason=scope_reason,
             evidence=(evidence,),
+            approval_event=_approval_reference(
+                rule.rule_id, rule.revision, rule.revision_hash
+            ),
             filter_state=PolicyRuleFilterState.CANDIDATE,
             reason=PolicyRuleFilterReason.SELECTOR_MATCHED,
             selector_trace=(),

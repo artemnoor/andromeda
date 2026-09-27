@@ -19,14 +19,17 @@ from .applicability import (
     SelectorNodeTrace,
 )
 from .approval import (
+    ApprovedPolicyRevision,
     PolicyApprovalCapability,
     PolicyApprovalCommand,
     PolicyApprovalEvent,
     PolicyApprovalEventId,
     PolicyApprovalEventKind,
+    PolicyApprovalEventReference,
     PolicyApprovalState,
     PolicyRuleSubmission,
     policy_approval_event_id,
+    policy_approval_event_reference,
 )
 from .comparison import PolicyCycleComparison
 from .dependencies import (
@@ -129,6 +132,7 @@ from .what_if import (
 )
 
 __all__ = [
+    "ApprovedPolicyRevision",
     "CanonicalDomainRuleId",
     "ConsideredPolicyRule",
     "DiffObjectState",
@@ -148,6 +152,7 @@ __all__ = [
     "PolicyApprovalEvent",
     "PolicyApprovalEventId",
     "PolicyApprovalEventKind",
+    "PolicyApprovalEventReference",
     "PolicyApprovalState",
     "PolicyAuthorityLevel",
     "PolicyContextAvailability",
@@ -227,6 +232,7 @@ __all__ = [
     "SelectorNodeTrace",
     "dependencies_for_policy_revision",
     "policy_approval_event_id",
+    "policy_approval_event_reference",
     "policy_dependency_edge",
     "policy_dependency_edge_id",
     "policy_hypothetical_preview_id",

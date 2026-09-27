@@ -3492,6 +3492,7 @@ export interface components {
             scope_reason: components["schemas"]["PolicyScopeMatchReason"];
             /** Evidence */
             evidence: components["schemas"]["EvidenceRef"][];
+            approval_event?: components["schemas"]["PolicyApprovalEventReference"] | null;
             filter_state: components["schemas"]["PolicyRuleFilterState"];
             reason: components["schemas"]["PolicyRuleFilterReason"];
             /** Selector Trace */
@@ -5379,6 +5380,33 @@ export interface components {
             values: components["schemas"]["PolicyContextValue"][];
         };
         /**
+         * PolicyApprovalEventReference
+         * @description Non-sensitive immutable pointer to one approval-ledger event.
+         */
+        PolicyApprovalEventReference: {
+            /** Event Id */
+            event_id: string;
+            /** Rule Id */
+            rule_id: string;
+            /** Revision */
+            revision: number;
+            /** Sequence */
+            sequence: number;
+            /** Revision Hash */
+            revision_hash: string;
+            /**
+             * Kind
+             * @default approved
+             * @constant
+             */
+            kind: "approved";
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+        };
+        /**
          * PolicyApprovalState
          * @enum {string}
          */
@@ -5611,7 +5639,7 @@ export interface components {
          * PolicyResolutionBlocker
          * @enum {string}
          */
-        PolicyResolutionBlocker: "valid_as_of_required" | "admission_cycle_unresolved" | "admission_cycle_identity_mismatch" | "admission_cycle_cancelled_or_unknown";
+        PolicyResolutionBlocker: "valid_as_of_required" | "admission_cycle_unresolved" | "admission_cycle_identity_mismatch" | "admission_cycle_cancelled_or_unknown" | "precedence_decision_limit" | "approval_provenance_invalid";
         /**
          * PolicyResolutionMode
          * @enum {string}
@@ -6434,10 +6462,10 @@ export interface components {
         ResolutionTrace: {
             /**
              * Trace Version
-             * @default policy-resolution-trace.v2
+             * @default policy-resolution-trace.v3
              * @constant
              */
-            trace_version: "policy-resolution-trace.v2";
+            trace_version: "policy-resolution-trace.v3";
             /** @default approved_effective */
             mode: components["schemas"]["PolicyResolutionMode"];
             /** University Id */

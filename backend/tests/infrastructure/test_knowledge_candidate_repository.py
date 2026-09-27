@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 from sqlalchemy import event, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from andromeda.infrastructure.database.base import Base, create_engine_for_url
@@ -494,7 +495,7 @@ def test_policy_relation_persists_exact_approved_target_and_source_provenance() 
                     submitted_at=RECORDED + timedelta(seconds=2),
                 )
             )
-            service.decide(
+            service._append_decision(
                 PolicyApprovalCommand(
                     rule_id=target.rule_id,
                     revision=target.revision,
@@ -735,7 +736,7 @@ def test_source_claim_requires_exact_human_approval_before_assistant_resolution(
         )
 
         approval_time = RECORDED + timedelta(seconds=3)
-        approvals.decide(
+        approvals._append_decision(
             PolicyApprovalCommand(
                 rule_id=revision.rule_id,
                 revision=revision.revision,
@@ -940,7 +941,7 @@ def test_approved_source_bvi_rule_reaches_assistant_through_domain_evaluator() -
                     submitted_at=RECORDED + timedelta(seconds=2),
                 )
             )
-            approvals.decide(
+            approvals._append_decision(
                 PolicyApprovalCommand(
                     rule_id=revision.rule_id,
                     revision=revision.revision,
@@ -1214,7 +1215,7 @@ def test_conflict_group_round_trips_sources_and_preserves_resolution_audit_per_r
                         submitted_at=submitted_at,
                     )
                 )
-                service.decide(
+                service._append_decision(
                     PolicyApprovalCommand(
                         rule_id=revision.rule_id,
                         revision=revision.revision,
@@ -1275,6 +1276,20 @@ def test_conflict_group_round_trips_sources_and_preserves_resolution_audit_per_r
             )
             repository = SqlAlchemyConflictGroupRepository(session)
             repository.append_conflict_group(group)
+            with pytest.raises(IntegrityError), session.begin_nested():
+                session.add(
+                    KnowledgeConflictParticipantModel(
+                        conflict_id=conflict_id,
+                        group_revision=1,
+                        ordinal=2,
+                        participant_kind="policy_rule_revision",
+                        role="competing",
+                        policy_rule_id=first.rule_id,
+                        policy_revision=first.revision,
+                        policy_hash=first.content_hash,
+                    )
+                )
+                session.flush()
             opened = repository.get_conflict_group(conflict_id, 1)
             assert opened is not None
             assert repository.list_for_participant(participants[0].reference) == (
@@ -1594,6 +1609,7 @@ def test_policy_revision_and_pending_event_are_atomic_and_exact_hash_approval_is
                 )
             )
             session.flush()
+            session.commit()
             approval_command = PolicyApprovalCommand(
                 rule_id=revision.rule_id,
                 revision=revision.revision,
@@ -1604,8 +1620,10 @@ def test_policy_revision_and_pending_event_are_atomic_and_exact_hash_approval_is
                 recorded_at=RECORDED + timedelta(seconds=3),
                 preview_fingerprint="d" * 64,
             )
-            approval = service.decide(approval_command)
-            assert service.decide(approval_command) == approval
+            with pytest.raises(ValidationError, match="reviewed preview gate"):
+                service.decide(approval_command)
+            approval = service._append_decision(approval_command)
+            assert service._append_decision(approval_command) == approval
             assert approval.sequence == 2
             assert approval.preview_fingerprint == "d" * 64
             events = policy_repository.list_approval_events(
@@ -1631,6 +1649,11 @@ def test_policy_revision_and_pending_event_are_atomic_and_exact_hash_approval_is
             assert policy_repository.list_approved_revisions(
                 as_known_at=RECORDED + timedelta(seconds=3)
             ) == (revision,)
+            approved_record = policy_repository.list_approved_revision_records(
+                as_known_at=RECORDED + timedelta(seconds=3)
+            )[0]
+            assert approved_record.revision == revision
+            assert approved_record.approval_event == approval
             with pytest.raises(
                 ConflictError, match="Only a valid pending policy revision"
             ):
@@ -1716,7 +1739,7 @@ def test_approved_policy_revision_scan_batches_approval_and_provenance_reads() -
                         submitted_at=RECORDED + timedelta(seconds=2),
                     )
                 )
-                service.decide(
+                service._append_decision(
                     PolicyApprovalCommand(
                         rule_id=revision.rule_id,
                         revision=revision.revision,

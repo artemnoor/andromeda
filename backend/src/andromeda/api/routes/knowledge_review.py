@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from andromeda.api.dependencies.composition import get_composition_root
 from andromeda.api.dependencies.knowledge_review import (
     get_knowledge_review_workflow,
+    get_policy_approval_review_adapter,
     require_knowledge_review_access,
 )
 from andromeda.api.dependencies.request_context import get_session
@@ -59,8 +60,12 @@ from andromeda.modules.policy.contracts.approval import (
 from andromeda.modules.policy.contracts.resolution import PolicyResolutionRequest
 from andromeda.modules.policy.contracts.rule import PolicyRuleRevision
 from andromeda.modules.policy.contracts.semantic_diff import DiffObjectState
+from andromeda.modules.policy.contracts.what_if import PolicyHypotheticalPreview
 from andromeda.modules.policy.domain.approval import derive_approval_state
 from andromeda.modules.policy.repository.ports import PolicyRuleRepository
+from andromeda.modules.policy.services.knowledge_review_adapter import (
+    PolicyApprovalReviewAdapter,
+)
 from andromeda.modules.policy.services.semantic_diff import build_policy_revision_diff
 from andromeda.shared.contracts.errors import ConflictError
 
@@ -140,10 +145,14 @@ def apply_knowledge_review_action(
     workflow: Annotated[
         KnowledgeReviewWorkflow, Depends(get_knowledge_review_workflow)
     ],
+    policy_approval: Annotated[
+        PolicyApprovalReviewAdapter, Depends(get_policy_approval_review_adapter)
+    ],
 ) -> ReviewDecisionResponse:
     target = _target_contract(body.target)
     edited_claim: Claim | None = None
     preview_fingerprint: str | None = None
+    review_preview: PolicyHypotheticalPreview | None = None
     if target.kind is KnowledgeReviewTargetKind.POLICY_RULE:
         if body.action not in {KnowledgeReviewAction.APPROVE, KnowledgeReviewAction.REJECT}:
             raise ConflictError("Policy review supports only policy-owned approve/reject actions")
@@ -156,21 +165,8 @@ def apply_knowledge_review_action(
             revision=target.revision,
             revision_hash=target.revision_hash,
         )
-        preview_fingerprint = preview.preview_id.partition(":")[2]
-        if preview_fingerprint != body.policy_preview_fingerprint:
-            raise ConflictError("Policy review preview is stale; reload and review the exact revision")
-        if body.action is KnowledgeReviewAction.APPROVE:
-            if preview.candidate_trace.status.value != "resolved":
-                raise ConflictError("Policy candidate applicability is unresolved")
-            if preview.impact.status.value != "complete":
-                raise ConflictError("Complete domain-owner impact is required before approval")
-            unresolved = container.knowledge_conflict_repository(
-                session
-            ).list_for_participant(_conflict_participant(target), limit=100)
-            if len(unresolved) > 100 or any(
-                group.state.value == "open" for group in unresolved
-            ):
-                raise ConflictError("Policy approval is blocked by an unresolved conflict")
+        review_preview = preview
+        preview_fingerprint = body.policy_preview_fingerprint
     elif body.policy_preview_context is not None or body.policy_preview_fingerprint is not None:
         raise ConflictError("Policy preview details apply only to policy-rule review actions")
 
@@ -233,7 +229,11 @@ def apply_knowledge_review_action(
         if body.related_target
         else None,
     )
-    event = workflow.apply(command)
+    event = (
+        policy_approval.decide(command, review_preview=review_preview)
+        if target.kind is KnowledgeReviewTargetKind.POLICY_RULE
+        else workflow.apply(command)
+    )
     if isinstance(event, KnowledgeReviewPolicyDecision):
         return ReviewDecisionResponse(
             event_id=event.approval_event_id,

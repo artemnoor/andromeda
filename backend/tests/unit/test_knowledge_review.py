@@ -269,9 +269,17 @@ class _PolicyApprovalPort:
 class _PolicyApprovalCommands:
     def __init__(self) -> None:
         self.commands: list[PolicyApprovalCommand] = []
+        self.review_previews: list[object] = []
 
-    def decide(self, command: PolicyApprovalCommand) -> PolicyApprovalEvent:
+    def decide(
+        self,
+        command: PolicyApprovalCommand,
+        *,
+        review_preview: object | None = None,
+    ) -> PolicyApprovalEvent:
         self.commands.append(command)
+        if review_preview is not None:
+            self.review_previews.append(review_preview)
         return PolicyApprovalEvent(
             event_id=policy_approval_event_id(
                 command.rule_id,
@@ -292,7 +300,6 @@ class _PolicyApprovalCommands:
             recorded_at=command.recorded_at,
             preview_fingerprint=command.preview_fingerprint,
         )
-
 
 def _workflow(
     claim: Claim,
@@ -517,8 +524,12 @@ def test_policy_approval_adapter_calls_existing_owner_command_and_returns_owner_
     )
     command = _command(target, KnowledgeReviewAction.APPROVE)
     owner_commands = _PolicyApprovalCommands()
+    preview = object()
 
-    result = PolicyApprovalReviewAdapter(owner_commands).decide(command)  # type: ignore[arg-type]
+    result = PolicyApprovalReviewAdapter(owner_commands).decide(
+        command,
+        review_preview=preview,  # type: ignore[arg-type]
+    )  # type: ignore[arg-type]
 
     assert owner_commands.commands == [
         PolicyApprovalCommand(
@@ -535,3 +546,20 @@ def test_policy_approval_adapter_calls_existing_owner_command_and_returns_owner_
     assert result.target == target
     assert result.approval_event_id.startswith("policy-approval-event:")
     assert result.status is KnowledgeReviewPolicyDecisionStatus.APPROVED
+    assert owner_commands.review_previews == [preview]
+
+
+def test_policy_approval_adapter_rejects_approval_without_reviewed_preview() -> None:
+    target = KnowledgeReviewTargetRef(
+        kind=KnowledgeReviewTargetKind.POLICY_RULE,
+        object_id="policy-rule:fourth-exam-route",
+        revision=3,
+        revision_hash="f" * 64,
+    )
+    command = _command(target, KnowledgeReviewAction.APPROVE)
+    owner_commands = _PolicyApprovalCommands()
+
+    with pytest.raises(AndromedaValidationError, match="reviewed preview gate"):
+        PolicyApprovalReviewAdapter(owner_commands).decide(command)  # type: ignore[arg-type]
+
+    assert owner_commands.commands == []

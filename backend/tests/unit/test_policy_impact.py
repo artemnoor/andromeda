@@ -8,6 +8,11 @@ from andromeda.modules.policy.contracts.applicability import (
     PolicyScopeMatchState,
     PolicySelection,
 )
+from andromeda.modules.policy.contracts.approval import (
+    PolicyApprovalEventKind,
+    PolicyApprovalEventReference,
+    policy_approval_event_id,
+)
 from andromeda.modules.policy.contracts.dependencies import (
     PolicyDependencyKind,
     PolicyDependencyNode,
@@ -56,6 +61,27 @@ EVIDENCE = EvidenceRef(
 CONTEXT_HASH = "3" * 64
 
 
+def _approval_reference(
+    rule_id: str, revision: int, revision_hash: str
+) -> PolicyApprovalEventReference:
+    fingerprint = "c" * 64
+    return PolicyApprovalEventReference(
+        event_id=policy_approval_event_id(
+            rule_id,
+            revision,
+            2,
+            PolicyApprovalEventKind.APPROVED,
+            revision_hash,
+            preview_fingerprint=fingerprint,
+        ),
+        rule_id=rule_id,
+        revision=revision,
+        sequence=2,
+        revision_hash=revision_hash,
+        recorded_at=NOW,
+    )
+
+
 def _trace(revision: int, owner_revision: int) -> ResolutionTrace:
     owner_ref = DomainRuleRef(
         owner_module=PolicyDomainOwner.ADMISSION_BENEFITS,
@@ -82,6 +108,9 @@ def _trace(revision: int, owner_revision: int) -> ResolutionTrace:
         scope_state=PolicyScopeMatchState.MATCH,
         scope_reason=PolicyScopeMatchReason.CONTEXT_MATCHED,
         evidence=(EVIDENCE,),
+        approval_event=_approval_reference(
+            selection.rule_id, selection.revision, selection.revision_hash
+        ),
         filter_state=PolicyRuleFilterState.CANDIDATE,
         reason=PolicyRuleFilterReason.SELECTOR_MATCHED,
         selector_trace=(),

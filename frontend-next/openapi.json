@@ -17739,6 +17739,16 @@
             "minItems": 1,
             "title": "Evidence"
           },
+          "approval_event": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PolicyApprovalEventReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "filter_state": {
             "$ref": "#/components/schemas/PolicyRuleFilterState"
           },
@@ -23640,6 +23650,60 @@
         "type": "object",
         "title": "PolicyApplicabilityContext"
       },
+      "PolicyApprovalEventReference": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "pattern": "^policy-approval-event:[a-f0-9]{64}$",
+            "title": "Event Id"
+          },
+          "rule_id": {
+            "type": "string",
+            "pattern": "^policy-rule:[a-z0-9][a-z0-9-]{0,127}$",
+            "title": "Rule Id"
+          },
+          "revision": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Revision"
+          },
+          "sequence": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Sequence"
+          },
+          "revision_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Revision Hash"
+          },
+          "kind": {
+            "type": "string",
+            "const": "approved",
+            "title": "Kind",
+            "default": "approved"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "rule_id",
+          "revision",
+          "sequence",
+          "revision_hash",
+          "recorded_at"
+        ],
+        "title": "PolicyApprovalEventReference",
+        "description": "Non-sensitive immutable pointer to one approval-ledger event."
+      },
       "PolicyApprovalState": {
         "type": "string",
         "enum": [
@@ -24234,7 +24298,9 @@
           "valid_as_of_required",
           "admission_cycle_unresolved",
           "admission_cycle_identity_mismatch",
-          "admission_cycle_cancelled_or_unknown"
+          "admission_cycle_cancelled_or_unknown",
+          "precedence_decision_limit",
+          "approval_provenance_invalid"
         ],
         "title": "PolicyResolutionBlocker"
       },
@@ -26733,9 +26799,9 @@
         "properties": {
           "trace_version": {
             "type": "string",
-            "const": "policy-resolution-trace.v2",
+            "const": "policy-resolution-trace.v3",
             "title": "Trace Version",
-            "default": "policy-resolution-trace.v2"
+            "default": "policy-resolution-trace.v3"
           },
           "mode": {
             "$ref": "#/components/schemas/PolicyResolutionMode",

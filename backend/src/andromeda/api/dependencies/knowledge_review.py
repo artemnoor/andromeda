@@ -16,6 +16,9 @@ from andromeda.infrastructure.repositories.knowledge_review_auth import (
 )
 from andromeda.modules.auth.contracts.public import Account
 from andromeda.modules.knowledge.services.review_workflow import KnowledgeReviewWorkflow
+from andromeda.modules.policy.services.knowledge_review_adapter import (
+    PolicyApprovalReviewAdapter,
+)
 from andromeda.shared.contracts.errors import NotFoundError
 
 logger = logging.getLogger("andromeda.api.knowledge_review")
@@ -54,4 +57,20 @@ def get_knowledge_review_workflow(
     )
 
 
-__all__ = ["get_knowledge_review_workflow", "require_knowledge_review_access"]
+def get_policy_approval_review_adapter(
+    request: Request,
+    container: Annotated[AndromedaContainer, Depends(get_composition_root)],
+    session: Annotated[Session, Depends(get_session)],
+) -> PolicyApprovalReviewAdapter:
+    settings = request.app.state.settings
+    return container.policy_approval_review_adapter(
+        session,
+        ConfiguredPolicyStewardAuthorizer(settings.policy_steward_account_ids),
+    )
+
+
+__all__ = [
+    "get_knowledge_review_workflow",
+    "get_policy_approval_review_adapter",
+    "require_knowledge_review_access",
+]

@@ -15,7 +15,12 @@ from andromeda.modules.policy.contracts.applicability import (
     PolicyScopeMatchState,
     PolicySelection,
 )
-from andromeda.modules.policy.contracts.approval import PolicyApprovalState
+from andromeda.modules.policy.contracts.approval import (
+    PolicyApprovalEventKind,
+    PolicyApprovalEventReference,
+    PolicyApprovalState,
+    policy_approval_event_id,
+)
 from andromeda.modules.policy.contracts.resolution import (
     ConsideredPolicyRule,
     PolicyResolutionStatus,
@@ -63,6 +68,27 @@ EVIDENCE = EvidenceRef(
     source_url="https://official.example/rules.pdf",
     locator=EvidenceLocator(page=4, section="Admission rules"),
 )
+
+
+def _approval_reference(
+    rule_id: str, revision: int, revision_hash: str
+) -> PolicyApprovalEventReference:
+    fingerprint = "b" * 64
+    return PolicyApprovalEventReference(
+        event_id=policy_approval_event_id(
+            rule_id,
+            revision,
+            2,
+            PolicyApprovalEventKind.APPROVED,
+            revision_hash,
+            preview_fingerprint=fingerprint,
+        ),
+        rule_id=rule_id,
+        revision=revision,
+        sequence=2,
+        revision_hash=revision_hash,
+        recorded_at=RECORDED,
+    )
 
 
 def _revision(
@@ -250,6 +276,9 @@ def test_effective_policy_diff_is_typed_across_cohorts_and_retains_trace_evidenc
             scope_state=PolicyScopeMatchState.MATCH,
             scope_reason=PolicyScopeMatchReason.CONTEXT_MATCHED,
             evidence=revision.evidence,
+            approval_event=_approval_reference(
+                revision.rule_id, revision.revision, revision.content_hash
+            ),
             filter_state=(
                 PolicyRuleFilterState.CANDIDATE
                 if selected

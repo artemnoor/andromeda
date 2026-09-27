@@ -8,6 +8,7 @@ import logging
 from datetime import UTC
 
 from andromeda.modules.policy.contracts.approval import (
+    ApprovedPolicyRevision,
     PolicyApprovalState,
 )
 from andromeda.modules.policy.contracts.dependencies import (
@@ -113,10 +114,20 @@ class PolicyHypotheticalSandbox:
                 "Only an exact pending policy revision can be previewed"
             )
 
-        approved_snapshot = self._revisions.list_approved_revisions(
+        approved_snapshot = self._revisions.list_approved_revision_records(
             as_known_at=as_known_at
         )
-        approved_snapshot_hash = _snapshot_hash(approved_snapshot)
+        try:
+            approved_snapshot = tuple(
+                ApprovedPolicyRevision.model_validate(
+                    item.model_dump(mode="python")
+                )
+                for item in approved_snapshot
+            )
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise ConflictError("Approved policy snapshot has invalid approval provenance") from exc
+        approved_revisions = tuple(item.revision for item in approved_snapshot)
+        approved_snapshot_hash = _snapshot_hash(approved_revisions)
         candidate_resolver = EffectiveRuleCandidateResolver(
             policies=self._revisions,
             admission_cycles=self._admission_cycles,
@@ -128,7 +139,7 @@ class PolicyHypotheticalSandbox:
             approved_revisions=approved_snapshot,
             as_known_at=as_known_at,
         )
-        current_trace = _resolve_precedence(current_candidates, approved_snapshot)
+        current_trace = _resolve_precedence(current_candidates, approved_revisions)
         candidate_candidates = candidate_resolver.resolve_hypothetical_snapshot(
             exact_request,
             approved_revisions=approved_snapshot,
@@ -137,7 +148,7 @@ class PolicyHypotheticalSandbox:
         )
         candidate_trace = _resolve_precedence(
             candidate_candidates,
-            (*approved_snapshot, candidate_revision),
+            (*approved_revisions, candidate_revision),
         )
 
         effective_diff = build_effective_policy_diff(
@@ -146,7 +157,7 @@ class PolicyHypotheticalSandbox:
         )
         dependencies = tuple(
             edge
-            for item in (*approved_snapshot, candidate_revision)
+            for item in (*approved_revisions, candidate_revision)
             for edge in dependencies_for_policy_revision(item)
         )
         impact = self._impact_analyzer.preview(

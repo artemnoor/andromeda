@@ -32,11 +32,16 @@ from andromeda.modules.policy.contracts.applicability import (
     SelectorNodeReason,
     SelectorNodeState,
 )
+from andromeda.modules.policy.contracts.approval import (
+    ApprovedPolicyRevision,
+    PolicyApprovalEventKind,
+)
 from andromeda.modules.policy.contracts.precedence import (
     PolicyPrecedenceOutcome,
     PolicyPrecedenceReason,
 )
 from andromeda.modules.policy.contracts.resolution import (
+    PolicyResolutionBlocker,
     PolicyResolutionRequest,
     PolicyResolutionStatus,
     PolicyRuleFilterReason,
@@ -65,6 +70,10 @@ from andromeda.modules.policy.contracts.temporal import PolicyTemporalRevision
 from andromeda.modules.policy.domain.applicability import (
     assess_policy_scope,
     evaluate_policy_selector,
+)
+from andromeda.modules.policy.domain.approval import (
+    create_approval_event,
+    create_pending_submission_event,
 )
 from andromeda.modules.policy.domain.precedence import (
     ScopeSpecificity,
@@ -170,6 +179,8 @@ class _ApprovedRevisionReader:
     def __init__(
         self,
         revision: PolicyRuleRevision | tuple[PolicyRuleRevision, ...] | None,
+        *,
+        records_override: tuple[ApprovedPolicyRevision, ...] | None = None,
     ) -> None:
         self.revisions = (
             ()
@@ -178,6 +189,7 @@ class _ApprovedRevisionReader:
             if isinstance(revision, tuple)
             else (revision,)
         )
+        self.records_override = records_override
 
     def get_approved_revision(
         self,
@@ -201,6 +213,31 @@ class _ApprovedRevisionReader:
         if as_known_at < RECORDED_AT + timedelta(seconds=5):
             return ()
         return self.revisions
+
+    def list_approved_revision_records(
+        self, *, as_known_at: datetime
+    ) -> tuple[ApprovedPolicyRevision, ...]:
+        if as_known_at < RECORDED_AT + timedelta(seconds=5):
+            return ()
+        if self.records_override is not None:
+            return self.records_override
+        records = []
+        for revision in self.revisions:
+            event = create_approval_event(
+                rule_id=revision.rule_id,
+                revision=revision.revision,
+                revision_hash=revision.content_hash,
+                sequence=2,
+                kind=PolicyApprovalEventKind.APPROVED,
+                actor_account_id="account:" + "e" * 32,
+                reason="Exact revision reviewed.",
+                recorded_at=revision.temporal.clock.recorded_at + timedelta(seconds=10),
+                preview_fingerprint="d" * 64,
+            )
+            records.append(
+                ApprovedPolicyRevision(revision=revision, approval_event=event)
+            )
+        return tuple(records)
 
 
 class _DomainReader:
@@ -772,9 +809,161 @@ def test_effective_policy_resolver_emits_exact_effective_rule_and_content_addres
     repeated = resolver.resolve(request)
     assert trace.status is PolicyResolutionStatus.RESOLVED
     assert tuple(item.rule_id for item in trace.effective_rules) == (RULE_ID,)
-    assert trace.trace_version == "policy-resolution-trace.v2"
+    assert trace.trace_version == "policy-resolution-trace.v3"
+    assert trace.considered[0].approval_event is not None
+    assert trace.considered[0].approval_event.revision_hash == trace.considered[0].revision_hash
     assert trace.trace_id == repeated.trace_id
     assert trace.precedence_decisions == ()
+
+
+def test_resolution_trace_references_the_exact_immutable_approval_event() -> None:
+    reader = _ApprovedRevisionReader(_revision())
+    approved = reader.list_approved_revision_records(
+        as_known_at=RECORDED_AT + timedelta(seconds=10)
+    )[0]
+    trace = EffectivePolicyResolver(
+        policies=reader,
+        admission_cycles=_CycleReader((_cycle(2028),)),
+        domain_readers=(_DomainReader(),),
+        clock=_FixedPolicyClock(),
+    ).resolve(
+        PolicyResolutionRequest(
+            university_id="university:bmstu",
+            admission_year=2028,
+            valid_as_of=datetime(2028, 9, 1, tzinfo=UTC),
+            as_known_at=RECORDED_AT + timedelta(seconds=10),
+        )
+    )
+
+    reference = trace.considered[0].approval_event
+    assert reference is not None
+    assert reference.event_id == approved.approval_event.event_id
+    assert reference.revision == approved.revision.revision
+    assert reference.revision_hash == approved.revision.content_hash
+    assert reference.sequence == approved.approval_event.sequence
+
+
+def test_new_policy_revision_cannot_inherit_approval_from_previous_revision() -> None:
+    previous = _revision()
+    old_record = _ApprovedRevisionReader(previous).list_approved_revision_records(
+        as_known_at=RECORDED_AT + timedelta(seconds=10)
+    )[0]
+    fields = PolicyRuleRevisionFields(
+        **{
+            **previous.model_dump(exclude={"content_hash"}, mode="python"),
+            "revision": 2,
+            "temporal": previous.temporal.model_copy(
+                update={
+                    "clock": previous.temporal.clock.model_copy(
+                        update={
+                            "revision": 2,
+                            "recorded_at": RECORDED_AT + timedelta(days=1),
+                        }
+                    )
+                }
+            ),
+        }
+    )
+    next_revision = PolicyRuleRevision(
+        **fields.model_dump(mode="python"),
+        content_hash=policy_rule_content_hash(fields),
+    )
+
+    with pytest.raises(ValueError, match="exact policy revision"):
+        ApprovedPolicyRevision(
+            revision=next_revision,
+            approval_event=old_record.approval_event,
+        )
+
+
+@pytest.mark.parametrize(
+    "event_kind",
+    (PolicyApprovalEventKind.PENDING_SUBMITTED, PolicyApprovalEventKind.REJECTED),
+)
+def test_pending_or_rejected_revision_never_enters_effective_selection(
+    event_kind: PolicyApprovalEventKind,
+) -> None:
+    revision = _revision()
+    if event_kind is PolicyApprovalEventKind.PENDING_SUBMITTED:
+        event = create_pending_submission_event(
+            revision,
+            actor_account_id="account:" + "e" * 32,
+            reason="Revision remains pending.",
+            recorded_at=RECORDED_AT + timedelta(seconds=10),
+        )
+    else:
+        event = create_approval_event(
+            rule_id=revision.rule_id,
+            revision=revision.revision,
+            revision_hash=revision.content_hash,
+            sequence=2,
+            kind=event_kind,
+            actor_account_id="account:" + "e" * 32,
+            reason="Revision has no current approval.",
+            recorded_at=RECORDED_AT + timedelta(seconds=10),
+        )
+    invalid_record = ApprovedPolicyRevision.model_construct(
+        revision=revision,
+        approval_event=event,
+    )
+    reader = _ApprovedRevisionReader(
+        revision,
+        records_override=(invalid_record,),
+    )
+    trace = EffectivePolicyResolver(
+        policies=reader,
+        admission_cycles=_CycleReader((_cycle(2028),)),
+        domain_readers=(_DomainReader(),),
+        clock=_FixedPolicyClock(),
+    ).resolve(
+        PolicyResolutionRequest(
+            university_id="university:bmstu",
+            admission_year=2028,
+            valid_as_of=datetime(2028, 9, 1, tzinfo=UTC),
+            as_known_at=RECORDED_AT + timedelta(seconds=10),
+        )
+    )
+
+    assert trace.status is PolicyResolutionStatus.INDETERMINATE
+    assert trace.effective_rules == ()
+    assert PolicyResolutionBlocker.APPROVAL_PROVENANCE_INVALID in trace.blockers
+
+
+@pytest.mark.parametrize("mismatch", ("revision", "revision_hash"))
+def test_approval_event_binding_mismatch_fails_closed(mismatch: str) -> None:
+    revision = _revision()
+    record = _ApprovedRevisionReader(revision).list_approved_revision_records(
+        as_known_at=RECORDED_AT + timedelta(seconds=10)
+    )[0]
+    bad_event = record.approval_event.model_copy(
+        update={
+            mismatch: 2 if mismatch == "revision" else "f" * 64,
+        }
+    )
+    invalid_record = ApprovedPolicyRevision.model_construct(
+        revision=revision,
+        approval_event=bad_event,
+    )
+    trace = EffectivePolicyResolver(
+        policies=_ApprovedRevisionReader(
+            revision,
+            records_override=(invalid_record,),
+        ),
+        admission_cycles=_CycleReader((_cycle(2028),)),
+        domain_readers=(_DomainReader(),),
+        clock=_FixedPolicyClock(),
+    ).resolve(
+        PolicyResolutionRequest(
+            university_id="university:bmstu",
+            admission_year=2028,
+            valid_as_of=datetime(2028, 9, 1, tzinfo=UTC),
+            as_known_at=RECORDED_AT + timedelta(seconds=10),
+        )
+    )
+
+    assert trace.status is PolicyResolutionStatus.INDETERMINATE
+    assert trace.effective_rules == ()
+    assert PolicyResolutionBlocker.APPROVAL_PROVENANCE_INVALID in trace.blockers
 
 
 def test_effective_policy_resolver_blocks_equal_precedence_candidates_with_trace() -> None:
@@ -812,6 +1001,39 @@ def test_effective_policy_resolver_blocks_equal_precedence_candidates_with_trace
         clock=_FixedPolicyClock(),
     )
     assert reordered_reader.resolve(request).trace_id == trace.trace_id
+
+
+def test_effective_policy_resolver_fails_closed_when_precedence_trace_limit_is_reached() -> None:
+    base = _revision()
+    candidates = tuple(
+        _variant(
+            base,
+            rule_id=f"policy-rule:bmstu-fourth-exam-{index:03}",
+            scope=base.scope,
+            authority=PolicyAuthorityLevel.UNIVERSITY_NORMATIVE,
+        )
+        for index in range(101)
+    )
+    resolver = EffectivePolicyResolver(
+        policies=_ApprovedRevisionReader(candidates),
+        admission_cycles=_CycleReader((_cycle(2028),)),
+        domain_readers=(_DomainReader(),),
+        clock=_FixedPolicyClock(),
+    )
+    request = PolicyResolutionRequest(
+        university_id="university:bmstu",
+        admission_year=2028,
+        valid_as_of=datetime(2028, 9, 1, tzinfo=UTC),
+        as_known_at=RECORDED_AT + timedelta(seconds=10),
+    )
+
+    trace = resolver.resolve(request)
+
+    assert trace.status is PolicyResolutionStatus.INDETERMINATE
+    assert trace.effective_rules == ()
+    assert trace.blockers == (PolicyResolutionBlocker.PRECEDENCE_DECISION_LIMIT,)
+    assert len(trace.precedence_decisions) == 5000
+    assert trace.trace_id == resolver.resolve(request).trace_id
 
 
 def test_direction_exception_requires_exact_source_backed_federal_edge() -> None:

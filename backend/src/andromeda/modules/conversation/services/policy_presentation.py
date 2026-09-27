@@ -601,6 +601,8 @@ def _benefit_label(value: str) -> str:
 def _blocker_label(blocker: PolicyResolutionBlocker) -> str:
     if blocker is PolicyResolutionBlocker.VALID_AS_OF_REQUIRED:
         return "valid_time"
+    if blocker is PolicyResolutionBlocker.PRECEDENCE_DECISION_LIMIT:
+        return "policy_precedence_limit"
     return "admission_cycle"
 
 

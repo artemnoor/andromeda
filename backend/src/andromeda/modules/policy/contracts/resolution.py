@@ -20,6 +20,7 @@ from .applicability import (
     PolicySelection,
     SelectorNodeTrace,
 )
+from .approval import PolicyApprovalEventReference
 from .precedence import PolicyPrecedenceDecision
 from .rule import (
     DomainRuleRef,
@@ -95,6 +96,8 @@ class PolicyResolutionBlocker(StrEnum):
     ADMISSION_CYCLE_UNRESOLVED = "admission_cycle_unresolved"
     ADMISSION_CYCLE_IDENTITY_MISMATCH = "admission_cycle_identity_mismatch"
     ADMISSION_CYCLE_CANCELLED_OR_UNKNOWN = "admission_cycle_cancelled_or_unknown"
+    PRECEDENCE_DECISION_LIMIT = "precedence_decision_limit"
+    APPROVAL_PROVENANCE_INVALID = "approval_provenance_invalid"
 
 
 class PolicyRuleFilterState(StrEnum):
@@ -143,6 +146,7 @@ class ConsideredPolicyRule(ContractModel):
     scope_state: PolicyScopeMatchState
     scope_reason: PolicyScopeMatchReason
     evidence: tuple[EvidenceRef, ...] = Field(min_length=1, max_length=128)
+    approval_event: PolicyApprovalEventReference | None = None
     filter_state: PolicyRuleFilterState
     reason: PolicyRuleFilterReason
     selector_trace: tuple[SelectorNodeTrace, ...] = Field(max_length=64)
@@ -164,13 +168,21 @@ class ConsideredPolicyRule(ContractModel):
             raise ValueError(
                 "policy selection must reference this exact source-backed revision"
             )
+        if self.approval_event is not None and (
+            self.approval_event.rule_id != self.rule_id
+            or self.approval_event.revision != self.revision
+            or self.approval_event.revision_hash != self.revision_hash
+        ):
+            raise ValueError(
+                "approval event reference must bind to this exact policy revision"
+            )
         if is_candidate and self.scope_state is not PolicyScopeMatchState.MATCH:
             raise ValueError("only a scope-matched rule may become a policy candidate")
         return self
 
 
 class ResolutionTraceFields(ContractModel):
-    trace_version: Literal["policy-resolution-trace.v2"] = "policy-resolution-trace.v2"
+    trace_version: Literal["policy-resolution-trace.v3"] = "policy-resolution-trace.v3"
     mode: PolicyResolutionMode = PolicyResolutionMode.APPROVED_EFFECTIVE
     university_id: UniversityId
     admission_year: EducationYear
@@ -205,6 +217,12 @@ class ResolutionTraceFields(ContractModel):
             raise ValueError("resolved cycle trace requires both cycle ID and revision")
         if self.cycle_id is None and self.cycle_evidence:
             raise ValueError("unresolved admission cycle cannot carry cycle evidence")
+        if self.mode is PolicyResolutionMode.APPROVED_EFFECTIVE and any(
+            item.approval_event is None for item in self.considered
+        ):
+            raise ValueError(
+                "approved-effective traces must retain each considered approval event"
+            )
         candidate_keys = tuple(
             (item.rule_id, item.revision, item.revision_hash)
             for item in self.candidates
