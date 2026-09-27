@@ -61,11 +61,11 @@ freshness explicit.
 
 1. Inspect the source health and poll-attempt outcome before examining claims.
 2. Review the exact captured snapshot, evidence locator and typed assertion.
-3. Compare candidate diff, conflicts, scope, source lifecycle statement and
-   proposed admission-cycle mapping.
+3. Compare candidate diff, any conflict diagnostics, scope, source lifecycle
+   statement and proposed admission-cycle mapping.
 4. Preview both resolver traces and domain-owner impact. Incomplete impact,
-   unresolved conflict, stale preview hash, or missing evidence must block
-   approval.
+   an unresolved resolver conflict, a persisted open policy conflict, stale
+   preview hash, or missing evidence must block approval.
 5. Approve or reject the exact content hash as an authenticated human. A later
    edit creates a new pending revision and requires a new preview and decision.
 
@@ -94,6 +94,16 @@ For a conflict, missing cycle, unknown scope, incomplete provenance, stale
 domain-owner revision, or unavailable owner calculation, leave the result
 blocked/indeterminate and use the structured `ResolutionTrace` to identify the
 reason. Do not resolve by timestamp or database row order.
+
+### Persisted conflict review capability
+
+Conflict-group creation and human resolution are disabled/not yet enabled in
+this rollout. The review queue can show conflict participants already present
+in persistence, and the approval service checks persisted open policy conflicts,
+but production ingestion does not create conflict groups and the review API has
+no conflict-resolution action. A missing conflict row is not evidence that
+there is no disagreement. Resolver/assistant ambiguity remains fail-closed;
+operators must not mark a conflict resolved through direct database edits.
 
 ## Security and logs
 

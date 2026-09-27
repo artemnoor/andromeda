@@ -129,6 +129,11 @@ or indeterminate. A lower-authority narrow exception can prevail only through
 an exact approved `AUTHORIZED_EXCEPTION_TO` edge. SQL row order and newest
 timestamp alone never decide precedence. The final resolver emits only exact
 `DomainRuleRef` selections for the owning module or a blocked/conflict result.
+Each considered approved revision carries a typed reference to the exact
+immutable `PolicyApprovalEvent` (event ID, rule/revision/hash, sequence and
+recorded time). The reference is validated against that revision and included
+in the bounded `ResolutionTrace`; approval cannot be inherited by another
+revision.
 
 Policy selector AST v1 is an applicability filter only. Its closed operators
 (`all`, `any`, `equals`, `in`, `exists`) use registered typed context fields,
@@ -179,13 +184,22 @@ preview compares one exact pending revision with one approved snapshot and
 returns both `ResolutionTrace`s, effective diff, domain-owner impact, evidence
 and uncertainty. The preview is read-only. Approval re-computes and matches the
 exact fingerprint, requires a resolved candidate, complete domain-owner impact,
-evidence and no unresolved/truncated conflicts, then delegates to the existing
-policy approval ledger. The fingerprint is stored with that owner event. No
+evidence and no unresolved/truncated conflicts. The existing
+`PolicyApprovalCommandService` enforces these conditions for every approval
+caller and appends to the existing policy approval ledger. The fingerprint is
+stored with that owner event. No
 provisional or unreviewed revision can reach the approved-only resolver.
 Claim edits append a pending revision and cannot change subject kind or
 canonical identity; identity resolution is a separate action that checks an
 exact ID against a supported typed catalog. The internal SPA route is
 query-based and omitted from applicant navigation.
+
+Persisted knowledge conflict review is not enabled in this rollout. The queue
+may display existing conflict participants as diagnostic metadata, and policy
+approval checks for persisted open conflicts, but there is no production
+conflict-group writer or reviewer resolution action. Contradictory or otherwise
+unresolved evidence remains fail-closed in the resolver/assistant. Do not
+interpret an empty conflict list as proof that no conflict exists.
 
 ## Temporal foundation
 

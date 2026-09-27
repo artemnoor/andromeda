@@ -154,6 +154,13 @@ pending revision; identity resolution принимает только сущес
 SPA экран открывается query route `/?view=knowledge-review` и не добавлен в
 обычную навигацию.
 
+Conflict participants в queue — read-only diagnostic metadata. В текущем
+rollout нет API для создания persisted conflict groups или для их human
+resolution; список участников не означает, что discovery уже записал все
+противоречия. Resolver и assistant возвращают fail-closed uncertainty при
+обнаруженном конфликте. Не используйте отсутствие conflict row как
+подтверждение отсутствия разногласий.
+
 ## DecisionContext и shortlist
 
 `DecisionContext` — owner-bound application state для пользовательского выбора.
