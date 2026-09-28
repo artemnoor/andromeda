@@ -35,7 +35,8 @@ export async function fetchInternal<T>(context: OgRequestContext, path: string, 
   const headers = new Headers(init.headers);
   headers.set("accept", "application/json");
   if (context.cookie) headers.set("cookie", context.cookie);
-  const response = await fetch(`${baseUrl}${path}`, { ...init, headers, cache: "no-store" });
+  const publicPath = path.startsWith("/api/v1/") ? path : `/api/v1${path}`;
+  const response = await fetch(`${baseUrl}${publicPath}`, { ...init, headers, cache: "no-store" });
   if (!response.ok) throw new OgHttpError(response.status, "internal API request failed");
   return (await response.json()) as T;
 }

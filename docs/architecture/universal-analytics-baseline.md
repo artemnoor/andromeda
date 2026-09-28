@@ -60,7 +60,7 @@ The following imports and semantics are compatibility obligations:
 
 ## Architecture baseline
 
-`backend/tests/architecture/test_module_boundaries.py` currently covers all subject modules and public-contract/repository-port cross-module imports. `test_analytics_boundaries.py` adds a forward guard for `semantic`, `analytics`, `entity_resolution`, `conversation`, and `presentation`: these modules must not import FastAPI, SQLAlchemy, infrastructure, ingestion, Telegram, Jev, MAX, or composition.
+`backend/tests/architecture/test_module_boundaries.py` currently covers all subject modules and public-contract/repository-port cross-module imports. `test_analytics_boundaries.py` adds a forward guard for `semantic`, `analytics`, `entity_resolution`, `conversation`, and `presentation`: these modules must not import FastAPI, SQLAlchemy, infrastructure, ingestion, Jev, MAX, or composition.
 
 ## Verification snapshot
 
@@ -79,14 +79,11 @@ python -m pytest tests/modules/proftest tests/modules/decision tests/modules/adm
 python -m pytest tests/ingestion tests/api -q
 177 passed, 6 warnings
 
-python -m pytest telegram-bot/tests -q
-14 passed
-
 npm run test:unit
 6 test files, 24 tests passed
 ```
 
-The full comparison/recommendations/proftest/decision/admission-fit/ingestion/API/Telegram/frontend suites remain the regression gate. These commands establish the current green baseline; their results must be captured again after each implementation checkpoint, and pre-existing failures must be separated from failures introduced by analytics.
+The full comparison/recommendations/proftest/decision/admission-fit/ingestion/API/frontend suites remain the regression gate. These commands establish the historical green baseline; their results must be captured again after each implementation checkpoint, and pre-existing failures must be separated from failures introduced by analytics.
 
 ## Rollback reference
 

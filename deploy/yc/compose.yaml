@@ -43,24 +43,7 @@ services:
       - backend
     environment:
       ANDROMEDA_INTERNAL_API_URL: http://backend:8020
-
-  telegram-bot:
-    image: ${TELEGRAM_BOT_IMAGE}
-    restart: unless-stopped
-    depends_on:
-      - backend
-      - frontend
-    environment:
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      ANDROMEDA_BACKEND_URL: http://backend:8020
-      ANDROMEDA_RENDERER_URL: http://frontend:3000
       ANDROMEDA_RENDER_HMAC_SECRET: ${ANDROMEDA_RENDER_HMAC_SECRET}
-      ANDROMEDA_SESSION_ENCRYPTION_KEY: ${ANDROMEDA_SESSION_ENCRYPTION_KEY}
-      ANDROMEDA_WEB_APP_URL: ${ANDROMEDA_WEB_APP_URL}
-      ANDROMEDA_SESSION_DB: /var/lib/andromeda-telegram/state.sqlite3
-      LOG_LEVEL: INFO
-    volumes:
-      - telegram_bot_data:/var/lib/andromeda-telegram
 
   caddy:
     image: caddy:2-alpine
@@ -83,4 +66,3 @@ volumes:
   andromeda_data:
   caddy_data:
   caddy_config:
-  telegram_bot_data:

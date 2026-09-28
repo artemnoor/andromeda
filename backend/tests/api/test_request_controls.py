@@ -52,6 +52,21 @@ def test_auth_rate_limit_returns_safe_contract_and_retry_after(tmp_path: Path, m
     assert limited.headers["retry-after"] == "60"
 
 
+def test_public_v1_and_legacy_auth_routes_share_the_same_rate_limit_bucket(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("ANDROMEDA_AUTH_RATE_LIMIT_MAX", "1")
+    client = TestClient(create_app(f"sqlite:///{(tmp_path / 'versioned-rate-limit.db').as_posix()}"))
+    payload = {"email": "student@example.com", "password": "a-secure-password"}
+
+    first = client.post("/auth/login", json=payload)
+    limited = client.post("/api/v1/auth/login", json=payload)
+
+    assert first.status_code == 500
+    assert limited.status_code == 429
+    assert limited.headers["retry-after"] == "60"
+
+
 def test_unhandled_exception_is_safe_and_correlated(tmp_path: Path) -> None:
     app = create_app(f"sqlite:///{(tmp_path / 'exception.db').as_posix()}")
 

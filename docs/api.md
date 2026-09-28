@@ -2,7 +2,65 @@
 
 # API
 
-FastAPI-приложение `andromeda.api.main` публикует OpenAPI на `/openapi.json`. Единственный web-клиент `frontend-next` использует только эти HTTP endpoints; `frontend-next/src/lib/generated.ts` создаётся из спецификации.
+FastAPI-приложение `andromeda.api.main` обслуживает один backend. `/docs`, `/redoc` и runtime `/openapi.json` описывают полную поверхность FastAPI, включая operator/admin operations. Для внешних пользовательских клиентов каноническим является корневой файл [`openapi.json`](../openapi.json): это Public API v1, обслуживаемый теми же handlers по `/api/v1/...`. Старые unversioned public routes сохранены для совместимости.
+
+`frontend-next/openapi.json` — generated full-app snapshot, нужный существующей Web админке и её внутренним типам. Это не альтернативная спецификация Public API. Из Public API генерируются `frontend-next/src/lib/public-api.generated.ts` и узкий `public-api-client.ts`; внутренний Web adapter отдельно использует `generated.ts`.
+
+## Public API v1
+
+MAX Bot, MAX Mini App, Web и другие transport-клиенты обращаются только к `/api/v1`. Они не вызывают `/ops/*`, `/university-admin/*` или knowledge-review API. Версионированные операции — aliases существующих endpoint handlers: backend, application services, repository и domain logic остаются общими.
+
+| Группа | Public API v1 operations |
+|---|---|
+| Health | `GET /api/v1/health/live` |
+| Вузы и каталог | `GET /api/v1/universities`; `GET /api/v1/universities/{university_id}/catalog`; `GET /api/v1/universities/{university_id}/events`; `GET /api/v1/universities/{university_id}/events/{event_id}` |
+| Программы и поступление | `GET /api/v1/programs`; `GET /api/v1/programs/{id}`; `GET /api/v1/programs/{id}/curriculum`; `GET /api/v1/programs/{id}/admissions`; `POST /api/v1/programs/{id}/admission-fit`; `GET /api/v1/programs/{program_id}/admission-benefits`; `POST /api/v1/programs/{program_id}/admission-eligibility`; `GET /api/v1/universities/{university_id}/admission-benefits`; `GET /api/v1/admission-benefits/olympiads/{olympiad_id}/programs` |
+| Сравнение и аналитика | `GET /api/v1/compare`; `GET /api/v1/compare/summary`; `POST /api/v1/analytics/query`; `POST /api/v1/assistant/query` |
+| DecisionContext | `GET /api/v1/decision/context`; `GET /api/v1/decision/suggestions`; `POST /api/v1/decision/analytics`; `POST /api/v1/decision/considered`; `PUT /api/v1/decision/constraints`; `POST /api/v1/decision/refinement/answer`; `POST /api/v1/decision/shortlist`; `PATCH`/`DELETE /api/v1/decision/shortlist/{program_id}`; `POST`/`DELETE /api/v1/decision/final-choice`; `POST`/`DELETE /api/v1/decision/programs/{program_id}/exclude`; `POST /api/v1/decision/programs/{program_id}/restore`; `POST /api/v1/decision/suggestions/{program_id}/accept`; `POST /api/v1/decision/suggestions/{program_id}/reject` |
+| Профиль и рекомендации | `POST /api/v1/proftest/sessions`; `GET`/`PATCH /api/v1/proftest/sessions/current`; `POST /api/v1/proftest/sessions/current/next`; `POST /api/v1/proftest/sessions/current/complete`; `POST /api/v1/proftest/analytics`; `GET`/`POST`/`PUT /api/v1/proftest/profile`; `POST /api/v1/recommendations`; `GET /api/v1/recommendations/current` |
+| Events, campus and taxonomy | `GET /api/v1/events`; `GET /api/v1/events/{id}`; `GET /api/v1/campus/points`; `GET /api/v1/campus/points/{id}`; `GET /api/v1/campus/points/{id}/events`; `GET /api/v1/campus/recommendations`; `GET /api/v1/discipline-areas`; `GET /api/v1/personal-route` |
+| Account | `POST /api/v1/auth/register`; `POST /api/v1/auth/login`; `POST /api/v1/auth/logout`; `GET /api/v1/auth/session`; `POST /api/v1/auth/decision/import-guest` |
+
+Итого в Public API v1 опубликовано 58 method/path operations. Не входят три
+deprecated assessment compatibility handlers: GET /proftest/questions,
+POST /proftest/preview и POST /proftest/results. Они остаются в полном
+unversioned FastAPI API для старых клиентов; новые клиенты используют
+version-pinned /proftest/sessions и /proftest/profile. Ops, review и
+university-admin handlers также остаются только в полной внутренней схеме.
+
+**Authentication and sessions.** Public API preserves the current HttpOnly cookie boundary. The optional guest profile cookie defaults to `andromeda_profile_session`; the optional account cookie defaults to `andromeda_auth_session`. Deployments can configure their names with `ANDROMEDA_PROFILE_COOKIE_NAME` and `ANDROMEDA_AUTH_COOKIE_NAME`. Missing guest cookies can be issued by the backend; browser clients must use credentialed requests (`credentials: include`). The OpenAPI marks optional cookies as optional; `POST /api/v1/auth/decision/import-guest` requires an account cookie. Future platform adapters use the same Andromeda session cookies; external platform user IDs are not Andromeda identity tokens.
+
+`/assistant/query` keeps its owner-bound `QuerySession`, TTL, `session_id`/`revision` response fields and `sessionId`/`expectedRevision` request fields. The response field casing is the existing backend contract. The public request schema omits the legacy `interactive` flag because no current behavior consumes it; the old unversioned route keeps accepting its legacy DTO. `DecisionContext` and other revisioned mutations retain `expectedRevision`; stale revisions return HTTP `409` with `ErrorResponse`.
+
+Errors use the existing `ErrorResponse` envelope for `400`, `401`, `403`, `404`, `409`, `422`, `429` and `500`. Rate-limited responses include `Retry-After` in seconds. `GET /universities` and `GET /programs` are currently unpaginated item collections. `GET /health/live` is a process liveness check; readiness/database detail is operational and excluded from Public API v1.
+
+### Generate and verify OpenAPI and clients
+
+After a backend contract change, refresh both checked-in snapshots and generated types:
+
+```powershell
+python backend/scripts/export_openapi.py --surface public-v1 --out openapi.json
+python backend/scripts/export_openapi.py --surface full --out frontend-next/openapi.json
+cd frontend-next
+npm run generate-public-api
+npm run generate-api
+npm run check-public-api-drift
+npm run check-api-drift
+cd ..
+python scripts/andromeda.py openapi
+```
+
+`openapi-typescript` generates both wire-type files; `openapi-fetch` powers the Public API client. Keep presentation/view models in the UI adapter, not as handwritten copies of public wire DTOs. `python scripts/andromeda.py openapi` exports fresh backend contracts to temporary files and checks both canonical snapshots and both generated clients. CI runs the same comparisons. FastAPI `/docs` remains the full application docs.
+
+### DATA-API validation
+
+[`DATA-API.yaml`](../DATA-API.yaml) points to the canonical public `openapi.json`. Its base URL is a reserved `.example` placeholder until an organizer-accessible HTTPS deployment URL is configured; validator PASS checks schema, deterministic check definitions and OpenAPI operation mapping, not live endpoint availability. Run the pinned official validator with:
+
+```powershell
+python scripts/andromeda.py data-api
+```
+
+The direct upstream validator invocation and its pinned GitVerse revision are documented in [testing](testing.md#public-api-openapi-and-data-api). Do not add credentials or cookies to the public check file.
 
 ## Программы
 
@@ -65,14 +123,7 @@ The policy assistant rollout is independently controlled by
 disabled, `/assistant/query` returns typed `outside_coverage` without reading
 claims or resolving policies. This flag does not alter Jev settings.
 
-После изменения API контракт регенерируется единственным drift flow:
-
-```powershell
-python backend/scripts/export_openapi.py --out frontend-next/openapi.json
-cd frontend-next
-npm run generate-api
-npm run check-api-drift
-```
+При изменении assistant wire contract обновите оба OpenAPI snapshot и generated clients по инструкции в разделе [Generate and verify OpenAPI and clients](#generate-and-verify-openapi-and-clients), затем запустите `python scripts/andromeda.py openapi`.
 
 ## University admin, public catalog and editorial events
 
@@ -275,14 +326,7 @@ Auth cookie не читается frontend JavaScript и имеет `Path=/`, `H
 
 Эти compatibility POST endpoints принимают strict `answers` и optional `adaptiveAnswers`; они делегируют единственным `UserProfileBuilder` и `RecommendationService` и не являются вторым scoring path. Новые clients должны использовать session flow ниже. `UserProfile` строится до matching, а response содержит integer `contentFit`, breakdown компонентов, реальные workload/share и исходные названия отличительных дисциплин. Каждая рекомендация также содержит typed `evidence`: confidence профиля, completeness каталога, deterministic source-snapshot freshness, reliability, использованные/выведенные сигналы, версии policy/taxonomy и field-level missing data. `reliability` — это полнота и согласованность evidence, а не вероятность поступления или predictive accuracy. В этих Content Fit responses optional metrics (`workloadReadiness`, `careerFit`, `admissionFit`) возвращаются с `status: "not_available"` и не влияют на scoring. Отдельный endpoint Admission Fit описан ниже и также не меняет этот ranking.
 
-После изменения API frontend-контракт регенерируется из OpenAPI:
-
-```powershell
-python backend/scripts/export_openapi.py --out frontend-next/openapi.json
-cd frontend-next
-npm run generate-api
-npm run check-api-drift
-```
+При изменении profile/session wire contract обновите оба OpenAPI snapshot и generated clients по инструкции в разделе [Generate and verify OpenAPI and clients](#generate-and-verify-openapi-and-clients), затем запустите `python scripts/andromeda.py openapi`.
 
 ## Адаптивная сессия профтеста v3
 
@@ -337,10 +381,11 @@ Legacy routes остаются только для уже выпущенных �
 session API, а за один полный release cycle нет обращений к compatibility
 routes; до этого они сохраняют parity по profile/ranking contracts.
 
-Единственный frontend-клиент генерируется из `frontend-next/openapi.json` в
-`frontend-next/src/lib/generated.ts`. При изменении session schema сначала
-экспортируйте OpenAPI, затем выполните generation и drift check из раздела
-выше.
+Public v1 client types генерируются из корневого `openapi.json` в
+`frontend-next/src/lib/public-api.generated.ts`; Web internal/admin types
+генерируются из `frontend-next/openapi.json` в
+`frontend-next/src/lib/generated.ts`. Оба snapshots и оба generated outputs
+проверяются drift gate.
 
 ### Политика v3
 

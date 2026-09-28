@@ -158,7 +158,7 @@ def verify_compare(api_base_url: str, program_codes: Sequence[str]) -> None:
 
 
 def verify_og(frontend_url: str, program_codes: Sequence[str], secret: str) -> None:
-    """Smoke-test signed Next OG routes without a Telegram token or browser."""
+    """Smoke-test signed Next OG routes without external credentials or a browser."""
 
     program_ids = tuple(_verification_program_id(value) for value in program_codes[:2])
     checks = (

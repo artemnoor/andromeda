@@ -19,13 +19,16 @@ Run from the repository root:
 | `python scripts/andromeda.py ingestion` | disposable BMSTU/HSE fixture ingestion | locked backend environment, Poppler |
 | `python scripts/andromeda.py postgres` | PostgreSQL repository, migration, and API semantics | disposable `ANDROMEDA_POSTGRES_TEST_URL` |
 | `python scripts/andromeda.py playwright` | browser flows against a running demo | Chromium and `PLAYWRIGHT_BASE_URL` |
-| `python scripts/andromeda.py telegram` | Telegram transport tests and strict typing | Telegram dev environment |
+| `python scripts/andromeda.py openapi` | canonical public/full OpenAPI and generated-client drift | backend and npm environments |
+| `python scripts/andromeda.py data-api` | DATA-API schema and operation references against canonical Public OpenAPI | locked backend environment |
+| `python scripts/andromeda.py docs` | documentation links and paths | Python |
+| `python scripts/andromeda.py deployment` | backend/frontend Docker and proxy contract | Python |
 | `python scripts/andromeda.py migrations` | migration tests plus empty-database upgrade/drift check | locked backend environment |
 | `python scripts/andromeda.py production-smoke` | disposable fixture API, frontend, OG, admissions, events/campus smoke | Poppler, Node/npm, free local ports |
 | `python scripts/andromeda.py release-evidence` | secret-free commit/lock/corpus metadata and 16-item exit template | Git |
 | `python scripts/andromeda.py full` | all local gates that do not require live university sources or a pre-existing PostgreSQL service | all local prerequisites |
 
-The CI workflow keeps PostgreSQL, browser, Telegram, dependency, coverage and
+The CI workflow keeps PostgreSQL, browser, dependency, coverage and
 full-stack jobs isolated so a failure identifies its layer. Live university
 source health is intentionally a scheduled, read-only operational workflow.
 

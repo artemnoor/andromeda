@@ -32,7 +32,7 @@ python scripts/andromeda.py production-smoke # disposable fixture runtime smoke
 python scripts/andromeda.py full              # локальные проверки без live source/PostgreSQL
 ```
 
-`backend`, `frontend`, `postgres`, `playwright`, `telegram`, `migrations`,
+`backend`, `frontend`, `postgres`, `playwright`, `migrations`,
 `backend-coverage`, `frontend-coverage`, `deployment` и `security` являются
 отдельными целевыми проверками. Полная карта, prerequisites и безопасные
 артефакты находятся в [матрице тестирования](docs/test-matrix.md).
@@ -43,10 +43,10 @@ python scripts/andromeda.py full              # локальные провер�
 - BMSTU и HSE fixture/live adapters с university-scoped canonical IDs.
 - Изолированные модули universities, programs, curricula, disciplines, decision, comparison, proftest, recommendations, admissions и admission_fit.
 - SQLAlchemy/Alembic с FK, unique/check constraints и Decimal без float-конверсии.
-- FastAPI/OpenAPI и сгенерированные TypeScript-типы.
+- FastAPI, stable Public API v1 и TypeScript-клиенты, generated из OpenAPI.
 - Универсальный аналитический слой: versioned semantic features, materialized
   `ProgramProjection`, allow-listed `MetricRegistry`, typed `/analytics/query`
-  и channel-neutral `/assistant/query` без зависимости от Jev/MAX/Telegram.
+  и channel-neutral `/assistant/query`; deterministic fallback does not require optional Jev.
 - Bounded source-backed knowledge/policy workflow: allowlisted one-shot source
   discovery, claim/change staging, exact-hash human approval, deterministic
   temporal/scope resolver with `ResolutionTrace`, review/impact preview and
@@ -74,10 +74,15 @@ python scripts/andromeda.py full              # локальные провер�
 Профиль предпочтений — один из способов уточнить `DecisionContext`, а не обязательный первый этап. В UI выберите «Подобрать». Canonical compact adaptive v3 использует version-pinned session API: `POST /proftest/sessions`, `GET /proftest/sessions/current`, `POST /proftest/sessions/current/next`, `PATCH /proftest/sessions/current` и `POST /proftest/sessions/current/complete`. Старые `/proftest/questions`, `/proftest/preview` и `/proftest/results` сохранены как явно deprecated compatibility adapters на один release cycle и не используются новым frontend flow. Финальный результат сохраняется в Andromeda по anonymous HttpOnly cookie; после reload UI использует `GET /proftest/profile` и `GET /recommendations/current`. Профиль обновляет предложения, но не меняет shortlist без явного действия пользователя. После изменения API обновите frontend-контракт:
 
 ```powershell
-python backend/scripts/export_openapi.py --out frontend-next/openapi.json
+python backend/scripts/export_openapi.py --surface public-v1 --out openapi.json
+python backend/scripts/export_openapi.py --surface full --out frontend-next/openapi.json
 cd frontend-next
+npm run generate-public-api
 npm run generate-api
+npm run check-public-api-drift
 npm run check-api-drift
+cd ..
+python scripts/andromeda.py openapi
 ```
 
 `Content Fit` рассчитывается детерминированно по реальным часам/ЗЕТ и долям предметных областей. Отдельный `Admission Fit` показывает риск по source-backed admissions facts и не влияет на Content Fit или ranking рекомендаций.
@@ -112,12 +117,11 @@ GET /compare?programIds=<program-id-a>,<program-id-b>&scope=semester&semester=1
 | [Query flow](docs/architecture/query-flow.md) | Conversation state, analytics и admission compilation |
 | [Knowledge and Policy](docs/architecture/knowledge-policy.md) | Source claims, approval, temporal resolution и impact |
 | [Knowledge operations](docs/operations/knowledge-policy-runbook.md) | Polling, review, security, recovery и budgets |
-| [API](docs/api.md) | OpenAPI endpoints и контракты |
+| [Public API v1 и DATA-API](docs/api.md) | Canonical OpenAPI, transport boundary, generated clients и organizer validator |
 | [Admissions](docs/admissions.md) | Данные поступления и source gaps |
 | [Admission Fit](docs/admission-fit.md) | Отдельная оценка реалистичности поступления |
 | [Принципы продукта](docs/product-principles.md) | Правила Decision Support и пользовательского выбора |
 | [Конфигурация](docs/configuration.md) | Переменные окружения |
-| [Telegram-клиент](docs/telegram-bot.md) | aiogram, PNG render layer, callbacks и YC deployment |
 | [PostgreSQL](docs/postgresql.md) | Dev/staging, migrations и ingestion |
 | [MVP](docs/mvp.md) | Scope и measurable Definition of Done |
 | [Deployment](docs/deployment.md) | Staging, health checks, backups и rollback |

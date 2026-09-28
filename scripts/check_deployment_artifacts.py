@@ -35,10 +35,9 @@ def main() -> int:
     systemd_unit = _read("deploy/yc/andromeda-frontend.service")
     cloud_init = _read("deploy/yc/cloud-init.yaml")
     caddy = _read("deploy/yc/Caddyfile")
-    telegram_env = _read("telegram-bot/.env.example")
-
+    nginx = _read("deploy/yc/nginx.conf")
     _require(compose, compose_path, "ANDROMEDA_INTERNAL_API_URL: http://backend:8020")
-    _require(compose, compose_path, "ANDROMEDA_BACKEND_URL: http://backend:8020")
+    _require(compose, compose_path, "ANDROMEDA_RENDER_HMAC_SECRET")
     _require(compose, compose_path, "backend:8020")
     if "backend:8000" in compose:
         raise AssertionError(f"{compose_path} contains obsolete backend:8000 fallback")
@@ -85,10 +84,11 @@ def main() -> int:
     _require(cloud_init, "deploy/yc/cloud-init.yaml", "--port 8020")
     _require(cloud_init, "deploy/yc/cloud-init.yaml", "/.next/standalone/server.js")
     _require(caddy, "deploy/yc/Caddyfile", "reverse_proxy backend:8020")
-    _require(telegram_env, "telegram-bot/.env.example", "ANDROMEDA_BACKEND_URL=http://backend:8020")
-    if "ANDROMEDA_BACKEND_URL=http://backend:8000" in telegram_env:
-        raise AssertionError("telegram-bot/.env.example contains obsolete backend:8000")
-
+    _require(caddy, "deploy/yc/Caddyfile", "handle /api/v1/*")
+    _require(cloud_init, "deploy/yc/cloud-init.yaml", "location /api/v1/")
+    _require(cloud_init, "deploy/yc/cloud-init.yaml", "proxy_pass http://127.0.0.1:8020/api/v1/")
+    _require(nginx, "deploy/yc/nginx.conf", "location /api/v1/")
+    _require(nginx, "deploy/yc/nginx.conf", "proxy_pass http://127.0.0.1:8020/api/v1/")
     print("Deployment artifact contract passed: Docker, VM/systemd, Caddy, and internal API ports agree.")
     return 0
 

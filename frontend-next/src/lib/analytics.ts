@@ -1,6 +1,6 @@
 "use client";
 
-import { sendDecisionAnalytics, type DecisionAnalyticsEventRequest } from "./api";
+import { getApiRequestUrl, sendDecisionAnalytics, type DecisionAnalyticsEventRequest } from "./api";
 import type { components } from "./generated";
 
 export type DecisionAnalyticsEventType = components["schemas"]["DecisionAnalyticsClientEventType"];
@@ -165,7 +165,7 @@ function dispatch(event: DecisionAnalyticsEventRequest): Promise<unknown> | void
   const configuredBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
   if (configuredBase.startsWith("/") && typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
     const body = new Blob([JSON.stringify(event)], { type: "application/json" });
-    if (navigator.sendBeacon(`${configuredBase.replace(/\/$/, "")}/decision/analytics`, body)) return;
+    if (navigator.sendBeacon(getApiRequestUrl("/decision/analytics"), body)) return;
   }
   return sendDecisionAnalytics(event);
 }

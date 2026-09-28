@@ -18,7 +18,6 @@ environment file or secret manager):
 | `ANDROMEDA_OPS_API_KEY` | Protected Ops endpoints. |
 | `BACKEND_IMAGE` | Immutable backend image tag or digest. |
 | `FRONTEND_IMAGE` | Immutable Next standalone image tag or digest. |
-| `TELEGRAM_BOT_IMAGE` | Immutable Telegram transport image tag or digest. |
 
 `ANDROMEDA_OPS_API_KEY` must be at least 16 characters and is supplied through
 the deployment secret manager. Never copy real values into `.env` committed to
@@ -77,11 +76,12 @@ services:
 docker compose --env-file /etc/andromeda/backend.env -f deploy/yc/compose.yaml config --quiet
 ```
 
-The tracked packaging gate also checks the backend `8020` contract, Next
+The tracked packaging gate checks the backend `8020` contract, Next
 `/app/server.js` Docker runner, VM/systemd
-`frontend-runtime/.next/standalone/server.js`, Caddy `/api` routing, and the
-Telegram internal URL. The VM release must copy the complete Next standalone
-directory, not only `.next/static`.
+`frontend-runtime/.next/standalone/server.js`, and Caddy `/api` routing.
+The VM release must copy the complete Next standalone directory, not only
+`.next/static`. Signed server-side OG rendering uses the frontend-only
+`ANDROMEDA_RENDER_HMAC_SECRET` and the internal backend URL.
 
 ## Smoke checks
 

@@ -28,7 +28,6 @@ source bodies, user profiles, or full ingestion payloads.
 | Browser product smoke | Production-like Caddy endpoint with configured disposable ops key: Chromium + mobile Chromium, 52 tests passed | PASS |
 | Persistence recovery | Custom PostgreSQL backup restored into an isolated database; `0022 → 0021` downgrade and `0021 → 0022` upgrade completed | PASS |
 | Security/dependencies | Canonical security target: 12 security tests, Python dependency audit with no known vulnerabilities, npm audit with zero vulnerabilities | PASS |
-| Telegram boundary | CI tests/typing, b15 image build, and encrypted opaque-session round-trip image smoke | PASS; real Telegram token remains deployment input |
 | Documentation/contracts | `scripts/check_docs.py`, OpenAPI drift, deployment artifact contract, strict typing, architecture and boundary gates | PASS |
 
 ## Deployment checkpoint
@@ -38,7 +37,6 @@ IDs are recorded for rollback attribution:
 
 - backend `andromeda-backend:b15dbe7` — `sha256:cf011a52875a16a31022eec0e72128b2ea58d44d65f2c49f31a8149e03f72511`;
 - frontend `andromeda-frontend:b15dbe7` — `sha256:882a3c579bc4829f71c97ffb76c4e4538be260b95a9b09322ffe2f6510b66c98`;
-- Telegram `andromeda-telegram-bot:b15dbe7` — `sha256:381201fd2f60fe69182c91f69225af1c7fa27764cddaec3e97e5843954527985`.
 
 The public gateway returned HTTPS `live`, HTTPS `ready`, `/api/programs`, and
 the frontend root. Plain HTTP returned `308` to HTTPS. The readiness response
@@ -46,7 +44,6 @@ reported the expected migration head `0022_ingestion_concurrency`.
 
 Fixture ingestion produced BMSTU and HSE run IDs and projected canonical data
 without source gaps for BMSTU; HSE fixture gaps remained typed and visible.
-The real Telegram network was not contacted with a fake token.
 
 ## Rollback and fallback
 
@@ -64,8 +61,6 @@ The real Telegram network was not contacted with a fake token.
 - HSE is supported with partial, source-backed coverage. `degraded` is a
   truthful product state, not a hidden success or a promise of completeness.
 - Career Fit and validated Workload Readiness remain out of MVP scope.
-- The current Telegram deployment is single-instance; distributed callback
-  state is deferred until scale requires it.
 - Live source changes, taxonomy review, and operator alert retention remain
   operational follow-up, not reasons to weaken fail-closed behavior.
 

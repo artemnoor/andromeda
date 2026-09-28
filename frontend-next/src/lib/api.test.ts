@@ -71,7 +71,7 @@ describe("canonical API client", () => {
     await expect(getPrograms()).resolves.toEqual({
       items: [{ id: "program:01", directionId: "01.03.02", code: "01.03.02-01", name: "Программа", educationYear: "2026", studyPlanUrl: null, sourceUrl: null, universityId: null, universityName: null }],
     });
-    expect(fetch).toHaveBeenCalledWith("/api/programs", expect.objectContaining({ credentials: "include", cache: "no-store" }));
+    expect(fetch).toHaveBeenCalledWith("/api/v1/programs", expect.objectContaining({ credentials: "include", cache: "no-store" }));
   });
 
   it("preserves program provenance and curriculum source gaps through typed mappers", async () => {
@@ -265,7 +265,7 @@ describe("canonical API client", () => {
       state: { revision: 2, choice: { shortlistEntries: [{ programId: "program:01", state: "active" }] } },
       missingData: ["admission_constraints"],
     });
-    expect(fetch).toHaveBeenCalledWith("/api/decision/context", expect.objectContaining({
+    expect(fetch).toHaveBeenCalledWith("/api/v1/decision/context", expect.objectContaining({
       credentials: "include",
       cache: "no-store",
     }));
@@ -281,7 +281,7 @@ describe("canonical API client", () => {
     await addDecisionShortlist("program:01", "alternative", 2);
 
     const [, init] = vi.mocked(fetch).mock.calls[0] as [RequestInfo | URL, RequestInit];
-    expect(fetch).toHaveBeenCalledWith("/api/decision/shortlist", expect.objectContaining({ method: "POST" }));
+    expect(fetch).toHaveBeenCalledWith("/api/v1/decision/shortlist", expect.objectContaining({ method: "POST" }));
     expect(JSON.parse(String(init.body))).toEqual({
       version: 1,
       programId: "program:01",
@@ -302,7 +302,7 @@ describe("canonical API client", () => {
 
     await expect(getComparisonSummary(["program:01.03.02-01", "program:01.03.02-02", "program:01.03.02-03"])).resolves.toEqual(expect.objectContaining({ programs: [] }));
     expect(fetch).toHaveBeenCalledWith(
-      "/api/compare/summary?programIds=program%3A01.03.02-01%2Cprogram%3A01.03.02-02%2Cprogram%3A01.03.02-03&scope=all",
+      "/api/v1/compare/summary?programIds=program%3A01.03.02-01%2Cprogram%3A01.03.02-02%2Cprogram%3A01.03.02-03&scope=all",
       expect.objectContaining({ credentials: "include", cache: "no-store" }),
     );
   });
@@ -345,7 +345,7 @@ describe("canonical API client", () => {
     };
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const path = String(input);
-      const body = path === "/api/universities"
+      const body = path === "/api/v1/universities"
         ? { items: [university] }
         : path.endsWith("/catalog")
           ? catalog

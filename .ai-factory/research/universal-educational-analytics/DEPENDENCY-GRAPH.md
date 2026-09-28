@@ -19,12 +19,10 @@ flowchart LR
     conversation --> policy
     conversation --> responsePolicy["ResponsePolicyPort\nRuleBased / future Jev"]
     responsePolicy --> envelope["ResponseEnvelope"]
-    envelope --> telegram["Telegram adapter"]
-    envelope --> web["Web adapter"]
-    envelope --> max["Future MAX adapter"]
-    telegram --> og["Existing signed Next OG/Satori routes"]
-    web --> api["FastAPI channel-neutral API"]
-    max --> api
+    envelope --> api["Public API v1"]
+    api --> web["Web client"]
+    api --> max["Future MAX clients"]
+    api --> og["Signed server-side OG renderer"]
     api --> engine
     conversation --> admission["Existing Admission Fit / Decision services"]
     admission --> engine
@@ -41,8 +39,8 @@ flowchart LR
 | proftest `ProgramFingerprint` | decision | public-contract dependency | Candidate pipeline uses fingerprint and evidence for Content Fit | Ownership of reusable analytics projection is misplaced in proftest | `modules/decision/repository/ports.py`, `modules/decision/services/candidates.py` |
 | `CompareProgramsService` | curricula/disciplines | repository ports | Reads and aligns raw curriculum rows | Repeats basis selection and area aggregation; per-program reads can be N+1 | `modules/comparison/services/compare_programs.py`, `services/aggregation.py` |
 | `DecisionCandidatePipeline` | Recommendation + Admission Fit | typed ports | Joins content ranking and existing batch admission evaluation | Must remain intact; generic conversation should adapt to it, not reimplement admission | `modules/decision/services/candidates.py` |
-| Telegram `ProgramResolver` | `GET /programs` | HTTP + full-catalog cache | Resolves name/code tokens for compare command | Capability is transport-owned and cannot serve MAX/Web | `telegram-bot/src/andromeda_telegram/parsing/program_resolver.py` |
-| Telegram flows | OG routes | transport/render call | Chooses text vs image and requests PNG templates | Response selection is in adapter; backend lacks channel-neutral presentation contract | `telegram-bot/src/andromeda_telegram/flows/telegram.py`, `render/client.py` |
+| Public API v1 | Existing backend handlers | Versioned HTTP aliases | Exposes typed user capabilities to current/future clients | Explicit allowlist excludes admin and deprecated compatibility routes | `backend/src/andromeda/api/public_api_v1.py`, `openapi.json` |
+| Signed OG renderer | Public API v1 | Internal HTTP/render request | Builds bounded image responses from typed data | Requires an HMAC-authenticated server-side caller; it is not public API | `frontend-next/src/app/og`, `frontend-next/src/lib/server-api.ts` |
 
 ## Target edges
 
@@ -55,7 +53,7 @@ flowchart LR
 | analytics executor | repositories | internal adapter | SQLAlchemy/PostgreSQL is hidden behind analytics repository ports; no raw SQL input crosses the contract |
 | conversation | existing Admission Fit / Decision | typed adapter | Admission constraints are assembled once and delegated to existing services |
 | policy ports | Jev adapters | replaceable implementation | No Jev SDK imports in semantic/analytics/conversation domain |
-| presentation | channel adapters | `ResponseEnvelope` | Telegram/MAX/Web only serialize or render backend-owned content and actions |
+| presentation | Public API v1 clients | `ResponseEnvelope` | Clients only render backend-owned content and actions |
 
 ## Findings
 

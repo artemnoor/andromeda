@@ -19,6 +19,7 @@ from andromeda.api.request_controls import (
     enforce_trusted_origin,
     normalize_correlation_id,
 )
+from andromeda.api.public_api_v1 import register_public_api_v1_routes
 from andromeda.api.routes.admin_ops import router as admin_ops_router
 from andromeda.api.routes.admission_benefits import router as admission_benefits_router
 from andromeda.api.routes.admission_fit import router as admission_fit_router
@@ -167,6 +168,16 @@ def create_app(database_url: str | None = None) -> FastAPI:
             404: {"model": ErrorResponse},
             409: {"model": ErrorResponse},
             422: {"model": ErrorResponse},
+            429: {
+                "model": ErrorResponse,
+                "description": "Request rate limit reached",
+                "headers": {
+                    "Retry-After": {
+                        "description": "Seconds until another request may be made",
+                        "schema": {"type": "string"},
+                    }
+                },
+            },
             500: {"model": ErrorResponse},
         },
     )
@@ -348,6 +359,29 @@ def create_app(database_url: str | None = None) -> FastAPI:
     app.include_router(university_catalog_router)
     app.include_router(university_events_router)
     app.include_router(health_router)
+    register_public_api_v1_routes(
+        app,
+        (
+            admission_benefits_router,
+            admission_fit_router,
+            admissions_router,
+            analytics_router,
+            assistant_router,
+            auth_router,
+            campus_router,
+            compare_router,
+            decision_router,
+            disciplines_router,
+            events_router,
+            health_router,
+            personal_route_router,
+            proftest_router,
+            programs_router,
+            recommendations_router,
+            university_catalog_router,
+            university_events_router,
+        ),
+    )
     return app
 
 

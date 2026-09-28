@@ -80,8 +80,8 @@ These are intentional and must survive all implementation phases:
   degradable and informational gaps where a safe result remains possible.
 - Keep university-specific parsing and mapping inside ingestion adapters; do
   not leak source assumptions into university-independent domain core.
-- Keep map-agnostic events/campus boundaries and the documented single-replica
-  Telegram callback limitation until scale requirements justify shared state.
+- Keep map-agnostic events/campus boundaries and document the current
+  single-instance deployment boundary until scale requirements justify shared state.
 
 ## Verification protocol
 

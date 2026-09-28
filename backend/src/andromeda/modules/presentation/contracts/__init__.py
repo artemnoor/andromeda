@@ -1,4 +1,4 @@
-"""Presentation contracts for Telegram, MAX, Web and reports."""
+"""Channel-neutral presentation contracts and report renderers."""
 
 from .envelope import (
     EvidenceSummary,
@@ -43,7 +43,6 @@ from .policy import (
     ResponseRequest,
 )
 from .report import RenderedReport, ReportFormat, ReportRendererPort, ReportSpec
-from .transport import ChannelAdapterPort, ChannelKind, TransportInput, TransportOutput
 from .verbalization import (
     KnowledgeResponseRenderResult,
     PresentationSectionId,
@@ -56,8 +55,6 @@ from .verbalization import (
 
 __all__ = [
     "ALLOWED_RESPONSE_TEMPLATES",
-    "ChannelAdapterPort",
-    "ChannelKind",
     "ConsideredRuleView",
     "EvidenceSummary",
     "KnowledgeAnswerState",
@@ -104,6 +101,4 @@ __all__ = [
     "RuleDisposition",
     "RuleExceptionView",
     "SourceAssertionView",
-    "TransportInput",
-    "TransportOutput",
 ]

@@ -16,8 +16,8 @@ treated as pass.
 | 3 | BMSTU/HSE ingestion is reproducible | `PASS` | [source-health run 35437889399](https://github.com/artemnoor/andromeda/actions/runs/35437889399) on `b15dbe7`; BMSTU/HSE completed with typed degraded gaps and zero blocking gaps |
 | 4 | Failure, retry, recovery, and last-good state are diagnosable | `PASS` | ingestion recovery/admin-ops tests and run-ID diagnostics |
 | 5 | PostgreSQL schema, migrations, and readiness are stable | `PASS` | PostgreSQL 16 clean deployment, readiness head `0022_ingestion_concurrency`, migration suite, restore, and reversible `0022 → 0021 → 0022` check |
-| 6 | Critical rules have meaningful tests | `PASS` | [critical test matrix](../test-matrix.md), backend/frontend/Telegram suites |
-| 7 | Full CI passes from clean checkout | `PASS` | [andromeda-ci run 35437883636](https://github.com/artemnoor/andromeda/actions/runs/35437883636) on clean `b15dbe7`; backend/frontend/integration/Telegram/packaging/documentation/dependency jobs passed |
+| 6 | Critical rules have meaningful tests | `PASS` | [critical test matrix](../test-matrix.md), backend/frontend suites |
+| 7 | Full CI passes from clean checkout | `PASS` | [andromeda-ci run 35437883636](https://github.com/artemnoor/andromeda/actions/runs/35437883636) on clean `b15dbe7`; backend/frontend/integration/packaging/documentation/dependency jobs passed |
 | 8 | Production-like deployment is runnable | `PASS` | Clean `b15dbe7` images, compose PostgreSQL/backend/frontend, Caddy TLS gateway, readiness, fixture ingestion, full browser flow, and VM/systemd packaging contract |
 | 9 | Frontend loading/error/empty/stale/partial states are honest | `PASS` | `frontend-next/tests/mvp-production-flow.spec.ts`, state and responsive suites |
 | 10 | Recommendation explains evidence, uncertainty, and provenance | `PASS` | recommendation evidence/explanation tests and browser rendering |
@@ -69,7 +69,7 @@ corresponding rows.
 
 Keep all of the following with the release record:
 
-- previous backend/frontend/Telegram image tags or digests;
+- previous backend/frontend image tags or digests;
 - previous extracted VM release and the exact standalone `server.js` path;
 - applied Alembic revision and compatibility boundary;
 - encrypted PostgreSQL backup and isolated restore result;

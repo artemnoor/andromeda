@@ -27,7 +27,7 @@ from run_andromeda_bmstu import run_ingest  # noqa: E402, I001
 FIXTURE_DIR = Path(__file__).parents[1] / "fixtures" / "tracer" / "raw"
 
 
-def test_real_canonical_catalog_is_resolved_without_telegram_dependency(tmp_path: Path) -> None:
+def test_real_canonical_catalog_is_resolved_without_transport_dependency(tmp_path: Path) -> None:
     database_url = f"sqlite:///{(tmp_path / 'entity-resolution.db').as_posix()}"
     run_ingest(mode="fixture", fixture_dir=FIXTURE_DIR, database_url=database_url, program_codes=())
     engine = create_engine_for_url(database_url)

@@ -32,7 +32,7 @@ def test_provider_packages_are_confined_to_infrastructure_adapters() -> None:
 
 def test_optional_jev_adapters_do_not_leak_into_channels_or_subject_modules() -> None:
     violations: list[str] = []
-    for root in (SOURCE_ROOT / "modules", BACKEND_ROOT.parent / "telegram-bot" / "src", BACKEND_ROOT.parent / "frontend-next" / "src"):
+    for root in (SOURCE_ROOT / "modules", BACKEND_ROOT.parent / "frontend-next" / "src"):
         if not root.is_dir():
             continue
         for path in root.rglob("*.py"):

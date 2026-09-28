@@ -19,7 +19,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend-next"
-TELEGRAM = ROOT / "telegram-bot"
 
 
 def _uv_prefix() -> list[str]:
@@ -73,9 +72,52 @@ def _frontend(command_name: str, *, env: dict[str, str] | None = None) -> None:
 
 def _openapi() -> None:
     with tempfile.TemporaryDirectory(prefix="andromeda-openapi-") as temp_dir:
-        spec = Path(temp_dir) / "openapi.json"
-        _run("export OpenAPI", _backend_command("backend/scripts/export_openapi.py", "--out", str(spec)))
-        _frontend("check-api-drift", env={**os.environ, "OPENAPI_FILE": str(spec)})
+        full_spec = Path(temp_dir) / "full-openapi.json"
+        public_spec = Path(temp_dir) / "public-v1-openapi.json"
+        exporter = _backend_command("backend/scripts/export_openapi.py")
+        _run(
+            "export full OpenAPI",
+            [*exporter, "--surface", "full", "--out", str(full_spec)],
+        )
+        _run(
+            "export Public API v1 OpenAPI",
+            [*exporter, "--surface", "public-v1", "--out", str(public_spec)],
+        )
+        _frontend(
+            "check-openapi-snapshot",
+            env={
+                **os.environ,
+                "OPENAPI_FILE": str(full_spec),
+                "OPENAPI_SNAPSHOT": str(FRONTEND / "openapi.json"),
+            },
+        )
+        _frontend(
+            "check-openapi-snapshot",
+            env={
+                **os.environ,
+                "OPENAPI_FILE": str(public_spec),
+                "OPENAPI_SNAPSHOT": str(ROOT / "openapi.json"),
+            },
+        )
+        _frontend("check-api-drift", env={**os.environ, "OPENAPI_FILE": str(full_spec)})
+        _frontend(
+            "check-public-api-drift",
+            env={**os.environ, "OPENAPI_FILE": str(public_spec)},
+        )
+
+
+def _data_api() -> None:
+    _run(
+        "official DATA-API 1.0 validation",
+        _backend_command(
+            "scripts/data_api/validate_data_api.py",
+            "DATA-API.yaml",
+            "--schema",
+            "scripts/data_api/DATA-API.schema.json",
+            "--openapi",
+            "openapi.json",
+        ),
+    )
 
 
 def _docs() -> None:
@@ -217,8 +259,8 @@ def build_parser() -> argparse.ArgumentParser:
         ("ingestion", "BMSTU and HSE fixture ingestion"),
         ("postgres", "PostgreSQL integration tests using the configured test URL"),
         ("playwright", "canonical browser suite"),
-        ("telegram", "Telegram client tests and strict typing"),
-        ("openapi", "export OpenAPI and verify generated client drift"),
+        ("openapi", "export public/full OpenAPI and verify snapshot/client drift"),
+        ("data-api", "validate DATA-API.yaml with the pinned official validator"),
         ("migrations", "migration/schema regression gate"),
         ("docs", "documentation path and link audit"),
         ("deployment", "tracked Docker/VM/Caddy packaging contract"),
@@ -241,6 +283,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         # behave like the already provisioned local environment.
         _run("backend typing", _backend_command("-m", "mypy", browser=True), cwd=BACKEND)
         _openapi()
+        _data_api()
         _docs()
         _deployment_contract()
     elif args.target == "backend":
@@ -265,11 +308,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         _backend_tests("tests/integration/test_postgresql_ingestion.py", "tests/integration/test_postgresql_smoke.py", "tests/integration/test_postgresql_user_profile.py", browser=True)
     elif args.target == "playwright":
         _frontend("test:e2e", env={**os.environ, "PLAYWRIGHT_BASE_URL": os.environ.get("PLAYWRIGHT_BASE_URL", "http://127.0.0.1:3000")})
-    elif args.target == "telegram":
-        _run("Telegram tests", [sys.executable, "-m", "pytest", "-q"], cwd=TELEGRAM)
-        _run("Telegram typing", [sys.executable, "-m", "mypy", "src"], cwd=TELEGRAM)
     elif args.target == "openapi":
         _openapi()
+    elif args.target == "data-api":
+        _data_api()
     elif args.target == "migrations":
         _backend_tests("tests/infrastructure/test_alembic_migrations.py", "tests/infrastructure/test_database_config.py", browser=True)
         _migration_gate()
@@ -287,7 +329,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif args.target == "release-evidence":
         _release_evidence()
     elif args.target == "full":
-        for target in ("fast", "backend", "backend-coverage", "frontend", "frontend-coverage", "telegram", "ingestion", "migrations", "production-smoke"):
+        for target in ("fast", "backend", "backend-coverage", "frontend", "frontend-coverage", "ingestion", "migrations", "production-smoke"):
             main((target,))
     return 0
 
