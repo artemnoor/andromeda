@@ -25,7 +25,7 @@ and [the gate](release/mvp-production-level-gate.md).
 - adaptive profile как необязательный refinement-инструмент;
 - comparison summary-first и raw evidence drill-down;
 - product analytics, admin ingestion audit, events/campus там, где есть source-backed данные;
-- Web и Telegram как consumers общих backend engines.
+- Web and future MAX clients as consumers of the same channel-neutral backend API.
 
 ## Out of MVP
 
@@ -38,4 +38,4 @@ Career Fit, personal career guidance, ML ranking, validated personal Workload Re
 3. Сохранённый shortlist и final choice переживают reload и account transfer с явным conflict outcome.
 4. Missing source data не превращается в ноль и объясняется в UI.
 5. Live ingestion публикуется только после capture, parse, validation, identity и sanity checks.
-6. OpenAPI, generated frontend client, backend/frontend/fullstack/PostgreSQL/proftest/Telegram checks зелёные.
+6. OpenAPI, generated frontend client, backend/frontend/fullstack/PostgreSQL/proftest checks зелёные.

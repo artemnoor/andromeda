@@ -11,8 +11,11 @@
     "test:unit": "vitest run",
     "test:unit:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "generate-api": "node scripts/generate-api.mjs",
-    "check-api-drift": "node scripts/check-api-drift.mjs"
+    "generate-api": "node scripts/generate-api.mjs --spec openapi.json --output src/lib/generated.ts",
+    "check-api-drift": "node scripts/check-api-drift.mjs --spec openapi.json --output src/lib/generated.ts",
+    "generate-public-api": "node scripts/generate-api.mjs --spec ../openapi.json --output src/lib/public-api.generated.ts",
+    "check-public-api-drift": "node scripts/check-api-drift.mjs --spec ../openapi.json --output src/lib/public-api.generated.ts",
+    "check-openapi-snapshot": "node scripts/check-openapi-snapshot.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",
@@ -29,6 +32,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.525.0",
     "next": "^16.1.1",
+    "openapi-fetch": "0.17.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.3.1",

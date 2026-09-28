@@ -315,8 +315,6 @@ def test_query_contracts_and_response_envelopes_do_not_contain_raw_sql_or_transp
     transport_prefixes = (
         "fastapi",
         "sqlalchemy",
-        "telegram",
-        "andromeda_telegram",
         "max",
         "jev",
     )

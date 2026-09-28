@@ -14,7 +14,8 @@ flowchart LR
     analytics --> conversation["Container: Conversation engine"]
     conversation --> policies["Container: Policy ports\nRuleBased / Jev adapters"]
     conversation --> presentation["Container: Presentation contracts"]
-    presentation --> channels["Containers: Telegram / Web / MAX"]
+    presentation --> public["Container boundary: Public API v1"]
+    public --> clients["Clients: Web / future MAX"]
     canonical --> admissions["Container: Existing Admissions + Admission Fit"]
     conversation --> admissions
     canonical[("PostgreSQL / SQLite\ncanonical + derived tables")]
@@ -31,8 +32,8 @@ flowchart LR
 | Analytics engine | Typed Python application module | Validate QuerySpec, select basis, aggregate persisted metrics and return explainable result | Query/result contracts; no raw SQL input | Target module; current comparison is narrower predecessor |
 | Conversation engine | Typed session service + deterministic parser | Merge text/slots, resolve entities, ask bounded clarification, call analytics/admission | QuerySession state and typed actions | Current proftest/decision sessions are specialized predecessors |
 | Policy ports | Protocols + deterministic implementations | Choose next action and response representation; allow future Jev adapters | Versioned policy metadata, no domain state | No current generic policy port |
-| Presentation contracts | Channel-neutral contracts + report ports | Convert result into text/image/PDF/mini-app envelope and evidence actions | ResponseEnvelope/ReportSpec | Current Telegram/OG selection is transport-owned |
-| Channel adapters | FastAPI/Web, Telegram, future MAX | Transport/render envelope without business logic | Opaque channel sessions/callbacks only | `api`, `frontend-next`, `telegram-bot` |
+| Presentation contracts | Channel-neutral contracts + report ports | Convert result into text/image/PDF envelope and evidence actions | ResponseEnvelope/ReportSpec | Current response contracts are backend-owned |
+| Public API v1 | FastAPI aliases + generated client | Expose typed user operations without domain logic in transport clients | Versioned HTTP schemas | `backend/src/andromeda/api/public_api_v1.py`, `openapi.json`, `frontend-next` |
 
 ## Relationships
 
@@ -44,4 +45,4 @@ flowchart LR
 | Analytical projections | Analytics engine | Batch/SQL repository reads | Stale/partial metrics must expose status and coverage | Target model; current catalog cache is insufficient |
 | Analytics engine | Admissions | Typed candidate/filter adapter | Admission Fit must retain separate semantics and source gaps | `modules/admission_fit`, `modules/decision` |
 | Conversation engine | Analytics/policies | QuerySpec, AnalyticsResult and typed decisions | Invalid metric/entity/aggregation must return typed error/clarification | Target APIs; current routes are specialized |
-| Presentation contracts | Channels | ResponseEnvelope + actions/deep links | No transport-specific business decisions or raw evidence leakage | Current Telegram and Next OG code show migration boundary |
+| Presentation contracts | Public API v1 | ResponseEnvelope + actions/deep links | No transport-specific business decisions or raw evidence leakage | Current assistant/API and signed Next OG renderer |

@@ -80,8 +80,8 @@ validates bounded typed output, allow-listed actions/templates/metrics,
 timeouts, retries, output size and circuit state before falling back. It does
 not execute SQL or write canonical data.
 
-`ResponsePlan` and `ResponseEnvelope` are channel-neutral. Web, Telegram and
-future MAX adapters receive the same result/evidence contract; they do not
+`ResponsePlan` and `ResponseEnvelope` are channel-neutral. Web and future
+Public API v1 clients receive the same result/evidence contract; they do not
 recalculate metrics or make business decisions. See [the integration seams](architecture/integration-seams.md).
 
 ## Separate source-backed policy ontology

@@ -117,13 +117,16 @@ MAX should send an update to `POST /assistant/query`, preserve the returned
 buttons or a Mini App. It should not implement NLP, entity resolution,
 analytics, admission fit or response selection.
 
-## Telegram
+## Public client boundary
 
-Telegram is the reference transport. Free-form messages now use the same
-assistant endpoint. Existing commands and signed OG routes remain compatibility
-adapters until parity is proven. Its local store contains only an encrypted
-opaque cookie and query-session metadata; it does not become a business-state
-source of truth.
+Web currently uses the channel-neutral backend and Public API v1. A future MAX
+Bot or Mini App should call the same versioned contract; conversation state,
+entity resolution and domain decisions remain server-owned.
+
+The signed frontend `/og/*` renderer remains as a generic server-side image
+rendering capability. It fetches the same Public API v1 data and verifies
+HMAC-authenticated requests. It is not a public API operation and no current
+MAX transport is implemented.
 
 ## Web and OG
 

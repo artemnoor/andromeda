@@ -22,7 +22,7 @@ python scripts/release_evidence.py --require-clean
 worktree; сама по себе она не повышает release status.
 
 Отдельные `backend`, `backend-coverage`, `frontend`,
-`frontend-coverage`, `ingestion`, `postgres`, `playwright`, `telegram`,
+`frontend-coverage`, `ingestion`, `postgres`, `playwright`,
 `migrations`, `deployment`, `security` и `release-evidence` targets описаны в
 [test matrix](test-matrix.md). Coverage — диагностический отчёт; критические
 правила и обязательные слои перечислены там же.
@@ -110,14 +110,12 @@ python -m pytest -q tests/ingestion/test_bmstu_source_capture.py tests/ingestion
 python -m pytest -q tests/infrastructure/test_admissions_repository.py tests/infrastructure/test_alembic_migrations.py tests/api/test_andromeda_api.py
 ```
 
-Проверяется migration `0010_admission_passing_route`, backfill старых numeric rows, route/BVI round-trip, deterministic minimum/provenance, API JSON и отсутствие `null балла` в UI. OpenAPI обновляется перед drift gate:
+Проверяется migration `0010_admission_passing_route`, backfill старых numeric rows, route/BVI round-trip, deterministic minimum/provenance, API JSON и отсутствие `null балла` в UI. Public и full OpenAPI artifacts и generated clients проверяются перед frontend gates:
 
 ```powershell
-python backend/scripts/export_openapi.py --out frontend-next/openapi.json
+cd ..
+python scripts/andromeda.py openapi
 cd frontend-next
-$env:OPENAPI_FILE = "openapi.json"
-npm run generate-api
-npm run check-api-drift
 npm run test:unit
 npm run build
 ```
@@ -148,11 +146,9 @@ University admin/catalog/events slice проверяется так:
 cd backend
 python -m pytest -q tests/modules/university_admin tests/api/test_university_admin_access.py tests/api/test_university_catalog_api.py tests/api/test_university_events_api.py tests/infrastructure/test_university_admin_repository.py tests/infrastructure/test_university_catalog_repository.py tests/infrastructure/test_university_catalog_query_count.py tests/infrastructure/test_university_events_repository.py tests/infrastructure/test_university_events_query_count.py tests/integration/test_university_event_projection.py tests/architecture/test_module_boundaries.py tests/infrastructure/test_alembic_migrations.py
 python -m mypy src/andromeda
-python scripts/export_openapi.py --out ../frontend-next/openapi.json
-cd ../frontend-next
-$env:OPENAPI_FILE = "openapi.json"
-npm run generate-api
-npm run check-api-drift
+cd ..
+python scripts/andromeda.py openapi
+cd frontend-next
 npx tsc --noEmit
 npm run lint
 npm run test:unit
@@ -182,8 +178,8 @@ python -m pytest -q tests/modules/personal_route tests/api/test_personal_route_a
 ```powershell
 cd frontend-next
 npm run build
-$env:OPENAPI_FILE="openapi.json"
 npm run check-api-drift
+npm run check-public-api-drift
 npm run test:unit
 npm run test:e2e
 ```
@@ -193,6 +189,45 @@ E2E-тест использует стабильные `data-testid`, сохра
 ```powershell
 python backend/scripts/run_andromeda_demo.py --mode fixture
 ```
+
+## Public API OpenAPI and DATA-API
+
+Корневой [`openapi.json`](../openapi.json) — canonical Public API v1 contract;
+`frontend-next/openapi.json` содержит full-app/internal endpoints. Генерация и
+drift workflow:
+
+```powershell
+python backend/scripts/export_openapi.py --surface public-v1 --out openapi.json
+python backend/scripts/export_openapi.py --surface full --out frontend-next/openapi.json
+cd frontend-next
+npm run generate-public-api
+npm run generate-api
+cd ..
+python scripts/andromeda.py openapi
+```
+
+Последняя команда сравнивает backend exports, оба checked-in snapshots и оба
+generated clients. Официальный DATA-API validator vendored без изменений из
+`stasnorman/example-data-api` commit
+`8504a6d9b39e6f652bce689d96e88538d7541c6b`; запуск:
+
+```powershell
+python scripts/andromeda.py data-api
+```
+
+Прямая команда вызывает тот же upstream script/schema:
+
+```powershell
+uv run --project backend --locked --extra dev python scripts/data_api/validate_data_api.py DATA-API.yaml --schema scripts/data_api/DATA-API.schema.json --openapi openapi.json
+```
+
+Validator сверяет DATA-API 1.0 schema, переменные/check dependencies и
+OpenAPI paths/methods; он не отправляет HTTP requests. В YAML оставлен
+HTTPS `.example` base URL, который нужно заменить реальным deployed URL перед
+live organizer-side проверкой. Validator и schema сохранены без изменений из
+`stasnorman/example-data-api` commit
+`8504a6d9b39e6f652bce689d96e88538d7541c6b`; upstream provenance и SHA-256
+сохранены в [`scripts/data_api/UPSTREAM.md`](../scripts/data_api/UPSTREAM.md).
 
 Recommendation tests дополнительно проверяют strict contracts и module boundary, неизменность детерминированного ranking, tie-break по коду, монотонный anti-interest penalty, evidence-backed explanations, пять synthetic personas, empty catalog и DB → catalog adapter → service → API путь. Versioned corpus `tests/fixtures/recommendations/regression-v1.json` и `tests/modules/recommendations/test_regression_corpus.py` добавляют replay-кейсы для `content-fit.v1`: top-level thematic fit, anti-interest exclusions, source-gap degradation, explicit unknown reasons, metamorphic axis isolation и stable tie-break. Corpus не утверждает predictive accuracy и должен обновляться только вместе с policy/taxonomy review.
 
@@ -289,7 +324,7 @@ Next unit-тесты проверяют API mapping/error/timeout contracts, а 
 
 GitHub Actions запускает backend tests/mypy/architecture/coverage, canonical
 Next contract/unit/coverage/lint/build gates, fixture smoke и Chromium E2E.
-Отдельные jobs проверяют migrations, PostgreSQL, proftest, Telegram,
+Отдельные jobs проверяют migrations, PostgreSQL, proftest,
 dependency audit, документацию и Docker packaging. `postgresql-integration`
 поднимает disposable PostgreSQL 16 service, применяет Alembic к пустой базе,
 прогоняет BMSTU fixture → API → `frontend-next` и выполняет PostgreSQL-backed
@@ -329,7 +364,7 @@ The source-backed analytics slice has deterministic fixtures for metric
 resolution and comparison, grouped mean by university, bounded ranking and
 filtering, evidence/basis/coverage explanations, admission clarification with
 no redundant questions, Jev unavailable/timeout/malformed-output fallback,
-and ResponsePlan transport conformance for Web, Telegram and future MAX.
+and ResponsePlan conformance for Web and future clients of Public API v1.
 
 ```powershell
 python backend/scripts/evaluate_decision_model.py

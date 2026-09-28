@@ -90,7 +90,7 @@ class DecisionService:
         """Apply one current refinement option to preferences and re-rank.
 
         The question is read again immediately before the write.  This makes
-        stale Telegram callbacks fail closed and guarantees that a refinement
+        stale client revisions fail closed and guarantees that a refinement
         cannot mutate the explicit shortlist or decision revision.
         """
 

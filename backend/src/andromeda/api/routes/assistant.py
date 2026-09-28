@@ -1,4 +1,4 @@
-"""Generic conversation endpoint for Web, Telegram and future MAX adapters."""
+"""Channel-neutral conversation endpoint for supported client applications."""
 
 from __future__ import annotations
 

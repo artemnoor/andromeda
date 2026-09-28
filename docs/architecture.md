@@ -18,11 +18,9 @@ Next standalone и запускается deployment-описаниями из `
 `NEXT_PUBLIC_API_BASE_URL` в local demo. Исторический exploratory Spike
 retired и не является runtime/package частью проекта.
 
-`telegram-bot` — отдельный aiogram transport package, а не новый domain
-модуль и не второй backend. Он вызывает только public HTTP API и подписанные
-server-only `/og/*` routes `frontend-next`; его локальная SQLite хранит лишь
-зашифрованные opaque session cookies. Схема взаимодействия и deployment
-описаны в [Telegram-клиенте](telegram-bot.md).
+Public API v1 is the stable boundary for Web and future external clients,
+including MAX Bot and Mini App. It aliases existing FastAPI handlers; clients
+do not own domain logic or access internal operator routes.
 
 OpenAPI экспортируется backend script и генерирует единственный client в
 `frontend-next`. Production proftest находится в
@@ -178,12 +176,12 @@ membership и возвращается как безопасный 404.
 ## Universal analytics boundary
 
 Универсальные содержательные вопросы проходят через отдельные bounded
-contexts, не принадлежащие Telegram или конкретной модели:
+contexts, не принадлежащие клиентскому transport-у или конкретной модели:
 
 ```text
 ingestion → canonical storage → semantic → projections
           → analytics (QuerySpec) → conversation/policies
-          → ResponseEnvelope → Telegram / Web / MAX
+          → ResponseEnvelope → Public API v1 → Web / future MAX clients
 ```
 
 `semantic`, `analytics`, `entity_resolution`, `conversation` и `presentation`
@@ -220,7 +218,7 @@ backend:
            ↘ optional TypeSafe production adapter
            ↘ shadow evaluation
       → AnalyticsResult / ResponsePlan / ResponseEnvelope
-      → Web / OG / Telegram / future MAX
+      → Web / OG / future MAX clients
 
 The normal factual path is deterministic and source-backed. A Jev adapter may
 answer only bounded control questions such as intent, metric, next action,

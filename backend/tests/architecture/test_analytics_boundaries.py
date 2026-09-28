@@ -19,8 +19,6 @@ FORBIDDEN_IMPORT_PREFIXES = (
     "andromeda.composition",
     "andromeda.infrastructure",
     "andromeda.ingestion",
-    "telegram",
-    "andromeda_telegram",
     "jev",
     "max",
     "sqlalchemy",

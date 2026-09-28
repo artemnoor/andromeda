@@ -16,15 +16,15 @@ flowchart LR
   recommendations --> decision
   canonical --> api[FastAPI routes]
   decision --> api
-  api --> telegram[Telegram]
-  api --> web[Web and OG routes]
+  api --> public[Public API v1]
+  public --> clients[Web / future MAX clients]
 ```
 
 ## Known direction risks
 
 - `ProgramFingerprint` принадлежит `proftest`, хотя его данные переиспользуются recommendations и decision.
 - Comparison и proftest имеют пересекающуюся workload/area aggregation логику.
-- Telegram владеет program resolution, session flow и выбором text/image.
+- External clients must not own program resolution, session flow or decision rules.
 - OG routes имеют presentation-specific fetching/rendering boundary.
 - Runtime catalog fingerprint building не масштабируется на 5,000+ программ.
 
@@ -43,7 +43,8 @@ flowchart LR
   conversation --> admission[Existing Admission Fit and Decision]
   engine --> response[ResponsePolicyPort]
   response --> envelope[ResponseEnvelope]
-  envelope --> channels[Telegram / Web / MAX]
+  envelope --> public[Public API v1]
+  public --> clients[Web / future MAX clients]
 ```
 
 ## Enforced rules
@@ -52,5 +53,5 @@ flowchart LR
 2. Subject modules import another subject only through `contracts.public` or `repository.ports`.
 3. ORM, SQLAlchemy, FastAPI, ingestion adapters and channel SDKs stay outside subject modules.
 4. Query inputs are typed `QuerySpec` values; neither Jev, LLM nor a channel can submit raw SQL.
-5. Policies return typed decisions and response envelopes; channel adapters serialize/render them without owning business logic.
+5. Policies return typed decisions and response envelopes; clients render them without owning business logic.
 6. Jev and MAX are optional adapters. Their absence must not disable deterministic implementations or analytics domain tests.

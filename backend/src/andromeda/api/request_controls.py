@@ -109,7 +109,7 @@ def enforce_trusted_origin(request: Request, settings: Settings) -> None:
 def rate_limit_policy(request: Request, settings: Settings) -> RateLimitPolicy | None:
     if request.method not in _MUTATING_METHODS:
         return None
-    path = request.url.path
+    path = _legacy_api_path(request.url.path)
     if path in _AUTH_RATE_LIMITED_PATHS:
         return RateLimitPolicy("auth", settings.auth_rate_limit_max)
     if path.startswith("/ops/"):
@@ -124,9 +124,21 @@ def enforce_rate_limit(request: Request, limiter: SlidingWindowRateLimiter, sett
     if policy is None:
         return
     client_host = request.client.host if request.client is not None else "unknown"
-    key = f"{policy.key_prefix}:{client_host}:{request.method}:{request.url.path}"
+    path = _legacy_api_path(request.url.path)
+    key = f"{policy.key_prefix}:{client_host}:{request.method}:{path}"
     if not limiter.allow(key, policy.limit):
         raise RateLimitError()
+
+
+def _legacy_api_path(path: str) -> str:
+    """Map only the public v1 prefix to its legacy path for shared policies."""
+
+    prefix = "/api/v1"
+    if path == prefix:
+        return "/"
+    if path.startswith(f"{prefix}/"):
+        return path[len(prefix) :]
+    return path
 
 
 __all__ = [

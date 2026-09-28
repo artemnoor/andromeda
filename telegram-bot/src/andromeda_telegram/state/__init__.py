@@ -1,1 +1,0 @@
-"""Bot-local transport state."""

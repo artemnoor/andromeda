@@ -79,7 +79,6 @@ class DecisionAnalyticsSource(StrEnum):
     SUGGESTION = "suggestion"
     PROFTEST = "proftest"
     SYSTEM = "system"
-    TELEGRAM = "telegram"
 
 
 class DecisionAnalyticsAction(StrEnum):

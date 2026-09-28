@@ -11,14 +11,26 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT / "src"))
 
 from andromeda.api.main import create_app
+from andromeda.api.public_api_v1 import project_public_api_v1_openapi
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--surface", choices=("full", "public-v1"), default="full"
+    )
     args = parser.parse_args()
+    app = create_app("sqlite:///:memory:")
+    document = (
+        project_public_api_v1_openapi(app)
+        if args.surface == "public-v1"
+        else app.openapi()
+    )
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(create_app("sqlite:///:memory:").openapi(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.out.write_text(
+        json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(args.out)
     return 0
 

@@ -242,7 +242,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
   }
 
   try {
-    const response = await fetch(`${apiBaseUrl}${path}`, {
+    const response = await fetch(getApiRequestUrl(path, apiBaseUrl), {
       ...init,
       credentials: "include",
       cache: "no-store",
@@ -280,6 +280,19 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
   } finally {
     globalThis.clearTimeout(timeout);
   }
+}
+
+function _requestPath(apiBaseUrl: string, path: string): string {
+  if (path.startsWith("/ops/") || path.startsWith("/university-admin/")) return path;
+  if (path.startsWith("/api/v1/")) return path;
+
+  const versionedPath = `/api/v1${path}`;
+  const proxyBase = apiBaseUrl.endsWith("/api");
+  return proxyBase ? versionedPath.slice("/api".length) : versionedPath;
+}
+
+export function getApiRequestUrl(path: string, apiBaseUrl = getApiBaseUrl()): string {
+  return `${apiBaseUrl}${_requestPath(apiBaseUrl, path)}`;
 }
 
 function numberOrNull(value: unknown): number | null {
