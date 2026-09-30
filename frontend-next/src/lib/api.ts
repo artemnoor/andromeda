@@ -998,6 +998,8 @@ export function getComparisonSummary(
 }
 
 type ApiDecisionCommandResponse = ApiDecisionMutation;
+type ApiAdmissionBenefits = paths["/universities/{university_id}/admission-benefits"]["get"]["responses"][200]["content"]["application/json"];
+type ApiApplicantProfileUpdate = NonNullable<paths["/decision/applicant-profile"]["put"]["requestBody"]>["content"]["application/json"];
 
 function mapDecisionMutation(raw: ApiDecisionCommandResponse): DecisionMutationResponse {
   return { ...raw, context: normalizeDecisionContext(raw.context) };
@@ -1013,6 +1015,16 @@ export function getDecisionContext(): Promise<DecisionContextData> {
 
 export function getDecisionSuggestions(): Promise<DecisionSuggestionsData> {
   return requestJson<ApiDecisionSuggestions>("/decision/suggestions").then(normalizeDecisionSuggestions);
+}
+
+export function getUniversityAdmissionBenefits(universityId: string, year: number): Promise<ApiAdmissionBenefits> {
+  const query = new URLSearchParams({ year: String(year) });
+  return requestJson<ApiAdmissionBenefits>("/universities/" + encodeURIComponent(universityId) + "/admission-benefits?" + query);
+}
+
+export function updateDecisionApplicantProfile(profile: components["schemas"]["ApplicantOnboardingProfileApi-Input"], expectedRevision?: number | null): Promise<DecisionMutationResponse> {
+  const payload: ApiApplicantProfileUpdate = { version: 1, profile, expectedRevision };
+  return requestJson<ApiDecisionCommandResponse>("/decision/applicant-profile", { method: "PUT", body: JSON.stringify(payload) }).then(mapDecisionMutation);
 }
 
 export function updateDecisionConstraints(request: DecisionConstraintsUpdateRequest): Promise<DecisionMutationResponse> {

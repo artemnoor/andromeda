@@ -16,6 +16,7 @@ from andromeda.modules.universities.contracts.public import Direction, Universit
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel, SourceKind
 from andromeda.shared.contracts.errors import ContractError, ErrorCode, ErrorDetail
 from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
+from andromeda.ingestion.provenance import merge_source_attributions
 
 from ..identity import direction_codes
 
@@ -337,7 +338,7 @@ def _append_curriculum_item(items: list[CurriculumItem], item: CurriculumItem) -
                 "is_elective": existing.is_elective if existing.is_elective is not None else item.is_elective,
                 "course_block": existing.course_block if existing.course_block is not None else item.course_block,
                 "practice_type": existing.practice_type if existing.practice_type is not None else item.practice_type,
-                "provenance": tuple(dict.fromkeys((*existing.provenance, *item.provenance))),
+                "provenance": merge_source_attributions(existing.provenance, item.provenance),
             }
         )
         logger.warning(

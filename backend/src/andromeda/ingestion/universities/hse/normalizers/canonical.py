@@ -16,6 +16,7 @@ from andromeda.modules.universities.contracts.public import Direction, Universit
 from andromeda.shared.contracts.enums import AssessmentType, EducationLevel, SourceKind
 from andromeda.shared.contracts.errors import ContractError, ErrorCode, ErrorDetail
 from andromeda.shared.contracts.provenance import SourceAttribution, SourceGapReference
+from andromeda.ingestion.provenance import merge_source_attributions
 
 from ..identity import direction_codes
 
@@ -73,7 +74,7 @@ def _append(items: list[CurriculumItem], item: CurriculumItem) -> None:
     for index, current in enumerate(items):
         if (current.discipline_id, current.semester) != (item.discipline_id, item.semester):
             continue
-        items[index] = current.model_copy(update={"hours": max(current.hours, item.hours), "credits": current.credits if current.credits is not None else item.credits, "source_position": min(value for value in (current.source_position, item.source_position) if value is not None) if current.source_position is not None or item.source_position is not None else None, "lecture_hours": current.lecture_hours if current.lecture_hours is not None else item.lecture_hours, "practice_hours": current.practice_hours if current.practice_hours is not None else item.practice_hours, "lab_hours": current.lab_hours if current.lab_hours is not None else item.lab_hours, "self_study_hours": current.self_study_hours if current.self_study_hours is not None else item.self_study_hours, "is_elective": current.is_elective if current.is_elective is not None else item.is_elective, "course_block": current.course_block if current.course_block is not None else item.course_block, "practice_type": current.practice_type if current.practice_type is not None else item.practice_type, "provenance": tuple(dict.fromkeys((*current.provenance, *item.provenance)))})
+        items[index] = current.model_copy(update={"hours": max(current.hours, item.hours), "credits": current.credits if current.credits is not None else item.credits, "source_position": min(value for value in (current.source_position, item.source_position) if value is not None) if current.source_position is not None or item.source_position is not None else None, "lecture_hours": current.lecture_hours if current.lecture_hours is not None else item.lecture_hours, "practice_hours": current.practice_hours if current.practice_hours is not None else item.practice_hours, "lab_hours": current.lab_hours if current.lab_hours is not None else item.lab_hours, "self_study_hours": current.self_study_hours if current.self_study_hours is not None else item.self_study_hours, "is_elective": current.is_elective if current.is_elective is not None else item.is_elective, "course_block": current.course_block if current.course_block is not None else item.course_block, "practice_type": current.practice_type if current.practice_type is not None else item.practice_type, "provenance": merge_source_attributions(current.provenance, item.provenance)})
         return
     items.append(item)
 

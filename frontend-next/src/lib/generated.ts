@@ -951,6 +951,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/decision/applicant-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Applicant Profile */
+        put: operations["update_applicant_profile_decision_applicant_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/decision/considered": {
         parameters: {
             query?: never;
@@ -3328,6 +3345,24 @@ export interface components {
             /** Scores */
             scores?: components["schemas"]["ApplicantSubjectScoreRequest"][];
         };
+        /** ApplicantExamPlanApi */
+        "ApplicantExamPlanApi-Input": {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score?: (number | string) | null;
+            /** Scorecertainty */
+            scoreCertainty?: ("known" | "estimated") | null;
+        };
+        /** ApplicantExamPlanApi */
+        "ApplicantExamPlanApi-Output": {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score?: string | null;
+            /** Scorecertainty */
+            scoreCertainty?: ("known" | "estimated") | null;
+        };
         /** ApplicantExamScore */
         ApplicantExamScore: {
             /** Subject */
@@ -3417,6 +3452,72 @@ export interface components {
             gradeOrClass?: string | null;
             /** Evidencereference */
             evidenceReference?: string | null;
+        };
+        /** ApplicantOlympiadResultApi */
+        ApplicantOlympiadResultApi: {
+            /** Olympiadid */
+            olympiadId: string;
+            /** Olympiadprofileid */
+            olympiadProfileId?: string | null;
+            resultType?: components["schemas"]["OlympiadResultType"] | null;
+            /** Resultyear */
+            resultYear?: number | null;
+            /** Gradeorclass */
+            gradeOrClass?: string | null;
+        };
+        /** ApplicantOnboardingProfileApi */
+        "ApplicantOnboardingProfileApi-Input": {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /**
+             * Grade
+             * @enum {integer}
+             */
+            grade: 8 | 9 | 10 | 11;
+            /** Plannedegesubjects */
+            plannedEgeSubjects: string[];
+            /** Examscores */
+            examScores?: components["schemas"]["ApplicantExamPlanApi-Input"][];
+            /** Olympiadresults */
+            olympiadResults?: components["schemas"]["ApplicantOlympiadResultApi"][];
+            /** Individualachievements */
+            individualAchievements?: string[];
+            /**
+             * Quotapreference
+             * @enum {string}
+             */
+            quotaPreference: "special" | "separate" | "unsure" | "none";
+        };
+        /** ApplicantOnboardingProfileApi */
+        "ApplicantOnboardingProfileApi-Output": {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /**
+             * Grade
+             * @enum {integer}
+             */
+            grade: 8 | 9 | 10 | 11;
+            /** Plannedegesubjects */
+            plannedEgeSubjects: string[];
+            /** Examscores */
+            examScores?: components["schemas"]["ApplicantExamPlanApi-Output"][];
+            /** Olympiadresults */
+            olympiadResults?: components["schemas"]["ApplicantOlympiadResultApi"][];
+            /** Individualachievements */
+            individualAchievements?: string[];
+            /**
+             * Quotapreference
+             * @enum {string}
+             */
+            quotaPreference: "special" | "separate" | "unsure" | "none";
         };
         /**
          * ApplicantSubjectScore
@@ -4528,6 +4629,18 @@ export interface components {
          * @enum {string}
          */
         DecisionAnalyticsStatus: "realistic" | "borderline" | "unlikely" | "insufficient_data" | "available" | "provided" | "cleared" | "started" | "completed" | "unknown";
+        /** DecisionApplicantProfileUpdateRequest */
+        DecisionApplicantProfileUpdateRequest: {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            profile: components["schemas"]["ApplicantOnboardingProfileApi-Input"];
+            /** Expectedrevision */
+            expectedRevision?: number | null;
+        };
         /** DecisionApplicantRequest */
         DecisionApplicantRequest: {
             /**
@@ -4835,6 +4948,7 @@ export interface components {
              */
             version: 1;
             admissionConstraints?: components["schemas"]["DecisionConstraintsResponse"] | null;
+            applicantProfile?: components["schemas"]["ApplicantOnboardingProfileApi-Output"] | null;
             choice: components["schemas"]["DecisionChoiceResponse"];
             /** Selectedprogramid */
             selectedProgramId?: string | null;
@@ -14686,6 +14800,104 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DecisionConstraintsUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request rate limit reached */
+            429: {
+                headers: {
+                    /** @description Seconds until another request may be made */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_applicant_profile_decision_applicant_profile_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionApplicantProfileUpdateRequest"];
             };
         };
         responses: {

@@ -11,6 +11,7 @@ from andromeda.shared.contracts.ids import ProgramId
 
 from ..domain.entities import AdmissionConstraints
 from ..domain.values import ShortlistRole
+from .applicant_profile import ApplicantOnboardingProfile
 
 
 class DecisionConstraintsUpdate(ContractModel):
@@ -22,6 +23,14 @@ class DecisionConstraintsUpdate(ContractModel):
 
     version: Literal[1] = 1
     constraints: AdmissionConstraints | None
+    expected_revision: int | None = Field(default=None, strict=True, ge=1)
+
+
+class DecisionApplicantProfileUpdate(ContractModel):
+    """Save the user's intake questionnaire independently from other constraints."""
+
+    version: Literal[1] = 1
+    profile: ApplicantOnboardingProfile
     expected_revision: int | None = Field(default=None, strict=True, ge=1)
 
 
@@ -62,6 +71,7 @@ class DecisionRefinementAnswer(ContractModel):
 
 __all__ = [
     "DecisionConstraintsUpdate",
+    "DecisionApplicantProfileUpdate",
     "DecisionRefinementAnswer",
     "ProgramCommand",
     "ShortlistCommand",

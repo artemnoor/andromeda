@@ -13,7 +13,16 @@ from .analytics import (
     DecisionAnalyticsSource,
     DecisionAnalyticsStatus,
 )
-from .requests import DecisionConstraintsUpdate, DecisionRefinementAnswer, ProgramCommand, ShortlistCommand, ShortlistRoleCommand, SuggestionDecisionCommand
+from .applicant_profile import ApplicantExamPlan, ApplicantOnboardingProfile, ApplicantOlympiadResult
+from .requests import (
+    DecisionApplicantProfileUpdate,
+    DecisionConstraintsUpdate,
+    DecisionRefinementAnswer,
+    ProgramCommand,
+    ShortlistCommand,
+    ShortlistRoleCommand,
+    SuggestionDecisionCommand,
+)
 from .results import (
     DecisionCandidatePartition,
     DecisionConstraintApplicability,
@@ -45,6 +54,9 @@ from ..repository.ports import (
 __all__ = [
     "AnalyticsToken",
     "AdmissionConstraints",
+    "ApplicantExamPlan",
+    "ApplicantOnboardingProfile",
+    "ApplicantOlympiadResult",
     "AdmissionGate",
     "DecisionCandidatePartition",
     "DecisionConstraintApplicability",
@@ -65,6 +77,7 @@ __all__ = [
     "DecisionAnalyticsReader",
     "DecisionAnalyticsWriter",
     "DecisionConstraintsUpdate",
+    "DecisionApplicantProfileUpdate",
     "DecisionContext",
     "DecisionContextMetadata",
     "DecisionContextRepository",

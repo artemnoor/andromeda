@@ -14,12 +14,13 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from andromeda.modules.admission_fit.contracts.public import ApplicantAdmissionProfile
+from andromeda.modules.admission_fit.contracts.public import ApplicantAdmissionProfile, ApplicantSubjectScore
 from andromeda.modules.admissions.contracts.public import FundingType, StudyForm
 from andromeda.modules.proftest.contracts.public import UserProfile
 from andromeda.shared.contracts.base import ContractModel
 from andromeda.shared.contracts.ids import EducationYear, NonEmptyText, ProgramId, ShortText
 
+from ..contracts.applicant_profile import ApplicantOnboardingProfile
 from .values import DecisionId, DecisionSourceKind, DecisionStatus, ShortlistEntryState, ShortlistRole
 
 
@@ -292,6 +293,7 @@ class DecisionState(ContractModel):
 
     version: Literal[1] = 1
     admission_constraints: AdmissionConstraints | None = None
+    applicant_profile: ApplicantOnboardingProfile | None = None
     choice: DecisionChoice = Field(default_factory=DecisionChoice)
     selected_program_id: ProgramId | None = None
     selected_at: datetime | None = None
@@ -320,7 +322,7 @@ class DecisionState(ContractModel):
 
     @property
     def status(self) -> DecisionStatus:
-        if self.admission_constraints is None and not self.choice.considered_program_ids and not self.choice.shortlist_entries and not self.explicit_priorities:
+        if self.applicant_profile is None and self.admission_constraints is None and not self.choice.considered_program_ids and not self.choice.shortlist_entries and not self.explicit_priorities:
             return DecisionStatus.EMPTY
         if self.selected_program_id is not None:
             return DecisionStatus.FINALIZED
@@ -333,6 +335,7 @@ class DecisionState(ContractModel):
         return self.__class__(
             version=self.version,
             admission_constraints=self.admission_constraints,
+            applicant_profile=self.applicant_profile,
             choice=choice,
             selected_program_id=self.selected_program_id,
             selected_at=self.selected_at,
@@ -347,6 +350,31 @@ class DecisionState(ContractModel):
         return self.__class__(
             version=self.version,
             admission_constraints=constraints,
+            applicant_profile=self.applicant_profile,
+            choice=self.choice,
+            selected_program_id=self.selected_program_id,
+            selected_at=self.selected_at,
+            explicit_priorities=self.explicit_priorities,
+            revision=self.revision + 1,
+            created_at=self.created_at,
+            updated_at=now,
+        )
+
+    def with_applicant_profile(self, profile: ApplicantOnboardingProfile, *, now: datetime) -> DecisionState:
+        """Persist intake answers and project only reported scores to Admission Fit."""
+        _ensure_aware(now)
+        scores = tuple(
+            ApplicantSubjectScore(subject=exam.subject, score=exam.score)
+            for exam in profile.exam_scores
+            if exam.score is not None
+        )
+        applicant = ApplicantAdmissionProfile(scores=scores)
+        constraints = self.admission_constraints or AdmissionConstraints()
+        constraints = constraints.model_copy(update={"applicant": applicant})
+        return self.__class__(
+            version=self.version,
+            admission_constraints=constraints,
+            applicant_profile=profile,
             choice=self.choice,
             selected_program_id=self.selected_program_id,
             selected_at=self.selected_at,
@@ -365,6 +393,7 @@ class DecisionState(ContractModel):
         return self.__class__(
             version=self.version,
             admission_constraints=self.admission_constraints,
+            applicant_profile=self.applicant_profile,
             choice=self.choice,
             selected_program_id=program_id,
             selected_at=now,
@@ -381,6 +410,7 @@ class DecisionState(ContractModel):
         return self.__class__(
             version=self.version,
             admission_constraints=self.admission_constraints,
+            applicant_profile=self.applicant_profile,
             choice=self.choice,
             selected_program_id=None,
             selected_at=None,

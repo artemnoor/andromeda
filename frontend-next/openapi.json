@@ -7453,6 +7453,125 @@
         }
       }
     },
+    "/decision/applicant-profile": {
+      "put": {
+        "tags": [
+          "decision"
+        ],
+        "summary": "Update Applicant Profile",
+        "operationId": "update_applicant_profile_decision_applicant_profile_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionApplicantProfileUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionMutationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Request rate limit reached",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until another request may be made",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/decision/considered": {
       "post": {
         "tags": [
@@ -23766,6 +23885,107 @@
         "type": "object",
         "title": "ApplicantAdmissionProfileRequest"
       },
+      "ApplicantExamPlanApi-Input": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                  }
+                ],
+                "decimal_places": 2,
+                "ge": "0",
+                "le": "100",
+                "max_digits": 5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "scoreCertainty": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "known",
+                  "estimated"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scorecertainty"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject"
+        ],
+        "title": "ApplicantExamPlanApi"
+      },
+      "ApplicantExamPlanApi-Output": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "decimal_places": 2,
+                "ge": "0",
+                "le": "100",
+                "max_digits": 5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "scoreCertainty": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "known",
+                  "estimated"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scorecertainty"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject"
+        ],
+        "title": "ApplicantExamPlanApi"
+      },
       "ApplicantExamScore": {
         "properties": {
           "subject": {
@@ -24169,6 +24389,208 @@
           "resultType"
         ],
         "title": "ApplicantOlympiadAchievementRequest"
+      },
+      "ApplicantOlympiadResultApi": {
+        "properties": {
+          "olympiadId": {
+            "type": "string",
+            "title": "Olympiadid"
+          },
+          "olympiadProfileId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Olympiadprofileid"
+          },
+          "resultType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OlympiadResultType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resultYear": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 2000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resultyear"
+          },
+          "gradeOrClass": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gradeorclass"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "olympiadId"
+        ],
+        "title": "ApplicantOlympiadResultApi"
+      },
+      "ApplicantOnboardingProfileApi-Input": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "grade": {
+            "type": "integer",
+            "enum": [
+              8,
+              9,
+              10,
+              11
+            ],
+            "title": "Grade"
+          },
+          "plannedEgeSubjects": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Plannedegesubjects"
+          },
+          "examScores": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantExamPlanApi-Input"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Examscores"
+          },
+          "olympiadResults": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantOlympiadResultApi"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Olympiadresults"
+          },
+          "individualAchievements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Individualachievements"
+          },
+          "quotaPreference": {
+            "type": "string",
+            "enum": [
+              "special",
+              "separate",
+              "unsure",
+              "none"
+            ],
+            "title": "Quotapreference"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "grade",
+          "plannedEgeSubjects",
+          "quotaPreference"
+        ],
+        "title": "ApplicantOnboardingProfileApi"
+      },
+      "ApplicantOnboardingProfileApi-Output": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "grade": {
+            "type": "integer",
+            "enum": [
+              8,
+              9,
+              10,
+              11
+            ],
+            "title": "Grade"
+          },
+          "plannedEgeSubjects": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Plannedegesubjects"
+          },
+          "examScores": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantExamPlanApi-Output"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Examscores"
+          },
+          "olympiadResults": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantOlympiadResultApi"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Olympiadresults"
+          },
+          "individualAchievements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Individualachievements"
+          },
+          "quotaPreference": {
+            "type": "string",
+            "enum": [
+              "special",
+              "separate",
+              "unsure",
+              "none"
+            ],
+            "title": "Quotapreference"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "grade",
+          "plannedEgeSubjects",
+          "quotaPreference"
+        ],
+        "title": "ApplicantOnboardingProfileApi"
       },
       "ApplicantSubjectScore": {
         "properties": {
@@ -27634,6 +28056,37 @@
         ],
         "title": "DecisionAnalyticsStatus"
       },
+      "DecisionApplicantProfileUpdateRequest": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ApplicantOnboardingProfileApi-Input"
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedrevision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile"
+        ],
+        "title": "DecisionApplicantProfileUpdateRequest"
+      },
       "DecisionApplicantRequest": {
         "properties": {
           "version": {
@@ -28602,6 +29055,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/DecisionConstraintsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicantProfile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApplicantOnboardingProfileApi-Output"
               },
               {
                 "type": "null"
