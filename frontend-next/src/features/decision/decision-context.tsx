@@ -16,6 +16,7 @@ import {
   selectDecisionFinalChoice as apiSelectDecisionFinalChoice,
   setDecisionShortlistRole as apiSetDecisionShortlistRole,
   updateDecisionConstraints as apiUpdateDecisionConstraints,
+  updateDecisionApplicantProfile as apiUpdateDecisionApplicantProfile,
   ApiError,
   ApiTimeoutError,
 } from "@/lib/api";
@@ -23,6 +24,7 @@ import {
   normalizeDecisionContext,
   type ApiRevisionConflict,
   type DecisionConstraintsRequest,
+  type DecisionApplicantProfileRequest,
   type DecisionContextData,
   type DecisionMutationResponse,
   type DecisionShortlistEntry,
@@ -51,6 +53,7 @@ export type DecisionContextValue = {
   refreshSuggestions: () => Promise<void>;
   clearMutationError: () => void;
   updateConstraints: (constraints: DecisionConstraintsRequest | null) => Promise<DecisionMutationResponse>;
+  updateApplicantProfile: (profile: DecisionApplicantProfileRequest) => Promise<DecisionMutationResponse>;
   markConsidered: (programId: string) => Promise<DecisionMutationResponse>;
   addShortlist: (programId: string, role?: ShortlistRole) => Promise<DecisionMutationResponse>;
   removeShortlist: (programId: string) => Promise<DecisionMutationResponse>;
@@ -180,6 +183,10 @@ export function DecisionContextProvider({ children }: { children: ReactNode }) {
       runMutation((expectedRevision) => apiUpdateDecisionConstraints({ version: 1, constraints, expectedRevision })),
     [runMutation],
   );
+  const updateApplicantProfile = useCallback(
+    (profile: DecisionApplicantProfileRequest) => runMutation((expectedRevision) => apiUpdateDecisionApplicantProfile(profile, expectedRevision)),
+    [runMutation],
+  );
   const markConsidered = useCallback(
     (programId: string) => runMutation((expectedRevision) => apiMarkDecisionProgramConsidered(programId, expectedRevision)),
     [runMutation],
@@ -265,6 +272,7 @@ export function DecisionContextProvider({ children }: { children: ReactNode }) {
     refreshSuggestions,
     clearMutationError,
     updateConstraints,
+    updateApplicantProfile,
     markConsidered,
     addShortlist,
     removeShortlist,
@@ -293,6 +301,7 @@ export function DecisionContextProvider({ children }: { children: ReactNode }) {
     refreshSuggestions,
     clearMutationError,
     updateConstraints,
+    updateApplicantProfile,
     markConsidered,
     addShortlist,
     removeShortlist,

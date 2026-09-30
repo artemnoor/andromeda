@@ -316,6 +316,7 @@ export type DecisionShortlistItem = components["schemas"]["DecisionShortlistItem
 export type DecisionSuggestionsData = components["schemas"]["DecisionSuggestionsResponse"];
 export type DecisionMutationResponse = components["schemas"]["DecisionMutationResponse"];
 export type DecisionConstraintsRequest = components["schemas"]["DecisionConstraintsRequest"];
+export type DecisionApplicantProfileRequest = components["schemas"]["ApplicantOnboardingProfileApi-Input"];
 export type DecisionConstraintsUpdateRequest = components["schemas"]["DecisionConstraintsUpdateRequest"];
 export type DecisionProgramCommandRequest = components["schemas"]["DecisionProgramCommandRequest"];
 export type DecisionShortlistCommandRequest = components["schemas"]["DecisionShortlistCommandRequest"];

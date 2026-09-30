@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 import pytest
 
 from andromeda.modules.decision.domain.entities import DecisionChoice, DecisionState
 from andromeda.modules.decision.domain.values import DecisionSourceKind, ShortlistEntryState, ShortlistRole
+from andromeda.modules.decision.contracts.applicant_profile import ApplicantExamPlan, ApplicantOnboardingProfile
 
 
 NOW = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
@@ -64,6 +66,30 @@ def test_repeated_explicit_commands_are_idempotent() -> None:
         PROGRAM_A,
         now=LATER,
     )
+
+
+def test_onboarding_profile_persists_and_projects_only_entered_scores() -> None:
+    initial = DecisionState(created_at=NOW, updated_at=NOW)
+    profile = ApplicantOnboardingProfile(
+        grade=11,
+        planned_ege_subjects=("Русский язык", "Информатика"),
+        exam_scores=(
+            ApplicantExamPlan(subject="Русский язык", score=Decimal("86"), score_certainty="known"),
+            ApplicantExamPlan(subject="Информатика"),
+        ),
+        quota_preference="unsure",
+    )
+
+    updated = initial.with_applicant_profile(profile, now=LATER)
+    restored = DecisionState.model_validate(updated.model_dump(mode="json"), strict=False)
+
+    assert restored.applicant_profile == profile
+    assert restored.revision == initial.revision + 1
+    assert restored.admission_constraints is not None
+    assert restored.admission_constraints.applicant is not None
+    assert [(item.subject, item.score) for item in restored.admission_constraints.applicant.scores] == [
+        ("Русский язык", Decimal("86")),
+    ]
 
 
 def test_exclusion_is_explicit_and_does_not_create_a_shortlist_entry() -> None:

@@ -44,6 +44,44 @@ def test_decision_context_and_suggestions_are_available_without_proftest(tmp_pat
     assert first.json()["missingData"]
 
 
+def test_applicant_onboarding_profile_is_saved_in_decision_context(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    initial = client.get("/decision/context")
+    assert initial.status_code == 200, initial.text
+
+    saved = client.put(
+        "/decision/applicant-profile",
+        json={
+            "version": 1,
+            "expectedRevision": initial.json()["state"]["revision"],
+            "profile": {
+                "version": 1,
+                "grade": 11,
+                "plannedEgeSubjects": ["Русский язык", "Математика профильная"],
+                "examScores": [
+                    {"subject": "Русский язык", "score": 82, "scoreCertainty": "estimated"},
+                    {"subject": "Математика профильная", "score": None, "scoreCertainty": None},
+                ],
+                "olympiadResults": [{"olympiadId": "olympiad:sample-canonical"}],
+                "individualAchievements": ["Волонтёрская деятельность"],
+                "quotaPreference": "unsure",
+            },
+        },
+    )
+
+    assert saved.status_code == 200, saved.text
+    profile = saved.json()["context"]["state"]["applicantProfile"]
+    assert profile["grade"] == 11
+    assert profile["olympiadResults"][0]["olympiadId"] == "olympiad:sample-canonical"
+    assert profile["examScores"][0]["scoreCertainty"] == "estimated"
+    assert saved.json()["context"]["state"]["admissionConstraints"]["applicant"]["scores"] == [
+        {"subject": "Русский язык", "score": "82"},
+    ]
+
+    reloaded = client.get("/decision/context")
+    assert reloaded.json()["state"]["applicantProfile"] == profile
+
+
 def test_shortlist_mutations_use_revision_and_never_hide_explicit_choice(tmp_path: Path) -> None:
     client = _client(tmp_path)
 

@@ -10,6 +10,7 @@ from andromeda.api.schemas.decision import (
     DecisionAnalyticsAcceptedResponse,
     DecisionAnalyticsEventRequest,
     DecisionConstraintsUpdateRequest,
+    DecisionApplicantProfileUpdateRequest,
     DecisionContextResponse,
     DecisionMutationResponse,
     DecisionProgramCommandRequest,
@@ -80,6 +81,15 @@ def update_constraints(
     service: DecisionService = Depends(get_decision_service),
 ) -> DecisionMutationResponse:
     return decision_mutation_response(service.update_constraints(scope, request.to_contract()))
+
+
+@router.put("/applicant-profile", response_model=DecisionMutationResponse)
+def update_applicant_profile(
+    request: DecisionApplicantProfileUpdateRequest,
+    scope: ProfileScope = Depends(get_profile_scope),
+    service: DecisionService = Depends(get_decision_service),
+) -> DecisionMutationResponse:
+    return decision_mutation_response(service.update_applicant_profile(scope, request.to_contract()))
 
 
 @router.post("/considered", response_model=DecisionMutationResponse)

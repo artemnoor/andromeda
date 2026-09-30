@@ -12,6 +12,7 @@ from andromeda.shared.contracts.errors import AndromedaError, ConflictError, Con
 from andromeda.shared.contracts.ids import ProgramId
 
 from ..contracts.public import (
+    DecisionApplicantProfileUpdate,
     DecisionConstraintsUpdate,
     DecisionContext,
     DecisionContextMetadata,
@@ -145,6 +146,18 @@ class DecisionService:
             expected_revision=command.expected_revision,
             operation="update_constraints",
             transition=lambda state, now: state.with_constraints(command.constraints, now=now),
+        )
+
+    def update_applicant_profile(
+        self,
+        scope: ProfileScope,
+        command: DecisionApplicantProfileUpdate,
+    ) -> DecisionMutationResult:
+        return self._mutate(
+            scope,
+            expected_revision=command.expected_revision,
+            operation="update_applicant_profile",
+            transition=lambda state, now: state.with_applicant_profile(command.profile, now=now),
         )
 
     def mark_considered(self, scope: ProfileScope, command: ProgramCommand) -> DecisionMutationResult:

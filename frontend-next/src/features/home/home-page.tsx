@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader, Tag } from "@/components/shared";
 import { useDecisionContext } from "@/features/decision/decision-context";
+import { ApplicantOnboarding } from "@/features/home/applicant-onboarding";
 import type { Route } from "@/lib/router";
 
 const ENTRY_POINTS = [
@@ -39,7 +40,10 @@ const ENTRY_POINTS = [
 ] as const;
 
 export function HomePage({ navigate }: { navigate: (route: Route) => void }) {
-  const { activeShortlist, isLoading } = useDecisionContext();
+  const { context, activeShortlist, isLoading, isMutating, mutationError, updateApplicantProfile } = useDecisionContext();
+  if (!isLoading && context && !context.state.applicantProfile) {
+    return <ApplicantOnboarding onSave={updateApplicantProfile} isSaving={isMutating} error={mutationError} navigate={navigate} />;
+  }
   return (
     <div data-testid="home-page" className="space-y-8">
       <PageHeader

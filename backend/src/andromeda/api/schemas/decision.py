@@ -9,6 +9,7 @@ from typing import Annotated, Literal, TypeVar
 
 from pydantic import BeforeValidator, Field, model_validator
 
+from andromeda.modules.admission_benefits.contracts.public import OlympiadResultType
 from andromeda.modules.admission_fit.contracts.public import (
     ApplicantAdmissionProfile,
     ApplicantSubjectScore,
@@ -16,6 +17,10 @@ from andromeda.modules.admission_fit.contracts.public import (
 from andromeda.modules.admissions.contracts.public import FundingType, StudyForm
 from andromeda.modules.decision.contracts.public import (
     AdmissionConstraints,
+    ApplicantExamPlan,
+    ApplicantOnboardingProfile,
+    ApplicantOlympiadResult,
+    DecisionApplicantProfileUpdate,
     AnalyticsToken,
     DecisionAnalyticsAction,
     DecisionAnalyticsClientEvent,
@@ -121,6 +126,55 @@ JsonAnalyticsClientEventType = Annotated[
     DecisionAnalyticsClientEventType,
     BeforeValidator(_analytics_client_event_type_from_json),
 ]
+JsonOlympiadResultType = Annotated[OlympiadResultType, BeforeValidator(lambda value: _enum_from_json(OlympiadResultType, value))]
+
+
+class ApplicantExamPlanApi(ApiModel):
+    subject: str = Field(min_length=1, max_length=128)
+    score: JsonScore | None = None
+    score_certainty: Literal["known", "estimated"] | None = None
+
+
+class ApplicantOlympiadResultApi(ApiModel):
+    olympiad_id: str
+    olympiad_profile_id: str | None = None
+    result_type: JsonOlympiadResultType | None = None
+    result_year: EducationYear | None = None
+    grade_or_class: str | None = Field(default=None, max_length=64)
+
+
+class ApplicantOnboardingProfileApi(ApiModel):
+    version: Literal[1] = 1
+    grade: Literal[8, 9, 10, 11]
+    planned_ege_subjects: list[str] = Field(min_length=1, max_length=12)
+    exam_scores: list[ApplicantExamPlanApi] = Field(default_factory=list, max_length=12)
+    olympiad_results: list[ApplicantOlympiadResultApi] = Field(default_factory=list, max_length=30)
+    individual_achievements: list[str] = Field(default_factory=list, max_length=12)
+    quota_preference: Literal["special", "separate", "unsure", "none"]
+
+    def to_contract(self) -> ApplicantOnboardingProfile:
+        return ApplicantOnboardingProfile(
+            version=self.version,
+            grade=self.grade,
+            planned_ege_subjects=tuple(self.planned_ege_subjects),
+            exam_scores=tuple(ApplicantExamPlan.model_validate(item.model_dump(), strict=False) for item in self.exam_scores),
+            olympiad_results=tuple(ApplicantOlympiadResult.model_validate(item.model_dump(), strict=False) for item in self.olympiad_results),
+            individual_achievements=tuple(self.individual_achievements),
+            quota_preference=self.quota_preference,
+        )
+
+
+class DecisionApplicantProfileUpdateRequest(ApiModel):
+    version: Literal[1] = 1
+    profile: ApplicantOnboardingProfileApi
+    expected_revision: int | None = Field(default=None, alias="expectedRevision", strict=True, ge=1)
+
+    def to_contract(self) -> DecisionApplicantProfileUpdate:
+        return DecisionApplicantProfileUpdate(
+            version=self.version,
+            profile=self.profile.to_contract(),
+            expected_revision=self.expected_revision,
+        )
 
 
 class DecisionApplicantScoreRequest(ApiModel):
@@ -309,6 +363,7 @@ class DecisionChoiceResponse(ApiModel):
 class DecisionStateResponse(ApiModel):
     version: Literal[1]
     admission_constraints: DecisionConstraintsResponse | None = None
+    applicant_profile: ApplicantOnboardingProfileApi | None = None
     choice: DecisionChoiceResponse
     selected_program_id: ProgramId | None = None
     selected_at: datetime | None = None
@@ -443,6 +498,11 @@ def decision_context_response(value: DecisionContext) -> DecisionContextResponse
         state=DecisionStateResponse(
             version=state.version,
             admission_constraints=_constraints_response(state.admission_constraints),
+            applicant_profile=(
+                ApplicantOnboardingProfileApi.model_validate(state.applicant_profile.model_dump(), strict=False)
+                if state.applicant_profile is not None
+                else None
+            ),
             choice=DecisionChoiceResponse(
                 considered_program_ids=state.choice.considered_program_ids,
                 shortlist_entries=tuple(_shortlist_entry_response(item) for item in state.choice.shortlist_entries),
