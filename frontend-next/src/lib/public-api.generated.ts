@@ -1712,6 +1712,15 @@ export interface components {
             /** Scores */
             scores?: components["schemas"]["ApplicantSubjectScoreRequest"][];
         };
+        /** ApplicantExamPlanApi */
+        "ApplicantExamPlanApi-Output": {
+            /** Subject */
+            subject: string;
+            /** Score */
+            score?: string | null;
+            /** Scorecertainty */
+            scoreCertainty?: ("known" | "estimated") | null;
+        };
         /** ApplicantExamScore */
         ApplicantExamScore: {
             /** Subject */
@@ -1801,6 +1810,45 @@ export interface components {
             gradeOrClass?: string | null;
             /** Evidencereference */
             evidenceReference?: string | null;
+        };
+        /** ApplicantOlympiadResultApi */
+        ApplicantOlympiadResultApi: {
+            /** Olympiadid */
+            olympiadId: string;
+            /** Olympiadprofileid */
+            olympiadProfileId?: string | null;
+            resultType?: components["schemas"]["OlympiadResultType"] | null;
+            /** Resultyear */
+            resultYear?: number | null;
+            /** Gradeorclass */
+            gradeOrClass?: string | null;
+        };
+        /** ApplicantOnboardingProfileApi */
+        "ApplicantOnboardingProfileApi-Output": {
+            /**
+             * Version
+             * @default 1
+             * @constant
+             */
+            version: 1;
+            /**
+             * Grade
+             * @enum {integer}
+             */
+            grade: 8 | 9 | 10 | 11;
+            /** Plannedegesubjects */
+            plannedEgeSubjects: string[];
+            /** Examscores */
+            examScores?: components["schemas"]["ApplicantExamPlanApi-Output"][];
+            /** Olympiadresults */
+            olympiadResults?: components["schemas"]["ApplicantOlympiadResultApi"][];
+            /** Individualachievements */
+            individualAchievements?: string[];
+            /**
+             * Quotapreference
+             * @enum {string}
+             */
+            quotaPreference: "special" | "separate" | "unsure" | "none";
         };
         /**
          * ApplicantSubjectScore
@@ -2833,6 +2881,7 @@ export interface components {
              */
             version: 1;
             admissionConstraints?: components["schemas"]["DecisionConstraintsResponse"] | null;
+            applicantProfile?: components["schemas"]["ApplicantOnboardingProfileApi-Output"] | null;
             choice: components["schemas"]["DecisionChoiceResponse"];
             /** Selectedprogramid */
             selectedProgramId?: string | null;

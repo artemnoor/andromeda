@@ -10412,6 +10412,53 @@
         "type": "object",
         "title": "ApplicantAdmissionProfileRequest"
       },
+      "ApplicantExamPlanApi-Output": {
+        "properties": {
+          "subject": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Subject"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "decimal_places": 2,
+                "ge": "0",
+                "le": "100",
+                "max_digits": 5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "scoreCertainty": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "known",
+                  "estimated"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scorecertainty"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subject"
+        ],
+        "title": "ApplicantExamPlanApi"
+      },
       "ApplicantExamScore": {
         "properties": {
           "subject": {
@@ -10815,6 +10862,137 @@
           "resultType"
         ],
         "title": "ApplicantOlympiadAchievementRequest"
+      },
+      "ApplicantOlympiadResultApi": {
+        "properties": {
+          "olympiadId": {
+            "type": "string",
+            "title": "Olympiadid"
+          },
+          "olympiadProfileId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Olympiadprofileid"
+          },
+          "resultType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OlympiadResultType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resultYear": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 2000.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resultyear"
+          },
+          "gradeOrClass": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gradeorclass"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "olympiadId"
+        ],
+        "title": "ApplicantOlympiadResultApi"
+      },
+      "ApplicantOnboardingProfileApi-Output": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "grade": {
+            "type": "integer",
+            "enum": [
+              8,
+              9,
+              10,
+              11
+            ],
+            "title": "Grade"
+          },
+          "plannedEgeSubjects": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Plannedegesubjects"
+          },
+          "examScores": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantExamPlanApi-Output"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Examscores"
+          },
+          "olympiadResults": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicantOlympiadResultApi"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Olympiadresults"
+          },
+          "individualAchievements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Individualachievements"
+          },
+          "quotaPreference": {
+            "type": "string",
+            "enum": [
+              "special",
+              "separate",
+              "unsure",
+              "none"
+            ],
+            "title": "Quotapreference"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "grade",
+          "plannedEgeSubjects",
+          "quotaPreference"
+        ],
+        "title": "ApplicantOnboardingProfileApi"
       },
       "ApplicantSubjectScore": {
         "properties": {
@@ -13970,6 +14148,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/DecisionConstraintsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicantProfile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApplicantOnboardingProfileApi-Output"
               },
               {
                 "type": "null"
