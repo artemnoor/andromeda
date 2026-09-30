@@ -14,8 +14,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from andromeda.modules.admission_fit.contracts.public import ApplicantAdmissionProfile
-from andromeda.modules.admission_fit.domain.entities import ApplicantSubjectScore
+from andromeda.modules.admission_fit.contracts.public import ApplicantAdmissionProfile, ApplicantSubjectScore
 from andromeda.modules.admissions.contracts.public import FundingType, StudyForm
 from andromeda.modules.proftest.contracts.public import UserProfile
 from andromeda.shared.contracts.base import ContractModel
