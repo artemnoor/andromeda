@@ -18,7 +18,15 @@ npm --prefix frontend-next ci
 python backend/scripts/run_andromeda_demo.py --mode fixture --check
 ```
 
-После запуска API доступен на `http://127.0.0.1:8000/docs`, UI — на `http://127.0.0.1:3000/`. Для ручной работы уберите `--check`.
+`frontend-next` — полноценный пользовательский Mini App Andromeda: web-интерфейс на Next.js 16, React 19 и TypeScript. Метка `powershell` у блоков команд обозначает оболочку для команд разработчика.
+
+Команда с `--check` поднимает API и UI, проверяет готовность и основные сценарии, затем останавливает процессы. Для интерактивного просмотра запустите демо без `--check`:
+
+```powershell
+python backend/scripts/run_andromeda_demo.py --mode fixture
+```
+
+Во время интерактивного запуска API доступен на `http://127.0.0.1:8000/docs`, UI — на `http://127.0.0.1:3000/`; остановите его через Ctrl+C.
 
 Для обычной dev-работы используйте PostgreSQL: инструкции находятся в [руководстве PostgreSQL](docs/postgresql.md). SQLite остаётся быстрым test fallback.
 

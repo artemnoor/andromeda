@@ -12,15 +12,9 @@ contracts, repositories, migrations и BMSTU ingestion принадлежат
 capture/parser helpers после миграции находятся внутри
 `andromeda/ingestion/universities/bmstu`.
 
-Единственным production web runtime является `frontend-next`. Он собирается в
-Next standalone и запускается deployment-описаниями из `deploy/yc`; API
-доступен через same-origin `/api` в production и через явно заданный
-`NEXT_PUBLIC_API_BASE_URL` в local demo. Исторический exploratory Spike
-retired и не является runtime/package частью проекта.
+`frontend-next` — текущий полноценный пользовательский Mini App Andromeda: web-приложение на Next.js 16, React 19 и TypeScript с каталогом, страницами программ, сравнением, профилем, поступлением и пользовательским выбором. Он собирается в Next standalone и запускается deployment-описаниями из `deploy/yc`; API доступен через same-origin `/api` в production и через явно заданный `NEXT_PUBLIC_API_BASE_URL` в local demo. Исторический exploratory Spike retired и не является runtime/package частью проекта.
 
-Public API v1 is the stable boundary for Web and future external clients,
-including MAX Bot and Mini App. It aliases existing FastAPI handlers; clients
-do not own domain logic or access internal operator routes.
+Public API v1 — контракт текущего Web/Mini App клиента и внешних клиентов. MAX Bot или MAX-specific host integration могут использовать его при подключении; их transport code пока не входит в исходники репозитория. API v1 использует существующие FastAPI handlers; клиенты не владеют domain logic и не обращаются к внутренним operator routes.
 
 OpenAPI экспортируется backend script и генерирует единственный client в
 `frontend-next`. Production proftest находится в

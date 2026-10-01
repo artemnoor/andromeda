@@ -112,10 +112,13 @@ policy callsite is implied here.
 
 ## MAX
 
-MAX should send an update to `POST /assistant/query`, preserve the returned
-`session_id`/`revision`, and map `ResponseEnvelope` to text, image, PDF,
-buttons or a Mini App. It should not implement NLP, entity resolution,
-analytics, admission fit or response selection.
+Текущий пользовательский Mini App Andromeda — полноценное web-приложение в
+`frontend-next` на Next.js 16 и React 19; он использует тот же backend, что и
+Web-клиент. MAX-специфичный Bot/platform adapter в этой версии репозитория ещё не
+реализован. При его подключении клиент должен отправлять запросы в
+`POST /assistant/query`, сохранять `session_id`/`revision` и отображать
+`ResponseEnvelope` как текст, изображения, PDF, кнопки или Mini App. NLP, entity
+resolution, analytics, admission fit и response selection остаются на backend.
 
 ## Public client boundary
 

@@ -8,7 +8,7 @@ FastAPI-приложение `andromeda.api.main` обслуживает оди�
 
 ## Public API v1
 
-MAX Bot, MAX Mini App, Web и другие transport-клиенты обращаются только к `/api/v1`. Они не вызывают `/ops/*`, `/university-admin/*` или knowledge-review API. Версионированные операции — aliases существующих endpoint handlers: backend, application services, repository и domain logic остаются общими.
+`frontend-next` — текущий полноценный пользовательский Web/Mini App Andromeda; он обращается к Public API v1 по `/api/v1`. MAX-специфичный Bot или platform adapter пока не входит в исходники этого репозитория. При его подключении он должен использовать тот же контракт. Публичные transport-клиенты не вызывают `/ops/*`, `/university-admin/*` или knowledge-review API. Версионированные операции — aliases существующих endpoint handlers: backend, application services, repository и domain logic остаются общими.
 
 | Группа | Public API v1 operations |
 |---|---|

@@ -2,6 +2,8 @@
 
 # Быстрый старт
 
+Командные примеры ниже приведены для PowerShell; метка `powershell` указывает оболочку команд.
+
 ## Требования
 
 - Python 3.11+;
@@ -34,7 +36,7 @@ cd ..
 python backend/scripts/run_andromeda_demo.py --mode fixture --check
 ```
 
-Команда прогоняет captured sources через ingestion, Alembic, SQLite, FastAPI и canonical Next app, затем проверяет catalog, compare и admissions endpoints. Для ручного просмотра используйте ту же команду без `--check`.
+Команда прогоняет captured sources через ingestion, Alembic, SQLite, FastAPI и canonical Next app, затем проверяет catalog, compare и admissions endpoints. С `--check` она останавливает API и UI после проверки. Для ручного просмотра запустите ту же команду без `--check`; процессы останутся активны до Ctrl+C.
 
 Для generic ingestion:
 
